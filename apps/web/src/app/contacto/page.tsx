@@ -1,4 +1,12 @@
+import type { Metadata } from 'next';
 import { NEGOCIO, whatsappUrl } from '@/lib/negocio';
+
+export const metadata: Metadata = {
+  title: 'Contacto | Pizzería Horebs',
+  description:
+    'Dirección, horario y WhatsApp de Pizzería Horebs en Riohacha, La Guajira.',
+  alternates: { canonical: '/contacto' },
+};
 
 export default function ContactoPage() {
   return (

@@ -5,8 +5,10 @@ import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://pizzeriahorebs.shop"),
   title: "Pizzería Horebs",
   description: "Pide en línea — Pizzería Horebs, Riohacha",
+  alternates: { canonical: "/" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
