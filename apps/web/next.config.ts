@@ -8,6 +8,11 @@ const nextConfig: NextConfig = {
         hostname: 'pizzeriahorebs.shop',
         pathname: '/wp-content/uploads/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'afvwtoseszjpudelxywn.supabase.co',
+        pathname: '/storage/v1/object/public/**',
+      },
     ],
   },
 };
