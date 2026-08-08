@@ -85,28 +85,26 @@ export class PedidosService {
 
     const total = itemsCalculados.reduce((acc, i) => acc + i.subtotal, 0);
 
-    const { data: clienteExistente, error: clienteBuscarError } = await client
-      .from('clientes')
-      .select('id, nombre, telefono, direccion')
-      .eq('telefono', input.cliente.telefono)
-      .maybeSingle();
-
-    if (clienteBuscarError) throw clienteBuscarError;
-
-    let cliente = clienteExistente;
-    if (!cliente) {
-      const { data: nuevoCliente, error: crearClienteError } = await client
-        .from('clientes')
-        .insert({
-          nombre: input.cliente.nombre,
-          telefono: input.cliente.telefono,
-          direccion: input.cliente.direccion ?? null,
-        })
-        .select('id, nombre, telefono, direccion')
-        .single();
-      if (crearClienteError) throw crearClienteError;
-      cliente = nuevoCliente;
+    // Upsert atómico por teléfono: evita la condición de carrera de un
+    // select-then-insert cuando dos pedidos del mismo cliente llegan a la
+    // vez (ej. doble click en "Confirmar pedido"). No se incluye
+    // `direccion` cuando este pedido no la trae, para no pisar una
+    // dirección ya guardada de un pedido anterior.
+    const clienteUpsert: Record<string, string> = {
+      nombre: input.cliente.nombre,
+      telefono: input.cliente.telefono,
+    };
+    if (input.cliente.direccion) {
+      clienteUpsert.direccion = input.cliente.direccion;
     }
+
+    const { data: cliente, error: clienteError } = await client
+      .from('clientes')
+      .upsert(clienteUpsert, { onConflict: 'telefono' })
+      .select('id, nombre, telefono, direccion')
+      .single();
+
+    if (clienteError) throw clienteError;
 
     const { data: pedido, error: pedidoError } = await client
       .from('pedidos')
