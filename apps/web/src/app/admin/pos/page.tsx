@@ -22,6 +22,13 @@ type ItemVenta = {
   cantidad: number;
 };
 
+type ClienteBusqueda = {
+  id: string;
+  nombre: string;
+  telefono: string | null;
+  direccion: string | null;
+};
+
 const COSTO_DOMICILIO_DEFAULT = 5000;
 
 function PosInterno() {
@@ -29,6 +36,10 @@ function PosInterno() {
   const [items, setItems] = useState<ItemVenta[]>([]);
   const [nombre, setNombre] = useState('');
   const [telefono, setTelefono] = useState('');
+  const [busquedaCliente, setBusquedaCliente] = useState('');
+  const [resultadosCliente, setResultadosCliente] = useState<
+    ClienteBusqueda[]
+  >([]);
   const [modalidad, setModalidad] = useState<'mostrador' | 'domicilio'>(
     'mostrador',
   );
@@ -48,6 +59,27 @@ function PosInterno() {
       .then(setProductos)
       .catch(() => setError('No se pudo cargar el catálogo.'));
   }, []);
+
+  useEffect(() => {
+    if (!busquedaCliente.trim()) {
+      setResultadosCliente([]);
+      return;
+    }
+    const timeout = setTimeout(async () => {
+      const res = await adminFetch(
+        `/admin/clientes?q=${encodeURIComponent(busquedaCliente)}`,
+      );
+      if (res.ok) setResultadosCliente(await res.json());
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, [busquedaCliente]);
+
+  function seleccionarCliente(c: ClienteBusqueda) {
+    setNombre(c.nombre);
+    setTelefono(c.telefono ?? '');
+    setBusquedaCliente('');
+    setResultadosCliente([]);
+  }
 
   function agregarItem(producto: Producto, variante: Variante) {
     const precio = variante.precio_oferta ?? variante.precio;
@@ -253,6 +285,37 @@ function PosInterno() {
           </div>
 
           <form onSubmit={registrarVenta} className="mt-6 space-y-3">
+            <div className="relative">
+              <label className="block text-sm font-medium">
+                Buscar cliente existente
+              </label>
+              <input
+                value={busquedaCliente}
+                onChange={(e) => setBusquedaCliente(e.target.value)}
+                placeholder="Nombre o teléfono…"
+                className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+              />
+              {resultadosCliente.length > 0 && (
+                <ul className="absolute z-10 mt-1 w-full rounded-md border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
+                  {resultadosCliente.map((c) => (
+                    <li key={c.id}>
+                      <button
+                        type="button"
+                        onClick={() => seleccionarCliente(c)}
+                        className="block w-full px-3 py-2 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                      >
+                        <span className="font-medium">{c.nombre}</span>
+                        {c.telefono && (
+                          <span className="ml-2 text-zinc-500 dark:text-zinc-400">
+                            {c.telefono}
+                          </span>
+                        )}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
             <div>
               <label className="block text-sm font-medium">
                 Nombre del cliente
