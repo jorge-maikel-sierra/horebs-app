@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import { calcularItems } from './calcular-items';
 
 export interface CrearPedidoItemInput {
   variante_id: string;
@@ -51,39 +52,7 @@ export class PedidosService {
     this.validar(input);
     const client = this.supabase.getClient();
 
-    const varianteIds = input.items.map((i) => i.variante_id);
-    const { data: variantes, error: variantesError } = await client
-      .from('variantes_producto')
-      .select('id, nombre, precio, precio_oferta, productos(nombre)')
-      .in('id', varianteIds)
-      .eq('activo', true);
-
-    if (variantesError) throw variantesError;
-    if (!variantes || variantes.length !== new Set(varianteIds).size) {
-      throw new BadRequestException(
-        'Uno o más productos del carrito ya no están disponibles.',
-      );
-    }
-
-    const varianteById = new Map(variantes.map((v) => [v.id, v]));
-
-    const itemsCalculados = input.items.map((item) => {
-      const variante = varianteById.get(item.variante_id);
-      if (!variante) {
-        throw new BadRequestException('Uno de los productos del carrito no existe.');
-      }
-      const precioUnitario = variante.precio_oferta ?? variante.precio;
-      return {
-        variante_id: item.variante_id,
-        cantidad: item.cantidad,
-        precio_unitario: precioUnitario,
-        subtotal: precioUnitario * item.cantidad,
-        producto_nombre: (variante as any).productos?.nombre ?? '',
-        variante_nombre: variante.nombre,
-      };
-    });
-
-    const total = itemsCalculados.reduce((acc, i) => acc + i.subtotal, 0);
+    const { itemsCalculados, total } = await calcularItems(client, input.items);
 
     // Upsert atómico por teléfono: evita la condición de carrera de un
     // select-then-insert cuando dos pedidos del mismo cliente llegan a la
@@ -212,14 +181,6 @@ export class PedidosService {
     }
     if (!METODOS_PAGO.includes(input.metodo_pago)) {
       throw new BadRequestException('Método de pago inválido.');
-    }
-    if (!Array.isArray(input.items) || input.items.length === 0) {
-      throw new BadRequestException('El carrito está vacío.');
-    }
-    for (const item of input.items) {
-      if (!item.variante_id || !Number.isInteger(item.cantidad) || item.cantidad <= 0) {
-        throw new BadRequestException('Item de pedido inválido.');
-      }
     }
   }
 }
