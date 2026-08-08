@@ -43,7 +43,13 @@ export class AdminController {
   @Roles('admin')
   editarCliente(
     @Param('id') id: string,
-    @Body() body: { nombre?: string; telefono?: string; direccion?: string },
+    @Body()
+    body: {
+      nombre?: string;
+      apellido?: string;
+      telefono?: string;
+      direccion?: string;
+    },
   ) {
     return this.admin.editarCliente(id, body);
   }
