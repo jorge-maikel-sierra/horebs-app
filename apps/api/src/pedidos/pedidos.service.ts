@@ -1,0 +1,227 @@
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { SupabaseService } from '../supabase/supabase.service';
+
+export interface CrearPedidoItemInput {
+  variante_id: string;
+  cantidad: number;
+}
+
+export interface CrearPedidoInput {
+  cliente: {
+    nombre: string;
+    telefono: string;
+    direccion?: string;
+  };
+  modalidad: 'domicilio' | 'retiro';
+  direccion_entrega?: string;
+  metodo_pago: 'efectivo' | 'transferencia' | 'tarjeta';
+  notas?: string;
+  items: CrearPedidoItemInput[];
+}
+
+export interface PedidoItemDto {
+  producto_nombre: string;
+  variante_nombre: string;
+  cantidad: number;
+  precio_unitario: number;
+  subtotal: number;
+}
+
+export interface PedidoDto {
+  id: string;
+  cliente: { nombre: string; telefono: string; direccion: string | null };
+  modalidad: string;
+  direccion_entrega: string | null;
+  metodo_pago: string;
+  estado: string;
+  total: number;
+  notas: string | null;
+  created_at: string;
+  items: PedidoItemDto[];
+}
+
+const MODALIDADES = ['domicilio', 'retiro'];
+const METODOS_PAGO = ['efectivo', 'transferencia', 'tarjeta'];
+
+@Injectable()
+export class PedidosService {
+  constructor(private readonly supabase: SupabaseService) {}
+
+  async crear(input: CrearPedidoInput): Promise<PedidoDto> {
+    this.validar(input);
+    const client = this.supabase.getClient();
+
+    const varianteIds = input.items.map((i) => i.variante_id);
+    const { data: variantes, error: variantesError } = await client
+      .from('variantes_producto')
+      .select('id, nombre, precio, precio_oferta, productos(nombre)')
+      .in('id', varianteIds)
+      .eq('activo', true);
+
+    if (variantesError) throw variantesError;
+    if (!variantes || variantes.length !== new Set(varianteIds).size) {
+      throw new BadRequestException(
+        'Uno o más productos del carrito ya no están disponibles.',
+      );
+    }
+
+    const varianteById = new Map(variantes.map((v) => [v.id, v]));
+
+    const itemsCalculados = input.items.map((item) => {
+      const variante = varianteById.get(item.variante_id);
+      if (!variante) {
+        throw new BadRequestException('Uno de los productos del carrito no existe.');
+      }
+      const precioUnitario = variante.precio_oferta ?? variante.precio;
+      return {
+        variante_id: item.variante_id,
+        cantidad: item.cantidad,
+        precio_unitario: precioUnitario,
+        subtotal: precioUnitario * item.cantidad,
+        producto_nombre: (variante as any).productos?.nombre ?? '',
+        variante_nombre: variante.nombre,
+      };
+    });
+
+    const total = itemsCalculados.reduce((acc, i) => acc + i.subtotal, 0);
+
+    const { data: clienteExistente, error: clienteBuscarError } = await client
+      .from('clientes')
+      .select('id, nombre, telefono, direccion')
+      .eq('telefono', input.cliente.telefono)
+      .maybeSingle();
+
+    if (clienteBuscarError) throw clienteBuscarError;
+
+    let cliente = clienteExistente;
+    if (!cliente) {
+      const { data: nuevoCliente, error: crearClienteError } = await client
+        .from('clientes')
+        .insert({
+          nombre: input.cliente.nombre,
+          telefono: input.cliente.telefono,
+          direccion: input.cliente.direccion ?? null,
+        })
+        .select('id, nombre, telefono, direccion')
+        .single();
+      if (crearClienteError) throw crearClienteError;
+      cliente = nuevoCliente;
+    }
+
+    const { data: pedido, error: pedidoError } = await client
+      .from('pedidos')
+      .insert({
+        cliente_id: cliente.id,
+        modalidad: input.modalidad,
+        direccion_entrega:
+          input.modalidad === 'domicilio' ? input.direccion_entrega : null,
+        metodo_pago: input.metodo_pago,
+        total,
+        notas: input.notas ?? null,
+      })
+      .select('id, modalidad, direccion_entrega, metodo_pago, estado, total, notas, created_at')
+      .single();
+
+    if (pedidoError) throw pedidoError;
+
+    const { error: itemsError } = await client.from('items_pedido').insert(
+      itemsCalculados.map((i) => ({
+        pedido_id: pedido.id,
+        variante_id: i.variante_id,
+        cantidad: i.cantidad,
+        precio_unitario: i.precio_unitario,
+        subtotal: i.subtotal,
+      })),
+    );
+    if (itemsError) throw itemsError;
+
+    return {
+      id: pedido.id,
+      cliente: {
+        nombre: cliente.nombre,
+        telefono: cliente.telefono,
+        direccion: cliente.direccion,
+      },
+      modalidad: pedido.modalidad,
+      direccion_entrega: pedido.direccion_entrega,
+      metodo_pago: pedido.metodo_pago,
+      estado: pedido.estado,
+      total: pedido.total,
+      notas: pedido.notas,
+      created_at: pedido.created_at,
+      items: itemsCalculados.map((i) => ({
+        producto_nombre: i.producto_nombre,
+        variante_nombre: i.variante_nombre,
+        cantidad: i.cantidad,
+        precio_unitario: i.precio_unitario,
+        subtotal: i.subtotal,
+      })),
+    };
+  }
+
+  async obtener(id: string): Promise<PedidoDto> {
+    const client = this.supabase.getClient();
+    const { data: pedido, error } = await client
+      .from('pedidos')
+      .select(
+        'id, modalidad, direccion_entrega, metodo_pago, estado, total, notas, created_at, clientes(nombre, telefono, direccion), items_pedido(cantidad, precio_unitario, subtotal, variantes_producto(nombre, productos(nombre)))',
+      )
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!pedido) throw new NotFoundException('Pedido no encontrado.');
+
+    const cliente = (pedido as any).clientes;
+    const items = ((pedido as any).items_pedido ?? []) as any[];
+
+    return {
+      id: pedido.id,
+      cliente: {
+        nombre: cliente?.nombre ?? '',
+        telefono: cliente?.telefono ?? '',
+        direccion: cliente?.direccion ?? null,
+      },
+      modalidad: pedido.modalidad,
+      direccion_entrega: pedido.direccion_entrega,
+      metodo_pago: pedido.metodo_pago,
+      estado: pedido.estado,
+      total: pedido.total,
+      notas: pedido.notas,
+      created_at: pedido.created_at,
+      items: items.map((i) => ({
+        producto_nombre: i.variantes_producto?.productos?.nombre ?? '',
+        variante_nombre: i.variantes_producto?.nombre ?? '',
+        cantidad: i.cantidad,
+        precio_unitario: i.precio_unitario,
+        subtotal: i.subtotal,
+      })),
+    };
+  }
+
+  private validar(input: CrearPedidoInput) {
+    if (!input.cliente?.nombre?.trim()) {
+      throw new BadRequestException('Falta el nombre del cliente.');
+    }
+    if (!input.cliente?.telefono?.trim()) {
+      throw new BadRequestException('Falta el teléfono del cliente.');
+    }
+    if (!MODALIDADES.includes(input.modalidad)) {
+      throw new BadRequestException('Modalidad inválida.');
+    }
+    if (input.modalidad === 'domicilio' && !input.direccion_entrega?.trim()) {
+      throw new BadRequestException('Falta la dirección de entrega.');
+    }
+    if (!METODOS_PAGO.includes(input.metodo_pago)) {
+      throw new BadRequestException('Método de pago inválido.');
+    }
+    if (!Array.isArray(input.items) || input.items.length === 0) {
+      throw new BadRequestException('El carrito está vacío.');
+    }
+    for (const item of input.items) {
+      if (!item.variante_id || !Number.isInteger(item.cantidad) || item.cantidad <= 0) {
+        throw new BadRequestException('Item de pedido inválido.');
+      }
+    }
+  }
+}
