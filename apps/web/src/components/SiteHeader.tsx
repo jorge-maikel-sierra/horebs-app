@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useCart } from '@/lib/cart-context';
 
@@ -9,11 +10,15 @@ export default function SiteHeader() {
   return (
     <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/90 backdrop-blur dark:border-zinc-800 dark:bg-black/90">
       <div className="mx-auto flex max-w-4xl items-center justify-between gap-2 px-4 py-3 sm:px-6">
-        <Link
-          href="/"
-          className="shrink-0 whitespace-nowrap text-base font-bold text-brand-orange sm:text-lg"
-        >
-          Pizzería Horebs
+        <Link href="/" className="shrink-0">
+          <Image
+            src="/logo-horebs.png"
+            alt="Pizzería Horebs"
+            width={40}
+            height={40}
+            className="h-9 w-9 sm:h-10 sm:w-10"
+            priority
+          />
         </Link>
         <nav className="flex items-center gap-3 text-xs font-medium whitespace-nowrap text-zinc-700 sm:gap-5 sm:text-sm dark:text-zinc-300">
           <Link href="/catalogo" className="hover:text-brand-orange">
