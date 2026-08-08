@@ -6,6 +6,7 @@ import { SupabaseModule } from './supabase/supabase.module';
 import { HealthModule } from './health/health.module';
 import { CatalogModule } from './catalog/catalog.module';
 import { PedidosModule } from './pedidos/pedidos.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { PedidosModule } from './pedidos/pedidos.module';
     HealthModule,
     CatalogModule,
     PedidosModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [AppService],
