@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { CartProvider } from "@/lib/cart-context";
 import SiteHeader from "@/components/SiteHeader";
+import SiteFooter from "@/components/SiteFooter";
 
 export const metadata: Metadata = {
   title: "Pizzería Horebs",
@@ -15,6 +16,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <CartProvider>
           <SiteHeader />
           <main className="flex-1">{children}</main>
+          <SiteFooter />
         </CartProvider>
       </body>
     </html>
