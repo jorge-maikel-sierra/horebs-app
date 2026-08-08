@@ -22,11 +22,18 @@ type ItemVenta = {
   cantidad: number;
 };
 
+const COSTO_DOMICILIO_DEFAULT = 5000;
+
 function PosInterno() {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [items, setItems] = useState<ItemVenta[]>([]);
   const [nombre, setNombre] = useState('');
   const [telefono, setTelefono] = useState('');
+  const [modalidad, setModalidad] = useState<'mostrador' | 'domicilio'>(
+    'mostrador',
+  );
+  const [direccionEntrega, setDireccionEntrega] = useState('');
+  const [costoDomicilio, setCostoDomicilio] = useState(COSTO_DOMICILIO_DEFAULT);
   const [metodoPago, setMetodoPago] = useState<
     'efectivo' | 'transferencia' | 'tarjeta'
   >('efectivo');
@@ -76,7 +83,8 @@ function PosInterno() {
     );
   }
 
-  const total = items.reduce((acc, i) => acc + i.precio * i.cantidad, 0);
+  const totalItems = items.reduce((acc, i) => acc + i.precio * i.cantidad, 0);
+  const total = totalItems + (modalidad === 'domicilio' ? costoDomicilio : 0);
 
   async function registrarVenta(e: FormEvent) {
     e.preventDefault();
@@ -87,6 +95,10 @@ function PosInterno() {
       setError('Agregá al menos un producto.');
       return;
     }
+    if (modalidad === 'domicilio' && !direccionEntrega.trim()) {
+      setError('Falta la dirección de entrega.');
+      return;
+    }
 
     setEnviando(true);
     try {
@@ -94,6 +106,10 @@ function PosInterno() {
         method: 'POST',
         body: JSON.stringify({
           cliente: { nombre, telefono: telefono || undefined },
+          modalidad,
+          direccion_entrega:
+            modalidad === 'domicilio' ? direccionEntrega : undefined,
+          costo_domicilio: modalidad === 'domicilio' ? costoDomicilio : undefined,
           metodo_pago: metodoPago,
           items: items.map((i) => ({
             variante_id: i.varianteId,
@@ -112,6 +128,9 @@ function PosInterno() {
       setItems([]);
       setNombre('');
       setTelefono('');
+      setModalidad('mostrador');
+      setDireccionEntrega('');
+      setCostoDomicilio(COSTO_DOMICILIO_DEFAULT);
       setMetodoPago('efectivo');
     } catch (err) {
       setError(
@@ -214,9 +233,23 @@ function PosInterno() {
             </ul>
           )}
 
-          <div className="mt-4 flex justify-between border-t border-zinc-200 pt-3 font-semibold dark:border-zinc-800">
-            <span>Total</span>
-            <span className="text-brand-orange">{formatPrecio(total)}</span>
+          <div className="mt-4 border-t border-zinc-200 pt-3 dark:border-zinc-800">
+            {modalidad === 'domicilio' && (
+              <>
+                <div className="flex justify-between text-sm text-zinc-500 dark:text-zinc-400">
+                  <span>Subtotal</span>
+                  <span>{formatPrecio(totalItems)}</span>
+                </div>
+                <div className="flex justify-between text-sm text-zinc-500 dark:text-zinc-400">
+                  <span>Domicilio</span>
+                  <span>{formatPrecio(costoDomicilio)}</span>
+                </div>
+              </>
+            )}
+            <div className="flex justify-between font-semibold">
+              <span>Total</span>
+              <span className="text-brand-orange">{formatPrecio(total)}</span>
+            </div>
           </div>
 
           <form onSubmit={registrarVenta} className="mt-6 space-y-3">
@@ -241,6 +274,60 @@ function PosInterno() {
                 className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
               />
             </div>
+            <div>
+              <span className="block text-sm font-medium">Modalidad</span>
+              <div className="mt-1 flex gap-4">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="modalidad"
+                    checked={modalidad === 'mostrador'}
+                    onChange={() => setModalidad('mostrador')}
+                  />
+                  Mostrador
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="modalidad"
+                    checked={modalidad === 'domicilio'}
+                    onChange={() => setModalidad('domicilio')}
+                  />
+                  Domicilio
+                </label>
+              </div>
+            </div>
+
+            {modalidad === 'domicilio' && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium">
+                    Dirección de entrega
+                  </label>
+                  <input
+                    required
+                    value={direccionEntrega}
+                    onChange={(e) => setDireccionEntrega(e.target.value)}
+                    className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium">
+                    Costo de domicilio
+                  </label>
+                  <input
+                    required
+                    type="number"
+                    min={0}
+                    step={500}
+                    value={costoDomicilio}
+                    onChange={(e) => setCostoDomicilio(Number(e.target.value))}
+                    className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+                  />
+                </div>
+              </>
+            )}
+
             <div>
               <span className="block text-sm font-medium">Método de pago</span>
               <div className="mt-1 flex flex-wrap gap-4">
