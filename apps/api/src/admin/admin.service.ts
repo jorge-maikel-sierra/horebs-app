@@ -34,10 +34,22 @@ export interface VentaDto {
   }[];
 }
 
+export interface ClienteDto {
+  id: string;
+  nombre: string;
+  telefono: string | null;
+  direccion: string | null;
+}
+
 export interface PedidoAdminDto {
   id: string;
   canal: string;
-  cliente: { nombre: string; telefono: string | null };
+  cliente: {
+    id: string;
+    nombre: string;
+    telefono: string | null;
+    direccion: string | null;
+  };
   modalidad: string;
   direccion_entrega: string | null;
   costo_domicilio: number;
@@ -178,7 +190,7 @@ export class AdminService {
       .getClient()
       .from('pedidos')
       .select(
-        'id, canal, modalidad, direccion_entrega, costo_domicilio, metodo_pago, estado, total, created_at, clientes(nombre, telefono), items_pedido(cantidad, variantes_producto(nombre, productos(nombre)))',
+        'id, canal, modalidad, direccion_entrega, costo_domicilio, metodo_pago, estado, total, created_at, clientes(id, nombre, telefono, direccion), items_pedido(cantidad, variantes_producto(nombre, productos(nombre)))',
       )
       .order('created_at', { ascending: false })
       .limit(100);
@@ -192,8 +204,10 @@ export class AdminService {
         id: p.id,
         canal: p.canal,
         cliente: {
+          id: cliente?.id ?? '',
           nombre: cliente?.nombre ?? '',
           telefono: cliente?.telefono ?? null,
+          direccion: cliente?.direccion ?? null,
         },
         modalidad: p.modalidad,
         direccion_entrega: p.direccion_entrega,
@@ -209,6 +223,58 @@ export class AdminService {
         })),
       };
     });
+  }
+
+  async buscarClientes(query: string): Promise<ClienteDto[]> {
+    const q = query.trim().replace(/[,()%]/g, '');
+    if (!q) return [];
+
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('clientes')
+      .select('id, nombre, telefono, direccion')
+      .or(`nombre.ilike.%${q}%,telefono.ilike.%${q}%`)
+      .order('nombre')
+      .limit(10);
+
+    if (error) throw error;
+    return data ?? [];
+  }
+
+  async editarCliente(
+    id: string,
+    cambios: { nombre?: string; telefono?: string; direccion?: string },
+  ): Promise<ClienteDto> {
+    if (cambios.nombre !== undefined && !cambios.nombre.trim()) {
+      throw new BadRequestException('El nombre no puede quedar vacío.');
+    }
+
+    const payload: Record<string, string | null> = {};
+    if (cambios.nombre !== undefined) payload.nombre = cambios.nombre.trim();
+    if (cambios.telefono !== undefined) {
+      payload.telefono = cambios.telefono.trim() || null;
+    }
+    if (cambios.direccion !== undefined) {
+      payload.direccion = cambios.direccion.trim() || null;
+    }
+
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('clientes')
+      .update(payload)
+      .eq('id', id)
+      .select('id, nombre, telefono, direccion')
+      .single();
+
+    if (error) {
+      if (error.code === '23505') {
+        throw new BadRequestException(
+          'Ya existe otro cliente con ese teléfono.',
+        );
+      }
+      throw error;
+    }
+    return data;
   }
 
   async listarUsuarios(): Promise<UsuarioStaffDto[]> {

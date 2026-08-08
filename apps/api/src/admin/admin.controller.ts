@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { UsuarioActual } from '../auth/usuario.decorator';
@@ -31,6 +31,21 @@ export class AdminController {
   @Roles('admin')
   listarPedidos() {
     return this.admin.listarPedidos();
+  }
+
+  @Get('clientes')
+  @Roles('admin', 'empleado')
+  buscarClientes(@Query('q') q?: string) {
+    return this.admin.buscarClientes(q ?? '');
+  }
+
+  @Patch('clientes/:id')
+  @Roles('admin')
+  editarCliente(
+    @Param('id') id: string,
+    @Body() body: { nombre?: string; telefono?: string; direccion?: string },
+  ) {
+    return this.admin.editarCliente(id, body);
   }
 
   @Get('usuarios')
