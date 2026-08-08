@@ -37,6 +37,7 @@ type ClienteBusqueda = {
   apellido: string | null;
   telefono: string | null;
   direccion: string | null;
+  correo: string | null;
 };
 
 type Modalidad = 'local' | 'retiro' | 'domicilio';
@@ -60,6 +61,7 @@ function PosInterno() {
   const [nombre, setNombre] = useState('');
   const [apellido, setApellido] = useState('');
   const [telefono, setTelefono] = useState('');
+  const [correo, setCorreo] = useState('');
   const [busquedaCliente, setBusquedaCliente] = useState('');
   const [resultadosCliente, setResultadosCliente] = useState<
     ClienteBusqueda[]
@@ -105,6 +107,7 @@ function PosInterno() {
     setNombre(c.nombre);
     setApellido(c.apellido ?? '');
     setTelefono(c.telefono ?? '');
+    setCorreo(c.correo ?? '');
     setBusquedaCliente('');
     setResultadosCliente([]);
   }
@@ -173,6 +176,7 @@ function PosInterno() {
             nombre,
             apellido: apellido || undefined,
             telefono: telefono || undefined,
+            correo: correo || undefined,
           },
           modalidad,
           direccion_entrega:
@@ -197,6 +201,7 @@ function PosInterno() {
       setNombre('');
       setApellido('');
       setTelefono('');
+      setCorreo('');
       setModalidad('local');
       setDireccionEntrega('');
       setCostoDomicilio(COSTO_DOMICILIO_DEFAULT);
@@ -410,15 +415,28 @@ function PosInterno() {
                 />
               </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium">
-                Teléfono (opcional)
-              </label>
-              <input
-                value={telefono}
-                onChange={(e) => setTelefono(e.target.value)}
-                className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
-              />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="block text-sm font-medium">
+                  Teléfono (opcional)
+                </label>
+                <input
+                  value={telefono}
+                  onChange={(e) => setTelefono(e.target.value)}
+                  className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium">
+                  Correo (opcional)
+                </label>
+                <input
+                  type="email"
+                  value={correo}
+                  onChange={(e) => setCorreo(e.target.value)}
+                  className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+                />
+              </div>
             </div>
             <div>
               <span className="block text-sm font-medium">Modalidad</span>

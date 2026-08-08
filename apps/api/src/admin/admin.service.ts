@@ -8,6 +8,7 @@ export interface CrearVentaInput {
     nombre: string;
     apellido?: string;
     telefono?: string;
+    correo?: string;
   };
   modalidad: 'local' | 'retiro' | 'domicilio';
   direccion_entrega?: string;
@@ -19,7 +20,12 @@ export interface CrearVentaInput {
 
 export interface VentaDto {
   id: string;
-  cliente: { nombre: string; apellido: string | null; telefono: string | null };
+  cliente: {
+    nombre: string;
+    apellido: string | null;
+    telefono: string | null;
+    correo: string | null;
+  };
   modalidad: string;
   direccion_entrega: string | null;
   costo_domicilio: number;
@@ -41,6 +47,7 @@ export interface ClienteDto {
   apellido: string | null;
   telefono: string | null;
   direccion: string | null;
+  correo: string | null;
 }
 
 export interface PedidoAdminDto {
@@ -120,19 +127,20 @@ export class AdminService {
     // está bien para una venta rápida de local.
     const telefono = input.cliente.telefono?.trim();
     const apellido = input.cliente.apellido?.trim() || null;
+    const correo = input.cliente.correo?.trim() || null;
     const { data: cliente, error: clienteError } = telefono
       ? await client
           .from('clientes')
           .upsert(
-            { nombre: input.cliente.nombre, apellido, telefono },
+            { nombre: input.cliente.nombre, apellido, telefono, correo },
             { onConflict: 'telefono' },
           )
-          .select('id, nombre, apellido, telefono')
+          .select('id, nombre, apellido, telefono, correo')
           .single()
       : await client
           .from('clientes')
-          .insert({ nombre: input.cliente.nombre, apellido })
-          .select('id, nombre, apellido, telefono')
+          .insert({ nombre: input.cliente.nombre, apellido, correo })
+          .select('id, nombre, apellido, telefono, correo')
           .single();
 
     if (clienteError) throw clienteError;
@@ -176,6 +184,7 @@ export class AdminService {
         nombre: cliente.nombre,
         apellido: cliente.apellido,
         telefono: cliente.telefono,
+        correo: cliente.correo,
       },
       modalidad: pedido.modalidad,
       direccion_entrega: pedido.direccion_entrega,
@@ -241,7 +250,7 @@ export class AdminService {
     const { data, error } = await this.supabase
       .getClient()
       .from('clientes')
-      .select('id, nombre, apellido, telefono, direccion')
+      .select('id, nombre, apellido, telefono, direccion, correo')
       .or(`nombre.ilike.%${q}%,apellido.ilike.%${q}%,telefono.ilike.%${q}%`)
       .order('nombre')
       .limit(10);
@@ -257,6 +266,7 @@ export class AdminService {
       apellido?: string;
       telefono?: string;
       direccion?: string;
+      correo?: string;
     },
   ): Promise<ClienteDto> {
     if (cambios.nombre !== undefined && !cambios.nombre.trim()) {
@@ -274,13 +284,16 @@ export class AdminService {
     if (cambios.direccion !== undefined) {
       payload.direccion = cambios.direccion.trim() || null;
     }
+    if (cambios.correo !== undefined) {
+      payload.correo = cambios.correo.trim() || null;
+    }
 
     const { data, error } = await this.supabase
       .getClient()
       .from('clientes')
       .update(payload)
       .eq('id', id)
-      .select('id, nombre, apellido, telefono, direccion')
+      .select('id, nombre, apellido, telefono, direccion, correo')
       .single();
 
     if (error) {

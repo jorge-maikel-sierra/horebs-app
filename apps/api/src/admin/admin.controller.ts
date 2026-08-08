@@ -49,6 +49,7 @@ export class AdminController {
       apellido?: string;
       telefono?: string;
       direccion?: string;
+      correo?: string;
     },
   ) {
     return this.admin.editarCliente(id, body);
