@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { whatsappUrl } from '@/lib/negocio';
+import { formatPrecio } from '@/lib/formato';
 
 type PedidoItem = {
   producto_nombre: string;
@@ -21,13 +22,6 @@ type Pedido = {
   items: PedidoItem[];
 };
 
-function formatPrecio(precio: number) {
-  return new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    maximumFractionDigits: 0,
-  }).format(precio);
-}
 
 async function getPedido(id: string): Promise<Pedido | null> {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';

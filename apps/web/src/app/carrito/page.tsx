@@ -2,14 +2,7 @@
 
 import Link from 'next/link';
 import { useCart } from '@/lib/cart-context';
-
-function formatPrecio(precio: number) {
-  return new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    maximumFractionDigits: 0,
-  }).format(precio);
-}
+import { formatPrecio } from '@/lib/formato';
 
 export default function CarritoPage() {
   const { items, updateCantidad, removeItem, clear, total } = useCart();
