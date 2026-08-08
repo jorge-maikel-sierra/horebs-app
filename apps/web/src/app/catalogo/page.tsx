@@ -1,5 +1,7 @@
 import Image from 'next/image';
+import Link from 'next/link';
 import AgregarAlCarritoBoton from '@/components/AgregarAlCarritoBoton';
+import { formatPrecio } from '@/lib/formato';
 
 type Variante = {
   id: string;
@@ -15,6 +17,7 @@ type Producto = {
   imagen_url: string | null;
   destacado: boolean;
   categoria_id: string;
+  slug: string | null;
   variantes: Variante[];
 };
 
@@ -34,14 +37,6 @@ async function getProductos(): Promise<Producto[]> {
   return res.json();
 }
 
-function formatPrecio(precio: number) {
-  return new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    maximumFractionDigits: 0,
-  }).format(precio);
-}
-
 function ProductoCard({ producto }: { producto: Producto }) {
   return (
     <div
@@ -55,7 +50,7 @@ function ProductoCard({ producto }: { producto: Producto }) {
         <div className="relative -mx-4 -mt-4 mb-3 h-40 w-[calc(100%+2rem)] overflow-hidden rounded-t-lg">
           <Image
             src={producto.imagen_url}
-            alt={producto.nombre}
+            alt={`${producto.nombre} a domicilio en Riohacha`}
             fill
             sizes="(min-width: 640px) 420px, 100vw"
             className="object-cover"
@@ -68,7 +63,13 @@ function ProductoCard({ producto }: { producto: Producto }) {
         </span>
       )}
       <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-        {producto.nombre}
+        {producto.slug ? (
+          <Link href={`/menu/${producto.slug}`} className="hover:text-brand-orange">
+            {producto.nombre}
+          </Link>
+        ) : (
+          producto.nombre
+        )}
       </h3>
       {producto.descripcion && (
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">

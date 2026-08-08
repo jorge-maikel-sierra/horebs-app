@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { NEGOCIO, whatsappUrl } from '@/lib/negocio';
+import { formatPrecio } from '@/lib/formato';
 import PremiosSection from '@/components/PremiosSection';
 import ClientesFelicesSection from '@/components/ClientesFelicesSection';
 
@@ -9,6 +10,7 @@ type Producto = {
   nombre: string;
   descripcion: string | null;
   imagen_url: string | null;
+  slug: string | null;
   variantes: { precio: number; precio_oferta: number | null }[];
 };
 
@@ -19,14 +21,6 @@ async function getDestacados(): Promise<Producto[]> {
   });
   if (!res.ok) return [];
   return res.json();
-}
-
-function formatPrecio(precio: number) {
-  return new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    maximumFractionDigits: 0,
-  }).format(precio);
 }
 
 function precioDesde(producto: Producto): number | null {
@@ -76,14 +70,14 @@ export default async function Home() {
               return (
                 <Link
                   key={p.id}
-                  href="/catalogo"
+                  href={p.slug ? `/menu/${p.slug}` : '/catalogo'}
                   className="group overflow-hidden rounded-xl border border-zinc-200 transition hover:shadow-lg dark:border-zinc-800"
                 >
                   {p.imagen_url && (
                     <div className="relative h-48 w-full">
                       <Image
                         src={p.imagen_url}
-                        alt={p.nombre}
+                        alt={`${p.nombre} a domicilio en Riohacha`}
                         fill
                         sizes="(min-width: 640px) 420px, 100vw"
                         className="object-cover transition group-hover:scale-105"
