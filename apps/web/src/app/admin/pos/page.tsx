@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
+import Link from 'next/link';
 import RequireRol from '@/components/RequireRol';
 import { adminFetch } from '@/lib/admin-fetch';
 import { formatPrecio } from '@/lib/formato';
+import { useRol } from '@/lib/use-rol';
 
 type Variante = {
   id: string;
@@ -12,7 +14,14 @@ type Variante = {
   precio_oferta: number | null;
 };
 
-type Producto = { id: string; nombre: string; variantes: Variante[] };
+type Producto = {
+  id: string;
+  nombre: string;
+  categoria_id: string;
+  variantes: Variante[];
+};
+
+type Categoria = { id: string; nombre: string; orden: number };
 
 type ItemVenta = {
   varianteId: string;
@@ -25,24 +34,37 @@ type ItemVenta = {
 type ClienteBusqueda = {
   id: string;
   nombre: string;
+  apellido: string | null;
   telefono: string | null;
   direccion: string | null;
 };
 
+type Modalidad = 'local' | 'retiro' | 'domicilio';
+
 const COSTO_DOMICILIO_DEFAULT = 5000;
 
+const MODALIDAD_OPCIONES: { valor: Modalidad; etiqueta: string }[] = [
+  { valor: 'local', etiqueta: 'Comer en el local' },
+  { valor: 'retiro', etiqueta: 'Para llevar' },
+  { valor: 'domicilio', etiqueta: 'Domicilio' },
+];
+
 function PosInterno() {
+  const { rol } = useRol();
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
+  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState<
+    string | null
+  >(null);
   const [items, setItems] = useState<ItemVenta[]>([]);
   const [nombre, setNombre] = useState('');
+  const [apellido, setApellido] = useState('');
   const [telefono, setTelefono] = useState('');
   const [busquedaCliente, setBusquedaCliente] = useState('');
   const [resultadosCliente, setResultadosCliente] = useState<
     ClienteBusqueda[]
   >([]);
-  const [modalidad, setModalidad] = useState<'mostrador' | 'domicilio'>(
-    'mostrador',
-  );
+  const [modalidad, setModalidad] = useState<Modalidad>('local');
   const [direccionEntrega, setDireccionEntrega] = useState('');
   const [costoDomicilio, setCostoDomicilio] = useState(COSTO_DOMICILIO_DEFAULT);
   const [metodoPago, setMetodoPago] = useState<
@@ -54,9 +76,14 @@ function PosInterno() {
 
   useEffect(() => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
-    fetch(`${apiUrl}/catalogo/productos`)
-      .then((r) => r.json())
-      .then(setProductos)
+    Promise.all([
+      fetch(`${apiUrl}/catalogo/categorias`).then((r) => r.json()),
+      fetch(`${apiUrl}/catalogo/productos`).then((r) => r.json()),
+    ])
+      .then(([cats, prods]) => {
+        setCategorias(cats);
+        setProductos(prods);
+      })
       .catch(() => setError('No se pudo cargar el catálogo.'));
   }, []);
 
@@ -76,6 +103,7 @@ function PosInterno() {
 
   function seleccionarCliente(c: ClienteBusqueda) {
     setNombre(c.nombre);
+    setApellido(c.apellido ?? '');
     setTelefono(c.telefono ?? '');
     setBusquedaCliente('');
     setResultadosCliente([]);
@@ -118,6 +146,10 @@ function PosInterno() {
   const totalItems = items.reduce((acc, i) => acc + i.precio * i.cantidad, 0);
   const total = totalItems + (modalidad === 'domicilio' ? costoDomicilio : 0);
 
+  const productosDeCategoria = categoriaSeleccionada
+    ? productos.filter((p) => p.categoria_id === categoriaSeleccionada)
+    : [];
+
   async function registrarVenta(e: FormEvent) {
     e.preventDefault();
     setError(null);
@@ -137,7 +169,11 @@ function PosInterno() {
       const res = await adminFetch('/admin/ventas', {
         method: 'POST',
         body: JSON.stringify({
-          cliente: { nombre, telefono: telefono || undefined },
+          cliente: {
+            nombre,
+            apellido: apellido || undefined,
+            telefono: telefono || undefined,
+          },
           modalidad,
           direccion_entrega:
             modalidad === 'domicilio' ? direccionEntrega : undefined,
@@ -159,8 +195,9 @@ function PosInterno() {
       setMensaje(`Venta registrada — total ${formatPrecio(venta.total)}.`);
       setItems([]);
       setNombre('');
+      setApellido('');
       setTelefono('');
-      setModalidad('mostrador');
+      setModalidad('local');
       setDireccionEntrega('');
       setCostoDomicilio(COSTO_DOMICILIO_DEFAULT);
       setMetodoPago('efectivo');
@@ -175,46 +212,82 @@ function PosInterno() {
 
   return (
     <div className="mx-auto max-w-4xl p-8">
-      <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-        Punto de venta
-      </h1>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+          Punto de venta
+        </h1>
+        {rol === 'admin' && (
+          <Link
+            href="/admin/pedidos"
+            className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700 hover:border-brand-orange dark:border-zinc-700 dark:text-zinc-300"
+          >
+            Ver pedidos
+          </Link>
+        )}
+      </div>
 
       <div className="mt-6 grid gap-8 lg:grid-cols-2">
         <div>
           <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
             Productos
           </h2>
-          <div className="mt-3 max-h-[32rem] space-y-3 overflow-y-auto pr-2">
-            {productos.map((producto) => (
-              <div
-                key={producto.id}
-                className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800"
+
+          {!categoriaSeleccionada ? (
+            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {categorias.map((cat) => (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setCategoriaSeleccionada(cat.id)}
+                  className="rounded-lg border border-zinc-200 p-4 text-center font-semibold text-zinc-900 hover:border-brand-orange dark:border-zinc-800 dark:text-zinc-50"
+                >
+                  {cat.nombre}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-3">
+              <button
+                type="button"
+                onClick={() => setCategoriaSeleccionada(null)}
+                className="text-sm text-brand-orange underline"
               >
-                <p className="font-semibold text-zinc-900 dark:text-zinc-50">
-                  {producto.nombre}
-                </p>
-                <ul className="mt-2 space-y-1 text-sm">
-                  {producto.variantes.map((v) => (
-                    <li
-                      key={v.id}
-                      className="flex items-center justify-between gap-2"
-                    >
-                      <span>
-                        {v.nombre} — {formatPrecio(v.precio_oferta ?? v.precio)}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => agregarItem(producto, v)}
-                        className="shrink-0 rounded-full bg-brand-orange px-2.5 py-0.5 text-xs font-semibold text-white hover:opacity-90"
-                      >
-                        Agregar
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+                ← Volver a categorías
+              </button>
+              <div className="mt-3 max-h-[28rem] space-y-3 overflow-y-auto pr-2">
+                {productosDeCategoria.map((producto) => (
+                  <div
+                    key={producto.id}
+                    className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800"
+                  >
+                    <p className="font-semibold text-zinc-900 dark:text-zinc-50">
+                      {producto.nombre}
+                    </p>
+                    <ul className="mt-2 space-y-1 text-sm">
+                      {producto.variantes.map((v) => (
+                        <li
+                          key={v.id}
+                          className="flex items-center justify-between gap-2"
+                        >
+                          <span>
+                            {v.nombre} —{' '}
+                            {formatPrecio(v.precio_oferta ?? v.precio)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => agregarItem(producto, v)}
+                            className="shrink-0 rounded-full bg-brand-orange px-2.5 py-0.5 text-xs font-semibold text-white hover:opacity-90"
+                          >
+                            Agregar
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+          )}
         </div>
 
         <div>
@@ -304,7 +377,9 @@ function PosInterno() {
                         onClick={() => seleccionarCliente(c)}
                         className="block w-full px-3 py-2 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
                       >
-                        <span className="font-medium">{c.nombre}</span>
+                        <span className="font-medium">
+                          {c.nombre} {c.apellido ?? ''}
+                        </span>
                         {c.telefono && (
                           <span className="ml-2 text-zinc-500 dark:text-zinc-400">
                             {c.telefono}
@@ -316,16 +391,24 @@ function PosInterno() {
                 </ul>
               )}
             </div>
-            <div>
-              <label className="block text-sm font-medium">
-                Nombre del cliente
-              </label>
-              <input
-                required
-                value={nombre}
-                onChange={(e) => setNombre(e.target.value)}
-                className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
-              />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="block text-sm font-medium">Nombre</label>
+                <input
+                  required
+                  value={nombre}
+                  onChange={(e) => setNombre(e.target.value)}
+                  className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium">Apellido</label>
+                <input
+                  value={apellido}
+                  onChange={(e) => setApellido(e.target.value)}
+                  className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+                />
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium">
@@ -339,25 +422,21 @@ function PosInterno() {
             </div>
             <div>
               <span className="block text-sm font-medium">Modalidad</span>
-              <div className="mt-1 flex gap-4">
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="radio"
-                    name="modalidad"
-                    checked={modalidad === 'mostrador'}
-                    onChange={() => setModalidad('mostrador')}
-                  />
-                  Mostrador
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="radio"
-                    name="modalidad"
-                    checked={modalidad === 'domicilio'}
-                    onChange={() => setModalidad('domicilio')}
-                  />
-                  Domicilio
-                </label>
+              <div className="mt-1 flex flex-wrap gap-4">
+                {MODALIDAD_OPCIONES.map((op) => (
+                  <label
+                    key={op.valor}
+                    className="flex items-center gap-2 text-sm"
+                  >
+                    <input
+                      type="radio"
+                      name="modalidad"
+                      checked={modalidad === op.valor}
+                      onChange={() => setModalidad(op.valor)}
+                    />
+                    {op.etiqueta}
+                  </label>
+                ))}
               </div>
             </div>
 
