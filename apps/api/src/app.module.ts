@@ -4,12 +4,14 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { SupabaseModule } from './supabase/supabase.module';
 import { HealthModule } from './health/health.module';
+import { CatalogModule } from './catalog/catalog.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     SupabaseModule,
     HealthModule,
+    CatalogModule,
   ],
   controllers: [AppController],
   providers: [AppService],
