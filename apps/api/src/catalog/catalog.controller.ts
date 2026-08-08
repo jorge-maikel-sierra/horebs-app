@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, NotFoundException, Param, Query } from '@nestjs/common';
 import { CatalogService } from './catalog.service';
 
 @Controller('catalogo')
@@ -14,5 +14,12 @@ export class CatalogController {
   getProductos(@Query('destacado') destacado?: string) {
     const filtro = destacado === undefined ? undefined : destacado === 'true';
     return this.catalog.getProductos(filtro);
+  }
+
+  @Get('productos/:slug')
+  async getProductoPorSlug(@Param('slug') slug: string) {
+    const producto = await this.catalog.getProductoPorSlug(slug);
+    if (!producto) throw new NotFoundException('Producto no encontrado.');
+    return producto;
   }
 }

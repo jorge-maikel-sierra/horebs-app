@@ -15,6 +15,8 @@ export interface ProductoDto {
   imagen_url: string | null;
   destacado: boolean;
   categoria_id: string;
+  slug: string | null;
+  ventas_historicas: number | null;
   variantes: VarianteProductoDto[];
 }
 
@@ -44,7 +46,7 @@ export class CatalogService {
       .getClient()
       .from('productos')
       .select(
-        'id, nombre, descripcion, imagen_url, destacado, categoria_id, variantes_producto(id, nombre, precio, precio_oferta)',
+        'id, nombre, descripcion, imagen_url, destacado, categoria_id, slug, ventas_historicas, variantes_producto(id, nombre, precio, precio_oferta)',
       )
       .eq('activo', true)
       .eq('variantes_producto.activo', true)
@@ -62,5 +64,24 @@ export class CatalogService {
       ...producto,
       variantes: variantes_producto ?? [],
     }));
+  }
+
+  async getProductoPorSlug(slug: string): Promise<ProductoDto | null> {
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('productos')
+      .select(
+        'id, nombre, descripcion, imagen_url, destacado, categoria_id, slug, ventas_historicas, variantes_producto(id, nombre, precio, precio_oferta)',
+      )
+      .eq('slug', slug)
+      .eq('activo', true)
+      .eq('variantes_producto.activo', true)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data) return null;
+
+    const { variantes_producto, ...producto } = data;
+    return { ...producto, variantes: variantes_producto ?? [] };
   }
 }
