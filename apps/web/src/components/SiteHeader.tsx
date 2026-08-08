@@ -22,6 +22,9 @@ export default function SiteHeader() {
           <Link href="/contacto" className="hover:text-brand-orange">
             Contacto
           </Link>
+          <Link href="/cuenta" className="hover:text-brand-orange">
+            Cuenta
+          </Link>
           <Link
             href="/carrito"
             className="flex items-center gap-1.5 hover:text-brand-orange"
