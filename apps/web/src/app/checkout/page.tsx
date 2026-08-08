@@ -95,11 +95,11 @@ export default function CheckoutPage() {
 
       <div className="mt-4 rounded-lg border border-zinc-200 p-4 text-sm dark:border-zinc-800">
         {items.map((i) => (
-          <div key={i.varianteId} className="flex justify-between py-0.5">
+          <div key={i.varianteId} className="flex justify-between gap-3 py-0.5">
             <span>
               {i.cantidad}× {i.productoNombre} ({i.varianteNombre})
             </span>
-            <span>{formatPrecio(i.precio * i.cantidad)}</span>
+            <span className="shrink-0">{formatPrecio(i.precio * i.cantidad)}</span>
           </div>
         ))}
         <div className="mt-2 flex justify-between border-t border-zinc-200 pt-2 font-semibold dark:border-zinc-800">

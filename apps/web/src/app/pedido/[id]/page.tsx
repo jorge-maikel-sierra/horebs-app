@@ -94,31 +94,33 @@ export default async function PedidoConfirmacionPage({
 
       <div className="mt-6 rounded-lg border border-zinc-200 p-4 text-sm dark:border-zinc-800">
         {pedido.items.map((i, idx) => (
-          <div key={idx} className="flex justify-between py-0.5">
+          <div key={idx} className="flex justify-between gap-3 py-0.5">
             <span>
               {i.cantidad}× {i.producto_nombre} ({i.variante_nombre})
             </span>
-            <span>{formatPrecio(i.subtotal)}</span>
+            <span className="shrink-0">{formatPrecio(i.subtotal)}</span>
           </div>
         ))}
         <div className="mt-2 flex justify-between border-t border-zinc-200 pt-2 font-semibold dark:border-zinc-800">
           <span>Total</span>
           <span className="text-brand-orange">{formatPrecio(pedido.total)}</span>
         </div>
-        <dl className="mt-3 space-y-1 text-zinc-600 dark:text-zinc-400">
-          <div className="flex justify-between">
-            <dt>Modalidad</dt>
-            <dd>{pedido.modalidad === 'domicilio' ? 'Domicilio' : 'Retiro en local'}</dd>
+        <dl className="mt-3 space-y-2 text-zinc-600 dark:text-zinc-400">
+          <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:gap-4">
+            <dt className="shrink-0">Modalidad</dt>
+            <dd className="sm:text-right">
+              {pedido.modalidad === 'domicilio' ? 'Domicilio' : 'Retiro en local'}
+            </dd>
           </div>
           {pedido.modalidad === 'domicilio' && pedido.direccion_entrega && (
-            <div className="flex justify-between">
-              <dt>Dirección</dt>
-              <dd>{pedido.direccion_entrega}</dd>
+            <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:gap-4">
+              <dt className="shrink-0">Dirección</dt>
+              <dd className="sm:text-right">{pedido.direccion_entrega}</dd>
             </div>
           )}
-          <div className="flex justify-between capitalize">
-            <dt>Método de pago</dt>
-            <dd>{pedido.metodo_pago}</dd>
+          <div className="flex flex-col gap-0.5 capitalize sm:flex-row sm:justify-between sm:gap-4">
+            <dt className="shrink-0">Método de pago</dt>
+            <dd className="sm:text-right">{pedido.metodo_pago}</dd>
           </div>
         </dl>
       </div>
