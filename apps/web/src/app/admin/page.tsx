@@ -20,12 +20,20 @@ function AdminHome() {
           Punto de venta
         </Link>
         {rol === 'admin' && (
-          <Link
-            href="/admin/usuarios"
-            className="block rounded-lg border border-zinc-200 p-4 font-semibold text-zinc-900 hover:border-brand-orange dark:border-zinc-800 dark:text-zinc-50"
-          >
-            Usuarios
-          </Link>
+          <>
+            <Link
+              href="/admin/pedidos"
+              className="block rounded-lg border border-zinc-200 p-4 font-semibold text-zinc-900 hover:border-brand-orange dark:border-zinc-800 dark:text-zinc-50"
+            >
+              Pedidos
+            </Link>
+            <Link
+              href="/admin/usuarios"
+              className="block rounded-lg border border-zinc-200 p-4 font-semibold text-zinc-900 hover:border-brand-orange dark:border-zinc-800 dark:text-zinc-50"
+            >
+              Usuarios
+            </Link>
+          </>
         )}
       </div>
     </div>
