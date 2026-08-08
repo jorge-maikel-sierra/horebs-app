@@ -11,6 +11,8 @@ export default function CuentaPage() {
   const [cargandoSesion, setCargandoSesion] = useState(true);
 
   const [modo, setModo] = useState<Modo>('login');
+  const [nombre, setNombre] = useState('');
+  const [apellido, setApellido] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [enviando, setEnviando] = useState(false);
@@ -42,6 +44,7 @@ export default function CuentaPage() {
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
+        options: { data: { nombre, apellido } },
       });
       if (signUpError) {
         setError(signUpError.message);
@@ -76,7 +79,13 @@ export default function CuentaPage() {
           Mi cuenta
         </h1>
         <p className="mt-4 text-zinc-600 dark:text-zinc-400">
-          Sesión iniciada como <strong>{session.user.email}</strong>.
+          Sesión iniciada como{' '}
+          <strong>
+            {session.user.user_metadata?.nombre
+              ? `${session.user.user_metadata.nombre} ${session.user.user_metadata.apellido ?? ''}`.trim()
+              : session.user.email}
+          </strong>
+          .
         </p>
         <button
           type="button"
@@ -121,6 +130,29 @@ export default function CuentaPage() {
       </div>
 
       <form onSubmit={enviar} className="mt-6 space-y-4">
+        {modo === 'registro' && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="block text-sm font-medium">Nombre</label>
+              <input
+                required
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
+                className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium">Apellido</label>
+              <input
+                required
+                value={apellido}
+                onChange={(e) => setApellido(e.target.value)}
+                className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+              />
+            </div>
+          </div>
+        )}
+
         <div>
           <label className="block text-sm font-medium">Email</label>
           <input
