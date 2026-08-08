@@ -1,3 +1,6 @@
+import Image from 'next/image';
+import AgregarAlCarritoBoton from '@/components/AgregarAlCarritoBoton';
+
 type Variante = {
   id: string;
   nombre: string;
@@ -42,12 +45,23 @@ function formatPrecio(precio: number) {
 function ProductoCard({ producto }: { producto: Producto }) {
   return (
     <div
-      className={`rounded-lg border p-4 ${
+      className={`overflow-hidden rounded-lg border p-4 ${
         producto.destacado
           ? 'border-orange-500 bg-orange-50 dark:bg-orange-950/20'
           : 'border-zinc-200 dark:border-zinc-800'
       }`}
     >
+      {producto.imagen_url && (
+        <div className="relative -mx-4 -mt-4 mb-3 h-40 w-[calc(100%+2rem)] overflow-hidden rounded-t-lg">
+          <Image
+            src={producto.imagen_url}
+            alt={producto.nombre}
+            fill
+            sizes="(min-width: 640px) 420px, 100vw"
+            className="object-cover"
+          />
+        </div>
+      )}
       {producto.destacado && (
         <span className="mb-2 inline-block rounded-full bg-orange-500 px-2 py-0.5 text-xs font-semibold text-white">
           Firma de la casa
@@ -62,11 +76,19 @@ function ProductoCard({ producto }: { producto: Producto }) {
         </p>
       )}
       {producto.variantes.length > 0 && (
-        <ul className="mt-3 space-y-1 text-sm">
+        <ul className="mt-3 space-y-2 text-sm">
           {producto.variantes.map((v) => (
-            <li key={v.id} className="flex justify-between">
-              <span>{v.nombre}</span>
-              <span className="font-medium">
+            <li key={v.id} className="flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2">
+                {v.nombre}
+                <AgregarAlCarritoBoton
+                  varianteId={v.id}
+                  productoNombre={producto.nombre}
+                  varianteNombre={v.nombre}
+                  precio={v.precio_oferta ?? v.precio}
+                />
+              </span>
+              <span className="shrink-0 font-medium">
                 {v.precio_oferta ? (
                   <>
                     <span className="mr-2 text-zinc-400 line-through">
