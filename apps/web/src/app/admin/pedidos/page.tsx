@@ -17,6 +17,7 @@ type PedidoAdmin = {
   cliente: {
     id: string;
     nombre: string;
+    apellido: string | null;
     telefono: string | null;
     direccion: string | null;
   };
@@ -39,8 +40,8 @@ function formatFecha(iso: string) {
 
 const MODALIDAD_LABEL: Record<string, string> = {
   domicilio: 'Domicilio',
-  retiro: 'Retiro en local',
-  mostrador: 'Mostrador',
+  retiro: 'Para llevar',
+  local: 'Comer en el local',
 };
 
 function PedidosInterno() {
@@ -53,6 +54,7 @@ function PedidosInterno() {
     null,
   );
   const [nombreEdit, setNombreEdit] = useState('');
+  const [apellidoEdit, setApellidoEdit] = useState('');
   const [telefonoEdit, setTelefonoEdit] = useState('');
   const [direccionEdit, setDireccionEdit] = useState('');
   const [guardandoCliente, setGuardandoCliente] = useState(false);
@@ -73,6 +75,7 @@ function PedidosInterno() {
   function empezarEdicion(p: PedidoAdmin) {
     setEditandoClienteId(p.cliente.id);
     setNombreEdit(p.cliente.nombre);
+    setApellidoEdit(p.cliente.apellido ?? '');
     setTelefonoEdit(p.cliente.telefono ?? '');
     setDireccionEdit(p.cliente.direccion ?? '');
     setErrorEdit(null);
@@ -86,6 +89,7 @@ function PedidosInterno() {
         method: 'PATCH',
         body: JSON.stringify({
           nombre: nombreEdit,
+          apellido: apellidoEdit,
           telefono: telefonoEdit,
           direccion: direccionEdit,
         }),
@@ -106,6 +110,7 @@ function PedidosInterno() {
                 cliente: {
                   ...p.cliente,
                   nombre: clienteActualizado.nombre,
+                  apellido: clienteActualizado.apellido,
                   telefono: clienteActualizado.telefono,
                   direccion: clienteActualizado.direccion,
                 },
@@ -128,6 +133,7 @@ function PedidosInterno() {
     if (!q) return true;
     return (
       p.cliente.nombre.toLowerCase().includes(q) ||
+      (p.cliente.apellido ?? '').toLowerCase().includes(q) ||
       (p.cliente.telefono ?? '').includes(q)
     );
   });
@@ -138,7 +144,7 @@ function PedidosInterno() {
         Pedidos
       </h1>
       <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-        Últimos {pedidos.length} pedidos, web y de mostrador.
+        Últimos {pedidos.length} pedidos, web y del local.
       </p>
 
       <input
@@ -177,7 +183,9 @@ function PedidosInterno() {
                   {p.canal === 'pos' ? 'Local' : 'Web'}
                 </span>
                 <span className="font-semibold text-zinc-900 dark:text-zinc-50">
-                  {p.cliente.nombre || 'Cliente sin nombre'}
+                  {p.cliente.nombre
+                    ? `${p.cliente.nombre} ${p.cliente.apellido ?? ''}`.trim()
+                    : 'Cliente sin nombre'}
                 </span>
                 {p.cliente.telefono && (
                   <span className="text-sm text-zinc-500 dark:text-zinc-400">
@@ -199,11 +207,17 @@ function PedidosInterno() {
 
             {editandoClienteId === p.cliente.id && (
               <div className="mt-3 space-y-2 rounded-md border border-zinc-200 p-3 dark:border-zinc-700">
-                <div className="grid gap-2 sm:grid-cols-3">
+                <div className="grid gap-2 sm:grid-cols-4">
                   <input
                     value={nombreEdit}
                     onChange={(e) => setNombreEdit(e.target.value)}
                     placeholder="Nombre"
+                    className="rounded-md border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+                  />
+                  <input
+                    value={apellidoEdit}
+                    onChange={(e) => setApellidoEdit(e.target.value)}
+                    placeholder="Apellido"
                     className="rounded-md border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
                   />
                   <input
