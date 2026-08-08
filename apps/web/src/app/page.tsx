@@ -1,6 +1,8 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { NEGOCIO, whatsappUrl } from '@/lib/negocio';
+import PremiosSection from '@/components/PremiosSection';
+import ClientesFelicesSection from '@/components/ClientesFelicesSection';
 
 type Producto = {
   id: string;
@@ -109,6 +111,9 @@ export default async function Home() {
           </div>
         </section>
       )}
+
+      <ClientesFelicesSection />
+      <PremiosSection />
 
       <section className="border-t border-zinc-200 px-6 py-10 text-center dark:border-zinc-800">
         <p className="font-semibold text-zinc-900 dark:text-zinc-50">
