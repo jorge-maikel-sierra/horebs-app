@@ -8,6 +8,9 @@ export interface CrearVentaInput {
     nombre: string;
     telefono?: string;
   };
+  modalidad: 'mostrador' | 'domicilio';
+  direccion_entrega?: string;
+  costo_domicilio?: number;
   metodo_pago: 'efectivo' | 'transferencia' | 'tarjeta';
   notas?: string;
   items: ItemInput[];
@@ -16,6 +19,9 @@ export interface CrearVentaInput {
 export interface VentaDto {
   id: string;
   cliente: { nombre: string; telefono: string | null };
+  modalidad: string;
+  direccion_entrega: string | null;
+  costo_domicilio: number;
   metodo_pago: string;
   total: number;
   created_at: string;
@@ -28,6 +34,24 @@ export interface VentaDto {
   }[];
 }
 
+export interface PedidoAdminDto {
+  id: string;
+  canal: string;
+  cliente: { nombre: string; telefono: string | null };
+  modalidad: string;
+  direccion_entrega: string | null;
+  costo_domicilio: number;
+  metodo_pago: string;
+  estado: string;
+  total: number;
+  created_at: string;
+  items: {
+    producto_nombre: string;
+    variante_nombre: string;
+    cantidad: number;
+  }[];
+}
+
 export interface UsuarioStaffDto {
   id: string;
   email: string;
@@ -36,6 +60,8 @@ export interface UsuarioStaffDto {
 }
 
 const METODOS_PAGO = ['efectivo', 'transferencia', 'tarjeta'];
+const MODALIDADES_VENTA = ['mostrador', 'domicilio'];
+const COSTO_DOMICILIO_DEFAULT = 5000;
 
 @Injectable()
 export class AdminService {
@@ -51,9 +77,27 @@ export class AdminService {
     if (!METODOS_PAGO.includes(input.metodo_pago)) {
       throw new BadRequestException('Método de pago inválido.');
     }
+    if (!MODALIDADES_VENTA.includes(input.modalidad)) {
+      throw new BadRequestException('Modalidad inválida.');
+    }
+    if (input.modalidad === 'domicilio' && !input.direccion_entrega?.trim()) {
+      throw new BadRequestException('Falta la dirección de entrega.');
+    }
+
+    const costoDomicilio =
+      input.modalidad === 'domicilio'
+        ? (input.costo_domicilio ?? COSTO_DOMICILIO_DEFAULT)
+        : 0;
+    if (costoDomicilio < 0) {
+      throw new BadRequestException('El costo de domicilio no puede ser negativo.');
+    }
 
     const client = this.supabase.getClient();
-    const { itemsCalculados, total } = await calcularItems(client, input.items);
+    const { itemsCalculados, total: totalItems } = await calcularItems(
+      client,
+      input.items,
+    );
+    const total = totalItems + costoDomicilio;
 
     // A diferencia de los pedidos web, una venta de mostrador sin
     // teléfono no se puede "upsertear" (no hay clave para reconocer al
@@ -81,7 +125,10 @@ export class AdminService {
       .from('pedidos')
       .insert({
         cliente_id: cliente.id,
-        modalidad: 'mostrador',
+        modalidad: input.modalidad,
+        direccion_entrega:
+          input.modalidad === 'domicilio' ? input.direccion_entrega : null,
+        costo_domicilio: costoDomicilio,
         metodo_pago: input.metodo_pago,
         estado: 'entregado',
         canal: 'pos',
@@ -89,7 +136,9 @@ export class AdminService {
         total,
         notas: input.notas ?? null,
       })
-      .select('id, metodo_pago, total, created_at')
+      .select(
+        'id, modalidad, direccion_entrega, costo_domicilio, metodo_pago, total, created_at',
+      )
       .single();
 
     if (pedidoError) throw pedidoError;
@@ -108,6 +157,9 @@ export class AdminService {
     return {
       id: pedido.id,
       cliente: { nombre: cliente.nombre, telefono: cliente.telefono },
+      modalidad: pedido.modalidad,
+      direccion_entrega: pedido.direccion_entrega,
+      costo_domicilio: pedido.costo_domicilio,
       metodo_pago: pedido.metodo_pago,
       total: pedido.total,
       created_at: pedido.created_at,
@@ -119,6 +171,44 @@ export class AdminService {
         subtotal: i.subtotal,
       })),
     };
+  }
+
+  async listarPedidos(): Promise<PedidoAdminDto[]> {
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('pedidos')
+      .select(
+        'id, canal, modalidad, direccion_entrega, costo_domicilio, metodo_pago, estado, total, created_at, clientes(nombre, telefono), items_pedido(cantidad, variantes_producto(nombre, productos(nombre)))',
+      )
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    if (error) throw error;
+
+    return (data ?? []).map((p) => {
+      const cliente = (p as any).clientes;
+      const items = ((p as any).items_pedido ?? []) as any[];
+      return {
+        id: p.id,
+        canal: p.canal,
+        cliente: {
+          nombre: cliente?.nombre ?? '',
+          telefono: cliente?.telefono ?? null,
+        },
+        modalidad: p.modalidad,
+        direccion_entrega: p.direccion_entrega,
+        costo_domicilio: p.costo_domicilio,
+        metodo_pago: p.metodo_pago,
+        estado: p.estado,
+        total: p.total,
+        created_at: p.created_at,
+        items: items.map((i) => ({
+          producto_nombre: i.variantes_producto?.productos?.nombre ?? '',
+          variante_nombre: i.variantes_producto?.nombre ?? '',
+          cantidad: i.cantidad,
+        })),
+      };
+    });
   }
 
   async listarUsuarios(): Promise<UsuarioStaffDto[]> {

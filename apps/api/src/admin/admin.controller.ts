@@ -27,6 +27,12 @@ export class AdminController {
     return this.admin.crearVenta(body, usuario.id);
   }
 
+  @Get('pedidos')
+  @Roles('admin')
+  listarPedidos() {
+    return this.admin.listarPedidos();
+  }
+
   @Get('usuarios')
   @Roles('admin')
   listarUsuarios() {
