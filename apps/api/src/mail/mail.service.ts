@@ -85,15 +85,12 @@ export class MailService {
     const itemsTexto = datos.items
       .map((i) => `${i.cantidad}× ${i.nombre}`)
       .join('\n');
-    const itemsHtml = datos.items
-      .map((i) => `<li>${i.cantidad}× ${i.nombre}</li>`)
-      .join('');
 
     try {
       await this.transporter.sendMail({
         from: `"Pizzería Horebs" <${this.remitente}>`,
         to: destino,
-        subject: `Nuevo domicilio #${datos.pedidoId.slice(0, 8)}`,
+        subject: `🛵 Nuevo domicilio #${datos.pedidoId.slice(0, 8)} — ${datos.clienteNombre}`,
         text: [
           `Cliente: ${datos.clienteNombre}`,
           datos.clienteTelefono ? `Teléfono: ${datos.clienteTelefono}` : null,
@@ -107,15 +104,7 @@ export class MailService {
         ]
           .filter(Boolean)
           .join('\n'),
-        html: `
-          <p><strong>Cliente:</strong> ${datos.clienteNombre}</p>
-          ${datos.clienteTelefono ? `<p><strong>Teléfono:</strong> ${datos.clienteTelefono}</p>` : ''}
-          <p><strong>Dirección:</strong> ${datos.direccionEntrega}</p>
-          <p><strong>Pedido:</strong></p>
-          <ul>${itemsHtml}</ul>
-          <p><strong>Total:</strong> $${datos.total.toLocaleString('es-CO')}</p>
-          ${datos.notas ? `<p><strong>Notas:</strong> ${datos.notas}</p>` : ''}
-        `,
+        html: construirHtmlDomicilio(datos),
       });
     } catch (err) {
       this.logger.error(
@@ -123,4 +112,125 @@ export class MailService {
       );
     }
   }
+}
+
+const NARANJA = '#FF6B35';
+const AZUL = '#1A3A52';
+const AMARILLO = '#FFD93D';
+
+function escaparHtml(texto: string): string {
+  return texto
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function construirHtmlDomicilio(datos: NotificacionDomicilio): string {
+  const filasItems = datos.items
+    .map(
+      (i) => `
+        <tr>
+          <td style="padding:10px 0;border-bottom:1px solid #eee;color:${AZUL};font-size:15px;">
+            <span style="display:inline-block;min-width:28px;font-weight:700;color:${NARANJA};">${i.cantidad}×</span>
+            ${escaparHtml(i.nombre)}
+          </td>
+        </tr>`,
+    )
+    .join('');
+
+  return `
+<!doctype html>
+<html lang="es">
+  <body style="margin:0;padding:0;background-color:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f5;padding:24px 0;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+            <tr>
+              <td style="background-color:${AZUL};padding:28px 32px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td>
+                      <p style="margin:0;color:${AMARILLO};font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">Pizzería Horebs</p>
+                      <h1 style="margin:6px 0 0;color:#ffffff;font-size:22px;font-weight:700;">🛵 Nuevo pedido a domicilio</h1>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:28px 32px 8px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#fafafa;border-radius:8px;padding:16px;border:1px solid #eee;">
+                  <tr>
+                    <td style="padding:4px 0;">
+                      <p style="margin:0;font-size:12px;color:#888;text-transform:uppercase;letter-spacing:0.5px;">Cliente</p>
+                      <p style="margin:2px 0 0;font-size:16px;font-weight:700;color:${AZUL};">${escaparHtml(datos.clienteNombre)}</p>
+                    </td>
+                  </tr>
+                  ${
+                    datos.clienteTelefono
+                      ? `<tr>
+                    <td style="padding:10px 0 0;">
+                      <p style="margin:0;font-size:12px;color:#888;text-transform:uppercase;letter-spacing:0.5px;">Teléfono</p>
+                      <p style="margin:2px 0 0;font-size:15px;color:${AZUL};">
+                        <a href="tel:${escaparHtml(datos.clienteTelefono)}" style="color:${AZUL};text-decoration:none;">${escaparHtml(datos.clienteTelefono)}</a>
+                      </p>
+                    </td>
+                  </tr>`
+                      : ''
+                  }
+                  <tr>
+                    <td style="padding:10px 0 0;">
+                      <p style="margin:0;font-size:12px;color:#888;text-transform:uppercase;letter-spacing:0.5px;">Dirección de entrega</p>
+                      <p style="margin:2px 0 0;font-size:15px;color:${AZUL};">${escaparHtml(datos.direccionEntrega)}</p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:20px 32px 0;">
+                <p style="margin:0 0 4px;font-size:12px;color:#888;text-transform:uppercase;letter-spacing:0.5px;">Pedido</p>
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                  ${filasItems}
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:16px 32px 0;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${NARANJA};border-radius:8px;">
+                  <tr>
+                    <td style="padding:14px 18px;">
+                      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                        <tr>
+                          <td style="color:#ffffff;font-size:15px;font-weight:600;">Total a cobrar</td>
+                          <td align="right" style="color:#ffffff;font-size:20px;font-weight:800;">$${datos.total.toLocaleString('es-CO')}</td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            ${
+              datos.notas
+                ? `<tr>
+              <td style="padding:20px 32px 0;">
+                <p style="margin:0;font-size:12px;color:#888;text-transform:uppercase;letter-spacing:0.5px;">Notas</p>
+                <p style="margin:4px 0 0;font-size:14px;color:${AZUL};background-color:#FFF9E6;border-left:3px solid ${AMARILLO};padding:8px 12px;border-radius:4px;">${escaparHtml(datos.notas)}</p>
+              </td>
+            </tr>`
+                : ''
+            }
+            <tr>
+              <td style="padding:28px 32px 24px;">
+                <p style="margin:0;font-size:12px;color:#aaa;text-align:center;">Pedido #${datos.pedidoId.slice(0, 8)} · Pizzería Horebs</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
 }
