@@ -7,7 +7,8 @@ export interface NotificacionDomicilio {
   clienteNombre: string;
   clienteTelefono: string | null;
   direccionEntrega: string;
-  items: { cantidad: number; nombre: string }[];
+  items: { cantidad: number; nombre: string; precioUnitario: number }[];
+  costoDomicilio: number | null;
   total: number;
   notas: string | null;
 }
@@ -70,7 +71,10 @@ export class MailService {
     }
 
     const itemsTexto = datos.items
-      .map((i) => `${i.cantidad}× ${i.nombre}`)
+      .map(
+        (i) =>
+          `${i.cantidad}× ${i.nombre} — $${(i.cantidad * i.precioUnitario).toLocaleString('es-CO')}`,
+      )
       .join('\n');
 
     const res = await fetch(RESEND_API_URL, {
@@ -91,6 +95,9 @@ export class MailService {
           'Pedido:',
           itemsTexto,
           '',
+          datos.costoDomicilio
+            ? `Domicilio: $${datos.costoDomicilio.toLocaleString('es-CO')}`
+            : null,
           `Total: $${datos.total.toLocaleString('es-CO')}`,
           datos.notas ? `Notas: ${datos.notas}` : null,
         ]
@@ -111,6 +118,12 @@ const NARANJA = '#FF6B35';
 const AZUL = '#1A3A52';
 const AMARILLO = '#FFD93D';
 
+const REDES = {
+  whatsapp: 'https://wa.me/573157861208',
+  facebook: 'https://www.facebook.com/Pizzeriahorebs/',
+  instagram: 'https://www.instagram.com/pizzeria_horebs/',
+};
+
 function escaparHtml(texto: string): string {
   return texto
     .replace(/&/g, '&amp;')
@@ -120,15 +133,20 @@ function escaparHtml(texto: string): string {
 
 function construirHtmlDomicilio(datos: NotificacionDomicilio): string {
   const filasItems = datos.items
-    .map(
-      (i) => `
+    .map((i) => {
+      const subtotal = i.cantidad * i.precioUnitario;
+      return `
         <tr>
           <td style="padding:10px 0;border-bottom:1px solid #eee;color:${AZUL};font-size:15px;">
             <span style="display:inline-block;min-width:28px;font-weight:700;color:${NARANJA};">${i.cantidad}×</span>
             ${escaparHtml(i.nombre)}
+            ${i.cantidad > 1 ? `<span style="color:#999;font-size:13px;"> ($${i.precioUnitario.toLocaleString('es-CO')} c/u)</span>` : ''}
           </td>
-        </tr>`,
-    )
+          <td align="right" style="padding:10px 0;border-bottom:1px solid #eee;color:${AZUL};font-size:15px;font-weight:600;white-space:nowrap;">
+            $${subtotal.toLocaleString('es-CO')}
+          </td>
+        </tr>`;
+    })
     .join('');
 
   return `
@@ -189,6 +207,20 @@ function construirHtmlDomicilio(datos: NotificacionDomicilio): string {
                 </table>
               </td>
             </tr>
+            ${
+              datos.costoDomicilio
+                ? `<tr>
+              <td style="padding:8px 32px 0;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td style="color:#888;font-size:14px;">Domicilio</td>
+                    <td align="right" style="color:${AZUL};font-size:14px;font-weight:600;">$${datos.costoDomicilio.toLocaleString('es-CO')}</td>
+                  </tr>
+                </table>
+              </td>
+            </tr>`
+                : ''
+            }
             <tr>
               <td style="padding:16px 32px 0;">
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${NARANJA};border-radius:8px;">
@@ -216,7 +248,20 @@ function construirHtmlDomicilio(datos: NotificacionDomicilio): string {
                 : ''
             }
             <tr>
-              <td style="padding:28px 32px 24px;">
+              <td style="padding:24px 32px 0;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #eee;">
+                  <tr>
+                    <td style="padding:20px 0 0;text-align:center;">
+                      <a href="${REDES.whatsapp}" style="display:inline-block;margin:0 10px;color:${AZUL};font-size:13px;font-weight:600;text-decoration:none;">WhatsApp</a>
+                      <a href="${REDES.instagram}" style="display:inline-block;margin:0 10px;color:${AZUL};font-size:13px;font-weight:600;text-decoration:none;">Instagram</a>
+                      <a href="${REDES.facebook}" style="display:inline-block;margin:0 10px;color:${AZUL};font-size:13px;font-weight:600;text-decoration:none;">Facebook</a>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:16px 32px 24px;">
                 <p style="margin:0;font-size:12px;color:#aaa;text-align:center;">Pedido #${datos.pedidoId.slice(0, 8)} · Pizzería Horebs</p>
               </td>
             </tr>

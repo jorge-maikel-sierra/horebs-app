@@ -221,7 +221,9 @@ export class AdminService {
           nombre: i.variante_nombre
             ? `${i.producto_nombre} (${i.variante_nombre})`
             : i.producto_nombre,
+          precioUnitario: i.precio_unitario,
         })),
+        costoDomicilio: pedido.costo_domicilio,
         total: pedido.total,
         notas: input.notas ?? null,
       });

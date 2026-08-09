@@ -115,7 +115,9 @@ export class PedidosService {
         items: itemsCalculados.map((i) => ({
           cantidad: i.cantidad,
           nombre: `${i.producto_nombre} (${i.variante_nombre})`,
+          precioUnitario: i.precio_unitario,
         })),
+        costoDomicilio: null,
         total: pedido.total,
         notas: pedido.notas,
       });
