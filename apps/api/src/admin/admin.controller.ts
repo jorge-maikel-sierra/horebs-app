@@ -33,6 +33,19 @@ export class AdminController {
     return this.admin.listarPedidos();
   }
 
+  @Patch('pedidos/:id')
+  @Roles('admin')
+  editarPedido(
+    @Param('id') id: string,
+    @Body()
+    body: {
+      metodo_pago?: string;
+      items?: { variante_id: string; cantidad: number }[];
+    },
+  ) {
+    return this.admin.editarPedido(id, body);
+  }
+
   @Get('clientes')
   @Roles('admin', 'empleado')
   buscarClientes(@Query('q') q?: string) {

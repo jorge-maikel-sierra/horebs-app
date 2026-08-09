@@ -6,6 +6,7 @@ import { adminFetch } from '@/lib/admin-fetch';
 import { formatPrecio } from '@/lib/formato';
 
 type ItemPedido = {
+  variante_id: string;
   producto_nombre: string;
   variante_nombre: string;
   cantidad: number;
@@ -31,6 +32,22 @@ type PedidoAdmin = {
   items: ItemPedido[];
 };
 
+type Variante = {
+  id: string;
+  nombre: string;
+  precio: number;
+  precio_oferta: number | null;
+};
+
+type Producto = {
+  id: string;
+  nombre: string;
+  categoria_id: string;
+  variantes: Variante[];
+};
+
+type Categoria = { id: string; nombre: string; orden: number };
+
 function formatFecha(iso: string) {
   return new Intl.DateTimeFormat('es-CO', {
     dateStyle: 'short',
@@ -43,6 +60,8 @@ const MODALIDAD_LABEL: Record<string, string> = {
   retiro: 'Para llevar',
   local: 'Comer en el local',
 };
+
+const METODO_PAGO_OPCIONES = ['efectivo', 'transferencia', 'tarjeta'] as const;
 
 function PedidosInterno() {
   const [pedidos, setPedidos] = useState<PedidoAdmin[]>([]);
@@ -60,6 +79,19 @@ function PedidosInterno() {
   const [guardandoCliente, setGuardandoCliente] = useState(false);
   const [errorEdit, setErrorEdit] = useState<string | null>(null);
 
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [productosCatalogo, setProductosCatalogo] = useState<Producto[]>([]);
+  const [editandoPedidoId, setEditandoPedidoId] = useState<string | null>(
+    null,
+  );
+  const [itemsEdit, setItemsEdit] = useState<ItemPedido[]>([]);
+  const [metodoPagoEdit, setMetodoPagoEdit] = useState<string>('efectivo');
+  const [categoriaPickerId, setCategoriaPickerId] = useState<string | null>(
+    null,
+  );
+  const [guardandoPedido, setGuardandoPedido] = useState(false);
+  const [errorPedido, setErrorPedido] = useState<string | null>(null);
+
   useEffect(() => {
     adminFetch('/admin/pedidos')
       .then(async (res) => {
@@ -70,6 +102,15 @@ function PedidosInterno() {
         setError(err instanceof Error ? err.message : 'Error desconocido.'),
       )
       .finally(() => setCargando(false));
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
+    Promise.all([
+      fetch(`${apiUrl}/catalogo/categorias`).then((r) => r.json()),
+      fetch(`${apiUrl}/catalogo/productos`).then((r) => r.json()),
+    ]).then(([cats, prods]) => {
+      setCategorias(cats);
+      setProductosCatalogo(prods);
+    });
   }, []);
 
   function empezarEdicion(p: PedidoAdmin) {
@@ -127,6 +168,88 @@ function PedidosInterno() {
       setGuardandoCliente(false);
     }
   }
+
+  function empezarEdicionPedido(p: PedidoAdmin) {
+    setEditandoPedidoId(p.id);
+    setItemsEdit(p.items.map((i) => ({ ...i })));
+    setMetodoPagoEdit(p.metodo_pago);
+    setCategoriaPickerId(null);
+    setErrorPedido(null);
+  }
+
+  function actualizarCantidadEdit(varianteId: string, cantidad: number) {
+    if (cantidad <= 0) {
+      setItemsEdit((prev) => prev.filter((i) => i.variante_id !== varianteId));
+      return;
+    }
+    setItemsEdit((prev) =>
+      prev.map((i) =>
+        i.variante_id === varianteId ? { ...i, cantidad } : i,
+      ),
+    );
+  }
+
+  function agregarProductoEdit(producto: Producto, variante: Variante) {
+    setItemsEdit((prev) => {
+      const existente = prev.find((i) => i.variante_id === variante.id);
+      if (existente) {
+        return prev.map((i) =>
+          i.variante_id === variante.id
+            ? { ...i, cantidad: i.cantidad + 1 }
+            : i,
+        );
+      }
+      return [
+        ...prev,
+        {
+          variante_id: variante.id,
+          producto_nombre: producto.nombre,
+          variante_nombre: variante.nombre,
+          cantidad: 1,
+        },
+      ];
+    });
+  }
+
+  async function guardarPedido(pedidoId: string) {
+    setErrorPedido(null);
+    if (itemsEdit.length === 0) {
+      setErrorPedido('El pedido no puede quedar sin productos.');
+      return;
+    }
+    setGuardandoPedido(true);
+    try {
+      const res = await adminFetch(`/admin/pedidos/${pedidoId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          metodo_pago: metodoPagoEdit,
+          items: itemsEdit.map((i) => ({
+            variante_id: i.variante_id,
+            cantidad: i.cantidad,
+          })),
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.message ?? 'No se pudo guardar el pedido.');
+      }
+      const actualizado: PedidoAdmin = await res.json();
+      setPedidos((prev) =>
+        prev.map((p) => (p.id === pedidoId ? actualizado : p)),
+      );
+      setEditandoPedidoId(null);
+    } catch (err) {
+      setErrorPedido(
+        err instanceof Error ? err.message : 'No se pudo guardar el pedido.',
+      );
+    } finally {
+      setGuardandoPedido(false);
+    }
+  }
+
+  const productosDeCategoria = categoriaPickerId
+    ? productosCatalogo.filter((p) => p.categoria_id === categoriaPickerId)
+    : [];
 
   const pedidosFiltrados = pedidos.filter((p) => {
     const q = filtro.trim().toLowerCase();
@@ -199,6 +322,13 @@ function PedidosInterno() {
                 >
                   Editar cliente
                 </button>
+                <button
+                  type="button"
+                  onClick={() => empezarEdicionPedido(p)}
+                  className="text-xs text-brand-orange underline"
+                >
+                  Editar pedido
+                </button>
               </div>
               <span className="text-sm text-zinc-500 dark:text-zinc-400">
                 {formatFecha(p.created_at)}
@@ -256,13 +386,164 @@ function PedidosInterno() {
               </div>
             )}
 
-            <ul className="mt-2 space-y-0.5 text-sm text-zinc-600 dark:text-zinc-400">
-              {p.items.map((i, idx) => (
-                <li key={idx}>
-                  {i.cantidad}× {i.producto_nombre} ({i.variante_nombre})
-                </li>
-              ))}
-            </ul>
+            {editandoPedidoId === p.id ? (
+              <div className="mt-3 space-y-3 rounded-md border border-zinc-200 p-3 dark:border-zinc-700">
+                <div>
+                  <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                    Productos
+                  </span>
+                  {itemsEdit.length === 0 ? (
+                    <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                      Sin productos — agregá al menos uno.
+                    </p>
+                  ) : (
+                    <ul className="mt-1 space-y-1">
+                      {itemsEdit.map((i) => (
+                        <li
+                          key={i.variante_id}
+                          className="flex items-center justify-between gap-2 text-sm"
+                        >
+                          <span>
+                            {i.producto_nombre} ({i.variante_nombre})
+                          </span>
+                          <span className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                actualizarCantidadEdit(
+                                  i.variante_id,
+                                  i.cantidad - 1,
+                                )
+                              }
+                              className="h-6 w-6 rounded-full border border-zinc-300 text-xs dark:border-zinc-700"
+                            >
+                              −
+                            </button>
+                            {i.cantidad}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                actualizarCantidadEdit(
+                                  i.variante_id,
+                                  i.cantidad + 1,
+                                )
+                              }
+                              className="h-6 w-6 rounded-full border border-zinc-300 text-xs dark:border-zinc-700"
+                            >
+                              +
+                            </button>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                <div>
+                  <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                    Agregar producto
+                  </span>
+                  {!categoriaPickerId ? (
+                    <div className="mt-1 flex flex-wrap gap-2">
+                      {categorias.map((cat) => (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => setCategoriaPickerId(cat.id)}
+                          className="rounded-md border border-zinc-300 px-2.5 py-1 text-xs font-medium dark:border-zinc-700"
+                        >
+                          {cat.nombre}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="mt-1">
+                      <button
+                        type="button"
+                        onClick={() => setCategoriaPickerId(null)}
+                        className="text-xs text-brand-orange underline"
+                      >
+                        ← Volver a categorías
+                      </button>
+                      <div className="mt-2 max-h-48 space-y-2 overflow-y-auto pr-1">
+                        {productosDeCategoria.map((producto) => (
+                          <div key={producto.id}>
+                            <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-50">
+                              {producto.nombre}
+                            </p>
+                            <div className="mt-1 flex flex-wrap gap-1.5">
+                              {producto.variantes.map((v) => (
+                                <button
+                                  key={v.id}
+                                  type="button"
+                                  onClick={() =>
+                                    agregarProductoEdit(producto, v)
+                                  }
+                                  className="rounded-full bg-brand-orange px-2.5 py-0.5 text-xs font-semibold text-white hover:opacity-90"
+                                >
+                                  + {v.nombre}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                    Método de pago
+                  </span>
+                  <div className="mt-1 flex flex-wrap gap-3">
+                    {METODO_PAGO_OPCIONES.map((m) => (
+                      <label
+                        key={m}
+                        className="flex items-center gap-1.5 text-sm capitalize"
+                      >
+                        <input
+                          type="radio"
+                          name={`metodoPago-${p.id}`}
+                          checked={metodoPagoEdit === m}
+                          onChange={() => setMetodoPagoEdit(m)}
+                        />
+                        {m}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {errorPedido && (
+                  <p className="text-xs text-red-600">{errorPedido}</p>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    disabled={guardandoPedido}
+                    onClick={() => guardarPedido(p.id)}
+                    className="rounded-md bg-brand-orange px-3 py-1 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50"
+                  >
+                    {guardandoPedido ? 'Guardando…' : 'Guardar pedido'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditandoPedidoId(null)}
+                    className="rounded-md border border-zinc-300 px-3 py-1 text-xs dark:border-zinc-700"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <ul className="mt-2 space-y-0.5 text-sm text-zinc-600 dark:text-zinc-400">
+                {p.items.map((i) => (
+                  <li key={i.variante_id}>
+                    {i.cantidad}× {i.producto_nombre} ({i.variante_nombre})
+                  </li>
+                ))}
+              </ul>
+            )}
 
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm">
               <div className="flex flex-wrap items-center gap-3 text-zinc-500 dark:text-zinc-400">

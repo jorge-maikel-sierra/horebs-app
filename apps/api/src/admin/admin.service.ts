@@ -69,6 +69,7 @@ export interface PedidoAdminDto {
   total: number;
   created_at: string;
   items: {
+    variante_id: string;
     producto_nombre: string;
     variante_nombre: string;
     cantidad: number;
@@ -85,6 +86,8 @@ export interface UsuarioStaffDto {
 const METODOS_PAGO = ['efectivo', 'transferencia', 'tarjeta'];
 const MODALIDADES_VENTA = ['local', 'retiro', 'domicilio'];
 const COSTO_DOMICILIO_DEFAULT = 5000;
+const PEDIDO_ADMIN_SELECT =
+  'id, canal, modalidad, direccion_entrega, costo_domicilio, metodo_pago, estado, total, created_at, clientes(id, nombre, apellido, telefono, direccion), items_pedido(variante_id, cantidad, variantes_producto(nombre, productos(nombre)))';
 
 @Injectable()
 export class AdminService {
@@ -225,41 +228,113 @@ export class AdminService {
     const { data, error } = await this.supabase
       .getClient()
       .from('pedidos')
-      .select(
-        'id, canal, modalidad, direccion_entrega, costo_domicilio, metodo_pago, estado, total, created_at, clientes(id, nombre, apellido, telefono, direccion), items_pedido(cantidad, variantes_producto(nombre, productos(nombre)))',
-      )
+      .select(PEDIDO_ADMIN_SELECT)
       .order('created_at', { ascending: false })
       .limit(100);
 
     if (error) throw error;
+    return (data ?? []).map((p) => this.mapPedido(p));
+  }
 
-    return (data ?? []).map((p) => {
-      const cliente = (p as any).clientes;
-      const items = ((p as any).items_pedido ?? []) as any[];
-      return {
-        id: p.id,
-        canal: p.canal,
-        cliente: {
-          id: cliente?.id ?? '',
-          nombre: cliente?.nombre ?? '',
-          apellido: cliente?.apellido ?? null,
-          telefono: cliente?.telefono ?? null,
-          direccion: cliente?.direccion ?? null,
-        },
-        modalidad: p.modalidad,
-        direccion_entrega: p.direccion_entrega,
-        costo_domicilio: p.costo_domicilio,
-        metodo_pago: p.metodo_pago,
-        estado: p.estado,
-        total: p.total,
-        created_at: p.created_at,
-        items: items.map((i) => ({
-          producto_nombre: i.variantes_producto?.productos?.nombre ?? '',
-          variante_nombre: i.variantes_producto?.nombre ?? '',
+  async editarPedido(
+    id: string,
+    cambios: {
+      metodo_pago?: string;
+      items?: ItemInput[];
+    },
+  ): Promise<PedidoAdminDto> {
+    if (
+      cambios.metodo_pago !== undefined &&
+      !METODOS_PAGO.includes(cambios.metodo_pago)
+    ) {
+      throw new BadRequestException('Método de pago inválido.');
+    }
+
+    const client = this.supabase.getClient();
+
+    const { data: pedidoActual, error: pedidoError } = await client
+      .from('pedidos')
+      .select('id, costo_domicilio')
+      .eq('id', id)
+      .maybeSingle();
+    if (pedidoError) throw pedidoError;
+    if (!pedidoActual) throw new NotFoundException('Pedido no encontrado.');
+
+    const payload: Record<string, string | number> = {};
+    if (cambios.metodo_pago !== undefined) {
+      payload.metodo_pago = cambios.metodo_pago;
+    }
+
+    if (cambios.items !== undefined) {
+      const { itemsCalculados, total: totalItems } = await calcularItems(
+        client,
+        cambios.items,
+      );
+
+      const { error: deleteError } = await client
+        .from('items_pedido')
+        .delete()
+        .eq('pedido_id', id);
+      if (deleteError) throw deleteError;
+
+      const { error: insertError } = await client.from('items_pedido').insert(
+        itemsCalculados.map((i) => ({
+          pedido_id: id,
+          variante_id: i.variante_id,
           cantidad: i.cantidad,
+          precio_unitario: i.precio_unitario,
+          subtotal: i.subtotal,
         })),
-      };
-    });
+      );
+      if (insertError) throw insertError;
+
+      payload.total = totalItems + (pedidoActual.costo_domicilio ?? 0);
+    }
+
+    if (Object.keys(payload).length > 0) {
+      const { error: updateError } = await client
+        .from('pedidos')
+        .update(payload)
+        .eq('id', id);
+      if (updateError) throw updateError;
+    }
+
+    const { data: actualizado, error: obtenerError } = await client
+      .from('pedidos')
+      .select(PEDIDO_ADMIN_SELECT)
+      .eq('id', id)
+      .single();
+    if (obtenerError) throw obtenerError;
+    return this.mapPedido(actualizado);
+  }
+
+  private mapPedido(p: any): PedidoAdminDto {
+    const cliente = p.clientes;
+    const items = (p.items_pedido ?? []) as any[];
+    return {
+      id: p.id,
+      canal: p.canal,
+      cliente: {
+        id: cliente?.id ?? '',
+        nombre: cliente?.nombre ?? '',
+        apellido: cliente?.apellido ?? null,
+        telefono: cliente?.telefono ?? null,
+        direccion: cliente?.direccion ?? null,
+      },
+      modalidad: p.modalidad,
+      direccion_entrega: p.direccion_entrega,
+      costo_domicilio: p.costo_domicilio,
+      metodo_pago: p.metodo_pago,
+      estado: p.estado,
+      total: p.total,
+      created_at: p.created_at,
+      items: items.map((i) => ({
+        variante_id: i.variante_id,
+        producto_nombre: i.variantes_producto?.productos?.nombre ?? '',
+        variante_nombre: i.variantes_producto?.nombre ?? '',
+        cantidad: i.cantidad,
+      })),
+    };
   }
 
   async buscarClientes(query: string): Promise<ClienteDto[]> {
