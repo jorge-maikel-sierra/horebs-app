@@ -42,18 +42,12 @@ export class MailService {
       port: 465,
       secure: true,
       auth: { user, pass },
-      // Railway resuelve smtp.gmail.com a IPv6 pero no tiene salida IPv6,
-      // lo que cuelga la conexión (ENETUNREACH) hasta que expira el
-      // timeout. Forzar IPv4 evita ese intento fallido por completo.
-      // (`family` existe en tiempo de ejecución — nodemailer lo reenvía a
-      // net.connect — pero @types/nodemailer no lo declara.)
-      family: 4,
       // Gmail SMTP puede tardar o directamente colgarse en algunos hosts;
       // estos límites evitan que un pedido se quede esperando el correo.
       connectionTimeout: 10_000,
       greetingTimeout: 10_000,
       socketTimeout: 10_000,
-    } as nodemailer.TransportOptions);
+    });
   }
 
   /**
