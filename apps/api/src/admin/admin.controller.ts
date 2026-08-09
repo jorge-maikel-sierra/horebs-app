@@ -4,7 +4,7 @@ import { Roles } from '../auth/roles.decorator';
 import { UsuarioActual } from '../auth/usuario.decorator';
 import { AdminService } from './admin.service';
 import type { UsuarioAutenticado } from '../auth/roles.guard';
-import type { CrearVentaInput } from './admin.service';
+import type { CrearVentaInput, ItemVentaInput } from './admin.service';
 import type { Rol } from '../auth/roles.decorator';
 
 @Controller('admin')
@@ -40,7 +40,7 @@ export class AdminController {
     @Body()
     body: {
       metodo_pago?: string;
-      items?: { variante_id: string; cantidad: number }[];
+      items?: ItemVentaInput[];
     },
   ) {
     return this.admin.editarPedido(id, body);

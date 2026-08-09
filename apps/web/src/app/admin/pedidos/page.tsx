@@ -6,11 +6,14 @@ import { adminFetch } from '@/lib/admin-fetch';
 import { formatPrecio } from '@/lib/formato';
 
 type ItemPedido = {
-  variante_id: string;
+  variante_id: string | null;
   producto_nombre: string;
   variante_nombre: string;
   cantidad: number;
+  precio_unitario: number;
 };
+
+type ItemEdit = ItemPedido & { id: string };
 
 type PedidoAdmin = {
   id: string;
@@ -84,11 +87,16 @@ function PedidosInterno() {
   const [editandoPedidoId, setEditandoPedidoId] = useState<string | null>(
     null,
   );
-  const [itemsEdit, setItemsEdit] = useState<ItemPedido[]>([]);
+  const [itemsEdit, setItemsEdit] = useState<ItemEdit[]>([]);
   const [metodoPagoEdit, setMetodoPagoEdit] = useState<string>('efectivo');
   const [categoriaPickerId, setCategoriaPickerId] = useState<string | null>(
     null,
   );
+  const [nombrePersonalizadoEdit, setNombrePersonalizadoEdit] = useState('');
+  const [precioPersonalizadoEdit, setPrecioPersonalizadoEdit] = useState('');
+  const [editandoPrecioEditId, setEditandoPrecioEditId] = useState<
+    string | null
+  >(null);
   const [guardandoPedido, setGuardandoPedido] = useState(false);
   const [errorPedido, setErrorPedido] = useState<string | null>(null);
 
@@ -171,21 +179,24 @@ function PedidosInterno() {
 
   function empezarEdicionPedido(p: PedidoAdmin) {
     setEditandoPedidoId(p.id);
-    setItemsEdit(p.items.map((i) => ({ ...i })));
+    setItemsEdit(
+      p.items.map((i) => ({ ...i, id: i.variante_id ?? crypto.randomUUID() })),
+    );
     setMetodoPagoEdit(p.metodo_pago);
     setCategoriaPickerId(null);
+    setNombrePersonalizadoEdit('');
+    setPrecioPersonalizadoEdit('');
+    setEditandoPrecioEditId(null);
     setErrorPedido(null);
   }
 
-  function actualizarCantidadEdit(varianteId: string, cantidad: number) {
+  function actualizarCantidadEdit(id: string, cantidad: number) {
     if (cantidad <= 0) {
-      setItemsEdit((prev) => prev.filter((i) => i.variante_id !== varianteId));
+      setItemsEdit((prev) => prev.filter((i) => i.id !== id));
       return;
     }
     setItemsEdit((prev) =>
-      prev.map((i) =>
-        i.variante_id === varianteId ? { ...i, cantidad } : i,
-      ),
+      prev.map((i) => (i.id === id ? { ...i, cantidad } : i)),
     );
   }
 
@@ -202,13 +213,49 @@ function PedidosInterno() {
       return [
         ...prev,
         {
+          id: variante.id,
           variante_id: variante.id,
           producto_nombre: producto.nombre,
           variante_nombre: variante.nombre,
           cantidad: 1,
+          precio_unitario: variante.precio_oferta ?? variante.precio,
         },
       ];
     });
+  }
+
+  function agregarPersonalizadoEdit() {
+    const nombre = nombrePersonalizadoEdit.trim();
+    const precio = Number(precioPersonalizadoEdit);
+    if (!nombre) {
+      setErrorPedido('Escribí el nombre del producto personalizado.');
+      return;
+    }
+    if (!Number.isFinite(precio) || precio < 0) {
+      setErrorPedido('El precio del producto personalizado no es válido.');
+      return;
+    }
+    setErrorPedido(null);
+    setItemsEdit((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        variante_id: null,
+        producto_nombre: nombre,
+        variante_nombre: '',
+        cantidad: 1,
+        precio_unitario: precio,
+      },
+    ]);
+    setNombrePersonalizadoEdit('');
+    setPrecioPersonalizadoEdit('');
+  }
+
+  function editarPrecioEdit(id: string, precio: number) {
+    if (!Number.isFinite(precio) || precio < 0) return;
+    setItemsEdit((prev) =>
+      prev.map((i) => (i.id === id ? { ...i, precio_unitario: precio } : i)),
+    );
   }
 
   async function guardarPedido(pedidoId: string) {
@@ -223,10 +270,19 @@ function PedidosInterno() {
         method: 'PATCH',
         body: JSON.stringify({
           metodo_pago: metodoPagoEdit,
-          items: itemsEdit.map((i) => ({
-            variante_id: i.variante_id,
-            cantidad: i.cantidad,
-          })),
+          items: itemsEdit.map((i) =>
+            i.variante_id
+              ? {
+                  variante_id: i.variante_id,
+                  cantidad: i.cantidad,
+                  precio_unitario: i.precio_unitario,
+                }
+              : {
+                  nombre_personalizado: i.producto_nombre,
+                  cantidad: i.cantidad,
+                  precio_unitario: i.precio_unitario,
+                },
+          ),
         }),
       });
       if (!res.ok) {
@@ -400,20 +456,19 @@ function PedidosInterno() {
                     <ul className="mt-1 space-y-1">
                       {itemsEdit.map((i) => (
                         <li
-                          key={i.variante_id}
+                          key={i.id}
                           className="flex items-center justify-between gap-2 text-sm"
                         >
-                          <span>
-                            {i.producto_nombre} ({i.variante_nombre})
+                          <span className="min-w-0 truncate">
+                            {i.variante_nombre
+                              ? `${i.producto_nombre} (${i.variante_nombre})`
+                              : i.producto_nombre}
                           </span>
-                          <span className="flex items-center gap-2">
+                          <span className="flex shrink-0 items-center gap-2">
                             <button
                               type="button"
                               onClick={() =>
-                                actualizarCantidadEdit(
-                                  i.variante_id,
-                                  i.cantidad - 1,
-                                )
+                                actualizarCantidadEdit(i.id, i.cantidad - 1)
                               }
                               className="h-6 w-6 rounded-full border border-zinc-300 text-xs dark:border-zinc-700"
                             >
@@ -423,20 +478,80 @@ function PedidosInterno() {
                             <button
                               type="button"
                               onClick={() =>
-                                actualizarCantidadEdit(
-                                  i.variante_id,
-                                  i.cantidad + 1,
-                                )
+                                actualizarCantidadEdit(i.id, i.cantidad + 1)
                               }
                               className="h-6 w-6 rounded-full border border-zinc-300 text-xs dark:border-zinc-700"
                             >
                               +
                             </button>
+                            {editandoPrecioEditId === i.id ? (
+                              <input
+                                type="number"
+                                min={0}
+                                autoFocus
+                                defaultValue={i.precio_unitario}
+                                onBlur={(e) => {
+                                  editarPrecioEdit(i.id, Number(e.target.value));
+                                  setEditandoPrecioEditId(null);
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') e.currentTarget.blur();
+                                }}
+                                className="w-20 rounded-md border border-zinc-300 px-1.5 py-0.5 text-right text-sm dark:border-zinc-700 dark:bg-zinc-900"
+                              />
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setEditandoPrecioEditId(i.id)}
+                                title="Editar precio unitario"
+                                className="w-20 text-right underline decoration-dotted"
+                              >
+                                {formatPrecio(i.precio_unitario * i.cantidad)}
+                              </button>
+                            )}
                           </span>
                         </li>
                       ))}
                     </ul>
                   )}
+                </div>
+
+                <div>
+                  <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                    Producto personalizado
+                  </span>
+                  <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                    Para bordes, adicionales o algo que no esté en el
+                    catálogo.
+                  </p>
+                  <div className="mt-1 flex flex-wrap gap-2">
+                    <input
+                      value={nombrePersonalizadoEdit}
+                      onChange={(e) =>
+                        setNombrePersonalizadoEdit(e.target.value)
+                      }
+                      placeholder="Ej: Borde de queso"
+                      className="min-w-0 flex-1 rounded-md border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+                    />
+                    <input
+                      type="number"
+                      min={0}
+                      step={500}
+                      value={precioPersonalizadoEdit}
+                      onChange={(e) =>
+                        setPrecioPersonalizadoEdit(e.target.value)
+                      }
+                      placeholder="Precio"
+                      className="w-24 rounded-md border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+                    />
+                    <button
+                      type="button"
+                      onClick={agregarPersonalizadoEdit}
+                      className="shrink-0 rounded-md bg-brand-orange px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
+                    >
+                      Agregar
+                    </button>
+                  </div>
                 </div>
 
                 <div>
@@ -537,9 +652,12 @@ function PedidosInterno() {
               </div>
             ) : (
               <ul className="mt-2 space-y-0.5 text-sm text-zinc-600 dark:text-zinc-400">
-                {p.items.map((i) => (
-                  <li key={i.variante_id}>
-                    {i.cantidad}× {i.producto_nombre} ({i.variante_nombre})
+                {p.items.map((i, idx) => (
+                  <li key={i.variante_id ?? idx}>
+                    {i.cantidad}×{' '}
+                    {i.variante_nombre
+                      ? `${i.producto_nombre} (${i.variante_nombre})`
+                      : i.producto_nombre}
                   </li>
                 ))}
               </ul>

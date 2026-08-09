@@ -23,7 +23,9 @@ type Producto = {
 type Categoria = { id: string; nombre: string; orden: number };
 
 type ItemVenta = {
-  varianteId: string;
+  id: string;
+  varianteId: string | null;
+  nombrePersonalizado: string | null;
   productoNombre: string;
   varianteNombre: string;
   precio: number;
@@ -64,6 +66,11 @@ function PosInterno() {
   const [resultadosCliente, setResultadosCliente] = useState<
     ClienteBusqueda[]
   >([]);
+  const [nombrePersonalizado, setNombrePersonalizado] = useState('');
+  const [precioPersonalizado, setPrecioPersonalizado] = useState('');
+  const [editandoPrecioId, setEditandoPrecioId] = useState<string | null>(
+    null,
+  );
   const [modalidad, setModalidad] = useState<Modalidad>('local');
   const [direccionEntrega, setDireccionEntrega] = useState('');
   const [costoDomicilio, setCostoDomicilio] = useState(COSTO_DOMICILIO_DEFAULT);
@@ -124,7 +131,9 @@ function PosInterno() {
       return [
         ...prev,
         {
+          id: variante.id,
           varianteId: variante.id,
+          nombrePersonalizado: null,
           productoNombre: producto.nombre,
           varianteNombre: variante.nombre,
           precio,
@@ -134,13 +143,48 @@ function PosInterno() {
     });
   }
 
-  function actualizarCantidad(varianteId: string, cantidad: number) {
+  function agregarPersonalizado() {
+    const nombre = nombrePersonalizado.trim();
+    const precio = Number(precioPersonalizado);
+    if (!nombre) {
+      setError('Escribí el nombre del producto personalizado.');
+      return;
+    }
+    if (!Number.isFinite(precio) || precio < 0) {
+      setError('El precio del producto personalizado no es válido.');
+      return;
+    }
+    setError(null);
+    setItems((prev) => [
+      ...prev,
+      {
+        id: `personalizado-${crypto.randomUUID()}`,
+        varianteId: null,
+        nombrePersonalizado: nombre,
+        productoNombre: nombre,
+        varianteNombre: '',
+        precio,
+        cantidad: 1,
+      },
+    ]);
+    setNombrePersonalizado('');
+    setPrecioPersonalizado('');
+  }
+
+  function actualizarCantidad(id: string, cantidad: number) {
     if (cantidad <= 0) {
-      setItems((prev) => prev.filter((i) => i.varianteId !== varianteId));
+      setItems((prev) => prev.filter((i) => i.id !== id));
       return;
     }
     setItems((prev) =>
-      prev.map((i) => (i.varianteId === varianteId ? { ...i, cantidad } : i)),
+      prev.map((i) => (i.id === id ? { ...i, cantidad } : i)),
+    );
+  }
+
+  function editarPrecio(id: string, precio: number) {
+    if (!Number.isFinite(precio) || precio < 0) return;
+    setItems((prev) =>
+      prev.map((i) => (i.id === id ? { ...i, precio } : i)),
     );
   }
 
@@ -181,10 +225,19 @@ function PosInterno() {
             modalidad === 'domicilio' ? direccionEntrega : undefined,
           costo_domicilio: modalidad === 'domicilio' ? costoDomicilio : undefined,
           metodo_pago: metodoPago,
-          items: items.map((i) => ({
-            variante_id: i.varianteId,
-            cantidad: i.cantidad,
-          })),
+          items: items.map((i) =>
+            i.varianteId
+              ? {
+                  variante_id: i.varianteId,
+                  cantidad: i.cantidad,
+                  precio_unitario: i.precio,
+                }
+              : {
+                  nombre_personalizado: i.nombrePersonalizado,
+                  cantidad: i.cantidad,
+                  precio_unitario: i.precio,
+                },
+          ),
         }),
       });
 
@@ -200,6 +253,9 @@ function PosInterno() {
       setApellido('');
       setTelefono('');
       setCorreo('');
+      setNombrePersonalizado('');
+      setPrecioPersonalizado('');
+      setEditandoPrecioId(null);
       setModalidad('local');
       setDireccionEntrega('');
       setCostoDomicilio(COSTO_DOMICILIO_DEFAULT);
@@ -289,6 +345,39 @@ function PosInterno() {
               </div>
             </div>
           )}
+
+          <div className="mt-4 rounded-lg border border-dashed border-zinc-300 p-3 dark:border-zinc-700">
+            <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+              Producto personalizado
+            </p>
+            <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+              Para bordes, adicionales o algo que no esté en el catálogo.
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <input
+                value={nombrePersonalizado}
+                onChange={(e) => setNombrePersonalizado(e.target.value)}
+                placeholder="Ej: Borde de queso"
+                className="min-w-0 flex-1 rounded-md border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+              />
+              <input
+                type="number"
+                min={0}
+                step={500}
+                value={precioPersonalizado}
+                onChange={(e) => setPrecioPersonalizado(e.target.value)}
+                placeholder="Precio"
+                className="w-28 rounded-md border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+              />
+              <button
+                type="button"
+                onClick={agregarPersonalizado}
+                className="shrink-0 rounded-md bg-brand-orange px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
+              >
+                Agregar
+              </button>
+            </div>
+          </div>
         </div>
 
         <div>
@@ -304,18 +393,18 @@ function PosInterno() {
             <ul className="mt-3 space-y-2">
               {items.map((i) => (
                 <li
-                  key={i.varianteId}
+                  key={i.id}
                   className="flex items-center justify-between gap-2 text-sm"
                 >
-                  <span>
-                    {i.productoNombre} ({i.varianteNombre})
+                  <span className="min-w-0 truncate">
+                    {i.varianteNombre
+                      ? `${i.productoNombre} (${i.varianteNombre})`
+                      : i.productoNombre}
                   </span>
-                  <span className="flex items-center gap-2">
+                  <span className="flex shrink-0 items-center gap-2">
                     <button
                       type="button"
-                      onClick={() =>
-                        actualizarCantidad(i.varianteId, i.cantidad - 1)
-                      }
+                      onClick={() => actualizarCantidad(i.id, i.cantidad - 1)}
                       className="h-6 w-6 rounded-full border border-zinc-300 text-xs dark:border-zinc-700"
                     >
                       −
@@ -323,16 +412,36 @@ function PosInterno() {
                     {i.cantidad}
                     <button
                       type="button"
-                      onClick={() =>
-                        actualizarCantidad(i.varianteId, i.cantidad + 1)
-                      }
+                      onClick={() => actualizarCantidad(i.id, i.cantidad + 1)}
                       className="h-6 w-6 rounded-full border border-zinc-300 text-xs dark:border-zinc-700"
                     >
                       +
                     </button>
-                    <span className="w-20 text-right font-medium">
-                      {formatPrecio(i.precio * i.cantidad)}
-                    </span>
+                    {editandoPrecioId === i.id ? (
+                      <input
+                        type="number"
+                        min={0}
+                        autoFocus
+                        defaultValue={i.precio}
+                        onBlur={(e) => {
+                          editarPrecio(i.id, Number(e.target.value));
+                          setEditandoPrecioId(null);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') e.currentTarget.blur();
+                        }}
+                        className="w-20 rounded-md border border-zinc-300 px-1.5 py-0.5 text-right text-sm dark:border-zinc-700 dark:bg-zinc-900"
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setEditandoPrecioId(i.id)}
+                        title="Editar precio unitario"
+                        className="w-20 text-right font-medium underline decoration-dotted"
+                      >
+                        {formatPrecio(i.precio * i.cantidad)}
+                      </button>
+                    )}
                   </span>
                 </li>
               ))}

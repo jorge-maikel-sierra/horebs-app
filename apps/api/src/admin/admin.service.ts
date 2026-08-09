@@ -1,8 +1,31 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { MailService } from '../mail/mail.service';
-import { calcularItems, ItemInput } from '../pedidos/calcular-items';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Rol } from '../auth/roles.decorator';
+
+/**
+ * A diferencia del carrito público (calcularItems, precio 100% desde la
+ * base), el POS es un mostrador operado por personal autenticado — acá
+ * sí se confía en el precio que manda el cliente cuando lo manda, para
+ * poder cobrar bordes, adicionales u otros ajustes puntuales.
+ */
+export interface ItemVentaInput {
+  variante_id?: string;
+  nombre_personalizado?: string;
+  precio_unitario?: number;
+  cantidad: number;
+}
+
+interface ItemVentaCalculado {
+  variante_id: string | null;
+  nombre_personalizado: string | null;
+  producto_nombre: string;
+  variante_nombre: string;
+  cantidad: number;
+  precio_unitario: number;
+  subtotal: number;
+}
 
 export interface CrearVentaInput {
   cliente: {
@@ -16,7 +39,7 @@ export interface CrearVentaInput {
   costo_domicilio?: number;
   metodo_pago: 'efectivo' | 'transferencia' | 'tarjeta';
   notas?: string;
-  items: ItemInput[];
+  items: ItemVentaInput[];
 }
 
 export interface VentaDto {
@@ -69,10 +92,11 @@ export interface PedidoAdminDto {
   total: number;
   created_at: string;
   items: {
-    variante_id: string;
+    variante_id: string | null;
     producto_nombre: string;
     variante_nombre: string;
     cantidad: number;
+    precio_unitario: number;
   }[];
 }
 
@@ -87,7 +111,7 @@ const METODOS_PAGO = ['efectivo', 'transferencia', 'tarjeta'];
 const MODALIDADES_VENTA = ['local', 'retiro', 'domicilio'];
 const COSTO_DOMICILIO_DEFAULT = 5000;
 const PEDIDO_ADMIN_SELECT =
-  'id, canal, modalidad, direccion_entrega, costo_domicilio, metodo_pago, estado, total, created_at, clientes(id, nombre, apellido, telefono, direccion), items_pedido(variante_id, cantidad, variantes_producto(nombre, productos(nombre)))';
+  'id, canal, modalidad, direccion_entrega, costo_domicilio, metodo_pago, estado, total, created_at, clientes(id, nombre, apellido, telefono, direccion), items_pedido(variante_id, nombre_personalizado, cantidad, precio_unitario, variantes_producto(nombre, productos(nombre)))';
 
 @Injectable()
 export class AdminService {
@@ -122,7 +146,7 @@ export class AdminService {
     }
 
     const client = this.supabase.getClient();
-    const { itemsCalculados, total: totalItems } = await calcularItems(
+    const { itemsCalculados, total: totalItems } = await this.calcularItemsVenta(
       client,
       input.items,
     );
@@ -178,6 +202,7 @@ export class AdminService {
       itemsCalculados.map((i) => ({
         pedido_id: pedido.id,
         variante_id: i.variante_id,
+        nombre_personalizado: i.nombre_personalizado,
         cantidad: i.cantidad,
         precio_unitario: i.precio_unitario,
         subtotal: i.subtotal,
@@ -193,7 +218,9 @@ export class AdminService {
         direccionEntrega: pedido.direccion_entrega,
         items: itemsCalculados.map((i) => ({
           cantidad: i.cantidad,
-          nombre: `${i.producto_nombre} (${i.variante_nombre})`,
+          nombre: i.variante_nombre
+            ? `${i.producto_nombre} (${i.variante_nombre})`
+            : i.producto_nombre,
         })),
         total: pedido.total,
         notas: input.notas ?? null,
@@ -240,7 +267,7 @@ export class AdminService {
     id: string,
     cambios: {
       metodo_pago?: string;
-      items?: ItemInput[];
+      items?: ItemVentaInput[];
     },
   ): Promise<PedidoAdminDto> {
     if (
@@ -266,10 +293,8 @@ export class AdminService {
     }
 
     if (cambios.items !== undefined) {
-      const { itemsCalculados, total: totalItems } = await calcularItems(
-        client,
-        cambios.items,
-      );
+      const { itemsCalculados, total: totalItems } =
+        await this.calcularItemsVenta(client, cambios.items);
 
       const { error: deleteError } = await client
         .from('items_pedido')
@@ -281,6 +306,7 @@ export class AdminService {
         itemsCalculados.map((i) => ({
           pedido_id: id,
           variante_id: i.variante_id,
+          nombre_personalizado: i.nombre_personalizado,
           cantidad: i.cantidad,
           precio_unitario: i.precio_unitario,
           subtotal: i.subtotal,
@@ -330,11 +356,105 @@ export class AdminService {
       created_at: p.created_at,
       items: items.map((i) => ({
         variante_id: i.variante_id,
-        producto_nombre: i.variantes_producto?.productos?.nombre ?? '',
+        producto_nombre:
+          i.variantes_producto?.productos?.nombre ??
+          i.nombre_personalizado ??
+          '',
         variante_nombre: i.variantes_producto?.nombre ?? '',
         cantidad: i.cantidad,
+        precio_unitario: i.precio_unitario,
       })),
     };
+  }
+
+  /**
+   * Calcula los items de una venta de mostrador. A diferencia de
+   * calcularItems (carrito público), acá se admite: (a) un precio
+   * manual por item — para bordes, adicionales o ajustes puntuales —
+   * y (b) items sin variante_id, con nombre_personalizado libre,
+   * para productos que no están en el catálogo.
+   */
+  private async calcularItemsVenta(
+    client: SupabaseClient,
+    items: ItemVentaInput[],
+  ): Promise<{ itemsCalculados: ItemVentaCalculado[]; total: number }> {
+    if (!Array.isArray(items) || items.length === 0) {
+      throw new BadRequestException('El carrito está vacío.');
+    }
+
+    const varianteIds = items
+      .filter((i) => i.variante_id)
+      .map((i) => i.variante_id as string);
+
+    let variantePorId = new Map<string, any>();
+    if (varianteIds.length > 0) {
+      const { data, error } = await client
+        .from('variantes_producto')
+        .select('id, nombre, precio, precio_oferta, productos(nombre)')
+        .in('id', varianteIds)
+        .eq('activo', true);
+      if (error) throw error;
+      if (!data || data.length !== new Set(varianteIds).size) {
+        throw new BadRequestException(
+          'Uno o más productos ya no están disponibles.',
+        );
+      }
+      variantePorId = new Map(data.map((v) => [v.id, v]));
+    }
+
+    const itemsCalculados: ItemVentaCalculado[] = items.map((item) => {
+      if (!Number.isInteger(item.cantidad) || item.cantidad <= 0) {
+        throw new BadRequestException('Cantidad inválida.');
+      }
+      if (
+        item.precio_unitario !== undefined &&
+        (typeof item.precio_unitario !== 'number' || item.precio_unitario < 0)
+      ) {
+        throw new BadRequestException('El precio no puede ser negativo.');
+      }
+
+      if (item.variante_id) {
+        const variante = variantePorId.get(item.variante_id);
+        if (!variante) {
+          throw new BadRequestException('Uno de los productos no existe.');
+        }
+        const precioCatalogo = variante.precio_oferta ?? variante.precio;
+        const precioUnitario = item.precio_unitario ?? precioCatalogo;
+        return {
+          variante_id: item.variante_id,
+          nombre_personalizado: null,
+          producto_nombre: variante.productos?.nombre ?? '',
+          variante_nombre: variante.nombre,
+          cantidad: item.cantidad,
+          precio_unitario: precioUnitario,
+          subtotal: precioUnitario * item.cantidad,
+        };
+      }
+
+      if (!item.nombre_personalizado?.trim()) {
+        throw new BadRequestException(
+          'Falta el nombre del producto personalizado.',
+        );
+      }
+      if (item.precio_unitario === undefined) {
+        throw new BadRequestException(
+          'Falta el precio del producto personalizado.',
+        );
+      }
+      const nombre = item.nombre_personalizado.trim();
+      return {
+        variante_id: null,
+        nombre_personalizado: nombre,
+        producto_nombre: nombre,
+        variante_nombre: '',
+        cantidad: item.cantidad,
+        precio_unitario: item.precio_unitario,
+        subtotal: item.precio_unitario * item.cantidad,
+      };
+    });
+
+    const total = itemsCalculados.reduce((acc, i) => acc + i.subtotal, 0);
+    return { itemsCalculados, total };
   }
 
   async buscarClientes(query: string): Promise<ClienteDto[]> {
