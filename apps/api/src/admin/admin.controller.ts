@@ -46,6 +46,12 @@ export class AdminController {
     return this.admin.editarPedido(id, body);
   }
 
+  @Delete('pedidos/:id')
+  @Roles('admin')
+  eliminarPedido(@Param('id') id: string) {
+    return this.admin.eliminarPedido(id);
+  }
+
   @Get('clientes')
   @Roles('admin', 'empleado')
   buscarClientes(@Query('q') q?: string) {

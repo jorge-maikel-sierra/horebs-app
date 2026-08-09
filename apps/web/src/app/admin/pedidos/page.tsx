@@ -5,6 +5,7 @@ import Link from 'next/link';
 import RequireRol from '@/components/RequireRol';
 import { adminFetch } from '@/lib/admin-fetch';
 import { formatPrecio } from '@/lib/formato';
+import { useRol } from '@/lib/use-rol';
 
 type ItemPedido = {
   variante_id: string | null;
@@ -68,10 +69,12 @@ const MODALIDAD_LABEL: Record<string, string> = {
 const METODO_PAGO_OPCIONES = ['efectivo', 'transferencia', 'tarjeta'] as const;
 
 function PedidosInterno() {
+  const { rol } = useRol();
   const [pedidos, setPedidos] = useState<PedidoAdmin[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filtro, setFiltro] = useState('');
+  const [eliminandoId, setEliminandoId] = useState<string | null>(null);
 
   const [editandoClienteId, setEditandoClienteId] = useState<string | null>(
     null,
@@ -304,6 +307,36 @@ function PedidosInterno() {
     }
   }
 
+  async function eliminarPedido(p: PedidoAdmin) {
+    const nombre = p.cliente.nombre
+      ? `${p.cliente.nombre} ${p.cliente.apellido ?? ''}`.trim()
+      : 'este pedido';
+    if (
+      !window.confirm(
+        `¿Eliminar el pedido de ${nombre} por ${formatPrecio(p.total)}? Esta acción no se puede deshacer.`,
+      )
+    ) {
+      return;
+    }
+    setEliminandoId(p.id);
+    try {
+      const res = await adminFetch(`/admin/pedidos/${p.id}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.message ?? 'No se pudo eliminar el pedido.');
+      }
+      setPedidos((prev) => prev.filter((x) => x.id !== p.id));
+    } catch (err) {
+      alert(
+        err instanceof Error ? err.message : 'No se pudo eliminar el pedido.',
+      );
+    } finally {
+      setEliminandoId(null);
+    }
+  }
+
   const productosDeCategoria = categoriaPickerId
     ? productosCatalogo.filter((p) => p.categoria_id === categoriaPickerId)
     : [];
@@ -394,6 +427,16 @@ function PedidosInterno() {
                 >
                   Editar pedido
                 </button>
+                {rol === 'admin' && (
+                  <button
+                    type="button"
+                    disabled={eliminandoId === p.id}
+                    onClick={() => eliminarPedido(p)}
+                    className="text-xs text-red-600 underline disabled:opacity-50"
+                  >
+                    {eliminandoId === p.id ? 'Eliminando…' : 'Eliminar'}
+                  </button>
+                )}
               </div>
               <span className="text-sm text-zinc-500 dark:text-zinc-400">
                 {formatFecha(p.created_at)}

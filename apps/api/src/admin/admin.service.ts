@@ -334,6 +334,17 @@ export class AdminService {
     return this.mapPedido(actualizado);
   }
 
+  async eliminarPedido(id: string): Promise<void> {
+    // items_pedido tiene ON DELETE CASCADE hacia pedidos — se borran solos.
+    const { error, count } = await this.supabase
+      .getClient()
+      .from('pedidos')
+      .delete({ count: 'exact' })
+      .eq('id', id);
+    if (error) throw error;
+    if (!count) throw new NotFoundException('Pedido no encontrado.');
+  }
+
   private mapPedido(p: any): PedidoAdminDto {
     const cliente = p.clientes;
     const items = (p.items_pedido ?? []) as any[];
