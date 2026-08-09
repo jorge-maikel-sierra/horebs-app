@@ -5,7 +5,6 @@ import Link from 'next/link';
 import RequireRol from '@/components/RequireRol';
 import { adminFetch } from '@/lib/admin-fetch';
 import { formatPrecio } from '@/lib/formato';
-import { useRol } from '@/lib/use-rol';
 
 type Variante = {
   id: string;
@@ -51,7 +50,6 @@ const MODALIDAD_OPCIONES: { valor: Modalidad; etiqueta: string }[] = [
 ];
 
 function PosInterno() {
-  const { rol } = useRol();
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState<
@@ -221,14 +219,12 @@ function PosInterno() {
         <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
           Punto de venta
         </h1>
-        {rol === 'admin' && (
-          <Link
-            href="/admin/pedidos"
-            className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700 hover:border-brand-orange dark:border-zinc-700 dark:text-zinc-300"
-          >
-            Ver pedidos
-          </Link>
-        )}
+        <Link
+          href="/admin/pedidos"
+          className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700 hover:border-brand-orange dark:border-zinc-700 dark:text-zinc-300"
+        >
+          Ver pedidos
+        </Link>
       </div>
 
       <div className="mt-6 grid gap-8 lg:grid-cols-2">

@@ -28,13 +28,13 @@ export class AdminController {
   }
 
   @Get('pedidos')
-  @Roles('admin')
+  @Roles('admin', 'empleado')
   listarPedidos() {
     return this.admin.listarPedidos();
   }
 
   @Patch('pedidos/:id')
-  @Roles('admin')
+  @Roles('admin', 'empleado')
   editarPedido(
     @Param('id') id: string,
     @Body()
@@ -53,7 +53,7 @@ export class AdminController {
   }
 
   @Patch('clientes/:id')
-  @Roles('admin')
+  @Roles('admin', 'empleado')
   editarCliente(
     @Param('id') id: string,
     @Body()

@@ -570,7 +570,7 @@ function PedidosInterno() {
 
 export default function PedidosPage() {
   return (
-    <RequireRol roles={['admin']}>
+    <RequireRol roles={['admin', 'empleado']}>
       <PedidosInterno />
     </RequireRol>
   );
