@@ -183,7 +183,7 @@ export class AdminService {
     if (itemsError) throw itemsError;
 
     if (pedido.modalidad === 'domicilio' && pedido.direccion_entrega) {
-      await this.mail.enviarNotificacionDomicilio({
+      this.mail.enviarNotificacionDomicilio({
         pedidoId: pedido.id,
         clienteNombre: cliente.nombre,
         clienteTelefono: cliente.telefono,

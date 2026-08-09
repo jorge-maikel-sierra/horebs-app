@@ -40,10 +40,28 @@ export class MailService {
     this.transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: { user, pass },
+      // Gmail SMTP puede tardar o directamente colgarse en algunos hosts;
+      // estos límites evitan que un pedido se quede esperando el correo.
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 10_000,
     });
   }
 
-  async enviarNotificacionDomicilio(datos: NotificacionDomicilio) {
+  /**
+   * Dispara el correo en segundo plano — nunca hay que esperar a que
+   * termine antes de responderle al cliente que su pedido se creó.
+   * No relanza errores: todo se atrapa y se loguea acá adentro.
+   */
+  enviarNotificacionDomicilio(datos: NotificacionDomicilio): void {
+    this.enviar(datos).catch((err) => {
+      this.logger.error(
+        `No se pudo enviar el correo de domicilio para el pedido ${datos.pedidoId}: ${(err as Error).message}`,
+      );
+    });
+  }
+
+  private async enviar(datos: NotificacionDomicilio) {
     if (!this.transporter) return;
 
     const { data, error } = await this.supabase
