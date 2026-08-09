@@ -1,7 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { resolve4 } from 'node:dns/promises';
 import * as nodemailer from 'nodemailer';
 import { SupabaseService } from '../supabase/supabase.service';
+
+const SMTP_HOST = 'smtp.gmail.com';
 
 export interface NotificacionDomicilio {
   pedidoId: string;
@@ -16,7 +19,7 @@ export interface NotificacionDomicilio {
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
-  private readonly transporter: nodemailer.Transporter | null;
+  private readonly credenciales: { user: string; pass: string } | null;
   private readonly remitente: string | undefined;
 
   constructor(
@@ -31,17 +34,42 @@ export class MailService {
         'GMAIL_USER o GMAIL_APP_PASSWORD no configuradas — no se enviarán ' +
           'correos de notificación de domicilio.',
       );
-      this.transporter = null;
+      this.credenciales = null;
       this.remitente = undefined;
       return;
     }
 
     this.remitente = user;
-    this.transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
+    this.credenciales = { user, pass };
+  }
+
+  /**
+   * nodemailer resuelve smtp.gmail.com por su cuenta (dns.resolve4 +
+   * dns.resolve6) y elige una IP al azar entre ambas familias — ignora el
+   * dns.setDefaultResultOrder('ipv4first') de main.ts porque no usa
+   * dns.lookup(). En Railway no hay salida IPv6, así que a veces la conexión
+   * cae en ENETUNREACH. Resolvemos la IPv4 nosotros y se la pasamos como
+   * host literal: nodemailer detecta que ya es una IP y no vuelve a resolver.
+   */
+  private async crearTransporter(): Promise<nodemailer.Transporter | null> {
+    if (!this.credenciales) return null;
+
+    let host: string = SMTP_HOST;
+    try {
+      const [ip] = await resolve4(SMTP_HOST);
+      if (ip) host = ip;
+    } catch (err) {
+      this.logger.warn(
+        `No se pudo resolver ${SMTP_HOST} a IPv4, se usa resolución por defecto de nodemailer: ${(err as Error).message}`,
+      );
+    }
+
+    return nodemailer.createTransport({
+      host,
       port: 465,
       secure: true,
-      auth: { user, pass },
+      auth: this.credenciales,
+      tls: { servername: SMTP_HOST },
       // Gmail SMTP puede tardar o directamente colgarse en algunos hosts;
       // estos límites evitan que un pedido se quede esperando el correo.
       connectionTimeout: 10_000,
@@ -64,7 +92,7 @@ export class MailService {
   }
 
   private async enviar(datos: NotificacionDomicilio) {
-    if (!this.transporter) return;
+    if (!this.credenciales) return;
 
     const { data, error } = await this.supabase
       .getClient()
@@ -86,8 +114,11 @@ export class MailService {
       .map((i) => `${i.cantidad}× ${i.nombre}`)
       .join('\n');
 
+    const transporter = await this.crearTransporter();
+    if (!transporter) return;
+
     try {
-      await this.transporter.sendMail({
+      await transporter.sendMail({
         from: `"Pizzería Horebs" <${this.remitente}>`,
         to: destino,
         subject: `🛵 Nuevo domicilio #${datos.pedidoId.slice(0, 8)} — ${datos.clienteNombre}`,
