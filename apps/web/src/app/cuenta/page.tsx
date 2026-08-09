@@ -45,6 +45,12 @@ export default function CuentaPage() {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordMensaje, setPasswordMensaje] = useState<string | null>(null);
 
+  const [recuperarEnviando, setRecuperarEnviando] = useState(false);
+  const [recuperarError, setRecuperarError] = useState<string | null>(null);
+  const [recuperarMensaje, setRecuperarMensaje] = useState<string | null>(
+    null,
+  );
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
@@ -102,6 +108,29 @@ export default function CuentaPage() {
 
   async function cerrarSesion() {
     await supabase.auth.signOut();
+  }
+
+  async function enviarRecuperacion() {
+    setRecuperarError(null);
+    setRecuperarMensaje(null);
+
+    if (!email.trim()) {
+      setRecuperarError('Escribí tu email arriba primero.');
+      return;
+    }
+
+    setRecuperarEnviando(true);
+    const { error: recuperarErrorRes } =
+      await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/cuenta/restablecer`,
+      });
+    if (recuperarErrorRes) setRecuperarError(recuperarErrorRes.message);
+    else {
+      setRecuperarMensaje(
+        'Si ese correo tiene una cuenta, te enviamos un enlace para restablecer la contraseña.',
+      );
+    }
+    setRecuperarEnviando(false);
   }
 
   async function guardarPerfil(e: FormEvent) {
@@ -446,6 +475,29 @@ export default function CuentaPage() {
               className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950"
             />
           </div>
+
+          {modo === 'login' && (
+            <div>
+              <button
+                type="button"
+                onClick={enviarRecuperacion}
+                disabled={recuperarEnviando}
+                className="text-sm text-brand-orange underline disabled:opacity-50"
+              >
+                {recuperarEnviando
+                  ? 'Enviando…'
+                  : '¿Olvidaste tu contraseña?'}
+              </button>
+              {recuperarError && (
+                <p className="mt-1 text-sm text-red-600">{recuperarError}</p>
+              )}
+              {recuperarMensaje && (
+                <p className="mt-1 text-sm text-brand-orange">
+                  {recuperarMensaje}
+                </p>
+              )}
+            </div>
+          )}
 
           {error && <p className="text-sm text-red-600">{error}</p>}
           {mensaje && <p className="text-sm text-brand-orange">{mensaje}</p>}
