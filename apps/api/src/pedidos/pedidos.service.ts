@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import { MailService } from '../mail/mail.service';
 import { calcularItems } from './calcular-items';
 
 export interface CrearPedidoItemInput {
@@ -46,7 +47,10 @@ const METODOS_PAGO = ['efectivo', 'transferencia', 'tarjeta'];
 
 @Injectable()
 export class PedidosService {
-  constructor(private readonly supabase: SupabaseService) {}
+  constructor(
+    private readonly supabase: SupabaseService,
+    private readonly mail: MailService,
+  ) {}
 
   async crear(input: CrearPedidoInput): Promise<PedidoDto> {
     this.validar(input);
@@ -101,6 +105,21 @@ export class PedidosService {
       })),
     );
     if (itemsError) throw itemsError;
+
+    if (pedido.modalidad === 'domicilio' && pedido.direccion_entrega) {
+      await this.mail.enviarNotificacionDomicilio({
+        pedidoId: pedido.id,
+        clienteNombre: cliente.nombre,
+        clienteTelefono: cliente.telefono,
+        direccionEntrega: pedido.direccion_entrega,
+        items: itemsCalculados.map((i) => ({
+          cantidad: i.cantidad,
+          nombre: `${i.producto_nombre} (${i.variante_nombre})`,
+        })),
+        total: pedido.total,
+        notas: pedido.notas,
+      });
+    }
 
     return {
       id: pedido.id,

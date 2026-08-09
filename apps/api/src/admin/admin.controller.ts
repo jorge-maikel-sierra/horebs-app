@@ -55,6 +55,20 @@ export class AdminController {
     return this.admin.editarCliente(id, body);
   }
 
+  @Get('configuracion')
+  @Roles('admin')
+  obtenerConfiguracion() {
+    return this.admin.obtenerConfiguracion();
+  }
+
+  @Patch('configuracion')
+  @Roles('admin')
+  actualizarConfiguracion(
+    @Body() body: { correo_domiciliario: string },
+  ) {
+    return this.admin.actualizarConfiguracion(body.correo_domiciliario);
+  }
+
   @Get('usuarios')
   @Roles('admin')
   listarUsuarios() {
