@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import RequireRol from '@/components/RequireRol';
 import { adminFetch } from '@/lib/admin-fetch';
 import { formatPrecio } from '@/lib/formato';
@@ -319,9 +320,17 @@ function PedidosInterno() {
 
   return (
     <div className="mx-auto max-w-4xl p-8">
-      <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-        Pedidos
-      </h1>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+          Pedidos
+        </h1>
+        <Link
+          href="/admin/pos"
+          className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700 hover:border-brand-orange dark:border-zinc-700 dark:text-zinc-300"
+        >
+          Volver al POS
+        </Link>
+      </div>
       <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
         Últimos {pedidos.length} pedidos, web y del local.
       </p>
