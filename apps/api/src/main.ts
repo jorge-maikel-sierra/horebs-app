@@ -4,9 +4,12 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // CORS: en producción, restringe FRONTEND_URL a tu dominio de Vercel.
-  const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3001';
-  app.enableCors({ origin: frontendUrl, credentials: true });
+  // CORS: FRONTEND_URL admite una lista separada por comas (dominio propio,
+  // subdominio www, la URL de Vercel, etc.).
+  const frontendUrls = (process.env.FRONTEND_URL ?? 'http://localhost:3001')
+    .split(',')
+    .map((url) => url.trim());
+  app.enableCors({ origin: frontendUrls, credentials: true });
 
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
