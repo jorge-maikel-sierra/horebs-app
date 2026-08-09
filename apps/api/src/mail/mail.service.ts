@@ -1,10 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { resolve4 } from 'node:dns/promises';
-import * as nodemailer from 'nodemailer';
 import { SupabaseService } from '../supabase/supabase.service';
-
-const SMTP_HOST = 'smtp.gmail.com';
 
 export interface NotificacionDomicilio {
   pedidoId: string;
@@ -16,66 +12,29 @@ export interface NotificacionDomicilio {
   notas: string | null;
 }
 
+const RESEND_API_URL = 'https://api.resend.com/emails';
+
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
-  private readonly credenciales: { user: string; pass: string } | null;
-  private readonly remitente: string | undefined;
+  private readonly apiKey: string | undefined;
+  private readonly remitente: string;
 
   constructor(
     private readonly config: ConfigService,
     private readonly supabase: SupabaseService,
   ) {
-    const user = this.config.get<string>('GMAIL_USER');
-    const pass = this.config.get<string>('GMAIL_APP_PASSWORD');
+    this.apiKey = this.config.get<string>('RESEND_API_KEY');
+    this.remitente =
+      this.config.get<string>('RESEND_FROM') ??
+      'Pizzería Horebs <onboarding@resend.dev>';
 
-    if (!user || !pass) {
+    if (!this.apiKey) {
       this.logger.warn(
-        'GMAIL_USER o GMAIL_APP_PASSWORD no configuradas — no se enviarán ' +
-          'correos de notificación de domicilio.',
-      );
-      this.credenciales = null;
-      this.remitente = undefined;
-      return;
-    }
-
-    this.remitente = user;
-    this.credenciales = { user, pass };
-  }
-
-  /**
-   * nodemailer resuelve smtp.gmail.com por su cuenta (dns.resolve4 +
-   * dns.resolve6) y elige una IP al azar entre ambas familias — ignora el
-   * dns.setDefaultResultOrder('ipv4first') de main.ts porque no usa
-   * dns.lookup(). En Railway no hay salida IPv6, así que a veces la conexión
-   * cae en ENETUNREACH. Resolvemos la IPv4 nosotros y se la pasamos como
-   * host literal: nodemailer detecta que ya es una IP y no vuelve a resolver.
-   */
-  private async crearTransporter(): Promise<nodemailer.Transporter | null> {
-    if (!this.credenciales) return null;
-
-    let host: string = SMTP_HOST;
-    try {
-      const [ip] = await resolve4(SMTP_HOST);
-      if (ip) host = ip;
-    } catch (err) {
-      this.logger.warn(
-        `No se pudo resolver ${SMTP_HOST} a IPv4, se usa resolución por defecto de nodemailer: ${(err as Error).message}`,
+        'RESEND_API_KEY no configurada — no se enviarán correos de ' +
+          'notificación de domicilio.',
       );
     }
-
-    return nodemailer.createTransport({
-      host,
-      port: 465,
-      secure: true,
-      auth: this.credenciales,
-      tls: { servername: SMTP_HOST },
-      // Gmail SMTP puede tardar o directamente colgarse en algunos hosts;
-      // estos límites evitan que un pedido se quede esperando el correo.
-      connectionTimeout: 10_000,
-      greetingTimeout: 10_000,
-      socketTimeout: 10_000,
-    });
   }
 
   /**
@@ -92,7 +51,7 @@ export class MailService {
   }
 
   private async enviar(datos: NotificacionDomicilio) {
-    if (!this.credenciales) return;
+    if (!this.apiKey) return;
 
     const { data, error } = await this.supabase
       .getClient()
@@ -114,12 +73,14 @@ export class MailService {
       .map((i) => `${i.cantidad}× ${i.nombre}`)
       .join('\n');
 
-    const transporter = await this.crearTransporter();
-    if (!transporter) return;
-
-    try {
-      await transporter.sendMail({
-        from: `"Pizzería Horebs" <${this.remitente}>`,
+    const res = await fetch(RESEND_API_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: this.remitente,
         to: destino,
         subject: `🛵 Nuevo domicilio #${datos.pedidoId.slice(0, 8)} — ${datos.clienteNombre}`,
         text: [
@@ -136,11 +97,12 @@ export class MailService {
           .filter(Boolean)
           .join('\n'),
         html: construirHtmlDomicilio(datos),
-      });
-    } catch (err) {
-      this.logger.error(
-        `No se pudo enviar el correo de domicilio para el pedido ${datos.pedidoId}: ${(err as Error).message}`,
-      );
+      }),
+    });
+
+    if (!res.ok) {
+      const cuerpo = await res.text().catch(() => '');
+      throw new Error(`Resend respondió ${res.status}: ${cuerpo}`);
     }
   }
 }
