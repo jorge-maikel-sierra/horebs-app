@@ -103,6 +103,11 @@ function calcularRango(preset: RangoPreset): { desde: string; hasta: string } {
 }
 
 function formatDiaCorto(fechaISO: string) {
+  if (fechaISO.length === 7) {
+    return new Intl.DateTimeFormat('es-CO', { month: 'short', year: 'numeric' })
+      .format(new Date(`${fechaISO}-01T00:00:00`))
+      .replace('.', '');
+  }
   return new Intl.DateTimeFormat('es-CO', { day: '2-digit', month: 'short' })
     .format(new Date(`${fechaISO}T00:00:00`))
     .replace('.', '');

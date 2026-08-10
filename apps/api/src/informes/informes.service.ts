@@ -2,6 +2,8 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+export type Granularidad = 'dia' | 'mes';
+
 export interface InformeDiaDto {
   fecha: string;
   total: number;
@@ -50,6 +52,7 @@ export interface InformeClientesDto {
 export interface InformeDto {
   desde: string;
   hasta: string;
+  granularidad: Granularidad;
   resumen: {
     ventas_brutas: number;
     promedio_diario: number;
@@ -67,10 +70,25 @@ export interface InformeDto {
   clientes: InformeClientesDto;
 }
 
-const PEDIDOS_INFORME_SELECT =
-  'id, cliente_id, total, costo_domicilio, metodo_pago, modalidad, canal, created_at';
-
 type Acumulador = { total: number; pedidos: number };
+
+/**
+ * Los pedidos en vivo y los históricos (migrados de WooCommerce, ver
+ * historico_pedidos) viven en tablas separadas con columnas distintas.
+ * Se normalizan a esta forma común una sola vez para poder reusar toda
+ * la lógica de agregación sin duplicarla por origen.
+ */
+interface PedidoUnificado {
+  id: string;
+  total: number;
+  costo_domicilio: number;
+  metodo_pago: string;
+  modalidad: string;
+  canal: string;
+  creado_en: string;
+  telefono: string | null;
+  nombre_cliente: string | null;
+}
 
 @Injectable()
 export class InformesService {
@@ -82,18 +100,15 @@ export class InformesService {
       hastaInput,
     );
     const client = this.supabase.getClient();
+    const granularidad = this.resolverGranularidad(desde, hasta);
 
-    const { data: pedidos, error } = await client
-      .from('pedidos')
-      .select(PEDIDOS_INFORME_SELECT)
-      .neq('estado', 'cancelado')
-      .gte('created_at', desdeISO)
-      .lte('created_at', hastaISO);
-    if (error) throw error;
+    const [pedidosVivos, pedidosHistoricos] = await Promise.all([
+      this.obtenerPedidosVivos(client, desdeISO, hastaISO),
+      this.obtenerPedidosHistoricos(client, desdeISO, hastaISO),
+    ]);
+    const filas = [...pedidosVivos, ...pedidosHistoricos];
 
-    const filas = pedidos ?? [];
-
-    const porDia = new Map<string, Acumulador>();
+    const porBucket = new Map<string, Acumulador>();
     const porMetodo = new Map<string, Acumulador>();
     const porModalidad = new Map<string, Acumulador>();
     const porCanal = new Map<string, Acumulador>();
@@ -103,8 +118,8 @@ export class InformesService {
 
     for (const p of filas) {
       ventasBrutas += p.total;
-      costoDomicilioTotal += p.costo_domicilio ?? 0;
-      this.acumular(porDia, p.created_at.slice(0, 10), p.total);
+      costoDomicilioTotal += p.costo_domicilio;
+      this.acumular(porBucket, this.claveBucket(p.creado_en, granularidad), p.total);
       this.acumular(porMetodo, p.metodo_pago, p.total);
       this.acumular(porModalidad, p.modalidad, p.total);
       this.acumular(porCanal, p.canal, p.total);
@@ -113,10 +128,7 @@ export class InformesService {
     const diasEnRango = this.contarDias(desde, hasta);
 
     const { topProductos, porCategoria, articulosVendidos } =
-      await this.calcularItems(
-        client,
-        filas.map((p) => p.id),
-      );
+      await this.calcularItems(client, desdeISO, hastaISO);
 
     const clientes = await this.calcularClientes(
       client,
@@ -124,11 +136,13 @@ export class InformesService {
       desde,
       hasta,
       desdeISO,
+      granularidad,
     );
 
     return {
       desde,
       hasta,
+      granularidad,
       resumen: {
         ventas_brutas: ventasBrutas,
         promedio_diario: diasEnRango > 0 ? ventasBrutas / diasEnRango : 0,
@@ -137,7 +151,7 @@ export class InformesService {
         ticket_promedio: filas.length > 0 ? ventasBrutas / filas.length : 0,
         costo_domicilio_total: costoDomicilioTotal,
       },
-      serie_diaria: this.serializarSerieDiaria(porDia, desde, hasta),
+      serie_diaria: this.serializarSerie(porBucket, desde, hasta, granularidad),
       por_metodo_pago: this.serializarMapa(porMetodo),
       por_modalidad: this.serializarMapa(porModalidad),
       por_canal: this.serializarMapa(porCanal),
@@ -147,65 +161,155 @@ export class InformesService {
     };
   }
 
+  private async obtenerPedidosVivos(
+    client: SupabaseClient,
+    desdeISO: string,
+    hastaISO: string,
+  ): Promise<PedidoUnificado[]> {
+    const data = await this.paginarTodo<any>((desde, hasta) =>
+      client
+        .from('pedidos')
+        .select(
+          'id, total, costo_domicilio, metodo_pago, modalidad, canal, created_at, clientes(telefono, nombre, apellido)',
+        )
+        .neq('estado', 'cancelado')
+        .gte('created_at', desdeISO)
+        .lte('created_at', hastaISO)
+        .range(desde, hasta),
+    );
+
+    return data.map((p) => ({
+      id: p.id,
+      total: p.total,
+      costo_domicilio: p.costo_domicilio ?? 0,
+      metodo_pago: p.metodo_pago,
+      modalidad: p.modalidad,
+      canal: p.canal,
+      creado_en: p.created_at,
+      telefono: p.clientes?.telefono ?? null,
+      nombre_cliente: p.clientes
+        ? `${p.clientes.nombre} ${p.clientes.apellido ?? ''}`.trim()
+        : null,
+    }));
+  }
+
   /**
-   * "Nuevo" vs "recurrente" se define contra clientes.created_at, que en
-   * este modelo se fija en el momento de su primer pedido (no hay cuenta
-   * de usuario obligatoria para comprar) — así que created_at dentro del
-   * rango equivale a "primera compra en este período".
+   * Pedidos migrados de WooCommerce (ver historico_pedidos). No se filtra
+   * por estado porque la migración ya excluyó pendientes/cancelados en
+   * origen — todo lo que hay ahí es venta real.
+   */
+  private async obtenerPedidosHistoricos(
+    client: SupabaseClient,
+    desdeISO: string,
+    hastaISO: string,
+  ): Promise<PedidoUnificado[]> {
+    const data = await this.paginarTodo<any>((desde, hasta) =>
+      client
+        .from('historico_pedidos')
+        .select(
+          'id, total, metodo_pago, modalidad, canal, creado_en, historico_clientes(telefono, nombre, apellido)',
+        )
+        .gte('creado_en', desdeISO)
+        .lte('creado_en', hastaISO)
+        .range(desde, hasta),
+    );
+
+    return data.map((p) => ({
+      id: p.id,
+      total: p.total,
+      costo_domicilio: 0,
+      metodo_pago: p.metodo_pago,
+      modalidad: p.modalidad,
+      canal: p.canal,
+      creado_en: p.creado_en,
+      telefono: p.historico_clientes?.telefono ?? null,
+      nombre_cliente: p.historico_clientes
+        ? `${p.historico_clientes.nombre} ${p.historico_clientes.apellido ?? ''}`.trim()
+        : null,
+    }));
+  }
+
+  /**
+   * "Nuevo" vs "recurrente" se define contra la fecha real de primera
+   * compra de cada teléfono, tomando la más antigua entre clientes.created_at
+   * (vivo) e historico_clientes.primera_compra (migrado) — un mismo cliente
+   * puede tener historial en ambas tablas.
    */
   private async calcularClientes(
     client: SupabaseClient,
-    filas: { cliente_id: string; total: number }[],
+    filas: PedidoUnificado[],
     desde: string,
     hasta: string,
     desdeISO: string,
+    granularidad: Granularidad,
   ): Promise<InformeClientesDto> {
-    const clienteIds = [...new Set(filas.map((p) => p.cliente_id))];
-    if (clienteIds.length === 0) {
+    const telefonos = [
+      ...new Set(filas.map((p) => p.telefono).filter((t): t is string => !!t)),
+    ];
+    if (telefonos.length === 0) {
       return {
         nuevos: 0,
         recurrentes: 0,
         ticket_promedio: 0,
-        serie_diaria_nuevos: this.serializarSerieDiariaClientes(
+        serie_diaria_nuevos: this.serializarSerieClientes(
           new Map(),
           desde,
           hasta,
+          granularidad,
         ),
         top_clientes: [],
       };
     }
 
-    const { data: clientesData, error } = await client
-      .from('clientes')
-      .select('id, nombre, apellido, telefono, created_at')
-      .in('id', clienteIds);
-    if (error) throw error;
+    const [clientesVivos, clientesHist] = await Promise.all([
+      this.buscarPorTelefonos(client, 'clientes', 'telefono, nombre, apellido, created_at', telefonos),
+      this.buscarPorTelefonos(
+        client,
+        'historico_clientes',
+        'telefono, nombre, apellido, primera_compra',
+        telefonos,
+      ),
+    ]);
 
-    const clienteMap = new Map((clientesData ?? []).map((c) => [c.id, c]));
-    const desdeMs = new Date(desdeISO).getTime();
+    const primeraCompra = new Map<string, { fecha: string; nombre: string }>();
+    for (const c of clientesHist ?? []) {
+      primeraCompra.set(c.telefono, {
+        fecha: c.primera_compra,
+        nombre: `${c.nombre} ${c.apellido ?? ''}`.trim(),
+      });
+    }
+    for (const c of clientesVivos ?? []) {
+      const existente = primeraCompra.get(c.telefono);
+      if (!existente || new Date(c.created_at) < new Date(existente.fecha)) {
+        primeraCompra.set(c.telefono, {
+          fecha: c.created_at,
+          nombre: `${c.nombre} ${c.apellido ?? ''}`.trim(),
+        });
+      }
+    }
 
     const porClienteActivo = new Map<string, { pedidos: number; total: number }>();
     for (const p of filas) {
-      const actual = porClienteActivo.get(p.cliente_id) ?? {
-        pedidos: 0,
-        total: 0,
-      };
+      if (!p.telefono) continue;
+      const actual = porClienteActivo.get(p.telefono) ?? { pedidos: 0, total: 0 };
       actual.pedidos += 1;
       actual.total += p.total;
-      porClienteActivo.set(p.cliente_id, actual);
+      porClienteActivo.set(p.telefono, actual);
     }
 
+    const desdeMs = new Date(desdeISO).getTime();
     let nuevos = 0;
     let recurrentes = 0;
-    const porDiaAltas = new Map<string, number>();
+    const porBucketAltas = new Map<string, number>();
 
-    for (const id of clienteIds) {
-      const c = clienteMap.get(id);
-      const esNuevo = c ? new Date(c.created_at).getTime() >= desdeMs : false;
+    for (const telefono of telefonos) {
+      const info = primeraCompra.get(telefono);
+      if (!info) continue;
+      const esNuevo = new Date(info.fecha).getTime() >= desdeMs;
       if (esNuevo) {
         nuevos += 1;
-        const dia = c!.created_at.slice(0, 10);
-        porDiaAltas.set(dia, (porDiaAltas.get(dia) ?? 0) + 1);
+        const bucket = this.claveBucket(info.fecha, granularidad);
+        porBucketAltas.set(bucket, (porBucketAltas.get(bucket) ?? 0) + 1);
       } else {
         recurrentes += 1;
       }
@@ -216,14 +320,14 @@ export class InformesService {
       0,
     );
 
-    const topClientes = clienteIds
-      .map((id) => {
-        const c = clienteMap.get(id);
-        const stats = porClienteActivo.get(id)!;
+    const topClientes = telefonos
+      .map((telefono) => {
+        const info = primeraCompra.get(telefono);
+        const stats = porClienteActivo.get(telefono) ?? { pedidos: 0, total: 0 };
         return {
-          id,
-          nombre: c ? `${c.nombre} ${c.apellido ?? ''}`.trim() : 'Cliente',
-          telefono: c?.telefono ?? null,
+          id: telefono,
+          nombre: info?.nombre || 'Cliente',
+          telefono,
           pedidos: stats.pedidos,
           total: stats.total,
         };
@@ -235,71 +339,108 @@ export class InformesService {
       nuevos,
       recurrentes,
       ticket_promedio:
-        clienteIds.length > 0 ? ventasActivos / clienteIds.length : 0,
-      serie_diaria_nuevos: this.serializarSerieDiariaClientes(
-        porDiaAltas,
+        telefonos.length > 0 ? ventasActivos / telefonos.length : 0,
+      serie_diaria_nuevos: this.serializarSerieClientes(
+        porBucketAltas,
         desde,
         hasta,
+        granularidad,
       ),
       top_clientes: topClientes,
     };
   }
 
-  private serializarSerieDiariaClientes(
-    porDia: Map<string, number>,
-    desde: string,
-    hasta: string,
-  ): InformeClienteDiaDto[] {
-    const resultado: InformeClienteDiaDto[] = [];
-    let cursor = new Date(`${desde}T00:00:00`);
-    const fin = new Date(`${hasta}T00:00:00`);
-    while (cursor <= fin) {
-      const fecha = this.formatearFecha(cursor);
-      resultado.push({ fecha, nuevos: porDia.get(fecha) ?? 0 });
-      cursor = new Date(cursor.getTime() + 24 * 60 * 60 * 1000);
+  /**
+   * PostgREST devuelve máximo 1000 filas por defecto — con el histórico
+   * un rango amplio fácilmente supera eso, así que se pagina con .range()
+   * hasta agotar los resultados.
+   */
+  private async paginarTodo<T>(
+    build: (desde: number, hasta: number) => PromiseLike<{ data: T[] | null; error: any }>,
+    tamanoPagina = 1000,
+  ): Promise<T[]> {
+    const resultado: T[] = [];
+    for (let desde = 0; ; desde += tamanoPagina) {
+      const { data, error } = await build(desde, desde + tamanoPagina - 1);
+      if (error) throw error;
+      resultado.push(...(data ?? []));
+      if (!data || data.length < tamanoPagina) break;
     }
     return resultado;
   }
 
-  private async calcularItems(client: SupabaseClient, pedidoIds: string[]) {
-    if (pedidoIds.length === 0) {
-      return { topProductos: [], porCategoria: [], articulosVendidos: 0 };
+  /**
+   * .in('telefono', [...]) con miles de valores rompe la request (URL
+   * demasiado larga) — se banca la lista de teléfonos en tandas.
+   */
+  private async buscarPorTelefonos(
+    client: SupabaseClient,
+    tabla: string,
+    select: string,
+    telefonos: string[],
+    tamanoTanda = 200,
+  ): Promise<any[]> {
+    const resultado: any[] = [];
+    for (let i = 0; i < telefonos.length; i += tamanoTanda) {
+      const tanda = telefonos.slice(i, i + tamanoTanda);
+      const { data, error } = await client.from(tabla).select(select).in('telefono', tanda);
+      if (error) throw error;
+      resultado.push(...(data ?? []));
     }
+    return resultado;
+  }
 
-    const { data: items, error } = await client
-      .from('items_pedido')
-      .select(
-        'cantidad, subtotal, nombre_personalizado, variantes_producto(nombre, productos(nombre, categorias(nombre)))',
-      )
-      .in('pedido_id', pedidoIds);
-    if (error) throw error;
-
+  /**
+   * Filtra por fecha vía el join en vez de pasar la lista de pedido_id
+   * por la URL — con el histórico incluido puede haber miles de pedidos
+   * en rango, y un .in(...) con esa cantidad de UUIDs rompe la request.
+   */
+  private async calcularItems(client: SupabaseClient, desdeISO: string, hastaISO: string) {
     const porProducto = new Map<string, { cantidad: number; total: number }>();
     const porCategoria = new Map<string, { cantidad: number; total: number }>();
     let articulosVendidos = 0;
 
-    for (const item of (items ?? []) as any[]) {
+    const [itemsVivos, itemsHistoricos] = await Promise.all([
+      this.paginarTodo<any>((desde, hasta) =>
+        client
+          .from('items_pedido')
+          .select(
+            'cantidad, subtotal, nombre_personalizado, variantes_producto(nombre, productos(nombre, categorias(nombre))), pedidos!inner(created_at, estado)',
+          )
+          .neq('pedidos.estado', 'cancelado')
+          .gte('pedidos.created_at', desdeISO)
+          .lte('pedidos.created_at', hastaISO)
+          .range(desde, hasta),
+      ),
+      this.paginarTodo<any>((desde, hasta) =>
+        client
+          .from('historico_items_pedido')
+          .select(
+            'cantidad, subtotal, producto_nombre, variantes_producto(productos(nombre, categorias(nombre))), historico_pedidos!inner(creado_en)',
+          )
+          .gte('historico_pedidos.creado_en', desdeISO)
+          .lte('historico_pedidos.creado_en', hastaISO)
+          .range(desde, hasta),
+      ),
+    ]);
+
+    for (const item of itemsVivos as any[]) {
       articulosVendidos += item.cantidad;
       const producto = item.variantes_producto?.productos;
       const nombreProducto =
         producto?.nombre ?? item.nombre_personalizado ?? 'Personalizado';
       const nombreCategoria = producto?.categorias?.nombre ?? 'Personalizado';
+      this.acumularProducto(porProducto, nombreProducto, item.cantidad, item.subtotal);
+      this.acumularProducto(porCategoria, nombreCategoria, item.cantidad, item.subtotal);
+    }
 
-      const acumProducto = porProducto.get(nombreProducto) ?? {
-        cantidad: 0,
-        total: 0,
-      };
-      acumProducto.cantidad += item.cantidad;
-      acumProducto.total += item.subtotal;
-      porProducto.set(nombreProducto, acumProducto);
-
-      const acumCategoria = porCategoria.get(nombreCategoria) ?? {
-        cantidad: 0,
-        total: 0,
-      };
-      acumCategoria.cantidad += item.cantidad;
-      acumCategoria.total += item.subtotal;
-      porCategoria.set(nombreCategoria, acumCategoria);
+    for (const item of itemsHistoricos as any[]) {
+      articulosVendidos += item.cantidad;
+      const productoCatalogo = item.variantes_producto?.productos;
+      const nombreProducto = productoCatalogo?.nombre ?? item.producto_nombre;
+      const nombreCategoria = productoCatalogo?.categorias?.nombre ?? 'Personalizado';
+      this.acumularProducto(porProducto, nombreProducto, item.cantidad, item.subtotal);
+      this.acumularProducto(porCategoria, nombreCategoria, item.cantidad, item.subtotal);
     }
 
     const topProductos = [...porProducto.entries()]
@@ -321,25 +462,88 @@ export class InformesService {
     mapa.set(clave, actual);
   }
 
+  private acumularProducto(
+    mapa: Map<string, { cantidad: number; total: number }>,
+    clave: string,
+    cantidad: number,
+    total: number,
+  ) {
+    const actual = mapa.get(clave) ?? { cantidad: 0, total: 0 };
+    actual.cantidad += cantidad;
+    actual.total += total;
+    mapa.set(clave, actual);
+  }
+
   private serializarMapa(mapa: Map<string, Acumulador>): InformeDesgloseDto[] {
     return [...mapa.entries()]
       .map(([clave, v]) => ({ clave, ...v }))
       .sort((a, b) => b.total - a.total);
   }
 
-  private serializarSerieDiaria(
-    porDia: Map<string, Acumulador>,
+  /**
+   * Rangos largos (histórico incluido) no se pueden mostrar barra-por-día
+   * sin romper el gráfico — a partir de ~2 meses se agrupa por mes.
+   */
+  private resolverGranularidad(desde: string, hasta: string): Granularidad {
+    return this.contarDias(desde, hasta) > 62 ? 'mes' : 'dia';
+  }
+
+  private claveBucket(fechaIso: string, granularidad: Granularidad): string {
+    return granularidad === 'mes' ? fechaIso.slice(0, 7) : fechaIso.slice(0, 10);
+  }
+
+  private serializarSerie(
+    porBucket: Map<string, Acumulador>,
     desde: string,
     hasta: string,
+    granularidad: Granularidad,
   ): InformeDiaDto[] {
     const resultado: InformeDiaDto[] = [];
-    let cursor = new Date(`${desde}T00:00:00`);
-    const fin = new Date(`${hasta}T00:00:00`);
-    while (cursor <= fin) {
-      const fecha = this.formatearFecha(cursor);
-      const datos = porDia.get(fecha) ?? { total: 0, pedidos: 0 };
-      resultado.push({ fecha, ...datos });
-      cursor = new Date(cursor.getTime() + 24 * 60 * 60 * 1000);
+    if (granularidad === 'dia') {
+      let cursor = new Date(`${desde}T00:00:00`);
+      const fin = new Date(`${hasta}T00:00:00`);
+      while (cursor <= fin) {
+        const fecha = this.formatearFecha(cursor);
+        const datos = porBucket.get(fecha) ?? { total: 0, pedidos: 0 };
+        resultado.push({ fecha, ...datos });
+        cursor = new Date(cursor.getTime() + 24 * 60 * 60 * 1000);
+      }
+    } else {
+      let cursor = new Date(`${desde.slice(0, 7)}-01T00:00:00`);
+      const fin = new Date(`${hasta.slice(0, 7)}-01T00:00:00`);
+      while (cursor <= fin) {
+        const fecha = cursor.toISOString().slice(0, 7);
+        const datos = porBucket.get(fecha) ?? { total: 0, pedidos: 0 };
+        resultado.push({ fecha, ...datos });
+        cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+      }
+    }
+    return resultado;
+  }
+
+  private serializarSerieClientes(
+    porBucket: Map<string, number>,
+    desde: string,
+    hasta: string,
+    granularidad: Granularidad,
+  ): InformeClienteDiaDto[] {
+    const resultado: InformeClienteDiaDto[] = [];
+    if (granularidad === 'dia') {
+      let cursor = new Date(`${desde}T00:00:00`);
+      const fin = new Date(`${hasta}T00:00:00`);
+      while (cursor <= fin) {
+        const fecha = this.formatearFecha(cursor);
+        resultado.push({ fecha, nuevos: porBucket.get(fecha) ?? 0 });
+        cursor = new Date(cursor.getTime() + 24 * 60 * 60 * 1000);
+      }
+    } else {
+      let cursor = new Date(`${desde.slice(0, 7)}-01T00:00:00`);
+      const fin = new Date(`${hasta.slice(0, 7)}-01T00:00:00`);
+      while (cursor <= fin) {
+        const fecha = cursor.toISOString().slice(0, 7);
+        resultado.push({ fecha, nuevos: porBucket.get(fecha) ?? 0 });
+        cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+      }
     }
     return resultado;
   }
