@@ -5,6 +5,7 @@ import { formatPrecio } from '@/lib/formato';
 import PremiosSection from '@/components/PremiosSection';
 import ClientesFelicesSection from '@/components/ClientesFelicesSection';
 import ScrollReveal from '@/components/ScrollReveal';
+import HeroEffect from '@/components/HeroEffect';
 
 type Producto = {
   id: string;
@@ -36,29 +37,33 @@ export default async function Home() {
 
   return (
     <div>
-      <section className="bg-brand-navy px-6 py-16 text-center text-white">
-        <h1 className="animate-fade-up text-4xl font-extrabold sm:text-5xl">
-          {NEGOCIO.nombre}
-        </h1>
-        <p className="animate-fade-up delay-1 mx-auto mt-4 max-w-xl text-lg text-zinc-200">
-          Pizza artesanal, masa dorada y crujiente, recién horneada en
-          Riohacha. Pedí online o directo por WhatsApp.
-        </p>
-        <div className="animate-fade-up delay-2 mt-8 flex flex-wrap items-center justify-center gap-4">
-          <Link
-            href="/catalogo"
-            className="btn-press rounded-lg bg-brand-orange px-6 py-3 font-semibold text-white transition hover:opacity-90"
-          >
-            Ver catálogo
-          </Link>
-          <a
-            href={whatsappUrl('¡Hola! Quiero hacer un pedido.')}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn-press rounded-lg border border-white px-6 py-3 font-semibold text-white transition hover:bg-white hover:text-brand-navy"
-          >
-            Pedir por WhatsApp
-          </a>
+      <section className="relative overflow-hidden bg-brand-navy px-6 py-16 text-center text-white sm:py-24">
+        <div className="hero-mesh" />
+        <HeroEffect />
+        <div className="relative">
+          <h1 className="animate-fade-up text-4xl font-extrabold sm:text-5xl">
+            {NEGOCIO.nombre}
+          </h1>
+          <p className="animate-fade-up delay-1 mx-auto mt-4 max-w-xl text-lg text-zinc-200">
+            Pizza artesanal, masa dorada y crujiente, recién horneada en
+            Riohacha. Pedí online o directo por WhatsApp.
+          </p>
+          <div className="animate-fade-up delay-2 mt-8 flex flex-wrap items-center justify-center gap-4">
+            <Link
+              href="/catalogo"
+              className="btn-press rounded-lg bg-brand-orange px-6 py-3 font-semibold text-white transition hover:opacity-90"
+            >
+              Ver catálogo
+            </Link>
+            <a
+              href={whatsappUrl('¡Hola! Quiero hacer un pedido.')}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-press rounded-lg border border-white px-6 py-3 font-semibold text-white transition hover:bg-white hover:text-brand-navy"
+            >
+              Pedir por WhatsApp
+            </a>
+          </div>
         </div>
       </section>
 
