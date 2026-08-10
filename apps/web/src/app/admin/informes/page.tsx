@@ -203,18 +203,20 @@ function TarjetaMetrica({
   detalle?: string;
 }) {
   return (
-    <div className="card-gradient card-interactive rounded-2xl border border-zinc-200 p-5 dark:border-zinc-800">
-      <div className="flex items-center gap-2 text-brand-orange">
-        <Icon />
-        <span className="text-xs font-semibold tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
+    <div className="card-gradient card-interactive min-w-0 rounded-2xl border border-zinc-200 p-5 dark:border-zinc-800">
+      <div className="flex min-w-0 items-center gap-2 text-brand-orange">
+        <span className="shrink-0">
+          <Icon />
+        </span>
+        <span className="truncate text-xs font-semibold tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
           {label}
         </span>
       </div>
-      <p className="mt-2 text-2xl font-bold text-zinc-900 sm:text-3xl dark:text-zinc-50">
+      <p className="mt-2 min-w-0 [overflow-wrap:anywhere] text-xl font-bold tabular-nums text-zinc-900 sm:text-2xl xl:text-[1.7rem] dark:text-zinc-50">
         {valor}
       </p>
       {detalle && (
-        <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+        <p className="mt-0.5 truncate text-xs text-zinc-500 dark:text-zinc-400">
           {detalle}
         </p>
       )}
@@ -229,7 +231,7 @@ function GraficoVentasDiarias({ datos }: { datos: InformeDia[] }) {
   const paso = Math.max(1, Math.ceil(datos.length / 15));
   return (
     <div
-      className="flex items-end gap-1 overflow-x-auto pb-1"
+      className="flex items-end gap-1 overflow-x-auto pt-8 pb-1"
       style={{ minHeight: ALTURA_GRAFICO + 28 }}
     >
       {datos.map((d, idx) => (
@@ -262,7 +264,7 @@ function GraficoClientesNuevos({ datos }: { datos: InformeClienteDia[] }) {
   const paso = Math.max(1, Math.ceil(datos.length / 15));
   return (
     <div
-      className="flex items-end gap-1 overflow-x-auto pb-1"
+      className="flex items-end gap-1 overflow-x-auto pt-8 pb-1"
       style={{ minHeight: ALTURA_GRAFICO + 28 }}
     >
       {datos.map((d, idx) => (
@@ -565,19 +567,19 @@ export default function InformesPage() {
           type="date"
           value={desde}
           onChange={(e) => setDesde(e.target.value)}
-          className="rounded-md border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+          className="[color-scheme:light] dark:[color-scheme:dark] rounded-xl border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-700 shadow-sm transition-colors outline-none hover:border-brand-orange focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
         />
         <span className="text-sm text-zinc-400">–</span>
         <input
           type="date"
           value={hasta}
           onChange={(e) => setHasta(e.target.value)}
-          className="rounded-md border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+          className="[color-scheme:light] dark:[color-scheme:dark] rounded-xl border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-700 shadow-sm transition-colors outline-none hover:border-brand-orange focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
         />
         <button
           type="button"
           onClick={aplicarPersonalizado}
-          className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-600 hover:border-brand-orange dark:border-zinc-700 dark:text-zinc-300"
+          className="btn-press rounded-xl border border-zinc-300 px-3.5 py-1.5 text-sm font-semibold text-zinc-600 shadow-sm transition-colors hover:border-brand-orange hover:text-brand-orange dark:border-zinc-700 dark:text-zinc-300"
         >
           Aplicar
         </button>
