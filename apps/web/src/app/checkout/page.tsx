@@ -202,7 +202,7 @@ export default function CheckoutPage() {
         <button
           type="submit"
           disabled={enviando}
-          className="btn-press flex w-full items-center justify-center gap-2 rounded-lg bg-brand-orange py-3 font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+          className="btn-press flex w-full items-center justify-center gap-2 rounded-lg btn-gradient py-3 font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
         >
           {enviando && (
             <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />

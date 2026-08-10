@@ -14,7 +14,7 @@ export default function ClientesFelicesSection() {
         href={NEGOCIO.googleReviews}
         target="_blank"
         rel="noopener noreferrer"
-        className="mt-6 inline-block rounded-lg bg-brand-orange px-6 py-3 font-semibold text-white transition hover:opacity-90"
+        className="mt-6 inline-block rounded-lg btn-gradient px-6 py-3 font-semibold text-white transition hover:opacity-90"
       >
         Ver reseñas en Google
       </a>

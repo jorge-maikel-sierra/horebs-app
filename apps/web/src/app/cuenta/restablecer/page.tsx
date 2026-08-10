@@ -136,7 +136,7 @@ export default function RestablecerPasswordPage() {
             <button
               type="submit"
               disabled={enviando}
-              className="w-full rounded-lg bg-brand-orange py-3 font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+              className="w-full rounded-lg btn-gradient py-3 font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
             >
               {enviando ? 'Guardando…' : 'Guardar contraseña'}
             </button>

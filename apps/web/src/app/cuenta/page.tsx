@@ -300,7 +300,7 @@ export default function CuentaPage() {
               <button
                 type="submit"
                 disabled={perfilGuardando}
-                className="btn-press rounded-lg bg-brand-orange px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                className="btn-press rounded-lg btn-gradient px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
               >
                 {perfilGuardando ? 'Guardando…' : 'Guardar cambios'}
               </button>
@@ -505,7 +505,7 @@ export default function CuentaPage() {
           <button
             type="submit"
             disabled={enviando}
-            className="btn-press w-full rounded-lg bg-brand-orange py-3 font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="btn-press w-full rounded-lg btn-gradient py-3 font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             {enviando
               ? 'Enviando…'

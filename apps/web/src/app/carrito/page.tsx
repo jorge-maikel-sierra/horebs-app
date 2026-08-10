@@ -115,7 +115,7 @@ export default function CarritoPage() {
 
       <Link
         href="/checkout"
-        className="btn-press mt-6 block w-full rounded-lg bg-brand-orange py-3 text-center font-semibold text-white transition-opacity hover:opacity-90"
+        className="btn-press mt-6 block w-full rounded-lg btn-gradient py-3 text-center font-semibold text-white transition-opacity hover:opacity-90"
       >
         Continuar al checkout
       </Link>

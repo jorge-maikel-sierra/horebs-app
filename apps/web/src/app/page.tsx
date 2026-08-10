@@ -37,21 +37,21 @@ export default async function Home() {
 
   return (
     <div>
-      <section className="relative overflow-hidden bg-brand-navy px-6 py-16 text-center text-white sm:py-24">
+      <section className="relative flex min-h-[100svh] flex-col items-center justify-center overflow-hidden bg-brand-navy px-6 py-16 text-center text-white sm:min-h-[88vh] sm:py-24">
         <div className="hero-mesh" />
         <HeroEffect />
         <div className="relative">
-          <h1 className="animate-fade-up text-4xl font-extrabold sm:text-5xl">
+          <h1 className="animate-fade-up text-5xl font-extrabold sm:text-6xl lg:text-7xl">
             {NEGOCIO.nombre}
           </h1>
-          <p className="animate-fade-up delay-1 mx-auto mt-4 max-w-xl text-lg text-zinc-200">
+          <p className="animate-fade-up delay-1 mx-auto mt-4 max-w-xl text-lg text-zinc-200 sm:text-xl">
             Pizza artesanal, masa dorada y crujiente, recién horneada en
             Riohacha. Pedí online o directo por WhatsApp.
           </p>
           <div className="animate-fade-up delay-2 mt-8 flex flex-wrap items-center justify-center gap-4">
             <Link
               href="/catalogo"
-              className="btn-press rounded-lg bg-brand-orange px-6 py-3 font-semibold text-white transition hover:opacity-90"
+              className="btn-press rounded-lg btn-gradient px-6 py-3 font-semibold text-white transition hover:opacity-90"
             >
               Ver catálogo
             </Link>

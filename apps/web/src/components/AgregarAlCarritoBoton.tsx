@@ -28,7 +28,7 @@ export default function AgregarAlCarritoBoton({
         setTimeout(() => setAgregado(false), 1200);
       }}
       className={`btn-press shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold text-white transition-colors duration-300 hover:opacity-90 ${
-        agregado ? 'bg-green-600' : 'bg-brand-orange'
+        agregado ? 'bg-green-600' : 'btn-gradient'
       }`}
     >
       <span key={agregado ? 'on' : 'off'} className="animate-pop-in inline-block">
