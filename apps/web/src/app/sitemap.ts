@@ -5,11 +5,13 @@ const SITE_URL = `https://${NEGOCIO.sitio}`;
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 
 type Producto = { slug: string | null; ventas_historicas: number | null };
+type Post = { slug: string; publicado_en: string | null };
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const paginasEstaticas: MetadataRoute.Sitemap = [
     { url: SITE_URL, changeFrequency: 'weekly', priority: 1 },
     { url: `${SITE_URL}/catalogo`, changeFrequency: 'daily', priority: 0.9 },
+    { url: `${SITE_URL}/blog`, changeFrequency: 'weekly', priority: 0.7 },
     { url: `${SITE_URL}/contacto`, changeFrequency: 'monthly', priority: 0.5 },
   ];
 
@@ -37,5 +39,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ),
   }));
 
-  return [...paginasEstaticas, ...paginasProducto];
+  let posts: Post[] = [];
+  try {
+    const res = await fetch(`${API_URL}/blog/posts`, { cache: 'no-store' });
+    if (res.ok) posts = await res.json();
+  } catch {
+    // API no disponible al generar el sitemap.
+  }
+
+  const paginasBlog: MetadataRoute.Sitemap = posts.map((post) => ({
+    url: `${SITE_URL}/blog/${post.slug}`,
+    changeFrequency: 'monthly',
+    priority: 0.6,
+    lastModified: post.publicado_en ?? undefined,
+  }));
+
+  return [...paginasEstaticas, ...paginasProducto, ...paginasBlog];
 }

@@ -31,3 +31,51 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.blog-content {
+  line-height: 1.75;
+}
+.blog-content > * + * {
+  margin-top: 1.25em;
+}
+.blog-content h2 {
+  font-size: 1.5em;
+  font-weight: 700;
+  margin-top: 1.75em;
+}
+.blog-content h3 {
+  font-size: 1.25em;
+  font-weight: 700;
+  margin-top: 1.5em;
+}
+.blog-content ul,
+.blog-content ol {
+  padding-left: 1.5em;
+}
+.blog-content ul {
+  list-style: disc;
+}
+.blog-content ol {
+  list-style: decimal;
+}
+.blog-content a {
+  color: var(--brand-orange);
+  text-decoration: underline;
+}
+.blog-content strong {
+  font-weight: 700;
+}
+.blog-content table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.blog-content th,
+.blog-content td {
+  border: 1px solid var(--foreground);
+  border-color: color-mix(in srgb, var(--foreground) 15%, transparent);
+  padding: 0.5em 0.75em;
+  text-align: left;
+}
+.blog-content th {
+  font-weight: 700;
+}

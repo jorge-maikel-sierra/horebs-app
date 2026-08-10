@@ -24,6 +24,9 @@ export default function SiteHeader() {
           <Link href="/catalogo" className="hover:text-brand-orange">
             Catálogo
           </Link>
+          <Link href="/blog" className="hover:text-brand-orange">
+            Blog
+          </Link>
           <Link href="/contacto" className="hover:text-brand-orange">
             Contacto
           </Link>

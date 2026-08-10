@@ -7,6 +7,7 @@ import { HealthModule } from './health/health.module';
 import { CatalogModule } from './catalog/catalog.module';
 import { PedidosModule } from './pedidos/pedidos.module';
 import { AdminModule } from './admin/admin.module';
+import { BlogModule } from './blog/blog.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { AdminModule } from './admin/admin.module';
     CatalogModule,
     PedidosModule,
     AdminModule,
+    BlogModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -39,6 +39,12 @@ function AdminHome() {
             >
               Configuración
             </Link>
+            <Link
+              href="/admin/blog"
+              className="block rounded-lg border border-zinc-200 p-4 font-semibold text-zinc-900 hover:border-brand-orange dark:border-zinc-800 dark:text-zinc-50"
+            >
+              Blog
+            </Link>
           </>
         )}
       </div>

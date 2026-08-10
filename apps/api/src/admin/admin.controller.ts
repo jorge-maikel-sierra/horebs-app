@@ -4,7 +4,11 @@ import { Roles } from '../auth/roles.decorator';
 import { UsuarioActual } from '../auth/usuario.decorator';
 import { AdminService } from './admin.service';
 import type { UsuarioAutenticado } from '../auth/roles.guard';
-import type { CrearVentaInput, ItemVentaInput } from './admin.service';
+import type {
+  CrearVentaInput,
+  ItemVentaInput,
+  CrearBlogPostInput,
+} from './admin.service';
 import type { Rol } from '../auth/roles.decorator';
 
 @Controller('admin')
@@ -104,5 +108,32 @@ export class AdminController {
   @Roles('admin')
   quitarRol(@Param('id') id: string) {
     return this.admin.quitarRol(id);
+  }
+
+  @Get('blog')
+  @Roles('admin')
+  listarBlogPosts() {
+    return this.admin.listarBlogPosts();
+  }
+
+  @Post('blog')
+  @Roles('admin')
+  crearBlogPost(@Body() body: CrearBlogPostInput) {
+    return this.admin.crearBlogPost(body);
+  }
+
+  @Patch('blog/:id')
+  @Roles('admin')
+  actualizarBlogPost(
+    @Param('id') id: string,
+    @Body() body: Partial<CrearBlogPostInput>,
+  ) {
+    return this.admin.actualizarBlogPost(id, body);
+  }
+
+  @Delete('blog/:id')
+  @Roles('admin')
+  eliminarBlogPost(@Param('id') id: string) {
+    return this.admin.eliminarBlogPost(id);
   }
 }
