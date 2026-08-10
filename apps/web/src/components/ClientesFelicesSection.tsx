@@ -1,4 +1,6 @@
 import { NEGOCIO } from '@/lib/negocio';
+import { getGoogleReviews } from '@/lib/google-reviews';
+import ReviewsMarquee from './ReviewsMarquee';
 
 function GoogleIcon() {
   return (
@@ -23,16 +25,12 @@ function GoogleIcon() {
   );
 }
 
-export default function ClientesFelicesSection() {
+export default async function ClientesFelicesSection() {
+  const { reviews, rating, totalReseñas } = await getGoogleReviews();
+
   return (
-    <section className="px-6 py-16">
-      <div className="card-gradient-featured relative mx-auto max-w-2xl overflow-hidden rounded-3xl border border-brand-orange/25 px-8 py-12 text-center shadow-lg shadow-zinc-900/5 dark:shadow-black/30">
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute -top-2 left-6 font-serif text-8xl leading-none text-brand-orange/15 select-none"
-        >
-          &ldquo;
-        </span>
+    <section className="py-16">
+      <div className="mx-auto max-w-2xl px-6 text-center">
         <h2 className="text-2xl font-bold text-zinc-900 sm:text-3xl dark:text-zinc-50">
           Clientes felices
         </h2>
@@ -40,16 +38,52 @@ export default function ClientesFelicesSection() {
           Nos encanta que vuelvan. Mirá las reseñas reales de nuestros
           clientes en Google.
         </p>
-        <a
-          href={NEGOCIO.googleReviews}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="btn-press btn-gradient mt-7 inline-flex items-center gap-2 rounded-lg px-6 py-3 font-semibold text-white shadow-sm transition hover:opacity-90"
-        >
-          <GoogleIcon />
-          Ver reseñas en Google
-        </a>
+        {rating !== null && (
+          <div className="mt-3 flex items-center justify-center gap-1.5 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+            <span className="text-brand-orange">{rating.toFixed(1)} ★</span>
+            {totalReseñas !== null && (
+              <span className="font-normal text-zinc-500 dark:text-zinc-400">
+                ({totalReseñas} reseñas en Google)
+              </span>
+            )}
+          </div>
+        )}
       </div>
+
+      {reviews.length > 0 ? (
+        <div className="mt-8">
+          <ReviewsMarquee reviews={reviews} />
+          <div className="mt-7 flex justify-center px-6">
+            <a
+              href={NEGOCIO.googleReviews}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-press btn-gradient inline-flex items-center gap-2 rounded-lg px-6 py-3 font-semibold text-white shadow-sm transition hover:opacity-90"
+            >
+              <GoogleIcon />
+              Ver todas las reseñas
+            </a>
+          </div>
+        </div>
+      ) : (
+        <div className="card-gradient-featured relative mx-auto mt-8 max-w-2xl overflow-hidden rounded-3xl border border-brand-orange/25 px-8 py-10 text-center shadow-lg shadow-zinc-900/5 dark:shadow-black/30">
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute -top-2 left-6 font-serif text-8xl leading-none text-brand-orange/15 select-none"
+          >
+            &ldquo;
+          </span>
+          <a
+            href={NEGOCIO.googleReviews}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-press btn-gradient relative inline-flex items-center gap-2 rounded-lg px-6 py-3 font-semibold text-white shadow-sm transition hover:opacity-90"
+          >
+            <GoogleIcon />
+            Ver reseñas en Google
+          </a>
+        </div>
+      )}
     </section>
   );
 }
