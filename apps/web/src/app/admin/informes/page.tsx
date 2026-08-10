@@ -594,7 +594,7 @@ export default function InformesPage() {
 
       {!cargando && !error && informe && r && (
         <>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
             <TarjetaMetrica
               icon={IconMoneda}
               label="Ventas brutas"
