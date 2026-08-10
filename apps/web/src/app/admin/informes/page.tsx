@@ -226,12 +226,13 @@ const ALTURA_GRAFICO = 170;
 
 function GraficoVentasDiarias({ datos }: { datos: InformeDia[] }) {
   const max = Math.max(1, ...datos.map((d) => d.total));
+  const paso = Math.max(1, Math.ceil(datos.length / 15));
   return (
     <div
       className="flex items-end gap-1 overflow-x-auto pb-1"
       style={{ minHeight: ALTURA_GRAFICO + 28 }}
     >
-      {datos.map((d) => (
+      {datos.map((d, idx) => (
         <div
           key={d.fecha}
           className="group relative flex min-w-[22px] flex-1 flex-col items-center justify-end"
@@ -248,7 +249,7 @@ function GraficoVentasDiarias({ datos }: { datos: InformeDia[] }) {
             }}
           />
           <span className="mt-1.5 text-[10px] whitespace-nowrap text-zinc-500 dark:text-zinc-400">
-            {formatDiaCorto(d.fecha)}
+            {idx % paso === 0 ? formatDiaCorto(d.fecha) : ''}
           </span>
         </div>
       ))}
@@ -258,12 +259,13 @@ function GraficoVentasDiarias({ datos }: { datos: InformeDia[] }) {
 
 function GraficoClientesNuevos({ datos }: { datos: InformeClienteDia[] }) {
   const max = Math.max(1, ...datos.map((d) => d.nuevos));
+  const paso = Math.max(1, Math.ceil(datos.length / 15));
   return (
     <div
       className="flex items-end gap-1 overflow-x-auto pb-1"
       style={{ minHeight: ALTURA_GRAFICO + 28 }}
     >
-      {datos.map((d) => (
+      {datos.map((d, idx) => (
         <div
           key={d.fecha}
           className="group relative flex min-w-[22px] flex-1 flex-col items-center justify-end"
@@ -280,7 +282,7 @@ function GraficoClientesNuevos({ datos }: { datos: InformeClienteDia[] }) {
             }}
           />
           <span className="mt-1.5 text-[10px] whitespace-nowrap text-zinc-500 dark:text-zinc-400">
-            {formatDiaCorto(d.fecha)}
+            {idx % paso === 0 ? formatDiaCorto(d.fecha) : ''}
           </span>
         </div>
       ))}
