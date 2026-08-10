@@ -79,7 +79,7 @@ export default async function Home() {
                 <Link
                   key={p.id}
                   href={p.slug ? `/menu/${p.slug}` : '/catalogo'}
-                  className={`card-interactive group animate-fade-up overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 ${i % 2 === 1 ? 'delay-1' : ''}`}
+                  className={`card-interactive card-gradient-featured group animate-fade-up overflow-hidden rounded-2xl border border-brand-orange/30 ${i % 2 === 1 ? 'delay-1' : ''}`}
                 >
                   {p.imagen_url && (
                     <div className="relative h-48 w-full overflow-hidden">
@@ -93,6 +93,9 @@ export default async function Home() {
                     </div>
                   )}
                   <div className="p-4">
+                    <span className="btn-gradient mb-2 inline-block rounded-full px-2.5 py-1 text-xs font-semibold text-white shadow-sm">
+                      Firma de la casa
+                    </span>
                     <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
                       {p.nombre}
                     </h3>

@@ -51,14 +51,14 @@ async function getProductos(): Promise<Producto[]> {
 function ProductoCard({ producto }: { producto: Producto }) {
   return (
     <div
-      className={`card-interactive group overflow-hidden rounded-lg border p-4 ${
+      className={`card-interactive group overflow-hidden rounded-2xl border p-4 ${
         producto.destacado
-          ? 'border-orange-500 bg-orange-50 dark:bg-orange-950/20'
-          : 'border-zinc-200 dark:border-zinc-800'
+          ? 'card-gradient-featured border-brand-orange/30'
+          : 'card-gradient border-zinc-200 dark:border-zinc-800'
       }`}
     >
       {producto.imagen_url && (
-        <div className="relative -mx-4 -mt-4 mb-3 h-40 w-[calc(100%+2rem)] overflow-hidden rounded-t-lg">
+        <div className="relative -mx-4 -mt-4 mb-3 h-40 w-[calc(100%+2rem)] overflow-hidden rounded-t-2xl">
           <Image
             src={producto.imagen_url}
             alt={`${producto.nombre} a domicilio en Riohacha`}
@@ -69,7 +69,7 @@ function ProductoCard({ producto }: { producto: Producto }) {
         </div>
       )}
       {producto.destacado && (
-        <span className="mb-2 inline-block rounded-full bg-orange-500 px-2 py-0.5 text-xs font-semibold text-white">
+        <span className="btn-gradient mb-2 inline-block rounded-full px-2.5 py-1 text-xs font-semibold text-white shadow-sm">
           Firma de la casa
         </span>
       )}
@@ -91,9 +91,9 @@ function ProductoCard({ producto }: { producto: Producto }) {
         </p>
       )}
       {producto.variantes.length > 0 && (
-        <ul className="mt-3 space-y-2 text-sm">
+        <ul className="mt-3 divide-y divide-zinc-200/70 border-t border-zinc-200/70 text-sm dark:divide-zinc-800/70 dark:border-zinc-800/70">
           {producto.variantes.map((v) => (
-            <li key={v.id} className="flex items-center justify-between gap-2">
+            <li key={v.id} className="flex items-center justify-between gap-2 py-2">
               <span className="flex items-center gap-2">
                 {v.nombre}
                 <AgregarAlCarritoBoton
