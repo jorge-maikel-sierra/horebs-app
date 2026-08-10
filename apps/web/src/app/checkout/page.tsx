@@ -80,13 +80,16 @@ export default function CheckoutPage() {
     }
   }
 
+  const inputClass =
+    'mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 outline-none transition-colors focus:border-brand-orange dark:border-zinc-700 dark:bg-zinc-900';
+
   return (
     <div className="mx-auto max-w-2xl p-8">
-      <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+      <h1 className="animate-fade-up text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
         Checkout
       </h1>
 
-      <div className="mt-4 rounded-lg border border-zinc-200 p-4 text-sm dark:border-zinc-800">
+      <div className="animate-fade-up delay-1 mt-4 rounded-lg border border-zinc-200 p-4 text-sm dark:border-zinc-800">
         {items.map((i) => (
           <div key={i.varianteId} className="flex justify-between gap-3 py-0.5">
             <span>
@@ -101,14 +104,14 @@ export default function CheckoutPage() {
         </div>
       </div>
 
-      <form onSubmit={enviarPedido} className="mt-6 space-y-4">
+      <form onSubmit={enviarPedido} className="animate-fade-up delay-2 mt-6 space-y-4">
         <div>
           <label className="block text-sm font-medium">Nombre</label>
           <input
             required
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+            className={inputClass}
           />
         </div>
 
@@ -121,7 +124,7 @@ export default function CheckoutPage() {
             type="tel"
             value={telefono}
             onChange={(e) => setTelefono(e.target.value)}
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+            className={inputClass}
           />
         </div>
 
@@ -150,7 +153,7 @@ export default function CheckoutPage() {
         </div>
 
         {modalidad === 'domicilio' && (
-          <div>
+          <div className="animate-fade-up">
             <label className="block text-sm font-medium">
               Dirección de entrega
             </label>
@@ -158,7 +161,7 @@ export default function CheckoutPage() {
               required
               value={direccion}
               onChange={(e) => setDireccion(e.target.value)}
-              className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+              className={inputClass}
             />
           </div>
         )}
@@ -188,17 +191,22 @@ export default function CheckoutPage() {
             value={notas}
             onChange={(e) => setNotas(e.target.value)}
             rows={2}
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+            className={inputClass}
           />
         </div>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && (
+          <p className="animate-fade-up text-sm text-red-600">{error}</p>
+        )}
 
         <button
           type="submit"
           disabled={enviando}
-          className="w-full rounded-lg bg-brand-orange py-3 font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+          className="btn-press flex w-full items-center justify-center gap-2 rounded-lg bg-brand-orange py-3 font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
         >
+          {enviando && (
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+          )}
           {enviando ? 'Enviando…' : 'Confirmar pedido'}
         </button>
       </form>

@@ -4,6 +4,7 @@ import { NEGOCIO, whatsappUrl } from '@/lib/negocio';
 import { formatPrecio } from '@/lib/formato';
 import PremiosSection from '@/components/PremiosSection';
 import ClientesFelicesSection from '@/components/ClientesFelicesSection';
+import ScrollReveal from '@/components/ScrollReveal';
 
 type Producto = {
   id: string;
@@ -36,15 +37,17 @@ export default async function Home() {
   return (
     <div>
       <section className="bg-brand-navy px-6 py-16 text-center text-white">
-        <h1 className="text-4xl font-extrabold sm:text-5xl">{NEGOCIO.nombre}</h1>
-        <p className="mx-auto mt-4 max-w-xl text-lg text-zinc-200">
+        <h1 className="animate-fade-up text-4xl font-extrabold sm:text-5xl">
+          {NEGOCIO.nombre}
+        </h1>
+        <p className="animate-fade-up delay-1 mx-auto mt-4 max-w-xl text-lg text-zinc-200">
           Pizza artesanal, masa dorada y crujiente, recién horneada en
           Riohacha. Pedí online o directo por WhatsApp.
         </p>
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+        <div className="animate-fade-up delay-2 mt-8 flex flex-wrap items-center justify-center gap-4">
           <Link
             href="/catalogo"
-            className="rounded-lg bg-brand-orange px-6 py-3 font-semibold text-white transition hover:opacity-90"
+            className="btn-press rounded-lg bg-brand-orange px-6 py-3 font-semibold text-white transition hover:opacity-90"
           >
             Ver catálogo
           </Link>
@@ -52,7 +55,7 @@ export default async function Home() {
             href={whatsappUrl('¡Hola! Quiero hacer un pedido.')}
             target="_blank"
             rel="noopener noreferrer"
-            className="rounded-lg border border-white px-6 py-3 font-semibold text-white transition hover:bg-white hover:text-brand-navy"
+            className="btn-press rounded-lg border border-white px-6 py-3 font-semibold text-white transition hover:bg-white hover:text-brand-navy"
           >
             Pedir por WhatsApp
           </a>
@@ -65,22 +68,22 @@ export default async function Home() {
             Nuestras firmas de la casa
           </h2>
           <div className="mt-6 grid gap-6 sm:grid-cols-2">
-            {destacados.map((p) => {
+            {destacados.map((p, i) => {
               const desde = precioDesde(p);
               return (
                 <Link
                   key={p.id}
                   href={p.slug ? `/menu/${p.slug}` : '/catalogo'}
-                  className="group overflow-hidden rounded-xl border border-zinc-200 transition hover:shadow-lg dark:border-zinc-800"
+                  className={`card-interactive group animate-fade-up overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 ${i % 2 === 1 ? 'delay-1' : ''}`}
                 >
                   {p.imagen_url && (
-                    <div className="relative h-48 w-full">
+                    <div className="relative h-48 w-full overflow-hidden">
                       <Image
                         src={p.imagen_url}
                         alt={`${p.nombre} a domicilio en Riohacha`}
                         fill
                         sizes="(min-width: 640px) 420px, 100vw"
-                        className="object-cover transition group-hover:scale-105"
+                        className="object-cover transition-transform duration-500 group-hover:scale-110"
                       />
                     </div>
                   )}
@@ -106,21 +109,25 @@ export default async function Home() {
         </section>
       )}
 
-      <ClientesFelicesSection />
-      <PremiosSection />
+      <ScrollReveal>
+        <ClientesFelicesSection />
+      </ScrollReveal>
+      <ScrollReveal>
+        <PremiosSection />
+      </ScrollReveal>
 
-      <section className="border-t border-zinc-200 px-6 py-10 text-center dark:border-zinc-800">
+      <ScrollReveal className="border-t border-zinc-200 px-6 py-10 text-center dark:border-zinc-800">
         <p className="font-semibold text-zinc-900 dark:text-zinc-50">
           {NEGOCIO.direccion}
         </p>
         <p className="mt-1 text-zinc-600 dark:text-zinc-400">{NEGOCIO.horario}</p>
         <Link
           href="/contacto"
-          className="mt-3 inline-block text-sm text-brand-orange underline"
+          className="mt-3 inline-block text-sm text-brand-orange underline transition-colors hover:text-brand-orange/80"
         >
           Más datos de contacto
         </Link>
-      </section>
+      </ScrollReveal>
     </div>
   );
 }

@@ -3,6 +3,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import AgregarAlCarritoBoton from '@/components/AgregarAlCarritoBoton';
+import ScrollReveal from '@/components/ScrollReveal';
 import { formatPrecio } from '@/lib/formato';
 import { NEGOCIO } from '@/lib/negocio';
 import { breadcrumbJsonLd, jsonLdScript } from '@/lib/json-ld';
@@ -128,37 +129,43 @@ export default async function ProductoPage({
         dangerouslySetInnerHTML={{ __html: jsonLdScript(breadcrumbLd) }}
       />
 
-      <Link href="/catalogo" className="text-sm text-brand-orange underline">
+      <Link
+        href="/catalogo"
+        className="text-sm text-brand-orange underline transition-colors hover:text-brand-orange/80"
+      >
         ← Volver al catálogo
       </Link>
 
-      <h1 className="mt-4 text-3xl font-bold text-zinc-900 sm:text-4xl dark:text-zinc-50">
+      <h1 className="animate-fade-up mt-4 text-3xl font-bold text-zinc-900 sm:text-4xl dark:text-zinc-50">
         {producto.nombre} a domicilio en Riohacha
       </h1>
 
       {producto.imagen_url && (
-        <div className="relative mt-6 h-72 w-full overflow-hidden rounded-xl sm:h-96">
+        <div className="animate-fade-up delay-1 group relative mt-6 h-72 w-full overflow-hidden rounded-xl sm:h-96">
           <Image
             src={producto.imagen_url}
             alt={altDescriptivo}
             fill
             sizes="(min-width: 768px) 720px, 100vw"
-            className="object-cover"
+            className="object-cover transition-transform duration-700 group-hover:scale-105"
             priority
           />
         </div>
       )}
 
       {producto.descripcion && (
-        <p className="mt-6 text-lg text-zinc-600 dark:text-zinc-400">
+        <p className="animate-fade-up delay-2 mt-6 text-lg text-zinc-600 dark:text-zinc-400">
           {producto.descripcion}
         </p>
       )}
 
       {producto.variantes.length > 0 && (
-        <ul className="mt-6 space-y-3 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+        <ul className="animate-fade-up delay-3 mt-6 space-y-3 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
           {producto.variantes.map((v) => (
-            <li key={v.id} className="flex items-center justify-between gap-3">
+            <li
+              key={v.id}
+              className="-mx-2 flex items-center justify-between gap-3 rounded-md px-2 py-1 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-900"
+            >
               <span className="flex items-center gap-2">
                 {v.nombre}
                 <AgregarAlCarritoBoton
@@ -188,7 +195,7 @@ export default async function ProductoPage({
       )}
 
       {otrasPizzas.length > 0 && (
-        <section className="mt-12">
+        <ScrollReveal className="mt-12">
           <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">
             Otras pizzas populares
           </h2>
@@ -197,7 +204,7 @@ export default async function ProductoPage({
               <Link
                 key={p.id}
                 href={`/menu/${p.slug}`}
-                className="rounded-lg border border-zinc-200 p-4 transition hover:border-brand-orange dark:border-zinc-800"
+                className="card-interactive rounded-lg border border-zinc-200 p-4 hover:border-brand-orange dark:border-zinc-800"
               >
                 <p className="font-semibold text-zinc-900 dark:text-zinc-50">
                   {p.nombre}
@@ -205,7 +212,7 @@ export default async function ProductoPage({
               </Link>
             ))}
           </div>
-        </section>
+        </ScrollReveal>
       )}
     </div>
   );

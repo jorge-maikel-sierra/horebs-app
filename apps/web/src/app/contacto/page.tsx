@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { NEGOCIO, whatsappUrl } from '@/lib/negocio';
+import ScrollReveal from '@/components/ScrollReveal';
 
 export const metadata: Metadata = {
   title: 'Contacto | Pizzería Horebs',
@@ -11,11 +12,11 @@ export const metadata: Metadata = {
 export default function ContactoPage() {
   return (
     <div className="mx-auto max-w-2xl p-8">
-      <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+      <h1 className="animate-fade-up text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
         Contacto
       </h1>
 
-      <dl className="mt-6 space-y-4 text-zinc-700 dark:text-zinc-300">
+      <dl className="animate-fade-up delay-1 mt-6 space-y-4 text-zinc-700 dark:text-zinc-300">
         <div>
           <dt className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">
             Dirección
@@ -43,7 +44,7 @@ export default function ContactoPage() {
               href={NEGOCIO.facebook}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-brand-orange underline"
+              className="text-brand-orange underline transition-colors hover:text-brand-orange/80"
             >
               Facebook
             </a>
@@ -51,7 +52,7 @@ export default function ContactoPage() {
               href={NEGOCIO.instagram}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-brand-orange underline"
+              className="text-brand-orange underline transition-colors hover:text-brand-orange/80"
             >
               Instagram
             </a>
@@ -63,12 +64,12 @@ export default function ContactoPage() {
         href={whatsappUrl('¡Hola! Quiero hacer un pedido.')}
         target="_blank"
         rel="noopener noreferrer"
-        className="mt-6 block w-full rounded-lg bg-green-600 py-3 text-center font-semibold text-white transition hover:opacity-90"
+        className="btn-press animate-fade-up delay-2 mt-6 block w-full rounded-lg bg-green-600 py-3 text-center font-semibold text-white transition-opacity hover:opacity-90"
       >
         Escribinos por WhatsApp
       </a>
 
-      <div className="mt-8 overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800">
+      <ScrollReveal className="mt-8 overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800">
         <iframe
           title="Ubicación de Pizzería Horebs"
           src={NEGOCIO.mapaEmbedUrl}
@@ -77,7 +78,7 @@ export default function ContactoPage() {
           allowFullScreen
           referrerPolicy="strict-origin-when-cross-origin"
         />
-      </div>
+      </ScrollReveal>
     </div>
   );
 }

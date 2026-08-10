@@ -30,10 +30,10 @@ export default async function BlogPage() {
 
   return (
     <div className="mx-auto max-w-3xl p-8">
-      <h1 className="text-3xl font-bold text-zinc-900 sm:text-4xl dark:text-zinc-50">
+      <h1 className="animate-fade-up text-3xl font-bold text-zinc-900 sm:text-4xl dark:text-zinc-50">
         Blog
       </h1>
-      <p className="mt-2 text-zinc-600 dark:text-zinc-400">
+      <p className="animate-fade-up delay-1 mt-2 text-zinc-600 dark:text-zinc-400">
         Recomendaciones, novedades y todo sobre pizza en Riohacha.
       </p>
 
@@ -43,11 +43,12 @@ export default async function BlogPage() {
         </p>
       ) : (
         <div className="mt-8 space-y-6">
-          {posts.map((post) => (
+          {posts.map((post, i) => (
             <Link
               key={post.slug}
               href={`/blog/${post.slug}`}
-              className="flex gap-4 rounded-lg border border-zinc-200 p-4 transition hover:border-brand-orange dark:border-zinc-800"
+              className="card-interactive animate-fade-up group flex gap-4 rounded-lg border border-zinc-200 p-4 hover:border-brand-orange dark:border-zinc-800"
+              style={{ animationDelay: `${Math.min(i, 4) * 0.08}s` }}
             >
               {post.imagen_url && (
                 <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-md">
@@ -56,12 +57,12 @@ export default async function BlogPage() {
                     alt={post.titulo}
                     fill
                     sizes="96px"
-                    className="object-cover"
+                    className="object-cover transition-transform duration-500 group-hover:scale-110"
                   />
                 </div>
               )}
               <div>
-                <h2 className="font-semibold text-zinc-900 dark:text-zinc-50">
+                <h2 className="font-semibold text-zinc-900 transition-colors group-hover:text-brand-orange dark:text-zinc-50">
                   {post.titulo}
                 </h2>
                 <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">

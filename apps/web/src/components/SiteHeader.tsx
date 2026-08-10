@@ -21,25 +21,28 @@ export default function SiteHeader() {
           />
         </Link>
         <nav className="flex items-center gap-3 text-xs font-medium whitespace-nowrap text-zinc-700 sm:gap-5 sm:text-sm dark:text-zinc-300">
-          <Link href="/catalogo" className="hover:text-brand-orange">
+          <Link href="/catalogo" className="transition-colors hover:text-brand-orange">
             Catálogo
           </Link>
-          <Link href="/blog" className="hover:text-brand-orange">
+          <Link href="/blog" className="transition-colors hover:text-brand-orange">
             Blog
           </Link>
-          <Link href="/contacto" className="hover:text-brand-orange">
+          <Link href="/contacto" className="transition-colors hover:text-brand-orange">
             Contacto
           </Link>
-          <Link href="/cuenta" className="hover:text-brand-orange">
+          <Link href="/cuenta" className="transition-colors hover:text-brand-orange">
             Cuenta
           </Link>
           <Link
             href="/carrito"
-            className="flex items-center gap-1.5 hover:text-brand-orange"
+            className="flex items-center gap-1.5 transition-colors hover:text-brand-orange"
           >
             Carrito
             {count > 0 && (
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-orange text-xs font-semibold text-white">
+              <span
+                key={count}
+                className="animate-badge-bump flex h-5 w-5 items-center justify-center rounded-full bg-brand-orange text-xs font-semibold text-white"
+              >
                 {count}
               </span>
             )}

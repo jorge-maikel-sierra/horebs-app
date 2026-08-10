@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import AgregarAlCarritoBoton from '@/components/AgregarAlCarritoBoton';
+import ScrollReveal from '@/components/ScrollReveal';
 import { formatPrecio } from '@/lib/formato';
 import { breadcrumbJsonLd, jsonLdScript } from '@/lib/json-ld';
 import { NEGOCIO } from '@/lib/negocio';
@@ -50,7 +51,7 @@ async function getProductos(): Promise<Producto[]> {
 function ProductoCard({ producto }: { producto: Producto }) {
   return (
     <div
-      className={`overflow-hidden rounded-lg border p-4 ${
+      className={`card-interactive group overflow-hidden rounded-lg border p-4 ${
         producto.destacado
           ? 'border-orange-500 bg-orange-50 dark:bg-orange-950/20'
           : 'border-zinc-200 dark:border-zinc-800'
@@ -63,7 +64,7 @@ function ProductoCard({ producto }: { producto: Producto }) {
             alt={`${producto.nombre} a domicilio en Riohacha`}
             fill
             sizes="(min-width: 640px) 420px, 100vw"
-            className="object-cover"
+            className="object-cover transition-transform duration-500 group-hover:scale-110"
           />
         </div>
       )}
@@ -74,7 +75,10 @@ function ProductoCard({ producto }: { producto: Producto }) {
       )}
       <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
         {producto.slug ? (
-          <Link href={`/menu/${producto.slug}`} className="hover:text-brand-orange">
+          <Link
+            href={`/menu/${producto.slug}`}
+            className="transition-colors hover:text-brand-orange"
+          >
             {producto.nombre}
           </Link>
         ) : (
@@ -172,12 +176,12 @@ export default async function CatalogoPage() {
         dangerouslySetInnerHTML={{ __html: jsonLdScript(itemListLd) }}
       />
 
-      <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+      <h1 className="animate-fade-up text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
         Catálogo
       </h1>
 
       {destacados.length > 0 && (
-        <section className="mt-6">
+        <section className="animate-fade-up delay-1 mt-6">
           <h2 className="text-xl font-semibold text-orange-600">
             Nuestras firmas de la casa
           </h2>
@@ -196,7 +200,7 @@ export default async function CatalogoPage() {
         if (productosCategoria.length === 0) return null;
 
         return (
-          <section key={categoria.id} className="mt-8">
+          <ScrollReveal key={categoria.id} className="mt-8">
             <h2 className="text-xl font-semibold text-zinc-800 dark:text-zinc-200">
               {categoria.nombre}
             </h2>
@@ -205,7 +209,7 @@ export default async function CatalogoPage() {
                 <ProductoCard key={p.id} producto={p} />
               ))}
             </div>
-          </section>
+          </ScrollReveal>
         );
       })}
     </div>

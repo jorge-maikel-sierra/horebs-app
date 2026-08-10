@@ -100,16 +100,19 @@ export default async function BlogPostPage({
         dangerouslySetInnerHTML={{ __html: jsonLdScript(breadcrumbLd) }}
       />
 
-      <Link href="/blog" className="text-sm text-brand-orange underline">
+      <Link
+        href="/blog"
+        className="text-sm text-brand-orange underline transition-colors hover:text-brand-orange/80"
+      >
         ← Volver al blog
       </Link>
 
-      <h1 className="mt-4 text-3xl font-bold text-zinc-900 sm:text-4xl dark:text-zinc-50">
+      <h1 className="animate-fade-up mt-4 text-3xl font-bold text-zinc-900 sm:text-4xl dark:text-zinc-50">
         {post.titulo}
       </h1>
 
       {post.imagen_url && (
-        <div className="relative mt-6 h-72 w-full overflow-hidden rounded-xl sm:h-96">
+        <div className="animate-fade-up delay-1 relative mt-6 h-72 w-full overflow-hidden rounded-xl sm:h-96">
           <Image
             src={post.imagen_url}
             alt={post.titulo}
@@ -121,7 +124,7 @@ export default async function BlogPostPage({
         </div>
       )}
 
-      <div className="blog-content mt-8 text-zinc-700 dark:text-zinc-300">
+      <div className="blog-content animate-fade-up delay-2 mt-8 text-zinc-700 dark:text-zinc-300">
         <ReactMarkdown remarkPlugins={[remarkGfm]}>
           {post.contenido}
         </ReactMarkdown>
