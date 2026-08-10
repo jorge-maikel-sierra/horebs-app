@@ -4,7 +4,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import RequireRol from '@/components/RequireRol';
 import { adminFetch } from '@/lib/admin-fetch';
-import { formatPrecio } from '@/lib/formato';
+import { formatPrecio, formatHora } from '@/lib/formato';
 
 type Variante = {
   id: string;
@@ -42,6 +42,27 @@ type ClienteBusqueda = {
 };
 
 type Modalidad = 'local' | 'retiro' | 'domicilio';
+
+type TurnoDto = {
+  id: string;
+  monto_inicial: number;
+  abierto_en: string;
+  estado: 'abierto' | 'cerrado';
+};
+
+type ResumenVentas = {
+  total_efectivo: number;
+  total_transferencia: number;
+  total_tarjeta: number;
+  total_ventas: number;
+  cantidad_ventas: number;
+};
+
+type TurnoCerrado = {
+  resumen: ResumenVentas;
+  monto_esperado_efectivo: number;
+  diferencia_caja: number | null;
+};
 
 const COSTO_DOMICILIO_DEFAULT = 5000;
 
@@ -81,6 +102,20 @@ function PosInterno() {
   const [error, setError] = useState<string | null>(null);
   const [mensaje, setMensaje] = useState<string | null>(null);
 
+  const [turno, setTurno] = useState<TurnoDto | null>(null);
+  const [resumenTurno, setResumenTurno] = useState<ResumenVentas | null>(null);
+  const [cargandoTurno, setCargandoTurno] = useState(true);
+  const [errorTurno, setErrorTurno] = useState<string | null>(null);
+  const [montoInicial, setMontoInicial] = useState('');
+  const [abriendoTurno, setAbriendoTurno] = useState(false);
+  const [mostrarCierre, setMostrarCierre] = useState(false);
+  const [montoContado, setMontoContado] = useState('');
+  const [notasCierre, setNotasCierre] = useState('');
+  const [cerrandoTurno, setCerrandoTurno] = useState(false);
+  const [resultadoCierre, setResultadoCierre] = useState<TurnoCerrado | null>(
+    null,
+  );
+
   useEffect(() => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
     Promise.all([
@@ -92,6 +127,20 @@ function PosInterno() {
         setProductos(prods);
       })
       .catch(() => setError('No se pudo cargar el catálogo.'));
+  }, []);
+
+  async function cargarTurno() {
+    const res = await adminFetch('/turnos/actual');
+    if (res.ok) {
+      const data = await res.json();
+      setTurno(data.turno);
+      setResumenTurno(data.resumen);
+    }
+    setCargandoTurno(false);
+  }
+
+  useEffect(() => {
+    cargarTurno();
   }, []);
 
   useEffect(() => {
@@ -195,6 +244,97 @@ function PosInterno() {
     ? productos.filter((p) => p.categoria_id === categoriaSeleccionada)
     : [];
 
+  async function abrirTurno(e: FormEvent) {
+    e.preventDefault();
+    setErrorTurno(null);
+    const monto = Number(montoInicial);
+    if (!Number.isFinite(monto) || monto < 0) {
+      setErrorTurno('Ingresá un monto válido.');
+      return;
+    }
+    setAbriendoTurno(true);
+    try {
+      const res = await adminFetch('/turnos/abrir', {
+        method: 'POST',
+        body: JSON.stringify({ monto_inicial: monto }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.message ?? 'No se pudo abrir el turno.');
+      }
+      const data = await res.json();
+      setTurno(data);
+      setResumenTurno({
+        total_efectivo: 0,
+        total_transferencia: 0,
+        total_tarjeta: 0,
+        total_ventas: 0,
+        cantidad_ventas: 0,
+      });
+      setMontoInicial('');
+    } catch (err) {
+      setErrorTurno(
+        err instanceof Error ? err.message : 'No se pudo abrir el turno.',
+      );
+    } finally {
+      setAbriendoTurno(false);
+    }
+  }
+
+  async function abrirModalCierre() {
+    setMostrarCierre(true);
+    setResultadoCierre(null);
+    setErrorTurno(null);
+    await cargarTurno();
+  }
+
+  function cerrarModalCierre() {
+    setMostrarCierre(false);
+    setResultadoCierre(null);
+    setMontoContado('');
+    setNotasCierre('');
+    setErrorTurno(null);
+  }
+
+  async function confirmarCierre(e: FormEvent) {
+    e.preventDefault();
+    setErrorTurno(null);
+    const montoContadoNum = montoContado.trim()
+      ? Number(montoContado)
+      : undefined;
+    if (
+      montoContadoNum !== undefined &&
+      (!Number.isFinite(montoContadoNum) || montoContadoNum < 0)
+    ) {
+      setErrorTurno('El monto contado no es válido.');
+      return;
+    }
+    setCerrandoTurno(true);
+    try {
+      const res = await adminFetch('/turnos/cerrar', {
+        method: 'POST',
+        body: JSON.stringify({
+          monto_final_contado: montoContadoNum,
+          notas_cierre: notasCierre.trim() || undefined,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.message ?? 'No se pudo cerrar el turno.');
+      }
+      const data = await res.json();
+      setResultadoCierre(data);
+      setTurno(null);
+      setResumenTurno(null);
+    } catch (err) {
+      setErrorTurno(
+        err instanceof Error ? err.message : 'No se pudo cerrar el turno.',
+      );
+    } finally {
+      setCerrandoTurno(false);
+    }
+  }
+
   async function registrarVenta(e: FormEvent) {
     e.preventDefault();
     setError(null);
@@ -269,18 +409,80 @@ function PosInterno() {
     }
   }
 
+  if (cargandoTurno) {
+    return (
+      <div className="mx-auto max-w-md p-8 text-center text-zinc-500 dark:text-zinc-400">
+        Cargando turno…
+      </div>
+    );
+  }
+
+  if (!turno) {
+    return (
+      <div className="mx-auto max-w-md p-8">
+        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+          Abrir turno
+        </h1>
+        <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+          Antes de usar el punto de venta, contá cuánto hay en caja para
+          arrancar el turno.
+        </p>
+        <form onSubmit={abrirTurno} className="mt-6 space-y-3">
+          <div>
+            <label className="block text-sm font-medium">
+              Monto inicial en caja
+            </label>
+            <input
+              required
+              type="number"
+              min={0}
+              step={1000}
+              autoFocus
+              value={montoInicial}
+              onChange={(e) => setMontoInicial(e.target.value)}
+              className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+            />
+          </div>
+          {errorTurno && <p className="text-sm text-red-600">{errorTurno}</p>}
+          <button
+            type="submit"
+            disabled={abriendoTurno}
+            className="w-full rounded-lg bg-brand-orange py-3 font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+          >
+            {abriendoTurno ? 'Abriendo…' : 'Abrir turno'}
+          </button>
+        </form>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-4xl p-8">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-          Punto de venta
-        </h1>
-        <Link
-          href="/admin/pedidos"
-          className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700 hover:border-brand-orange dark:border-zinc-700 dark:text-zinc-300"
-        >
-          Ver pedidos
-        </Link>
+        <div>
+          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+            Punto de venta
+          </h1>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            Turno abierto desde las {formatHora(turno.abierto_en)} — caja
+            inicial {formatPrecio(turno.monto_inicial)}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Link
+            href="/admin/pedidos"
+            className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700 hover:border-brand-orange dark:border-zinc-700 dark:text-zinc-300"
+          >
+            Ver pedidos
+          </Link>
+          <button
+            type="button"
+            onClick={abrirModalCierre}
+            className="rounded-lg border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
+          >
+            Cerrar turno
+          </button>
+        </div>
       </div>
 
       <div className="mt-6 grid gap-8 lg:grid-cols-2">
@@ -628,6 +830,158 @@ function PosInterno() {
           </form>
         </div>
       </div>
+
+      {mostrarCierre && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-lg bg-white p-6 dark:bg-zinc-900">
+            {resultadoCierre ? (
+              <>
+                <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+                  Turno cerrado
+                </h2>
+                <dl className="mt-4 space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <dt>Ventas en efectivo</dt>
+                    <dd>{formatPrecio(resultadoCierre.resumen.total_efectivo)}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt>Ventas por transferencia</dt>
+                    <dd>
+                      {formatPrecio(resultadoCierre.resumen.total_transferencia)}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt>Ventas con tarjeta</dt>
+                    <dd>{formatPrecio(resultadoCierre.resumen.total_tarjeta)}</dd>
+                  </div>
+                  <div className="flex justify-between border-t border-zinc-200 pt-2 font-semibold dark:border-zinc-800">
+                    <dt>Total vendido</dt>
+                    <dd>{formatPrecio(resultadoCierre.resumen.total_ventas)}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt>Cantidad de ventas</dt>
+                    <dd>{resultadoCierre.resumen.cantidad_ventas}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt>Caja esperada</dt>
+                    <dd>{formatPrecio(resultadoCierre.monto_esperado_efectivo)}</dd>
+                  </div>
+                  {resultadoCierre.diferencia_caja !== null && (
+                    <div className="flex justify-between font-semibold">
+                      <dt>Diferencia en caja</dt>
+                      <dd
+                        className={
+                          resultadoCierre.diferencia_caja === 0
+                            ? ''
+                            : resultadoCierre.diferencia_caja > 0
+                              ? 'text-green-600'
+                              : 'text-red-600'
+                        }
+                      >
+                        {formatPrecio(resultadoCierre.diferencia_caja)}
+                      </dd>
+                    </div>
+                  )}
+                </dl>
+                <button
+                  type="button"
+                  onClick={cerrarModalCierre}
+                  className="mt-6 w-full rounded-lg bg-brand-orange py-3 font-semibold text-white hover:opacity-90"
+                >
+                  Listo
+                </button>
+              </>
+            ) : (
+              <>
+                <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+                  Cerrar turno
+                </h2>
+                {resumenTurno && (
+                  <dl className="mt-4 space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <dt>Caja inicial</dt>
+                      <dd>{formatPrecio(turno.monto_inicial)}</dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt>Ventas en efectivo</dt>
+                      <dd>{formatPrecio(resumenTurno.total_efectivo)}</dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt>Ventas por transferencia</dt>
+                      <dd>{formatPrecio(resumenTurno.total_transferencia)}</dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt>Ventas con tarjeta</dt>
+                      <dd>{formatPrecio(resumenTurno.total_tarjeta)}</dd>
+                    </div>
+                    <div className="flex justify-between border-t border-zinc-200 pt-2 font-semibold dark:border-zinc-800">
+                      <dt>Total vendido</dt>
+                      <dd>{formatPrecio(resumenTurno.total_ventas)}</dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt>Cantidad de ventas</dt>
+                      <dd>{resumenTurno.cantidad_ventas}</dd>
+                    </div>
+                    <div className="flex justify-between font-semibold">
+                      <dt>Caja esperada</dt>
+                      <dd>
+                        {formatPrecio(
+                          turno.monto_inicial + resumenTurno.total_efectivo,
+                        )}
+                      </dd>
+                    </div>
+                  </dl>
+                )}
+                <form onSubmit={confirmarCierre} className="mt-4 space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium">
+                      Monto contado en caja (opcional)
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      step={1000}
+                      value={montoContado}
+                      onChange={(e) => setMontoContado(e.target.value)}
+                      className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium">
+                      Notas (opcional)
+                    </label>
+                    <textarea
+                      value={notasCierre}
+                      onChange={(e) => setNotasCierre(e.target.value)}
+                      rows={2}
+                      className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+                    />
+                  </div>
+                  {errorTurno && (
+                    <p className="text-sm text-red-600">{errorTurno}</p>
+                  )}
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={cerrarModalCierre}
+                      className="flex-1 rounded-lg border border-zinc-300 py-2 text-sm font-semibold dark:border-zinc-700"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={cerrandoTurno}
+                      className="flex-1 rounded-lg bg-red-600 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+                    >
+                      {cerrandoTurno ? 'Cerrando…' : 'Confirmar cierre'}
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -13,3 +13,10 @@ export function formatFecha(fecha: string) {
     year: 'numeric',
   }).format(new Date(fecha));
 }
+
+export function formatHora(fecha: string) {
+  return new Intl.DateTimeFormat('es-CO', {
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(fecha));
+}

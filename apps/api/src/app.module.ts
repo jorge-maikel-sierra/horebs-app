@@ -8,6 +8,7 @@ import { CatalogModule } from './catalog/catalog.module';
 import { PedidosModule } from './pedidos/pedidos.module';
 import { AdminModule } from './admin/admin.module';
 import { BlogModule } from './blog/blog.module';
+import { TurnosModule } from './turnos/turnos.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { BlogModule } from './blog/blog.module';
     PedidosModule,
     AdminModule,
     BlogModule,
+    TurnosModule,
   ],
   controllers: [AppController],
   providers: [AppService],
