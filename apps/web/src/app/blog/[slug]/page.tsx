@@ -7,6 +7,9 @@ import remarkGfm from 'remark-gfm';
 import { NEGOCIO } from '@/lib/negocio';
 import { formatFecha } from '@/lib/formato';
 import { breadcrumbJsonLd, jsonLdScript } from '@/lib/json-ld';
+import BlogLikeButton from '@/components/BlogLikeButton';
+import BlogComentarios from '@/components/BlogComentarios';
+import ScrollReveal from '@/components/ScrollReveal';
 
 type Post = {
   titulo: string;
@@ -111,11 +114,14 @@ export default async function BlogPostPage({
       <h1 className="animate-fade-up mt-4 text-3xl font-bold text-zinc-900 sm:text-4xl dark:text-zinc-50">
         {post.titulo}
       </h1>
-      {post.publicado_en && (
-        <p className="animate-fade-up delay-1 mt-2 text-sm font-semibold tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
-          {formatFecha(post.publicado_en)}
-        </p>
-      )}
+      <div className="animate-fade-up delay-1 mt-2 flex flex-wrap items-center gap-4">
+        {post.publicado_en && (
+          <p className="text-sm font-semibold tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
+            {formatFecha(post.publicado_en)}
+          </p>
+        )}
+        <BlogLikeButton slug={slug} />
+      </div>
 
       {post.imagen_url && (
         <div className="animate-fade-up delay-1 relative mt-6 h-72 w-full overflow-hidden rounded-2xl shadow-lg shadow-zinc-900/5 dark:shadow-black/30">
@@ -135,6 +141,10 @@ export default async function BlogPostPage({
           {post.contenido}
         </ReactMarkdown>
       </div>
+
+      <ScrollReveal className="mt-12 border-t border-zinc-200 pt-8 dark:border-zinc-800">
+        <BlogComentarios slug={slug} />
+      </ScrollReveal>
     </article>
   );
 }
