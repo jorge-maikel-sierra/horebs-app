@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import RequireRol from '@/components/RequireRol';
 import { adminFetch } from '@/lib/admin-fetch';
 import { formatPrecio } from '@/lib/formato';
 import { useRol } from '@/lib/use-rol';
@@ -352,7 +351,7 @@ function PedidosInterno() {
   });
 
   return (
-    <div className="mx-auto max-w-4xl p-8">
+    <div className="p-8">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
           Pedidos
@@ -739,9 +738,5 @@ function PedidosInterno() {
 }
 
 export default function PedidosPage() {
-  return (
-    <RequireRol roles={['admin', 'empleado']}>
-      <PedidosInterno />
-    </RequireRol>
-  );
+  return <PedidosInterno />;
 }

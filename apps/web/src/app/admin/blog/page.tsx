@@ -128,7 +128,7 @@ function BlogAdminInterno() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl p-8">
+    <div className="p-8">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
           Blog

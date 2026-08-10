@@ -2,7 +2,6 @@
 
 import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
-import RequireRol from '@/components/RequireRol';
 import { adminFetch } from '@/lib/admin-fetch';
 import { formatPrecio, formatHora } from '@/lib/formato';
 
@@ -418,7 +417,7 @@ function PosInterno() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl p-8">
+    <div className="p-8">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
@@ -993,9 +992,5 @@ function PosInterno() {
 }
 
 export default function PosPage() {
-  return (
-    <RequireRol roles={['admin', 'empleado']}>
-      <PosInterno />
-    </RequireRol>
-  );
+  return <PosInterno />;
 }
