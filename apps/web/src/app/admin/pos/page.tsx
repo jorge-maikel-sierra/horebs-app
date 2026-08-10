@@ -417,45 +417,6 @@ function PosInterno() {
     );
   }
 
-  if (!turno) {
-    return (
-      <div className="mx-auto max-w-md p-8">
-        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-          Abrir turno
-        </h1>
-        <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-          Antes de usar el punto de venta, contá cuánto hay en caja para
-          arrancar el turno.
-        </p>
-        <form onSubmit={abrirTurno} className="mt-6 space-y-3">
-          <div>
-            <label className="block text-sm font-medium">
-              Monto inicial en caja
-            </label>
-            <input
-              required
-              type="number"
-              min={0}
-              step={1000}
-              autoFocus
-              value={montoInicial}
-              onChange={(e) => setMontoInicial(e.target.value)}
-              className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
-            />
-          </div>
-          {errorTurno && <p className="text-sm text-red-600">{errorTurno}</p>}
-          <button
-            type="submit"
-            disabled={abriendoTurno}
-            className="w-full rounded-lg bg-brand-orange py-3 font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
-          >
-            {abriendoTurno ? 'Abriendo…' : 'Abrir turno'}
-          </button>
-        </form>
-      </div>
-    );
-  }
-
   return (
     <div className="mx-auto max-w-4xl p-8">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -463,10 +424,12 @@ function PosInterno() {
           <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
             Punto de venta
           </h1>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            Turno abierto desde las {formatHora(turno.abierto_en)} — caja
-            inicial {formatPrecio(turno.monto_inicial)}
-          </p>
+          {turno && (
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              Turno abierto desde las {formatHora(turno.abierto_en)} — caja
+              inicial {formatPrecio(turno.monto_inicial)}
+            </p>
+          )}
         </div>
         <div className="flex gap-2">
           <Link
@@ -475,13 +438,15 @@ function PosInterno() {
           >
             Ver pedidos
           </Link>
-          <button
-            type="button"
-            onClick={abrirModalCierre}
-            className="rounded-lg border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
-          >
-            Cerrar turno
-          </button>
+          {turno && (
+            <button
+              type="button"
+              onClick={abrirModalCierre}
+              className="rounded-lg border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
+            >
+              Cerrar turno
+            </button>
+          )}
         </div>
       </div>
 
@@ -831,6 +796,47 @@ function PosInterno() {
         </div>
       </div>
 
+      {!turno && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-lg bg-white p-6 dark:bg-zinc-900">
+            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+              Abrir turno
+            </h2>
+            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+              Antes de usar el punto de venta, contá cuánto hay en caja para
+              arrancar el turno.
+            </p>
+            <form onSubmit={abrirTurno} className="mt-4 space-y-3">
+              <div>
+                <label className="block text-sm font-medium">
+                  Monto inicial en caja
+                </label>
+                <input
+                  required
+                  type="number"
+                  min={0}
+                  step={1000}
+                  autoFocus
+                  value={montoInicial}
+                  onChange={(e) => setMontoInicial(e.target.value)}
+                  className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+                />
+              </div>
+              {errorTurno && (
+                <p className="text-sm text-red-600">{errorTurno}</p>
+              )}
+              <button
+                type="submit"
+                disabled={abriendoTurno}
+                className="w-full rounded-lg bg-brand-orange py-3 font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+              >
+                {abriendoTurno ? 'Abriendo…' : 'Abrir turno'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
       {mostrarCierre && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-lg bg-white p-6 dark:bg-zinc-900">
@@ -896,7 +902,7 @@ function PosInterno() {
                 <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
                   Cerrar turno
                 </h2>
-                {resumenTurno && (
+                {turno && resumenTurno && (
                   <dl className="mt-4 space-y-2 text-sm">
                     <div className="flex justify-between">
                       <dt>Caja inicial</dt>

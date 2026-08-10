@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
+import Link from 'next/link';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { useRol } from '@/lib/use-rol';
 
 type Modo = 'login' | 'registro';
 
@@ -19,6 +21,7 @@ function iniciales(nombre: string, apellido: string, email: string) {
 export default function CuentaPage() {
   const [session, setSession] = useState<Session | null>(null);
   const [cargandoSesion, setCargandoSesion] = useState(true);
+  const { rol } = useRol();
 
   const [modo, setModo] = useState<Modo>('login');
   const [nombre, setNombre] = useState('');
@@ -234,6 +237,14 @@ export default function CuentaPage() {
               {session.user.email}
             </p>
           </div>
+          {(rol === 'admin' || rol === 'empleado') && (
+            <Link
+              href="/admin/pos"
+              className="btn-press shrink-0 rounded-lg btn-gradient px-3 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+            >
+              Punto de venta
+            </Link>
+          )}
           <button
             type="button"
             onClick={cerrarSesion}
