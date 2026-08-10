@@ -1,6 +1,6 @@
 export default function CargandoArticulo() {
   return (
-    <div className="mx-auto max-w-3xl p-8">
+    <div className="mx-auto max-w-3xl px-6 py-12 sm:py-16">
       <div className="skeleton h-4 w-24" />
       <div className="skeleton mt-4 h-9 w-4/5" />
       <div className="skeleton mt-6 h-72 w-full sm:h-96" />

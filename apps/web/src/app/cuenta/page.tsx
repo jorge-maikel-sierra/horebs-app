@@ -6,6 +6,9 @@ import { supabase } from '@/lib/supabase';
 
 type Modo = 'login' | 'registro';
 
+const inputClass =
+  'mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 outline-none transition-colors focus:border-brand-orange dark:border-zinc-700 dark:bg-zinc-950';
+
 function iniciales(nombre: string, apellido: string, email: string) {
   const n = nombre.trim();
   const a = apellido.trim();
@@ -220,7 +223,7 @@ export default function CuentaPage() {
     return (
       <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
         <div className="animate-fade-up flex flex-wrap items-center gap-4">
-          <div className="animate-pop-in flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-brand-orange text-xl font-bold text-white">
+          <div className="btn-gradient animate-pop-in flex h-16 w-16 shrink-0 items-center justify-center rounded-full text-xl font-bold text-white shadow-sm">
             {iniciales(perfilNombre, perfilApellido, session.user.email ?? '')}
           </div>
           <div className="min-w-0 flex-1">
@@ -241,7 +244,7 @@ export default function CuentaPage() {
         </div>
 
         <div className="mt-8 space-y-6">
-          <section className="card-interactive animate-fade-up delay-1 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <section className="card-interactive card-gradient animate-fade-up delay-1 rounded-2xl border border-zinc-200 p-6 shadow-sm dark:border-zinc-800">
             <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
               Datos personales
             </h2>
@@ -256,7 +259,7 @@ export default function CuentaPage() {
                     required
                     value={perfilNombre}
                     onChange={(e) => setPerfilNombre(e.target.value)}
-                    className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950"
+                    className={inputClass}
                   />
                 </div>
                 <div>
@@ -265,7 +268,7 @@ export default function CuentaPage() {
                     required
                     value={perfilApellido}
                     onChange={(e) => setPerfilApellido(e.target.value)}
-                    className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950"
+                    className={inputClass}
                   />
                 </div>
               </div>
@@ -277,7 +280,7 @@ export default function CuentaPage() {
                   <input
                     value={perfilTelefono}
                     onChange={(e) => setPerfilTelefono(e.target.value)}
-                    className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950"
+                    className={inputClass}
                   />
                 </div>
                 <div>
@@ -287,7 +290,7 @@ export default function CuentaPage() {
                   <input
                     value={perfilDireccion}
                     onChange={(e) => setPerfilDireccion(e.target.value)}
-                    className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950"
+                    className={inputClass}
                   />
                 </div>
               </div>
@@ -307,7 +310,7 @@ export default function CuentaPage() {
             </form>
           </section>
 
-          <section className="card-interactive animate-fade-up delay-2 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <section className="card-interactive card-gradient animate-fade-up delay-2 rounded-2xl border border-zinc-200 p-6 shadow-sm dark:border-zinc-800">
             <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
               Correo electrónico
             </h2>
@@ -322,7 +325,7 @@ export default function CuentaPage() {
                   type="email"
                   value={nuevoEmail}
                   onChange={(e) => setNuevoEmail(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950"
+                  className={inputClass}
                 />
               </div>
               <button
@@ -341,7 +344,7 @@ export default function CuentaPage() {
             )}
           </section>
 
-          <section className="card-interactive animate-fade-up delay-3 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <section className="card-interactive card-gradient animate-fade-up delay-3 rounded-2xl border border-zinc-200 p-6 shadow-sm dark:border-zinc-800">
             <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
               Contraseña
             </h2>
@@ -357,7 +360,7 @@ export default function CuentaPage() {
                     type="password"
                     value={nuevaPassword}
                     onChange={(e) => setNuevaPassword(e.target.value)}
-                    className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950"
+                    className={inputClass}
                   />
                 </div>
                 <div>
@@ -370,7 +373,7 @@ export default function CuentaPage() {
                     type="password"
                     value={confirmarPassword}
                     onChange={(e) => setConfirmarPassword(e.target.value)}
-                    className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950"
+                    className={inputClass}
                   />
                 </div>
               </div>
@@ -396,7 +399,7 @@ export default function CuentaPage() {
 
   return (
     <div className="mx-auto max-w-md px-4 py-10 sm:px-6">
-      <div className="card-interactive animate-fade-up rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="card-interactive card-gradient animate-fade-up rounded-2xl border border-zinc-200 p-8 shadow-sm dark:border-zinc-800">
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Mi cuenta
         </h1>
@@ -438,7 +441,7 @@ export default function CuentaPage() {
                   required
                   value={nombre}
                   onChange={(e) => setNombre(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950"
+                  className={inputClass}
                 />
               </div>
               <div>
@@ -447,7 +450,7 @@ export default function CuentaPage() {
                   required
                   value={apellido}
                   onChange={(e) => setApellido(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950"
+                  className={inputClass}
                 />
               </div>
             </div>
@@ -460,7 +463,7 @@ export default function CuentaPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950"
+              className={inputClass}
             />
           </div>
 
@@ -472,7 +475,7 @@ export default function CuentaPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950"
+              className={inputClass}
             />
           </div>
 

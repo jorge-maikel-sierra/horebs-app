@@ -5,3 +5,11 @@ export function formatPrecio(precio: number) {
     maximumFractionDigits: 0,
   }).format(precio);
 }
+
+export function formatFecha(fecha: string) {
+  return new Intl.DateTimeFormat('es-CO', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date(fecha));
+}

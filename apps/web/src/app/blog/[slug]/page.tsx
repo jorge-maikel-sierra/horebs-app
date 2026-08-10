@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { NEGOCIO } from '@/lib/negocio';
+import { formatFecha } from '@/lib/formato';
 import { breadcrumbJsonLd, jsonLdScript } from '@/lib/json-ld';
 
 type Post = {
@@ -90,7 +91,7 @@ export default async function BlogPostPage({
   ]);
 
   return (
-    <article className="mx-auto max-w-3xl p-8">
+    <article className="mx-auto max-w-3xl px-6 py-12 sm:py-16">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonLd) }}
@@ -110,9 +111,14 @@ export default async function BlogPostPage({
       <h1 className="animate-fade-up mt-4 text-3xl font-bold text-zinc-900 sm:text-4xl dark:text-zinc-50">
         {post.titulo}
       </h1>
+      {post.publicado_en && (
+        <p className="animate-fade-up delay-1 mt-2 text-sm font-semibold tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
+          {formatFecha(post.publicado_en)}
+        </p>
+      )}
 
       {post.imagen_url && (
-        <div className="animate-fade-up delay-1 relative mt-6 h-72 w-full overflow-hidden rounded-xl sm:h-96">
+        <div className="animate-fade-up delay-1 relative mt-6 h-72 w-full overflow-hidden rounded-2xl shadow-lg shadow-zinc-900/5 dark:shadow-black/30">
           <Image
             src={post.imagen_url}
             alt={post.titulo}
