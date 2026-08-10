@@ -18,7 +18,7 @@ export default function SiteHeader() {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-3 z-20 px-3 sm:top-4 sm:px-4">
+    <header className="sticky top-3 z-20 mt-3 px-3 sm:top-4 sm:mt-4 sm:px-4">
       <div className="mx-auto flex max-w-4xl items-center justify-between gap-2 rounded-2xl border border-zinc-200/70 bg-gradient-to-b from-white/95 to-zinc-50/85 px-4 py-3 shadow-lg shadow-zinc-900/10 backdrop-blur-md sm:px-6 dark:border-zinc-800/70 dark:from-zinc-900/95 dark:to-black/85 dark:shadow-black/40">
         <Link href="/" className="shrink-0">
           <Image
