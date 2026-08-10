@@ -12,7 +12,7 @@ type PedidoItem = {
 
 type Pedido = {
   id: string;
-  cliente: { nombre: string; telefono: string };
+  cliente: { nombre: string; apellido: string | null; telefono: string };
   modalidad: string;
   direccion_entrega: string | null;
   metodo_pago: string;
@@ -44,7 +44,7 @@ function mensajeWhatsapp(pedido: Pedido): string {
       ? [`Dirección: ${pedido.direccion_entrega}`]
       : []),
     `Método de pago: ${pedido.metodo_pago}`,
-    `Nombre: ${pedido.cliente.nombre}`,
+    `Nombre: ${pedido.cliente.nombre}${pedido.cliente.apellido ? ` ${pedido.cliente.apellido}` : ''}`,
   ];
   return lineas.join('\n');
 }

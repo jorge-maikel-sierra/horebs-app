@@ -11,6 +11,7 @@ export interface CrearPedidoItemInput {
 export interface CrearPedidoInput {
   cliente: {
     nombre: string;
+    apellido: string;
     telefono: string;
     direccion?: string;
   };
@@ -31,7 +32,12 @@ export interface PedidoItemDto {
 
 export interface PedidoDto {
   id: string;
-  cliente: { nombre: string; telefono: string; direccion: string | null };
+  cliente: {
+    nombre: string;
+    apellido: string | null;
+    telefono: string;
+    direccion: string | null;
+  };
   modalidad: string;
   direccion_entrega: string | null;
   metodo_pago: string;
@@ -65,6 +71,7 @@ export class PedidosService {
     // dirección ya guardada de un pedido anterior.
     const clienteUpsert: Record<string, string> = {
       nombre: input.cliente.nombre,
+      apellido: input.cliente.apellido,
       telefono: input.cliente.telefono,
     };
     if (input.cliente.direccion) {
@@ -74,7 +81,7 @@ export class PedidosService {
     const { data: cliente, error: clienteError } = await client
       .from('clientes')
       .upsert(clienteUpsert, { onConflict: 'telefono' })
-      .select('id, nombre, telefono, direccion')
+      .select('id, nombre, apellido, telefono, direccion')
       .single();
 
     if (clienteError) throw clienteError;
@@ -128,6 +135,7 @@ export class PedidosService {
       id: pedido.id,
       cliente: {
         nombre: cliente.nombre,
+        apellido: cliente.apellido,
         telefono: cliente.telefono,
         direccion: cliente.direccion,
       },
@@ -153,7 +161,7 @@ export class PedidosService {
     const { data: pedido, error } = await client
       .from('pedidos')
       .select(
-        'id, modalidad, direccion_entrega, metodo_pago, estado, total, notas, created_at, clientes(nombre, telefono, direccion), items_pedido(cantidad, precio_unitario, subtotal, variantes_producto(nombre, productos(nombre)))',
+        'id, modalidad, direccion_entrega, metodo_pago, estado, total, notas, created_at, clientes(nombre, apellido, telefono, direccion), items_pedido(cantidad, precio_unitario, subtotal, variantes_producto(nombre, productos(nombre)))',
       )
       .eq('id', id)
       .maybeSingle();
@@ -168,6 +176,7 @@ export class PedidosService {
       id: pedido.id,
       cliente: {
         nombre: cliente?.nombre ?? '',
+        apellido: cliente?.apellido ?? null,
         telefono: cliente?.telefono ?? '',
         direccion: cliente?.direccion ?? null,
       },
@@ -191,6 +200,9 @@ export class PedidosService {
   private validar(input: CrearPedidoInput) {
     if (!input.cliente?.nombre?.trim()) {
       throw new BadRequestException('Falta el nombre del cliente.');
+    }
+    if (!input.cliente?.apellido?.trim()) {
+      throw new BadRequestException('Falta el apellido del cliente.');
     }
     if (!input.cliente?.telefono?.trim()) {
       throw new BadRequestException('Falta el teléfono del cliente.');

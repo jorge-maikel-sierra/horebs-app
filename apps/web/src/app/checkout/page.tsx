@@ -1,16 +1,96 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCart } from '@/lib/cart-context';
 import { formatPrecio } from '@/lib/formato';
+
+function IconPaquete() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 8 12 3 3 8l9 5 9-5Z" />
+      <path d="M3 8v8l9 5 9-5V8" />
+      <path d="M12 13v8" />
+    </svg>
+  );
+}
+
+function IconTienda() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 9 4 4h16l1 5" />
+      <path d="M3 9a2 2 0 0 0 4 0 2 2 0 0 0 4 0 2 2 0 0 0 4 0 2 2 0 0 0 4 0" />
+      <path d="M5 9v10h14V9" />
+      <path d="M9 19v-6h6v6" />
+    </svg>
+  );
+}
+
+function IconEfectivo() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="6" width="20" height="12" rx="2" />
+      <circle cx="12" cy="12" r="3" />
+      <path d="M6 9v.01M18 15v.01" />
+    </svg>
+  );
+}
+
+function IconTransferencia() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 4v6h6" />
+      <path d="M20 20v-6h-6" />
+      <path d="M4.5 15a8 8 0 0 0 14.5 3.4M19.5 9A8 8 0 0 0 5 5.6" />
+    </svg>
+  );
+}
+
+function IconTarjeta() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="5" width="20" height="14" rx="2" />
+      <path d="M2 10h20" />
+      <path d="M6 15h4" />
+    </svg>
+  );
+}
+
+function OpcionCard({
+  selected,
+  onClick,
+  icon,
+  label,
+}: {
+  selected: boolean;
+  onClick: () => void;
+  icon: ReactNode;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={`btn-press card-interactive flex flex-1 flex-col items-center gap-2 rounded-2xl border p-4 text-center transition-colors ${
+        selected
+          ? 'btn-gradient border-transparent text-white shadow-sm'
+          : 'card-gradient border-zinc-200 text-zinc-700 dark:border-zinc-800 dark:text-zinc-300'
+      }`}
+    >
+      {icon}
+      <span className="text-sm font-semibold">{label}</span>
+    </button>
+  );
+}
 
 export default function CheckoutPage() {
   const { items, total, clear } = useCart();
   const router = useRouter();
 
   const [nombre, setNombre] = useState('');
+  const [apellido, setApellido] = useState('');
   const [telefono, setTelefono] = useState('');
   const [modalidad, setModalidad] = useState<'domicilio' | 'retiro'>('domicilio');
   const [direccion, setDireccion] = useState('');
@@ -54,7 +134,7 @@ export default function CheckoutPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          cliente: { nombre, telefono, direccion: direccion || undefined },
+          cliente: { nombre, apellido, telefono, direccion: direccion || undefined },
           modalidad,
           direccion_entrega: modalidad === 'domicilio' ? direccion : undefined,
           metodo_pago: metodoPago,
@@ -105,14 +185,25 @@ export default function CheckoutPage() {
       </div>
 
       <form onSubmit={enviarPedido} className="animate-fade-up delay-2 mt-6 space-y-4">
-        <div>
-          <label className="block text-sm font-medium">Nombre</label>
-          <input
-            required
-            value={nombre}
-            onChange={(e) => setNombre(e.target.value)}
-            className={inputClass}
-          />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="block text-sm font-medium">Nombre</label>
+            <input
+              required
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium">Apellido</label>
+            <input
+              required
+              value={apellido}
+              onChange={(e) => setApellido(e.target.value)}
+              className={inputClass}
+            />
+          </div>
         </div>
 
         <div>
@@ -130,25 +221,19 @@ export default function CheckoutPage() {
 
         <div>
           <span className="block text-sm font-medium">Modalidad</span>
-          <div className="mt-1 flex gap-4">
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="radio"
-                name="modalidad"
-                checked={modalidad === 'domicilio'}
-                onChange={() => setModalidad('domicilio')}
-              />
-              Domicilio
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="radio"
-                name="modalidad"
-                checked={modalidad === 'retiro'}
-                onChange={() => setModalidad('retiro')}
-              />
-              Retiro en local
-            </label>
+          <div className="mt-2 flex gap-3">
+            <OpcionCard
+              selected={modalidad === 'domicilio'}
+              onClick={() => setModalidad('domicilio')}
+              icon={<IconPaquete />}
+              label="Domicilio"
+            />
+            <OpcionCard
+              selected={modalidad === 'retiro'}
+              onClick={() => setModalidad('retiro')}
+              icon={<IconTienda />}
+              label="Retiro en local"
+            />
           </div>
         </div>
 
@@ -168,18 +253,25 @@ export default function CheckoutPage() {
 
         <div>
           <span className="block text-sm font-medium">Método de pago</span>
-          <div className="mt-1 flex flex-wrap gap-4">
-            {(['efectivo', 'transferencia', 'tarjeta'] as const).map((m) => (
-              <label key={m} className="flex items-center gap-2 text-sm capitalize">
-                <input
-                  type="radio"
-                  name="metodoPago"
-                  checked={metodoPago === m}
-                  onChange={() => setMetodoPago(m)}
-                />
-                {m}
-              </label>
-            ))}
+          <div className="mt-2 grid grid-cols-3 gap-3">
+            <OpcionCard
+              selected={metodoPago === 'efectivo'}
+              onClick={() => setMetodoPago('efectivo')}
+              icon={<IconEfectivo />}
+              label="Efectivo"
+            />
+            <OpcionCard
+              selected={metodoPago === 'transferencia'}
+              onClick={() => setMetodoPago('transferencia')}
+              icon={<IconTransferencia />}
+              label="Transferencia"
+            />
+            <OpcionCard
+              selected={metodoPago === 'tarjeta'}
+              onClick={() => setMetodoPago('tarjeta')}
+              icon={<IconTarjeta />}
+              label="Tarjeta"
+            />
           </div>
         </div>
 
