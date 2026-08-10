@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Dark mode manual (clase en <html>, ver ThemeToggle.tsx). El script
+   bloqueante en layout.tsx aplica la clase antes del primer pintado según
+   localStorage o, si el usuario nunca eligió, la preferencia del sistema. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -7,6 +12,11 @@
   --brand-orange: #ff6b35;
   --brand-navy: #1a3a52;
   --brand-yellow: #ffd93d;
+}
+
+:root.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
 }
 
 @theme inline {
@@ -19,15 +29,23 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* Degradado ambiental sutil, compartido por todas las páginas: un halo
+   cálido de marca en las esquinas superiores, estático (no compite con la
+   lluvia animada del hero) para que se sienta profesional y no cargado. */
 body {
-  background: var(--background);
+  background:
+    radial-gradient(
+      circle at 12% -10%,
+      color-mix(in srgb, var(--brand-orange) 10%, transparent),
+      transparent 42%
+    ),
+    radial-gradient(
+      circle at 100% 0%,
+      color-mix(in srgb, var(--brand-yellow) 7%, transparent),
+      transparent 38%
+    ),
+    var(--background);
+  background-attachment: fixed;
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
