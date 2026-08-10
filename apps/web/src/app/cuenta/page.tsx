@@ -88,11 +88,14 @@ export default function CuentaPage() {
     setMensaje(null);
     setEnviando(true);
 
+    const emailLimpio = email.trim();
+    const passwordLimpia = password.trim();
+
     if (modo === 'registro') {
       const { data, error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { data: { nombre, apellido } },
+        email: emailLimpio,
+        password: passwordLimpia,
+        options: { data: { nombre: nombre.trim(), apellido: apellido.trim() } },
       });
       if (signUpError) {
         setError(signUpError.message);
@@ -103,8 +106,8 @@ export default function CuentaPage() {
       }
     } else {
       const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+        email: emailLimpio,
+        password: passwordLimpia,
       });
       if (signInError) setError(signInError.message);
     }
