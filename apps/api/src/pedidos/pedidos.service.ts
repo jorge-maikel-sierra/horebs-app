@@ -118,6 +118,7 @@ export class PedidosService {
           precioUnitario: i.precio_unitario,
         })),
         costoDomicilio: null,
+        metodoPago: pedido.metodo_pago,
         total: pedido.total,
         notas: pedido.notas,
       });

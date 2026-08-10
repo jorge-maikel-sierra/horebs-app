@@ -9,9 +9,16 @@ export interface NotificacionDomicilio {
   direccionEntrega: string;
   items: { cantidad: number; nombre: string; precioUnitario: number }[];
   costoDomicilio: number | null;
+  metodoPago: string;
   total: number;
   notas: string | null;
 }
+
+const METODO_PAGO_LABEL: Record<string, string> = {
+  efectivo: 'Efectivo — cobrar al entregar',
+  transferencia: 'Transferencia — ya pagado',
+  tarjeta: 'Tarjeta — ya pagado',
+};
 
 const RESEND_API_URL = 'https://api.resend.com/emails';
 
@@ -99,6 +106,7 @@ export class MailService {
             ? `Domicilio: $${datos.costoDomicilio.toLocaleString('es-CO')}`
             : null,
           `Total: $${datos.total.toLocaleString('es-CO')}`,
+          `Pago: ${METODO_PAGO_LABEL[datos.metodoPago] ?? datos.metodoPago}`,
           datos.notas ? `Notas: ${datos.notas}` : null,
         ]
           .filter(Boolean)
@@ -117,6 +125,7 @@ export class MailService {
 const NARANJA = '#FF6B35';
 const AZUL = '#1A3A52';
 const AMARILLO = '#FFD93D';
+const VERDE = '#1F9D55';
 
 const REDES = {
   whatsapp: 'https://wa.me/573157861208',
@@ -132,6 +141,7 @@ function escaparHtml(texto: string): string {
 }
 
 function construirHtmlDomicilio(datos: NotificacionDomicilio): string {
+  const esEfectivo = datos.metodoPago === 'efectivo';
   const filasItems = datos.items
     .map((i) => {
       const subtotal = i.cantidad * i.precioUnitario;
@@ -223,12 +233,17 @@ function construirHtmlDomicilio(datos: NotificacionDomicilio): string {
             }
             <tr>
               <td style="padding:16px 32px 0;">
-                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${NARANJA};border-radius:8px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${esEfectivo ? NARANJA : VERDE};border-radius:8px;">
                   <tr>
                     <td style="padding:14px 18px;">
                       <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                         <tr>
-                          <td style="color:#ffffff;font-size:15px;font-weight:600;">Total a cobrar</td>
+                          <td colspan="2" style="color:#ffffff;font-size:13px;font-weight:700;letter-spacing:0.3px;padding-bottom:6px;">
+                            ${esEfectivo ? '💵 COBRAR EN EFECTIVO' : `✅ YA PAGADO — ${(METODO_PAGO_LABEL[datos.metodoPago] ?? datos.metodoPago).split(' —')[0].toUpperCase()}`}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style="color:#ffffff;font-size:15px;font-weight:600;">${esEfectivo ? 'Total a cobrar' : 'Total del pedido'}</td>
                           <td align="right" style="color:#ffffff;font-size:20px;font-weight:800;">$${datos.total.toLocaleString('es-CO')}</td>
                         </tr>
                       </table>

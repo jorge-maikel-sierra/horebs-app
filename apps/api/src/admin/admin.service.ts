@@ -250,6 +250,7 @@ export class AdminService {
           precioUnitario: i.precio_unitario,
         })),
         costoDomicilio: pedido.costo_domicilio,
+        metodoPago: pedido.metodo_pago,
         total: pedido.total,
         notas: input.notas ?? null,
       });
