@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { NEGOCIO } from '@/lib/negocio';
+import { breadcrumbJsonLd, jsonLdScript } from '@/lib/json-ld';
 
 type Post = {
   titulo: string;
@@ -62,6 +63,10 @@ export default async function BlogPostPage({
 
   if (!post) notFound();
 
+  const urlArticulo = `/blog/${slug}`;
+  const urlArticuloAbsoluta = `https://${NEGOCIO.sitio}${urlArticulo}`;
+  const logoUrl = `https://${NEGOCIO.sitio}/logo-horebs.png`;
+
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Article',
@@ -69,16 +74,30 @@ export default async function BlogPostPage({
     description: post.resumen,
     image: post.imagen_url ?? undefined,
     datePublished: post.publicado_en ?? undefined,
+    mainEntityOfPage: urlArticuloAbsoluta,
     author: { '@type': 'Organization', name: NEGOCIO.nombre },
+    publisher: {
+      '@type': 'Organization',
+      name: NEGOCIO.nombre,
+      logo: { '@type': 'ImageObject', url: logoUrl },
+    },
   };
+
+  const breadcrumbLd = breadcrumbJsonLd([
+    { nombre: 'Inicio', ruta: '/' },
+    { nombre: 'Blog', ruta: '/blog' },
+    { nombre: post.titulo, ruta: urlArticulo },
+  ]);
 
   return (
     <article className="mx-auto max-w-3xl p-8">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c'),
-        }}
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(breadcrumbLd) }}
       />
 
       <Link href="/blog" className="text-sm text-brand-orange underline">

@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import AgregarAlCarritoBoton from '@/components/AgregarAlCarritoBoton';
 import { formatPrecio } from '@/lib/formato';
 import { NEGOCIO } from '@/lib/negocio';
+import { breadcrumbJsonLd, jsonLdScript } from '@/lib/json-ld';
 
 type Variante = {
   id: string;
@@ -88,28 +89,43 @@ export default async function ProductoPage({
 
   const altDescriptivo = `${producto.nombre} a domicilio en Riohacha`;
 
+  const urlProducto = `/menu/${slug}`;
+  const urlProductoAbsoluta = `https://${NEGOCIO.sitio}${urlProducto}`;
+
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Product',
     name: producto.nombre,
     description: producto.descripcion ?? undefined,
     image: producto.imagen_url ?? undefined,
+    sku: producto.id,
+    url: urlProductoAbsoluta,
+    brand: { '@type': 'Brand', name: NEGOCIO.nombre },
     offers: producto.variantes.map((v) => ({
       '@type': 'Offer',
       name: v.nombre,
       price: String(v.precio_oferta ?? v.precio),
       priceCurrency: 'COP',
       availability: 'https://schema.org/InStock',
+      url: urlProductoAbsoluta,
     })),
   };
+
+  const breadcrumbLd = breadcrumbJsonLd([
+    { nombre: 'Inicio', ruta: '/' },
+    { nombre: 'Catálogo', ruta: '/catalogo' },
+    { nombre: producto.nombre, ruta: urlProducto },
+  ]);
 
   return (
     <div className="mx-auto max-w-3xl p-8">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c'),
-        }}
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(breadcrumbLd) }}
       />
 
       <Link href="/catalogo" className="text-sm text-brand-orange underline">

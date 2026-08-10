@@ -3,6 +3,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import AgregarAlCarritoBoton from '@/components/AgregarAlCarritoBoton';
 import { formatPrecio } from '@/lib/formato';
+import { breadcrumbJsonLd, jsonLdScript } from '@/lib/json-ld';
+import { NEGOCIO } from '@/lib/negocio';
 
 export const metadata: Metadata = {
   title: 'Catálogo | Pizzería Horebs',
@@ -141,8 +143,35 @@ export default async function CatalogoPage() {
   const destacados = productos.filter((p) => p.destacado);
   const resto = productos.filter((p) => !p.destacado);
 
+  const breadcrumbLd = breadcrumbJsonLd([
+    { nombre: 'Inicio', ruta: '/' },
+    { nombre: 'Catálogo', ruta: '/catalogo' },
+  ]);
+
+  const itemListLd = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    itemListElement: productos
+      .filter((p) => p.slug)
+      .map((p, i) => ({
+        '@type': 'ListItem',
+        position: i + 1,
+        url: `https://${NEGOCIO.sitio}/menu/${p.slug}`,
+        name: p.nombre,
+      })),
+  };
+
   return (
     <div className="mx-auto max-w-4xl p-8">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(breadcrumbLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(itemListLd) }}
+      />
+
       <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
         Catálogo
       </h1>
