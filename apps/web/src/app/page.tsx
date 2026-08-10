@@ -4,8 +4,11 @@ import { NEGOCIO, whatsappUrl } from '@/lib/negocio';
 import { formatPrecio } from '@/lib/formato';
 import PremiosSection from '@/components/PremiosSection';
 import ClientesFelicesSection from '@/components/ClientesFelicesSection';
+import FaqSection from '@/components/FaqSection';
 import ScrollReveal from '@/components/ScrollReveal';
 import HeroEffect from '@/components/HeroEffect';
+import { faqJsonLd, jsonLdScript } from '@/lib/json-ld';
+import { FAQS } from '@/lib/faqs';
 
 type Producto = {
   id: string;
@@ -122,6 +125,14 @@ export default async function Home() {
       </ScrollReveal>
       <ScrollReveal>
         <PremiosSection />
+      </ScrollReveal>
+
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(faqJsonLd(FAQS)) }}
+      />
+      <ScrollReveal className="border-t border-zinc-200 dark:border-zinc-800">
+        <FaqSection />
       </ScrollReveal>
 
       <ScrollReveal className="border-t border-zinc-200 px-6 py-10 text-center dark:border-zinc-800">

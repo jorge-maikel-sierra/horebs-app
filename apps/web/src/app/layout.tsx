@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
 import { CartProvider } from "@/lib/cart-context";
 import SiteHeader from "@/components/SiteHeader";
@@ -34,7 +35,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="es" className="h-full antialiased" suppressHydrationWarning>
       <body className="min-h-full flex flex-col font-sans">
-        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        <Script
+          id="theme-init"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }}
+        />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: jsonLdScript(restauranteJsonLd()) }}

@@ -70,6 +70,24 @@ export function breadcrumbJsonLd(items: BreadcrumbItem[]) {
   };
 }
 
+type FaqItem = { pregunta: string; respuesta: string };
+
+/** FAQPage — debe reflejar exactamente el texto visible en la sección de FAQ. */
+export function faqJsonLd(items: readonly FaqItem[]) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: items.map((item) => ({
+      '@type': 'Question',
+      name: item.pregunta,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: item.respuesta,
+      },
+    })),
+  };
+}
+
 /** Serializa JSON-LD de forma segura para inyectar en un <script>. */
 export function jsonLdScript(data: unknown) {
   return JSON.stringify(data).replace(/</g, '\\u003c');
