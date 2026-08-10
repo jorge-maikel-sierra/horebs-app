@@ -9,6 +9,7 @@ import { PedidosModule } from './pedidos/pedidos.module';
 import { AdminModule } from './admin/admin.module';
 import { BlogModule } from './blog/blog.module';
 import { TurnosModule } from './turnos/turnos.module';
+import { InformesModule } from './informes/informes.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { TurnosModule } from './turnos/turnos.module';
     AdminModule,
     BlogModule,
     TurnosModule,
+    InformesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

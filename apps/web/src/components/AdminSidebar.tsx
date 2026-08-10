@@ -64,6 +64,15 @@ function IconConfig() {
   );
 }
 
+function IconInformes() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 20V4M4 20h16" />
+      <path d="M8 16v-4M13 16V8M18 16v-7" />
+    </svg>
+  );
+}
+
 function IconVolver() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -113,6 +122,7 @@ const NAV_GENERAL: NavItem[] = [
 ];
 
 const NAV_ADMIN: NavItem[] = [
+  { href: '/admin/informes', label: 'Informes', icon: IconInformes },
   { href: '/admin/usuarios', label: 'Usuarios', icon: IconUsuarios },
   { href: '/admin/blog', label: 'Blog', icon: IconBlog },
   { href: '/admin/configuracion', label: 'Configuración', icon: IconConfig },
