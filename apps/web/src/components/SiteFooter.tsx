@@ -127,7 +127,20 @@ export default function SiteFooter() {
       </div>
 
       <div className="mx-auto mt-10 max-w-4xl border-t border-zinc-200 pt-6 text-center text-xs text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
-        © {anio} {NEGOCIO.nombre}. Todos los derechos reservados.
+        <p>
+          © {anio} {NEGOCIO.nombre}. Todos los derechos reservados.
+        </p>
+        <p className="mt-1">
+          Sitio desarrollado por{' '}
+          <a
+            href="https://jorge-sierra.dev/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-zinc-600 transition-colors hover:text-brand-orange dark:text-zinc-400"
+          >
+            Jorge Maikel Sierra
+          </a>
+        </p>
       </div>
     </footer>
   );
