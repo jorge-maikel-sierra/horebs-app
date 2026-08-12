@@ -275,6 +275,7 @@ export default function AdminSidebar() {
   const router = useRouter();
   const { session, rol } = useRol();
   const [abierto, setAbierto] = useState(false);
+  const [confirmandoSalir, setConfirmandoSalir] = useState(false);
 
   async function cerrarSesion() {
     await supabase.auth.signOut();
@@ -305,7 +306,7 @@ export default function AdminSidebar() {
             rol={rol}
             email={session?.user.email ?? null}
             onNavigate={() => {}}
-            onCerrarSesion={cerrarSesion}
+            onCerrarSesion={() => setConfirmandoSalir(true)}
           />
         </div>
       </aside>
@@ -332,8 +333,39 @@ export default function AdminSidebar() {
               rol={rol}
               email={session?.user.email ?? null}
               onNavigate={() => setAbierto(false)}
-              onCerrarSesion={cerrarSesion}
+              onCerrarSesion={() => setConfirmandoSalir(true)}
             />
+          </div>
+        </div>
+      )}
+
+      {confirmandoSalir && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="animate-fade-in absolute inset-0" onClick={() => setConfirmandoSalir(false)} />
+          <div className="animate-fade-up relative w-full max-w-sm rounded-lg bg-white p-6 dark:bg-zinc-900">
+            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+              ¿Cerrar sesión?
+            </h2>
+            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+              Vas a salir del panel de gestión. Vas a tener que volver a
+              iniciar sesión para entrar de nuevo.
+            </p>
+            <div className="mt-5 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmandoSalir(false)}
+                className="flex-1 rounded-lg border border-zinc-300 py-2 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={cerrarSesion}
+                className="flex-1 rounded-lg bg-red-600 py-2 text-sm font-semibold text-white transition hover:bg-red-700"
+              >
+                Cerrar sesión
+              </button>
+            </div>
           </div>
         </div>
       )}
