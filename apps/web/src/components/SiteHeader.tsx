@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useCart } from '@/lib/cart-context';
 import ThemeToggle from './ThemeToggle';
 
@@ -16,6 +17,9 @@ const NAV_LINKS = [
 export default function SiteHeader() {
   const { count } = useCart();
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
+
+  if (pathname?.startsWith('/admin')) return null;
 
   return (
     <header className="sticky top-3 z-20 mt-3 px-3 sm:top-4 sm:mt-4 sm:px-4">

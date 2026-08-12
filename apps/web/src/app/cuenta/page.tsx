@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { useRol } from '@/lib/use-rol';
@@ -19,6 +20,7 @@ function iniciales(nombre: string, apellido: string, email: string) {
 }
 
 export default function CuentaPage() {
+  const router = useRouter();
   const [session, setSession] = useState<Session | null>(null);
   const [cargandoSesion, setCargandoSesion] = useState(true);
   const { rol } = useRol();
@@ -105,11 +107,23 @@ export default function CuentaPage() {
         );
       }
     } else {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: emailLimpio,
-        password: passwordLimpia,
-      });
-      if (signInError) setError(signInError.message);
+      const { data: signInData, error: signInError } =
+        await supabase.auth.signInWithPassword({
+          email: emailLimpio,
+          password: passwordLimpia,
+        });
+      if (signInError) {
+        setError(signInError.message);
+      } else if (signInData.user) {
+        // Personal (admin o empleado) va directo al panel — el resto se
+        // queda en /cuenta como cualquier cliente.
+        const { data: perfil } = await supabase
+          .from('perfiles_staff')
+          .select('rol')
+          .eq('id', signInData.user.id)
+          .maybeSingle();
+        if (perfil?.rol) router.push('/admin');
+      }
     }
 
     setEnviando(false);
@@ -242,10 +256,10 @@ export default function CuentaPage() {
           </div>
           {(rol === 'admin' || rol === 'empleado') && (
             <Link
-              href="/admin/pos"
+              href="/admin"
               className="btn-press shrink-0 rounded-lg btn-gradient px-3 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
             >
-              Punto de venta
+              Panel de administración
             </Link>
           )}
           <button
