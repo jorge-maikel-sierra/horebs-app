@@ -64,6 +64,16 @@ function IconConfig() {
   );
 }
 
+function IconInventario() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 7l9-4 9 4-9 4-9-4Z" />
+      <path d="M3 7v10l9 4 9-4V7" />
+      <path d="M12 11v10" />
+    </svg>
+  );
+}
+
 function IconInformes() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -119,6 +129,7 @@ const NAV_GENERAL: NavItem[] = [
   { href: '/admin', label: 'Panel', icon: IconPanel, exacto: true },
   { href: '/admin/pos', label: 'Punto de venta', icon: IconPos },
   { href: '/admin/pedidos', label: 'Pedidos', icon: IconPedidos },
+  { href: '/admin/inventario', label: 'Inventario', icon: IconInventario },
 ];
 
 const NAV_ADMIN: NavItem[] = [

@@ -14,6 +14,13 @@ export function formatFecha(fecha: string) {
   }).format(new Date(fecha));
 }
 
+export function formatGramos(gramos: number) {
+  if (Math.abs(gramos) >= 1000) {
+    return `${(gramos / 1000).toLocaleString('es-CO', { maximumFractionDigits: 2 })} kg`;
+  }
+  return `${gramos.toLocaleString('es-CO', { maximumFractionDigits: 1 })} g`;
+}
+
 export function formatHora(fecha: string) {
   return new Intl.DateTimeFormat('es-CO', {
     hour: 'numeric',

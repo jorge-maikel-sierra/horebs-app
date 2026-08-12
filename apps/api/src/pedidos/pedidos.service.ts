@@ -1,6 +1,7 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { MailService } from '../mail/mail.service';
+import { InventarioService } from '../inventario/inventario.service';
 import { calcularItems } from './calcular-items';
 
 export interface CrearPedidoItemInput {
@@ -53,9 +54,12 @@ const METODOS_PAGO = ['efectivo', 'transferencia', 'tarjeta'];
 
 @Injectable()
 export class PedidosService {
+  private readonly logger = new Logger(PedidosService.name);
+
   constructor(
     private readonly supabase: SupabaseService,
     private readonly mail: MailService,
+    private readonly inventario: InventarioService,
   ) {}
 
   async crear(input: CrearPedidoInput): Promise<PedidoDto> {
@@ -112,6 +116,18 @@ export class PedidosService {
       })),
     );
     if (itemsError) throw itemsError;
+
+    try {
+      await this.inventario.descontarPorVenta(
+        itemsCalculados.map((i) => ({ variante_id: i.variante_id, cantidad: i.cantidad })),
+        pedido.id,
+        null,
+      );
+    } catch (err) {
+      this.logger.error(
+        `No se pudo descontar stock para el pedido ${pedido.id}: ${(err as Error).message}`,
+      );
+    }
 
     if (pedido.modalidad === 'domicilio' && pedido.direccion_entrega) {
       this.mail.enviarNotificacionDomicilio({

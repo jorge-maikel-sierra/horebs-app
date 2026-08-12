@@ -10,6 +10,7 @@ import { AdminModule } from './admin/admin.module';
 import { BlogModule } from './blog/blog.module';
 import { TurnosModule } from './turnos/turnos.module';
 import { InformesModule } from './informes/informes.module';
+import { InventarioModule } from './inventario/inventario.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { InformesModule } from './informes/informes.module';
     BlogModule,
     TurnosModule,
     InformesModule,
+    InventarioModule,
   ],
   controllers: [AppController],
   providers: [AppService],

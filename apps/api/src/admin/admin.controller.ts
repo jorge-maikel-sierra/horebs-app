@@ -44,16 +44,21 @@ export class AdminController {
     @Body()
     body: {
       metodo_pago?: string;
+      estado?: string;
       items?: ItemVentaInput[];
     },
+    @UsuarioActual() usuario: UsuarioAutenticado,
   ) {
-    return this.admin.editarPedido(id, body);
+    return this.admin.editarPedido(id, body, usuario.id);
   }
 
   @Delete('pedidos/:id')
   @Roles('admin')
-  eliminarPedido(@Param('id') id: string) {
-    return this.admin.eliminarPedido(id);
+  eliminarPedido(
+    @Param('id') id: string,
+    @UsuarioActual() usuario: UsuarioAutenticado,
+  ) {
+    return this.admin.eliminarPedido(id, usuario.id);
   }
 
   @Get('clientes')

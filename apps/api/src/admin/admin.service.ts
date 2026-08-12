@@ -1,6 +1,7 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { MailService } from '../mail/mail.service';
+import { InventarioService } from '../inventario/inventario.service';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Rol } from '../auth/roles.decorator';
 
@@ -134,6 +135,13 @@ export interface UsuarioStaffDto {
 }
 
 const METODOS_PAGO = ['efectivo', 'transferencia', 'tarjeta'];
+const ESTADOS_PEDIDO = [
+  'pendiente',
+  'confirmado',
+  'en_preparacion',
+  'entregado',
+  'cancelado',
+];
 const MODALIDADES_VENTA = ['local', 'retiro', 'domicilio'];
 const COSTO_DOMICILIO_DEFAULT = 5000;
 const PEDIDO_ADMIN_SELECT =
@@ -141,10 +149,41 @@ const PEDIDO_ADMIN_SELECT =
 
 @Injectable()
 export class AdminService {
+  private readonly logger = new Logger(AdminService.name);
+
   constructor(
     private readonly supabase: SupabaseService,
     private readonly mail: MailService,
+    private readonly inventario: InventarioService,
   ) {}
+
+  private async descontarStockSeguro(
+    items: { variante_id: string; cantidad: number }[],
+    pedidoId: string,
+    usuarioId: string | null,
+  ): Promise<void> {
+    try {
+      await this.inventario.descontarPorVenta(items, pedidoId, usuarioId);
+    } catch (err) {
+      this.logger.error(
+        `No se pudo descontar stock para el pedido ${pedidoId}: ${(err as Error).message}`,
+      );
+    }
+  }
+
+  private async revertirStockSeguro(
+    items: { variante_id: string; cantidad: number }[],
+    pedidoId: string,
+    usuarioId: string | null,
+  ): Promise<void> {
+    try {
+      await this.inventario.revertirPorVenta(items, pedidoId, usuarioId);
+    } catch (err) {
+      this.logger.error(
+        `No se pudo revertir stock para el pedido ${pedidoId}: ${(err as Error).message}`,
+      );
+    }
+  }
 
   async crearVenta(
     input: CrearVentaInput,
@@ -236,6 +275,14 @@ export class AdminService {
     );
     if (itemsError) throw itemsError;
 
+    await this.descontarStockSeguro(
+      itemsCalculados
+        .filter((i) => i.variante_id)
+        .map((i) => ({ variante_id: i.variante_id as string, cantidad: i.cantidad })),
+      pedido.id,
+      registradoPor,
+    );
+
     if (pedido.modalidad === 'domicilio' && pedido.direccion_entrega) {
       this.mail.enviarNotificacionDomicilio({
         pedidoId: pedido.id,
@@ -296,8 +343,10 @@ export class AdminService {
     id: string,
     cambios: {
       metodo_pago?: string;
+      estado?: string;
       items?: ItemVentaInput[];
     },
+    usuarioId: string,
   ): Promise<PedidoAdminDto> {
     if (
       cambios.metodo_pago !== undefined &&
@@ -305,23 +354,45 @@ export class AdminService {
     ) {
       throw new BadRequestException('Método de pago inválido.');
     }
+    if (cambios.estado !== undefined && !ESTADOS_PEDIDO.includes(cambios.estado)) {
+      throw new BadRequestException('Estado inválido.');
+    }
 
     const client = this.supabase.getClient();
 
     const { data: pedidoActual, error: pedidoError } = await client
       .from('pedidos')
-      .select('id, costo_domicilio')
+      .select('id, costo_domicilio, estado, items_pedido(variante_id, cantidad)')
       .eq('id', id)
       .maybeSingle();
     if (pedidoError) throw pedidoError;
     if (!pedidoActual) throw new NotFoundException('Pedido no encontrado.');
 
+    const itemsActuales = (
+      (pedidoActual.items_pedido ?? []) as { variante_id: string | null; cantidad: number }[]
+    )
+      .filter((i) => i.variante_id)
+      .map((i) => ({ variante_id: i.variante_id as string, cantidad: i.cantidad }));
+
+    const cancelando =
+      cambios.estado === 'cancelado' && pedidoActual.estado !== 'cancelado';
+
     const payload: Record<string, string | number> = {};
     if (cambios.metodo_pago !== undefined) {
       payload.metodo_pago = cambios.metodo_pago;
     }
+    if (cambios.estado !== undefined) {
+      payload.estado = cambios.estado;
+    }
 
     if (cambios.items !== undefined) {
+      // Se reemplazan los items: primero se revierte el stock de los
+      // viejos (siempre), y solo se aplica el de los nuevos si el
+      // pedido no está siendo cancelado en la misma llamada.
+      if (itemsActuales.length > 0) {
+        await this.revertirStockSeguro(itemsActuales, id, usuarioId);
+      }
+
       const { itemsCalculados, total: totalItems } =
         await this.calcularItemsVenta(client, cambios.items);
 
@@ -344,6 +415,18 @@ export class AdminService {
       if (insertError) throw insertError;
 
       payload.total = totalItems + (pedidoActual.costo_domicilio ?? 0);
+
+      if (!cancelando) {
+        await this.descontarStockSeguro(
+          itemsCalculados
+            .filter((i) => i.variante_id)
+            .map((i) => ({ variante_id: i.variante_id as string, cantidad: i.cantidad })),
+          id,
+          usuarioId,
+        );
+      }
+    } else if (cancelando && itemsActuales.length > 0) {
+      await this.revertirStockSeguro(itemsActuales, id, usuarioId);
     }
 
     if (Object.keys(payload).length > 0) {
@@ -363,15 +446,33 @@ export class AdminService {
     return this.mapPedido(actualizado);
   }
 
-  async eliminarPedido(id: string): Promise<void> {
+  async eliminarPedido(id: string, usuarioId: string): Promise<void> {
+    const client = this.supabase.getClient();
+    const { data: pedido, error: pedidoError } = await client
+      .from('pedidos')
+      .select('id, items_pedido(variante_id, cantidad)')
+      .eq('id', id)
+      .maybeSingle();
+    if (pedidoError) throw pedidoError;
+    if (!pedido) throw new NotFoundException('Pedido no encontrado.');
+
+    const itemsActuales = (
+      (pedido.items_pedido ?? []) as { variante_id: string | null; cantidad: number }[]
+    )
+      .filter((i) => i.variante_id)
+      .map((i) => ({ variante_id: i.variante_id as string, cantidad: i.cantidad }));
+
     // items_pedido tiene ON DELETE CASCADE hacia pedidos — se borran solos.
-    const { error, count } = await this.supabase
-      .getClient()
+    const { error, count } = await client
       .from('pedidos')
       .delete({ count: 'exact' })
       .eq('id', id);
     if (error) throw error;
     if (!count) throw new NotFoundException('Pedido no encontrado.');
+
+    if (itemsActuales.length > 0) {
+      await this.revertirStockSeguro(itemsActuales, id, usuarioId);
+    }
   }
 
   private mapPedido(p: any): PedidoAdminDto {
