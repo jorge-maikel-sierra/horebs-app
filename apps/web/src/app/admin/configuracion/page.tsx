@@ -3,6 +3,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import RequireRol from '@/components/RequireRol';
 import { adminFetch } from '@/lib/admin-fetch';
+import CargandoSkeleton from '@/components/CargandoSkeleton';
 
 function ConfiguracionInterna() {
   const [correoDomiciliario, setCorreoDomiciliario] = useState('');
@@ -57,9 +58,7 @@ function ConfiguracionInterna() {
       </p>
 
       {cargando ? (
-        <p className="mt-6 text-sm text-zinc-500 dark:text-zinc-400">
-          Cargando…
-        </p>
+        <CargandoSkeleton filas={2} />
       ) : (
         <form onSubmit={guardar} className="mt-6 space-y-4">
           <div>

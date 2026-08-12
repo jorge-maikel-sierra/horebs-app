@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { adminFetch } from '@/lib/admin-fetch';
 import { formatPrecio } from '@/lib/formato';
 import { useRol } from '@/lib/use-rol';
+import CargandoSkeleton from '@/components/CargandoSkeleton';
 
 type ItemPedido = {
   variante_id: string | null;
@@ -374,11 +375,7 @@ function PedidosInterno() {
         className="mt-4 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
       />
 
-      {cargando && (
-        <p className="mt-6 text-sm text-zinc-500 dark:text-zinc-400">
-          Cargando…
-        </p>
-      )}
+      {cargando && <CargandoSkeleton filas={5} />}
       {error && <p className="mt-6 text-sm text-red-600">{error}</p>}
 
       {!cargando && !error && pedidos.length === 0 && (

@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import RequireRol from '@/components/RequireRol';
 import { adminFetch } from '@/lib/admin-fetch';
 import type { Rol } from '@/lib/use-rol';
+import CargandoSkeleton from '@/components/CargandoSkeleton';
 
 type UsuarioStaff = { id: string; email: string; rol: Rol; created_at: string };
 
@@ -99,9 +100,7 @@ function UsuariosInterno() {
 
       <div className="mt-8">
         {cargando ? (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            Cargando…
-          </p>
+          <CargandoSkeleton filas={4} />
         ) : usuarios.length === 0 ? (
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
             Todavía no hay usuarios con rol asignado.

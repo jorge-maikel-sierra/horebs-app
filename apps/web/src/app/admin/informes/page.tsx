@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { adminFetch } from '@/lib/admin-fetch';
 import { formatPrecio } from '@/lib/formato';
+import CargandoSkeleton from '@/components/CargandoSkeleton';
 
 type InformeDia = { fecha: string; total: number; pedidos: number };
 type InformeDesglose = { clave: string; total: number; pedidos: number };
@@ -585,11 +586,7 @@ export default function InformesPage() {
         </button>
       </div>
 
-      {cargando && (
-        <p className="mt-8 text-sm text-zinc-500 dark:text-zinc-400">
-          Cargando informe…
-        </p>
-      )}
+      {cargando && <CargandoSkeleton filas={8} />}
       {error && <p className="mt-8 text-sm text-red-600">{error}</p>}
 
       {!cargando && !error && informe && r && (

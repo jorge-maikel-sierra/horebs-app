@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { adminFetch } from '@/lib/admin-fetch';
 import { formatGramos, formatFecha } from '@/lib/formato';
 import InventarioTabs from '@/components/InventarioTabs';
+import CargandoSkeleton from '@/components/CargandoSkeleton';
 
 type Insumo = {
   id: string;
@@ -162,7 +163,7 @@ export default function InventarioInsumosPage() {
         </div>
       )}
 
-      {cargando && <p className="mt-6 text-sm text-zinc-500 dark:text-zinc-400">Cargando…</p>}
+      {cargando && <CargandoSkeleton />}
       {error && <p className="mt-6 text-sm text-red-600">{error}</p>}
       {!cargando && !error && insumos.length === 0 && (
         <p className="mt-6 text-sm text-zinc-500 dark:text-zinc-400">

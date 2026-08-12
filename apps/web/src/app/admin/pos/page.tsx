@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { adminFetch } from '@/lib/admin-fetch';
 import { formatPrecio, formatHora } from '@/lib/formato';
+import CargandoSkeleton from '@/components/CargandoSkeleton';
 
 type Variante = {
   id: string;
@@ -410,8 +411,8 @@ function PosInterno() {
 
   if (cargandoTurno) {
     return (
-      <div className="mx-auto max-w-md p-8 text-center text-zinc-500 dark:text-zinc-400">
-        Cargando turno…
+      <div className="p-8">
+        <CargandoSkeleton filas={10} />
       </div>
     );
   }

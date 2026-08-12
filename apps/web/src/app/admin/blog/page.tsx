@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState, type FormEvent } from 'react';
 import RequireRol from '@/components/RequireRol';
 import { adminFetch } from '@/lib/admin-fetch';
+import CargandoSkeleton from '@/components/CargandoSkeleton';
 
 type Estado = 'borrador' | 'publicado';
 
@@ -271,9 +272,7 @@ function BlogAdminInterno() {
 
       <div className="mt-8">
         {cargando ? (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            Cargando…
-          </p>
+          <CargandoSkeleton filas={5} />
         ) : posts.length === 0 ? (
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
             Todavía no hay artículos.
