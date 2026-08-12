@@ -1,7 +1,9 @@
 import { Controller, Get } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import { SupabaseService } from '../supabase/supabase.service';
 
 @Controller('health')
+@SkipThrottle()
 export class HealthController {
   constructor(private readonly supabase: SupabaseService) {}
 
