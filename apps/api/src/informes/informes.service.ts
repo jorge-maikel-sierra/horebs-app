@@ -4,6 +4,16 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 export type Granularidad = 'dia' | 'mes';
 
+/**
+ * El negocio opera en Riohacha (América/Bogotá, UTC-5 fijo, sin horario de
+ * verano) pero todos los timestamps se guardan en UTC. El horario de
+ * atención (4pm-11pm local) cae entre las 21:00 UTC y las 04:00 UTC del día
+ * siguiente — agrupar/filtrar por fecha UTC cruda parte la noche de venta
+ * por la mitad y corre pedidos de la noche al día siguiente.
+ */
+const OFFSET_ZONA_HORARIA = '-05:00';
+const OFFSET_MS = 5 * 60 * 60 * 1000;
+
 export interface InformeDiaDto {
   fecha: string;
   total: number;
@@ -489,7 +499,12 @@ export class InformesService {
   }
 
   private claveBucket(fechaIso: string, granularidad: Granularidad): string {
-    return granularidad === 'mes' ? fechaIso.slice(0, 7) : fechaIso.slice(0, 10);
+    const local = this.aFechaLocal(fechaIso);
+    return granularidad === 'mes' ? local.slice(0, 7) : local.slice(0, 10);
+  }
+
+  private aFechaLocal(fechaIso: string): string {
+    return new Date(new Date(fechaIso).getTime() - OFFSET_MS).toISOString();
   }
 
   private serializarSerie(
@@ -549,7 +564,8 @@ export class InformesService {
   }
 
   private resolverRango(desdeInput?: string, hastaInput?: string) {
-    const hastaDate = hastaInput ? new Date(`${hastaInput}T00:00:00`) : new Date();
+    const hoyLocal = new Date(this.aFechaLocal(new Date().toISOString()));
+    const hastaDate = hastaInput ? new Date(`${hastaInput}T00:00:00`) : hoyLocal;
     const desdeDate = desdeInput
       ? new Date(`${desdeInput}T00:00:00`)
       : new Date(hastaDate.getTime() - 6 * 24 * 60 * 60 * 1000);
@@ -568,8 +584,8 @@ export class InformesService {
     return {
       desde,
       hasta,
-      desdeISO: `${desde}T00:00:00.000`,
-      hastaISO: `${hasta}T23:59:59.999`,
+      desdeISO: `${desde}T00:00:00.000${OFFSET_ZONA_HORARIA}`,
+      hastaISO: `${hasta}T23:59:59.999${OFFSET_ZONA_HORARIA}`,
     };
   }
 
