@@ -13,6 +13,7 @@ import { BlogModule } from './blog/blog.module';
 import { TurnosModule } from './turnos/turnos.module';
 import { InformesModule } from './informes/informes.module';
 import { InventarioModule } from './inventario/inventario.module';
+import { MensajeriaModule } from './mensajeria/mensajeria.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { InventarioModule } from './inventario/inventario.module';
     TurnosModule,
     InformesModule,
     InventarioModule,
+    MensajeriaModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],

@@ -9,7 +9,10 @@ async function bootstrap() {
   // Esto fuerza que toda resolución DNS del proceso prefiera IPv4.
   setDefaultResultOrder('ipv4first');
 
-  const app = await NestFactory.create(AppModule);
+  // rawBody: true — Meta firma cada webhook (WhatsApp/Messenger/Instagram)
+  // con HMAC sobre el body crudo exacto. Sin esto, Express solo deja el
+  // JSON ya parseado y la verificación de firma no calza nunca.
+  const app = await NestFactory.create(AppModule, { rawBody: true });
 
   // CORS: FRONTEND_URL admite una lista separada por comas (dominio propio,
   // subdominio www, la URL de Vercel, etc.).

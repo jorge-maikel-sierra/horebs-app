@@ -49,8 +49,28 @@ export interface PedidoDto {
   items: PedidoItemDto[];
 }
 
+export interface PedidoResumenDto {
+  id: string;
+  estado: string;
+  total: number;
+  created_at: string;
+  items: { producto_nombre: string; variante_nombre: string; cantidad: number }[];
+}
+
 const MODALIDADES = ['domicilio', 'retiro'];
 const METODOS_PAGO = ['efectivo', 'transferencia', 'tarjeta'];
+
+/**
+ * Meta entrega el teléfono con código de país (573157861208); en
+ * `clientes.telefono` se guarda solo el número local (3157861208).
+ */
+function normalizarTelefonoCO(telefono: string): string {
+  const digitos = telefono.replace(/\D/g, '');
+  if (digitos.length === 12 && digitos.startsWith('57')) {
+    return digitos.slice(2);
+  }
+  return digitos;
+}
 
 @Injectable()
 export class PedidosService {
@@ -211,6 +231,49 @@ export class PedidosService {
         subtotal: i.subtotal,
       })),
     };
+  }
+
+  /**
+   * Últimos pedidos de un cliente por teléfono — usado por el bot de
+   * WhatsApp/Messenger/Instagram para responder "¿dónde está mi pedido?".
+   * `telefono` puede venir con el prefijo de país que entrega Meta
+   * (573157861208) o ya en formato local (3157861208) como se guarda en
+   * `clientes.telefono` — se normaliza antes de buscar.
+   */
+  async buscarPorTelefono(telefono: string): Promise<PedidoResumenDto[]> {
+    const local = normalizarTelefonoCO(telefono);
+    if (!local) return [];
+
+    const client = this.supabase.getClient();
+    const { data: cliente, error: clienteError } = await client
+      .from('clientes')
+      .select('id')
+      .eq('telefono', local)
+      .maybeSingle();
+    if (clienteError) throw clienteError;
+    if (!cliente) return [];
+
+    const { data, error } = await client
+      .from('pedidos')
+      .select(
+        'id, estado, total, created_at, items_pedido(cantidad, variantes_producto(nombre, productos(nombre)))',
+      )
+      .eq('cliente_id', cliente.id)
+      .order('created_at', { ascending: false })
+      .limit(3);
+    if (error) throw error;
+
+    return (data ?? []).map((p: any) => ({
+      id: p.id,
+      estado: p.estado,
+      total: p.total,
+      created_at: p.created_at,
+      items: (p.items_pedido ?? []).map((i: any) => ({
+        producto_nombre: i.variantes_producto?.productos?.nombre ?? '',
+        variante_nombre: i.variantes_producto?.nombre ?? '',
+        cantidad: i.cantidad,
+      })),
+    }));
   }
 
   private validar(input: CrearPedidoInput) {
