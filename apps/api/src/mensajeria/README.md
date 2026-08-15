@@ -27,6 +27,45 @@ funciona la Instagram Messaging API (la cuenta de Instagram tiene que estar
 vinculada a la Página en Meta Business Suite antes de que ese canal
 funcione).
 
+## Cómo obtener cada credencial
+
+Requisito previo: la verificación de negocio de "Pizzeria Horeb's" en Meta
+Business Manager tiene que estar aprobada (o muy avanzada) para poder
+generar tokens permanentes y conectar un número real — con la verificación
+pendiente solo se puede probar con el número de prueba que da Meta.
+
+1. **Crear la Meta App**: [developers.facebook.com/apps](https://developers.facebook.com/apps)
+   → Crear app → tipo "Business" → asociarla al Business Manager
+   "Pizzeria Horeb's".
+2. **`META_APP_SECRET`**: App Dashboard → Configuración → Básica → "Clave
+   secreta de la app" → Mostrar (pide contraseña de Facebook).
+3. **WhatsApp** (`WHATSAPP_PHONE_NUMBER_ID` / `WHATSAPP_ACCESS_TOKEN`):
+   - Agregar producto → WhatsApp. La pestaña "Introducción a la API" da un
+     número de prueba con su Phone Number ID y un token temporal de 24h
+     (solo para pruebas rápidas con `curl`).
+   - Número real: WhatsApp Manager → agregar el número dedicado →
+     verificar por SMS/llamada → copiar su Phone Number ID.
+   - Token permanente: Configuración empresarial → Usuarios del sistema →
+     crear usuario del sistema (rol Admin) → Generar token → permisos
+     `whatsapp_business_messaging` + `whatsapp_business_management` → sin
+     fecha de expiración.
+4. **Messenger** (`MESSENGER_PAGE_ID` / `MESSENGER_PAGE_ACCESS_TOKEN`):
+   - Agregar producto → Messenger → Configuración de la API → generar
+     token para la Página del negocio (mejor desde el Usuario del sistema,
+     permiso `pages_messaging`, así no depende de una sesión personal ni
+     expira).
+   - Page ID: misma pantalla, o Página de Facebook → Configuración →
+     General → ID de la página.
+5. **Instagram**: sin variables nuevas — usa `MESSENGER_PAGE_ACCESS_TOKEN`.
+   Requiere cuenta profesional (business/creator) vinculada a la Página
+   desde Meta Business Suite → Configuración → Cuentas vinculadas. Después,
+   Agregar producto → Instagram → vincular.
+6. **`META_WEBHOOK_VERIFY_TOKEN`**: no sale de Meta, lo inventás vos —
+   `openssl rand -hex 24` — y tiene que ser idéntico en Railway y en el
+   campo "Verify Token" al registrar el webhook (paso siguiente).
+7. **`META_GRAPH_API_VERSION`**: opcional, ya tiene default `v21.0` en el
+   código.
+
 ## Registrar los webhooks en Meta
 
 Por cada producto (WhatsApp, Messenger, Instagram) en el App Dashboard →
