@@ -98,6 +98,8 @@ export class WebhooksService {
       evento.telefono,
       evento.texto,
     );
+    // null = la herramienta (ej. el botón de catálogo) ya mandó el mensaje.
+    if (respuesta === null) return;
     await this.metaGraph.enviarMensajeSesion(
       evento.canal,
       evento.identificadorExterno,

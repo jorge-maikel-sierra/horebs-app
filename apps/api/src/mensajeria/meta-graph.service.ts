@@ -54,6 +54,61 @@ export class MetaGraphService {
     await this.conReintentos(() => this.enviarMessengerOInstagram(destinatarioId, texto));
   }
 
+  /**
+   * Botón nativo de WhatsApp que abre el catálogo en el navegador — mejor
+   * UX que mandar la lista completa de precios como texto. Messenger/
+   * Instagram usan un formato de botón distinto (no armado todavía, sin
+   * canal en producción para probarlo) — por ahora caen a texto plano.
+   */
+  async enviarBotonCatalogo(
+    canal: CanalMensajeria,
+    destinatarioId: string,
+    url: string,
+  ): Promise<void> {
+    if (canal !== 'whatsapp') {
+      await this.enviarMensajeSesion(
+        canal,
+        destinatarioId,
+        `Mirá nuestro catálogo completo con fotos y precios acá: ${url}`,
+      );
+      return;
+    }
+    await this.conReintentos(() => this.enviarWhatsappBotonCatalogo(destinatarioId, url));
+  }
+
+  private async enviarWhatsappBotonCatalogo(destinatarioId: string, url: string): Promise<void> {
+    if (!this.whatsappToken || !this.whatsappPhoneNumberId) {
+      throw new Error('WhatsApp no está configurado.');
+    }
+    const res = await fetch(
+      `https://graph.facebook.com/${this.version}/${this.whatsappPhoneNumberId}/messages`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.whatsappToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messaging_product: 'whatsapp',
+          to: destinatarioId,
+          type: 'interactive',
+          interactive: {
+            type: 'cta_url',
+            body: { text: 'Mirá nuestro catálogo completo con fotos y precios 🍕' },
+            action: {
+              name: 'cta_url',
+              parameters: { display_text: 'Ver catálogo', url },
+            },
+          },
+        }),
+      },
+    );
+    if (!res.ok) {
+      const cuerpo = await res.text().catch(() => '');
+      throw new Error(`WhatsApp Graph API respondió ${res.status}: ${cuerpo}`);
+    }
+  }
+
   private async enviarWhatsapp(destinatarioId: string, texto: string): Promise<void> {
     if (!this.whatsappToken || !this.whatsappPhoneNumberId) {
       throw new Error('WhatsApp no está configurado.');

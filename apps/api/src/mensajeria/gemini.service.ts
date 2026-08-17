@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { CatalogService } from '../catalog/catalog.service';
 import { PedidosService } from '../pedidos/pedidos.service';
+import { MetaGraphService } from './meta-graph.service';
 import { ConversacionesService, type CanalMensajeria } from './conversaciones.service';
 
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/interactions';
@@ -18,17 +19,35 @@ const SYSTEM_INSTRUCTION = `Sos el asistente virtual de ${NOMBRE_NEGOCIO}, una p
 
 Reglas estrictas:
 - Nunca inventes precios, productos, horarios ni el estado de un pedido. Para cualquiera de esos datos, usá siempre la herramienta correspondiente.
+- Si el cliente pide el menú o catálogo en general (sin nombrar un producto puntual), usá enviar_link_catalogo — NO listes todos los precios en el mensaje, eso ya lo manda la herramienta como un botón.
+- Si el cliente pregunta por un producto específico (por ejemplo "cuánto vale la pizza hawaiana", "tienen pizza margarita personal"), usá consultar_producto con el nombre de ese producto.
 - Si el pedido del cliente es vago o genérico (por ejemplo "quiero más información", "contame más", "necesito ayuda") y no queda claro qué dato específico necesita, NO llames a ninguna herramienta todavía — preguntale primero si quiere ver el menú, el horario, el estado de su pedido, o hablar con alguien del equipo. Usá una herramienta recién cuando el cliente ya haya aclarado qué necesita.
 - Si te preguntan algo que ninguna herramienta puede responder, o el cliente pide hablar con alguien del equipo, usá la herramienta derivar_a_humano.
-- Mantené las respuestas breves — como un mensaje real de WhatsApp, no un párrafo largo. Usá el catálogo completo (${URL_CATALOGO}) cuando haga falta profundizar.
+- Mantené las respuestas breves — como un mensaje real de WhatsApp, no un párrafo largo.
 - No prometas descuentos, promociones ni tiempos de entrega exactos que no te haya dado una herramienta.`;
 
 const HERRAMIENTAS = [
   {
     type: 'function',
-    name: 'obtener_menu',
-    description: 'Devuelve el catálogo real de productos y precios de la pizzería.',
+    name: 'enviar_link_catalogo',
+    description:
+      'Manda el link del catálogo completo con fotos como botón de WhatsApp. Usar cuando el cliente pide ver el menú o catálogo en general, sin preguntar por un producto puntual.',
     parameters: { type: 'object', properties: {} },
+  },
+  {
+    type: 'function',
+    name: 'consultar_producto',
+    description: 'Busca el precio y descripción real de un producto específico del menú por nombre.',
+    parameters: {
+      type: 'object',
+      properties: {
+        nombre_producto: {
+          type: 'string',
+          description: 'Nombre del producto que pidió el cliente, ej. "pizza hawaiana"',
+        },
+      },
+      required: ['nombre_producto'],
+    },
   },
   {
     type: 'function',
@@ -86,6 +105,7 @@ export class GeminiService {
     private readonly catalog: CatalogService,
     private readonly pedidos: PedidosService,
     private readonly conversaciones: ConversacionesService,
+    private readonly metaGraph: MetaGraphService,
   ) {
     this.apiKey = process.env.GEMINI_API_KEY;
     this.modelo = process.env.GEMINI_MODEL || MODELO_DEFAULT;
@@ -94,12 +114,16 @@ export class GeminiService {
     }
   }
 
+  /**
+   * Devuelve `null` cuando la herramienta ya mandó el mensaje ella misma
+   * (el botón de catálogo) — en ese caso no hay que enviar nada más.
+   */
   async responder(
     canal: CanalMensajeria,
     identificadorExterno: string,
     telefono: string | null,
     textoEntrante: string,
-  ): Promise<string> {
+  ): Promise<string | null> {
     if (!this.apiKey) {
       return 'En este momento no puedo responder automáticamente — escribí *humano* para que te atienda alguien del equipo.';
     }
@@ -117,8 +141,14 @@ export class GeminiService {
       );
       if (!llamada || respuesta.status !== 'requires_action') break;
 
+      if (llamada.name === 'enviar_link_catalogo') {
+        await this.metaGraph.enviarBotonCatalogo(canal, identificadorExterno, URL_CATALOGO);
+        return null;
+      }
+
       const resultado = await this.ejecutarHerramienta(
         llamada.name,
+        llamada.arguments,
         canal,
         identificadorExterno,
         telefono,
@@ -144,14 +174,15 @@ export class GeminiService {
 
   private async ejecutarHerramienta(
     nombre: string,
+    argumentos: Record<string, unknown>,
     canal: CanalMensajeria,
     identificadorExterno: string,
     telefono: string | null,
   ): Promise<string> {
     try {
       switch (nombre) {
-        case 'obtener_menu':
-          return await this.textoMenu();
+        case 'consultar_producto':
+          return await this.textoProducto(String(argumentos.nombre_producto ?? ''));
         case 'obtener_horario':
           return `Horario: ${HORARIO}\nDirección: ${DIRECCION}`;
         case 'consultar_pedido':
@@ -168,17 +199,22 @@ export class GeminiService {
     }
   }
 
-  private async textoMenu(): Promise<string> {
+  private async textoProducto(nombreBuscado: string): Promise<string> {
+    const normalizar = (s: string) =>
+      s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+    const buscado = normalizar(nombreBuscado);
     const productos = await this.catalog.getProductos();
-    if (productos.length === 0) {
-      return `El catálogo no tiene productos cargados ahora mismo. Enviá al cliente este link: ${URL_CATALOGO}`;
-    }
-    const lineas = productos.map((p) => {
-      const precios = p.variantes.map((v) => v.precio_oferta ?? v.precio);
-      const desde = precios.length > 0 ? Math.min(...precios) : null;
-      return `${p.nombre}${desde !== null ? ` — desde $${desde.toLocaleString('es-CO')}` : ''}`;
+    const encontrado = productos.find((p) => {
+      const nombre = normalizar(p.nombre);
+      return nombre.includes(buscado) || buscado.includes(nombre);
     });
-    return `Catálogo completo:\n${lineas.join('\n')}\n\nLink con fotos: ${URL_CATALOGO}`;
+    if (!encontrado) {
+      return `No se encontró un producto llamado "${nombreBuscado}" en el catálogo. Ofrecé mandar el link completo con enviar_link_catalogo.`;
+    }
+    const variantes = encontrado.variantes
+      .map((v) => `${v.nombre}: $${(v.precio_oferta ?? v.precio).toLocaleString('es-CO')}`)
+      .join(', ');
+    return `${encontrado.nombre}${encontrado.descripcion ? ` — ${encontrado.descripcion}` : ''}. Precios: ${variantes}`;
   }
 
   private async textoPedido(telefono: string | null): Promise<string> {
