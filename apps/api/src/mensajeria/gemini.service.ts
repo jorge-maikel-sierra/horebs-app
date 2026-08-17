@@ -14,6 +14,9 @@ const HORARIO = 'Lunes a domingo, 4:00pm – 11:00pm';
 const DIRECCION = 'Carrera 7 # 17B - 66, Riohacha, La Guajira';
 const NOMBRE_NEGOCIO = 'Pizzería Horebs';
 const URL_CATALOGO = 'https://pizzeriahorebs.shop/catalogo';
+// Mismo valor por defecto que usa el POS (admin.service.ts) — no se
+// inventa un número nuevo acá.
+const COSTO_DOMICILIO = 5000;
 
 // Tamaños y conectores no distinguen un producto de otro — se ignoran al
 // comparar. "pizza personal hawaiana" tiene que matchear "Pizza Hawaiana"
@@ -39,7 +42,15 @@ Reglas estrictas:
 - Si el pedido del cliente es vago o genérico (por ejemplo "quiero más información", "contame más", "necesito ayuda") y no queda claro qué dato específico necesita, NO llames a ninguna herramienta todavía — preguntale primero si quiere ver el menú, el horario, el estado de su pedido, o hablar con alguien del equipo. Usá una herramienta recién cuando el cliente ya haya aclarado qué necesita.
 - Si te preguntan algo que ninguna herramienta puede responder, o el cliente pide hablar con alguien del equipo, usá la herramienta derivar_a_humano.
 - Mantené las respuestas breves — como un mensaje real de WhatsApp, no un párrafo largo.
-- No prometas descuentos, promociones ni tiempos de entrega exactos que no te haya dado una herramienta.`;
+- No prometas descuentos, promociones ni tiempos de entrega exactos que no te haya dado una herramienta.
+
+Cómo tomar un pedido (importante, seguí este orden):
+1. Cuando el cliente quiera pedir algo, andá anotando los productos, tamaños y cantidades a medida que los va diciendo — podés ir preguntando de a uno si hace falta.
+2. Preguntá si es para domicilio, para retirar, o para comer en el local. Si es domicilio, pedí la dirección.
+3. Cuando el cliente confirme que ya terminó de elegir todo, usá calcular_pedido con la lista completa de items y la modalidad — esa herramienta calcula el total real con los precios del catálogo. NUNCA sumes los precios vos mismo.
+4. Mostrale al cliente el resumen que te devuelve la herramienta (productos, domicilio si aplica, total) y preguntale cuál va a ser su método de pago (efectivo, transferencia o tarjeta).
+5. Apenas el cliente te diga el método de pago, usá derivar_a_humano para que una persona del equipo verifique y registre el pedido — no lo registrás vos, solo avisale al cliente que en breve alguien del equipo confirma todo.
+- No es necesario crear el pedido en el sistema — nunca prometas que el pedido "ya quedó registrado", decí que una persona del equipo lo va a confirmar.`;
 
 const HERRAMIENTAS = [
   {
@@ -66,6 +77,37 @@ const HERRAMIENTAS = [
   },
   {
     type: 'function',
+    name: 'calcular_pedido',
+    description:
+      'Calcula el total real de un pedido con los productos, tamaños y cantidades que el cliente eligió, incluyendo el costo de domicilio si aplica. Usar solo cuando el cliente ya terminó de elegir todo lo que quiere pedir.',
+    parameters: {
+      type: 'object',
+      properties: {
+        items: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              producto: { type: 'string', description: 'Nombre del producto, ej. "pizza hawaiana"' },
+              tamano: {
+                type: 'string',
+                description: 'Tamaño elegido: personal, mediana o grande. Vacío si el producto no tiene tamaños (ej. bebidas).',
+              },
+              cantidad: { type: 'number', description: 'Cantidad de unidades' },
+            },
+            required: ['producto', 'cantidad'],
+          },
+        },
+        modalidad: {
+          type: 'string',
+          description: 'domicilio, retiro, o local',
+        },
+      },
+      required: ['items', 'modalidad'],
+    },
+  },
+  {
+    type: 'function',
     name: 'obtener_horario',
     description: 'Devuelve el horario de atención y la dirección del local.',
     parameters: { type: 'object', properties: {} },
@@ -81,7 +123,7 @@ const HERRAMIENTAS = [
     type: 'function',
     name: 'derivar_a_humano',
     description:
-      'Marca la conversación para que la atienda una persona del equipo y deja de responder automáticamente.',
+      'Marca la conversación para que la atienda una persona del equipo y deja de responder automáticamente. Usar también al final de tomar un pedido, una vez que el cliente ya dio el método de pago.',
     parameters: { type: 'object', properties: {} },
   },
 ];
@@ -104,11 +146,20 @@ interface RespuestaInteraction {
   steps: (PasoFunctionCall | PasoModelOutput | { type: string })[];
 }
 
+type Producto = Awaited<ReturnType<CatalogService['getProductos']>>[number];
+
+interface BusquedaProducto {
+  encontrado?: Producto;
+  error?: string;
+}
+
 /**
- * Function-calling contra la Interactions API de Gemini: el modelo decide
- * qué herramienta llamar, pero el dato real siempre sale de Supabase vía
- * los mismos servicios que ya usa el resto del sistema — el modelo nunca
- * inventa precios, horarios ni estados de pedido.
+ * Function-calling contra la Interactions API de Gemini, con memoria de
+ * conversación entre mensajes separados vía `previous_interaction_id`
+ * (persistido en conversaciones_bot). El modelo decide qué herramienta
+ * llamar, pero el dato real siempre sale de Supabase vía los mismos
+ * servicios que ya usa el resto del sistema — nunca inventa precios,
+ * horarios, ni suma totales por su cuenta.
  */
 @Injectable()
 export class GeminiService {
@@ -143,11 +194,18 @@ export class GeminiService {
       return 'En este momento no puedo responder automáticamente — escribí *humano* para que te atienda alguien del equipo.';
     }
 
+    const interaccionPrevia = await this.conversaciones.obtenerUltimaInteraccionGemini(
+      canal,
+      identificadorExterno,
+    );
+
     let respuesta = await this.llamarGemini({
       model: this.modelo,
       system_instruction: SYSTEM_INSTRUCTION,
-      input: textoEntrante,
       tools: HERRAMIENTAS,
+      ...(interaccionPrevia
+        ? { previous_interaction_id: interaccionPrevia, input: textoEntrante }
+        : { input: textoEntrante }),
     });
 
     for (let turno = 0; turno < MAX_TURNOS_HERRAMIENTAS; turno++) {
@@ -158,6 +216,7 @@ export class GeminiService {
 
       if (llamada.name === 'enviar_link_catalogo') {
         await this.metaGraph.enviarBotonCatalogo(canal, identificadorExterno, URL_CATALOGO);
+        await this.conversaciones.guardarInteraccionGemini(canal, identificadorExterno, respuesta.id);
         return null;
       }
 
@@ -181,6 +240,8 @@ export class GeminiService {
       });
     }
 
+    await this.conversaciones.guardarInteraccionGemini(canal, identificadorExterno, respuesta.id);
+
     const salida = respuesta.steps.find(
       (p): p is PasoModelOutput => p.type === 'model_output',
     );
@@ -198,6 +259,8 @@ export class GeminiService {
       switch (nombre) {
         case 'consultar_producto':
           return await this.textoProducto(String(argumentos.nombre_producto ?? ''));
+        case 'calcular_pedido':
+          return await this.textoCalcularPedido(argumentos);
         case 'obtener_horario':
           return `Horario: ${HORARIO}\nDirección: ${DIRECCION}`;
         case 'consultar_pedido':
@@ -214,38 +277,96 @@ export class GeminiService {
     }
   }
 
-  private async textoProducto(nombreBuscado: string): Promise<string> {
-    const productos = await this.catalog.getProductos();
+  private async buscarProductoUnico(
+    nombreBuscado: string,
+    productos: Producto[],
+  ): Promise<BusquedaProducto> {
     const buscadas = palabrasSignificativas(nombreBuscado);
     if (buscadas.length === 0) {
-      return `No se pudo identificar qué producto se pidió a partir de "${nombreBuscado}". Ofrecé mandar el link completo con enviar_link_catalogo.`;
+      return { error: `No se pudo identificar el producto "${nombreBuscado}".` };
     }
-
     const puntuados = productos
-      .map((p) => {
-        const palabrasProducto = palabrasSignificativas(p.nombre);
-        const coincidencias = palabrasProducto.filter((w) => buscadas.includes(w)).length;
-        return { producto: p, puntaje: coincidencias };
-      })
+      .map((p) => ({
+        producto: p,
+        puntaje: palabrasSignificativas(p.nombre).filter((w) => buscadas.includes(w)).length,
+      }))
       .filter((r) => r.puntaje > 0)
       .sort((a, b) => b.puntaje - a.puntaje);
 
     if (puntuados.length === 0) {
-      return `No se encontró ningún producto que coincida con "${nombreBuscado}" en el catálogo. Ofrecé mandar el link completo con enviar_link_catalogo.`;
+      return { error: `No se encontró ningún producto que coincida con "${nombreBuscado}" en el catálogo.` };
     }
-
     const mejorPuntaje = puntuados[0].puntaje;
     const empatados = puntuados.filter((r) => r.puntaje === mejorPuntaje);
     if (empatados.length > 1) {
       const nombres = empatados.map((r) => r.producto.nombre).join(', ');
-      return `Hay más de un producto que podría coincidir con "${nombreBuscado}": ${nombres}. Preguntale al cliente cuál de esos quiere.`;
+      return { error: `"${nombreBuscado}" es ambiguo — podría ser: ${nombres}. Hay que preguntarle al cliente cuál de esos quiere.` };
     }
+    return { encontrado: empatados[0].producto };
+  }
 
-    const encontrado = empatados[0].producto;
-    const variantes = encontrado.variantes
+  private async textoProducto(nombreBuscado: string): Promise<string> {
+    const productos = await this.catalog.getProductos();
+    const { encontrado, error } = await this.buscarProductoUnico(nombreBuscado, productos);
+    if (error) return `${error} Si no se puede resolver, ofrecé mandar el link completo con enviar_link_catalogo.`;
+    const variantes = encontrado!.variantes
       .map((v) => `${v.nombre}: $${(v.precio_oferta ?? v.precio).toLocaleString('es-CO')}`)
       .join(', ');
-    return `${encontrado.nombre}${encontrado.descripcion ? ` — ${encontrado.descripcion}` : ''}. Precios: ${variantes}`;
+    return `${encontrado!.nombre}${encontrado!.descripcion ? ` — ${encontrado!.descripcion}` : ''}. Precios: ${variantes}`;
+  }
+
+  private async textoCalcularPedido(argumentos: Record<string, unknown>): Promise<string> {
+    const items = Array.isArray(argumentos.items) ? argumentos.items : [];
+    const modalidad = String(argumentos.modalidad ?? '').toLowerCase();
+    if (items.length === 0) {
+      return 'No se recibió ningún producto para calcular. Pedile al cliente que confirme qué quiere ordenar.';
+    }
+
+    const productos = await this.catalog.getProductos();
+    const lineas: string[] = [];
+    let subtotal = 0;
+
+    for (const item of items as Record<string, unknown>[]) {
+      const nombreProducto = String(item.producto ?? '');
+      const cantidad = Number(item.cantidad ?? 1) || 1;
+      const tamanoBuscado = item.tamano ? String(item.tamano) : null;
+
+      const { encontrado, error } = await this.buscarProductoUnico(nombreProducto, productos);
+      if (error) {
+        return `No se pudo calcular el pedido: ${error}`;
+      }
+
+      let variante = encontrado!.variantes[0];
+      if (encontrado!.variantes.length > 1) {
+        const tamanoPalabras = palabrasSignificativas(tamanoBuscado ?? '');
+        const match = encontrado!.variantes.find((v) =>
+          palabrasSignificativas(v.nombre).some((w) => tamanoPalabras.includes(w)),
+        );
+        if (!match) {
+          const opciones = encontrado!.variantes.map((v) => v.nombre).join(', ');
+          return `Para "${encontrado!.nombre}" falta saber el tamaño — opciones: ${opciones}. Preguntale al cliente cuál quiere.`;
+        }
+        variante = match;
+      }
+
+      const precio = variante.precio_oferta ?? variante.precio;
+      const subtotalItem = precio * cantidad;
+      subtotal += subtotalItem;
+      lineas.push(
+        `${cantidad}x ${encontrado!.nombre} (${variante.nombre}): $${subtotalItem.toLocaleString('es-CO')}`,
+      );
+    }
+
+    const esDomicilio = modalidad.includes('domicilio');
+    const costoDomicilio = esDomicilio ? COSTO_DOMICILIO : 0;
+    const total = subtotal + costoDomicilio;
+
+    return [
+      'Resumen del pedido:',
+      ...lineas,
+      esDomicilio ? `Domicilio: $${costoDomicilio.toLocaleString('es-CO')}` : `Modalidad: ${modalidad || 'sin especificar'}`,
+      `Total: $${total.toLocaleString('es-CO')}`,
+    ].join('\n');
   }
 
   private async textoPedido(telefono: string | null): Promise<string> {

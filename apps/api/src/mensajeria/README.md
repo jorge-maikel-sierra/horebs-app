@@ -8,10 +8,26 @@ no tiene ningún método para enviar plantillas pagas.
 
 Las respuestas las genera **Gemini 2.x Flash-Lite** (`gemini.service.ts`)
 vía function-calling contra la Interactions API de Google — el modelo
-decide qué herramienta llamar (menú, horario, estado de pedido, derivar a
-humano), pero el dato real siempre sale de Supabase a través de
+decide qué herramienta llamar (menú, producto puntual, horario, estado de
+pedido, calcular un pedido nuevo, derivar a humano), pero el dato real
+siempre sale de Supabase a través de
 `CatalogService`/`PedidosService`/`ConversacionesService`. El modelo nunca
-inventa precios, horarios ni estados de pedido.
+inventa precios, horarios, estados de pedido, ni suma totales por su
+cuenta.
+
+Cada conversación tiene memoria entre mensajes: se guarda el
+`gemini_interaction_id` de la última interacción en `conversaciones_bot`
+y se le pasa a la Interactions API en el siguiente mensaje, así el modelo
+recuerda lo que el cliente ya pidió (Gemini mantiene el historial
+server-side, no hace falta guardarlo nosotros).
+
+**Toma de pedidos**: el bot puede armar el resumen de un pedido nuevo
+(productos, tamaños, cantidades, domicilio si aplica) con precios reales
+del catálogo, y preguntar el método de pago — pero **no lo registra en el
+sistema**. Una vez que el cliente da el método de pago, deriva la
+conversación a una persona del equipo para que confirme y lo registre a
+mano. Así se evita que un error de interpretación del modelo descuente
+stock o genere una venta real sin que nadie la revise.
 
 ## Variables de entorno (Railway → Service → Variables)
 
@@ -108,8 +124,6 @@ Webhooks:
 - El modelo (Gemini) nunca inventa datos de negocio — precios, horario y
   estado de pedido siempre pasan por las herramientas (`gemini.service.ts`)
   que consultan Supabase directamente.
-- No crea pedidos desde el chat — solo consulta el estado de pedidos ya
-  existentes por teléfono.
-- No mantiene historial de conversación entre mensajes — cada respuesta se
-  genera con el mensaje actual, sin memoria de turnos anteriores. Si hace
-  falta ese contexto más adelante, es una extensión aparte.
+- No registra pedidos nuevos en el sistema — arma el resumen con precios
+  reales y deriva a una persona del equipo para que lo confirme y lo cargue
+  a mano. Solo consulta el estado de pedidos ya existentes por teléfono.

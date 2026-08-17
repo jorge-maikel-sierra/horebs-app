@@ -28,6 +28,40 @@ export class ConversacionesService {
     return (data?.estado as EstadoConversacion) ?? 'bot';
   }
 
+  /**
+   * El ID de la última interacción con Gemini para este hilo — le da
+   * memoria al modelo entre mensajes separados (Interactions API lo
+   * mantiene server-side si se lo pasás en `previous_interaction_id`).
+   */
+  async obtenerUltimaInteraccionGemini(
+    canal: CanalMensajeria,
+    identificadorExterno: string,
+  ): Promise<string | null> {
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('conversaciones_bot')
+      .select('gemini_interaction_id')
+      .eq('canal', canal)
+      .eq('identificador_externo', identificadorExterno)
+      .maybeSingle();
+    if (error) throw error;
+    return data?.gemini_interaction_id ?? null;
+  }
+
+  async guardarInteraccionGemini(
+    canal: CanalMensajeria,
+    identificadorExterno: string,
+    interactionId: string,
+  ): Promise<void> {
+    const { error } = await this.supabase
+      .getClient()
+      .from('conversaciones_bot')
+      .update({ gemini_interaction_id: interactionId })
+      .eq('canal', canal)
+      .eq('identificador_externo', identificadorExterno);
+    if (error) throw error;
+  }
+
   async registrarInteraccion(
     canal: CanalMensajeria,
     identificadorExterno: string,
@@ -59,6 +93,9 @@ export class ConversacionesService {
           identificador_externo: identificadorExterno,
           estado: 'derivado',
           ultima_interaccion: new Date().toISOString(),
+          // Al derivar, la persona humana toma la conversación desde acá —
+          // cuando el bot vuelva a responder más adelante, arranca de cero.
+          gemini_interaction_id: null,
         },
         { onConflict: 'canal,identificador_externo' },
       );
