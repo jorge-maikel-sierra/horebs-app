@@ -3,6 +3,12 @@ import { SupabaseService } from '../supabase/supabase.service';
 
 export type CanalMensajeria = 'whatsapp' | 'messenger' | 'instagram';
 export type EstadoConversacion = 'bot' | 'derivado';
+export type EtapaSeguimiento = 'ninguna' | 'recordatorio_enviado' | 'oferta_enviada';
+
+export interface ConversacionParaSeguimiento {
+  canal: CanalMensajeria;
+  identificador_externo: string;
+}
 
 /**
  * Estado por conversación (canal + número/PSID/IGSID) contra la tabla
@@ -74,9 +80,63 @@ export class ConversacionesService {
           canal,
           identificador_externo: identificadorExterno,
           ultima_interaccion: new Date().toISOString(),
+          // Un mensaje nuevo del cliente cancela cualquier seguimiento
+          // pendiente — ya no está "abandonado".
+          seguimiento_etapa: 'ninguna',
+          seguimiento_enviado_en: null,
         },
         { onConflict: 'canal,identificador_externo' },
       );
+    if (error) throw error;
+  }
+
+  /** Conversaciones sin resolver (nunca derivadas) sin actividad del
+   * cliente hace más de `horasInactividad` — candidatas al próximo
+   * mensaje de seguimiento. */
+  async buscarInactivasSinSeguimiento(
+    horasInactividad: number,
+  ): Promise<ConversacionParaSeguimiento[]> {
+    const limite = new Date(Date.now() - horasInactividad * 60 * 60 * 1000).toISOString();
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('conversaciones_bot')
+      .select('canal, identificador_externo')
+      .eq('estado', 'bot')
+      .eq('seguimiento_etapa', 'ninguna')
+      .lt('ultima_interaccion', limite);
+    if (error) throw error;
+    return data ?? [];
+  }
+
+  /** Conversaciones a las que ya se les mandó el recordatorio hace más de
+   * `horasDesdeRecordatorio` y siguen sin responder — candidatas a la
+   * oferta final. */
+  async buscarConRecordatorioVencido(
+    horasDesdeRecordatorio: number,
+  ): Promise<ConversacionParaSeguimiento[]> {
+    const limite = new Date(Date.now() - horasDesdeRecordatorio * 60 * 60 * 1000).toISOString();
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('conversaciones_bot')
+      .select('canal, identificador_externo')
+      .eq('estado', 'bot')
+      .eq('seguimiento_etapa', 'recordatorio_enviado')
+      .lt('seguimiento_enviado_en', limite);
+    if (error) throw error;
+    return data ?? [];
+  }
+
+  async marcarSeguimientoEnviado(
+    canal: CanalMensajeria,
+    identificadorExterno: string,
+    etapa: EtapaSeguimiento,
+  ): Promise<void> {
+    const { error } = await this.supabase
+      .getClient()
+      .from('conversaciones_bot')
+      .update({ seguimiento_etapa: etapa, seguimiento_enviado_en: new Date().toISOString() })
+      .eq('canal', canal)
+      .eq('identificador_externo', identificadorExterno);
     if (error) throw error;
   }
 
@@ -96,6 +156,8 @@ export class ConversacionesService {
           // Al derivar, la persona humana toma la conversación desde acá —
           // cuando el bot vuelva a responder más adelante, arranca de cero.
           gemini_interaction_id: null,
+          seguimiento_etapa: 'ninguna',
+          seguimiento_enviado_en: null,
         },
         { onConflict: 'canal,identificador_externo' },
       );
