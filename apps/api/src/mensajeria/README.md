@@ -29,6 +29,19 @@ conversación a una persona del equipo para que confirme y lo registre a
 mano. Así se evita que un error de interpretación del modelo descuente
 stock o genere una venta real sin que nadie la revise.
 
+**Límite conocido — mensajes muy seguidos**: el webhook procesa cada
+mensaje entrante de forma fire-and-forget (responde 200 a Meta al toque y
+sigue procesando aparte), sin encolar por conversación. Si el mismo
+cliente manda dos mensajes casi pegados (unos pocos segundos, antes de que
+termine de resolverse el primero — que puede necesitar varias vueltas a
+Gemini si usa herramientas), el segundo puede leer el
+`gemini_interaction_id` todavía viejo y arrancar sin la memoria del
+primero. En una conversación real de WhatsApp, donde el cliente tipea y
+hace pausas naturales, no debería notarse — se verificó en pruebas que con
+un margen de ~10s entre mensajes la memoria se mantiene sin problema. Si
+en producción se ve que el bot "se olvida" de un mensaje anterior, esta es
+la primera hipótesis a revisar.
+
 ## Variables de entorno (Railway → Service → Variables)
 
 `apps/api/.env.example` no se pudo editar automáticamente por permisos del
