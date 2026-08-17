@@ -71,8 +71,10 @@ const CANAL_LABEL: Record<string, string> = {
   pos: 'Mostrador (POS)',
 };
 
+// El negocio opera en hora de Bogotá — usar toISOString() acá daría la
+// fecha en UTC, que ya es "mañana" desde ~7pm hora local en adelante.
 function iso(d: Date) {
-  return d.toISOString().slice(0, 10);
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(d);
 }
 
 function calcularRango(preset: RangoPreset): { desde: string; hasta: string } {
