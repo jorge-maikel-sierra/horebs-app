@@ -47,8 +47,8 @@ Reglas estrictas:
 Cómo tomar un pedido (importante, seguí este orden):
 1. Cuando el cliente quiera pedir algo, andá anotando los productos, tamaños y cantidades a medida que los va diciendo — podés ir preguntando de a uno si hace falta.
 2. Preguntá si es para domicilio, para retirar, o para comer en el local. Si es domicilio, pedí la dirección.
-3. Cuando el cliente confirme que ya terminó de elegir todo, usá calcular_pedido con la lista completa de items y la modalidad — esa herramienta calcula el total real con los precios del catálogo. NUNCA sumes los precios vos mismo.
-4. Mostrale al cliente el resumen que te devuelve la herramienta (productos, domicilio si aplica, total) y preguntale cuál va a ser su método de pago (efectivo, transferencia o tarjeta).
+3. Cuando el cliente confirme que ya terminó de elegir todo, usá calcular_pedido con la lista completa de items, la modalidad (SOLO "domicilio", "retiro" o "local" — nunca metas la dirección ahí) y la dirección en el campo direccion si es domicilio — esa herramienta calcula el total real con los precios del catálogo, incluyendo el domicilio. NUNCA sumes los precios vos mismo ni inventes el costo del domicilio.
+4. Mostrale al cliente exactamente el resumen que te devuelve la herramienta (productos, domicilio si aplica, total) y preguntale cuál va a ser su método de pago (efectivo, transferencia o tarjeta).
 5. Apenas el cliente te diga el método de pago, usá derivar_a_humano para que una persona del equipo verifique y registre el pedido — no lo registrás vos, solo avisale al cliente que en breve alguien del equipo confirma todo.
 - No es necesario crear el pedido en el sistema — nunca prometas que el pedido "ya quedó registrado", decí que una persona del equipo lo va a confirmar.`;
 
@@ -100,7 +100,12 @@ const HERRAMIENTAS = [
         },
         modalidad: {
           type: 'string',
-          description: 'domicilio, retiro, o local',
+          enum: ['domicilio', 'retiro', 'local'],
+          description: 'Modalidad de entrega — exactamente uno de estos tres valores, sin agregarle la dirección ni nada más.',
+        },
+        direccion: {
+          type: 'string',
+          description: 'Dirección de entrega. Solo si modalidad es "domicilio" — vacío en los otros casos.',
         },
       },
       required: ['items', 'modalidad'],
@@ -327,6 +332,7 @@ export class GeminiService {
   private async textoCalcularPedido(argumentos: Record<string, unknown>): Promise<string> {
     const items = Array.isArray(argumentos.items) ? argumentos.items : [];
     const modalidad = String(argumentos.modalidad ?? '').toLowerCase();
+    const direccion = argumentos.direccion ? String(argumentos.direccion) : null;
     if (items.length === 0) {
       return 'No se recibió ningún producto para calcular. Pedile al cliente que confirme qué quiere ordenar.';
     }
@@ -366,14 +372,16 @@ export class GeminiService {
       );
     }
 
-    const esDomicilio = modalidad.includes('domicilio');
+    const esDomicilio = modalidad === 'domicilio';
     const costoDomicilio = esDomicilio ? COSTO_DOMICILIO : 0;
     const total = subtotal + costoDomicilio;
 
     return [
       'Resumen del pedido:',
       ...lineas,
-      esDomicilio ? `Domicilio: $${costoDomicilio.toLocaleString('es-CO')}` : `Modalidad: ${modalidad || 'sin especificar'}`,
+      esDomicilio
+        ? `Domicilio a ${direccion ?? 'dirección sin especificar'}: $${costoDomicilio.toLocaleString('es-CO')}`
+        : `Modalidad: ${modalidad || 'sin especificar'}`,
       `Total: $${total.toLocaleString('es-CO')}`,
     ].join('\n');
   }
