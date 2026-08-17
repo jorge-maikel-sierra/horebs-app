@@ -33,7 +33,9 @@ export class SeguimientoService {
     private readonly metaGraph: MetaGraphService,
   ) {}
 
-  @Cron('*/10 * * * *')
+  // Nombre explícito: @nestjs/schedule genera uno con crypto.randomUUID()
+  // si no se lo damos, y ese global no existe en el Node 18 de Railway.
+  @Cron('*/10 * * * *', { name: 'seguimiento-conversaciones' })
   async ejecutar(): Promise<void> {
     await this.enviarRecordatorios();
     await this.enviarOfertas();
