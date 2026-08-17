@@ -2,8 +2,10 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from '@nes
 import { SupabaseService } from '../supabase/supabase.service';
 import { MailService } from '../mail/mail.service';
 import { InventarioService } from '../inventario/inventario.service';
+import { ConversacionesService } from '../mensajeria/conversaciones.service';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Rol } from '../auth/roles.decorator';
+import type { EstadoConversacion } from '../mensajeria/conversaciones.service';
 
 /**
  * A diferencia del carrito público (calcularItems, precio 100% desde la
@@ -155,6 +157,7 @@ export class AdminService {
     private readonly supabase: SupabaseService,
     private readonly mail: MailService,
     private readonly inventario: InventarioService,
+    private readonly conversaciones: ConversacionesService,
   ) {}
 
   private async descontarStockSeguro(
@@ -725,6 +728,40 @@ export class AdminService {
 
     if (error) throw error;
     return { correo_domiciliario: correo };
+  }
+
+  async obtenerConfiguracionSeguimiento() {
+    const { recordatorioMinutos, ofertaMinutos } =
+      await this.conversaciones.obtenerConfiguracionSeguimiento();
+    return { recordatorio_minutos: recordatorioMinutos, oferta_minutos: ofertaMinutos };
+  }
+
+  async actualizarConfiguracionSeguimiento(recordatorioMinutos: number, ofertaMinutos: number) {
+    if (
+      !Number.isInteger(recordatorioMinutos) ||
+      !Number.isInteger(ofertaMinutos) ||
+      recordatorioMinutos < 1 ||
+      ofertaMinutos < 1
+    ) {
+      throw new BadRequestException('Los minutos deben ser enteros positivos.');
+    }
+    await this.conversaciones.actualizarConfiguracionSeguimiento(
+      recordatorioMinutos,
+      ofertaMinutos,
+    );
+    return { recordatorio_minutos: recordatorioMinutos, oferta_minutos: ofertaMinutos };
+  }
+
+  async listarConversacionesBot() {
+    return this.conversaciones.listar();
+  }
+
+  async actualizarEstadoConversacion(id: string, estado: string) {
+    if (estado !== 'bot' && estado !== 'derivado') {
+      throw new BadRequestException('Estado inválido — debe ser "bot" o "derivado".');
+    }
+    await this.conversaciones.actualizarEstadoManual(id, estado as EstadoConversacion);
+    return { id, estado };
   }
 
   async quitarRol(id: string): Promise<void> {

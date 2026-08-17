@@ -3,13 +3,13 @@ import { Cron } from '@nestjs/schedule';
 import { ConversacionesService } from './conversaciones.service';
 import { MetaGraphService } from './meta-graph.service';
 
-// Ambos plazos quedan bien adentro de la ventana gratis de 24h de WhatsApp
-// (mensajes de sesión) — pasado ese límite, reenganchar a un cliente
-// requiere una plantilla paga aprobada por Meta, que este módulo no
-// implementa a propósito (ver README). Por eso el seguimiento no insiste
-// más allá de la oferta.
-const HORAS_PARA_RECORDATORIO = 3;
-const HORAS_DE_RECORDATORIO_A_OFERTA = 6; // total: 9h desde el último mensaje
+// Los plazos (recordatorio / oferta) son editables desde /admin/seguimiento
+// — se leen de la tabla configuracion en cada corrida del cron, ver
+// ConversacionesService.obtenerConfiguracionSeguimiento(). Quedan bajo
+// responsabilidad del admin mantenerlos adentro de la ventana gratis de
+// 24h de WhatsApp (mensajes de sesión) — pasado ese límite, reenganchar a
+// un cliente requiere una plantilla paga aprobada por Meta, que este
+// módulo no implementa a propósito (ver README).
 const DESCUENTO_OFERTA_PORCENTAJE = 10; // ajustable acá, no viene de CLAUDE.md
 
 const TEXTO_RECORDATORIO =
@@ -37,13 +37,15 @@ export class SeguimientoService {
   // si no se lo damos, y ese global no existe en el Node 18 de Railway.
   @Cron('*/10 * * * *', { name: 'seguimiento-conversaciones' })
   async ejecutar(): Promise<void> {
-    await this.enviarRecordatorios();
-    await this.enviarOfertas();
+    const { recordatorioMinutos, ofertaMinutos } =
+      await this.conversaciones.obtenerConfiguracionSeguimiento();
+    await this.enviarRecordatorios(recordatorioMinutos);
+    await this.enviarOfertas(ofertaMinutos);
   }
 
-  private async enviarRecordatorios(): Promise<void> {
+  private async enviarRecordatorios(minutosInactividad: number): Promise<void> {
     const candidatas = await this.conversaciones.buscarInactivasSinSeguimiento(
-      HORAS_PARA_RECORDATORIO,
+      minutosInactividad,
     );
     for (const c of candidatas) {
       try {
@@ -62,9 +64,9 @@ export class SeguimientoService {
     }
   }
 
-  private async enviarOfertas(): Promise<void> {
+  private async enviarOfertas(minutosDesdeRecordatorio: number): Promise<void> {
     const candidatas = await this.conversaciones.buscarConRecordatorioVencido(
-      HORAS_DE_RECORDATORIO_A_OFERTA,
+      minutosDesdeRecordatorio,
     );
     for (const c of candidatas) {
       try {

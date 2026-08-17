@@ -10,6 +10,28 @@ export interface ConversacionParaSeguimiento {
   identificador_externo: string;
 }
 
+export interface ConversacionCompleta {
+  id: string;
+  canal: CanalMensajeria;
+  identificador_externo: string;
+  estado: EstadoConversacion;
+  seguimiento_etapa: EtapaSeguimiento;
+  seguimiento_enviado_en: string | null;
+  ultima_interaccion: string;
+}
+
+export interface ConfiguracionSeguimiento {
+  recordatorioMinutos: number;
+  ofertaMinutos: number;
+}
+
+const CLAVE_RECORDATORIO_MINUTOS = 'seguimiento_recordatorio_minutos';
+const CLAVE_OFERTA_MINUTOS = 'seguimiento_oferta_minutos';
+// Mismos valores que trae la migración — solo entran en juego si por algún
+// motivo las filas de configuracion no existen.
+const DEFECTO_RECORDATORIO_MINUTOS = 180;
+const DEFECTO_OFERTA_MINUTOS = 360;
+
 /**
  * Estado por conversación (canal + número/PSID/IGSID) contra la tabla
  * conversaciones_bot — le da memoria al bot entre mensajes: si ya se pidió
@@ -91,12 +113,12 @@ export class ConversacionesService {
   }
 
   /** Conversaciones sin resolver (nunca derivadas) sin actividad del
-   * cliente hace más de `horasInactividad` — candidatas al próximo
+   * cliente hace más de `minutosInactividad` — candidatas al próximo
    * mensaje de seguimiento. */
   async buscarInactivasSinSeguimiento(
-    horasInactividad: number,
+    minutosInactividad: number,
   ): Promise<ConversacionParaSeguimiento[]> {
-    const limite = new Date(Date.now() - horasInactividad * 60 * 60 * 1000).toISOString();
+    const limite = new Date(Date.now() - minutosInactividad * 60 * 1000).toISOString();
     const { data, error } = await this.supabase
       .getClient()
       .from('conversaciones_bot')
@@ -109,12 +131,12 @@ export class ConversacionesService {
   }
 
   /** Conversaciones a las que ya se les mandó el recordatorio hace más de
-   * `horasDesdeRecordatorio` y siguen sin responder — candidatas a la
+   * `minutosDesdeRecordatorio` y siguen sin responder — candidatas a la
    * oferta final. */
   async buscarConRecordatorioVencido(
-    horasDesdeRecordatorio: number,
+    minutosDesdeRecordatorio: number,
   ): Promise<ConversacionParaSeguimiento[]> {
-    const limite = new Date(Date.now() - horasDesdeRecordatorio * 60 * 60 * 1000).toISOString();
+    const limite = new Date(Date.now() - minutosDesdeRecordatorio * 60 * 1000).toISOString();
     const { data, error } = await this.supabase
       .getClient()
       .from('conversaciones_bot')
@@ -124,6 +146,72 @@ export class ConversacionesService {
       .lt('seguimiento_enviado_en', limite);
     if (error) throw error;
     return data ?? [];
+  }
+
+  /** Cuántos minutos hay que esperar en cada etapa del seguimiento —
+   * editable por el admin desde /admin/seguimiento (tabla configuracion). */
+  async obtenerConfiguracionSeguimiento(): Promise<ConfiguracionSeguimiento> {
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('configuracion')
+      .select('clave, valor')
+      .in('clave', [CLAVE_RECORDATORIO_MINUTOS, CLAVE_OFERTA_MINUTOS]);
+    if (error) throw error;
+
+    const mapa = new Map((data ?? []).map((f) => [f.clave, f.valor]));
+    const recordatorio = Number(mapa.get(CLAVE_RECORDATORIO_MINUTOS));
+    const oferta = Number(mapa.get(CLAVE_OFERTA_MINUTOS));
+    return {
+      recordatorioMinutos: Number.isFinite(recordatorio) && recordatorio > 0
+        ? recordatorio
+        : DEFECTO_RECORDATORIO_MINUTOS,
+      ofertaMinutos: Number.isFinite(oferta) && oferta > 0 ? oferta : DEFECTO_OFERTA_MINUTOS,
+    };
+  }
+
+  async actualizarConfiguracionSeguimiento(
+    recordatorioMinutos: number,
+    ofertaMinutos: number,
+  ): Promise<void> {
+    const { error } = await this.supabase.getClient().from('configuracion').upsert(
+      [
+        { clave: CLAVE_RECORDATORIO_MINUTOS, valor: String(recordatorioMinutos) },
+        { clave: CLAVE_OFERTA_MINUTOS, valor: String(ofertaMinutos) },
+      ],
+      { onConflict: 'clave' },
+    );
+    if (error) throw error;
+  }
+
+  /** Listado completo para el panel de admin — todas las conversaciones
+   * con su estado y etapa de seguimiento actual. */
+  async listar(): Promise<ConversacionCompleta[]> {
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('conversaciones_bot')
+      .select(
+        'id, canal, identificador_externo, estado, seguimiento_etapa, seguimiento_enviado_en, ultima_interaccion',
+      )
+      .order('ultima_interaccion', { ascending: false });
+    if (error) throw error;
+    return data ?? [];
+  }
+
+  /** El admin cambia el estado a mano desde el panel — en cualquier
+   * dirección se resetea la memoria de Gemini y el seguimiento pendiente,
+   * mismo criterio que cuando el bot deriva solo: el hilo arranca de cero. */
+  async actualizarEstadoManual(id: string, estado: EstadoConversacion): Promise<void> {
+    const { error } = await this.supabase
+      .getClient()
+      .from('conversaciones_bot')
+      .update({
+        estado,
+        gemini_interaction_id: null,
+        seguimiento_etapa: 'ninguna',
+        seguimiento_enviado_en: null,
+      })
+      .eq('id', id);
+    if (error) throw error;
   }
 
   async marcarSeguimientoEnviado(

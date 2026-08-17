@@ -19,5 +19,6 @@ import { SeguimientoService } from './seguimiento.service';
     ConversacionesService,
     SeguimientoService,
   ],
+  exports: [ConversacionesService],
 })
 export class MensajeriaModule {}

@@ -83,6 +83,16 @@ function IconInformes() {
   );
 }
 
+function IconSeguimiento() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 11.5a8.5 8.5 0 1 1-4.4-7.4" />
+      <path d="M21 3v6h-6" />
+      <path d="M12 8v4l3 2" />
+    </svg>
+  );
+}
+
 function IconVolver() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -134,6 +144,7 @@ const NAV_GENERAL: NavItem[] = [
 
 const NAV_ADMIN: NavItem[] = [
   { href: '/admin/informes', label: 'Informes', icon: IconInformes },
+  { href: '/admin/seguimiento', label: 'Seguimiento del bot', icon: IconSeguimiento },
   { href: '/admin/usuarios', label: 'Usuarios', icon: IconUsuarios },
   { href: '/admin/blog', label: 'Blog', icon: IconBlog },
   { href: '/admin/configuracion', label: 'Configuración', icon: IconConfig },

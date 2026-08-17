@@ -115,6 +115,38 @@ export class AdminController {
     return this.admin.quitarRol(id);
   }
 
+  @Get('seguimiento/configuracion')
+  @Roles('admin')
+  obtenerConfiguracionSeguimiento() {
+    return this.admin.obtenerConfiguracionSeguimiento();
+  }
+
+  @Patch('seguimiento/configuracion')
+  @Roles('admin')
+  actualizarConfiguracionSeguimiento(
+    @Body() body: { recordatorio_minutos: number; oferta_minutos: number },
+  ) {
+    return this.admin.actualizarConfiguracionSeguimiento(
+      Number(body.recordatorio_minutos),
+      Number(body.oferta_minutos),
+    );
+  }
+
+  @Get('seguimiento/conversaciones')
+  @Roles('admin')
+  listarConversacionesBot() {
+    return this.admin.listarConversacionesBot();
+  }
+
+  @Patch('seguimiento/conversaciones/:id')
+  @Roles('admin')
+  actualizarEstadoConversacion(
+    @Param('id') id: string,
+    @Body() body: { estado: string },
+  ) {
+    return this.admin.actualizarEstadoConversacion(id, body.estado);
+  }
+
   @Get('blog')
   @Roles('admin')
   listarBlogPosts() {

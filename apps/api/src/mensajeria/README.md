@@ -33,15 +33,28 @@ stock o genere una venta real sin que nadie la revise.
 un cron cada 10 minutos (`@nestjs/schedule`) revisa `conversaciones_bot` y,
 para conversaciones que nunca llegaron a `derivar_a_humano` (siguen en
 `estado='bot'`):
-- a las **3h** sin mensajes nuevos del cliente, manda un recordatorio fijo;
-- a las **9h** (6h después del recordatorio) sin respuesta, manda una
-  oferta fija (10% en pizza personal, ajustable en el archivo).
+- sin mensajes nuevos del cliente durante **N minutos** (default 180 = 3h),
+  manda un recordatorio fijo;
+- sin respuesta durante **M minutos** más (default 360 = 6h más, o sea 9h
+  en total), manda una oferta fija (10% en pizza personal, ajustable en el
+  archivo).
 
 Ambos son mensajes de sesión fijos, no generados por Gemini — así no hay
-riesgo de que el modelo invente un descuento o un dato. Ambos plazos caen
-adentro de la ventana gratis de 24h; pasado ese punto el bot no vuelve a
-insistir (haría falta una plantilla paga, fuera de este módulo). Un mensaje
-nuevo del cliente en cualquier momento cancela el seguimiento pendiente.
+riesgo de que el modelo invente un descuento o un dato. Los plazos son
+editables desde **`/admin/seguimiento`** (solo rol admin) — se guardan en la
+tabla `configuracion` (`seguimiento_recordatorio_minutos` /
+`seguimiento_oferta_minutos`) y el cron los relee en cada corrida, sin
+necesidad de redeploy. Queda bajo responsabilidad de quien los configure
+mantenerlos adentro de la ventana gratis de 24h; pasado ese punto el bot no
+vuelve a insistir (haría falta una plantilla paga, fuera de este módulo).
+Un mensaje nuevo del cliente en cualquier momento cancela el seguimiento
+pendiente.
+
+Esa misma página también lista todas las conversaciones con su estado
+(`bot` / `derivado`) y deja cambiarlo a mano — útil para forzar que el bot
+vuelva a responder un hilo que quedó derivado, o al revés. Cambiar el
+estado desde ahí resetea la memoria de Gemini y el seguimiento pendiente de
+esa conversación, igual que cuando lo hace el bot solo.
 
 **Límite conocido — mensajes muy seguidos**: el webhook procesa cada
 mensaje entrante de forma fire-and-forget (responde 200 a Meta al toque y
