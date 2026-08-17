@@ -6,6 +6,17 @@ const REINTENTOS = 2;
 const BACKOFF_MS = [500, 1500];
 
 /**
+ * Gemini responde en Markdown estándar (**negrita**), pero WhatsApp solo
+ * reconoce un asterisco de cada lado (*negrita*) — con doble asterisco no
+ * lo interpreta como formato y lo muestra literal. Se normaliza acá, en el
+ * único punto de salida real, para cubrir cualquier texto saliente sin
+ * importar de dónde venga.
+ */
+function normalizarNegritaWhatsapp(texto: string): string {
+  return texto.replace(/\*\*(.+?)\*\*/g, '*$1*');
+}
+
+/**
  * Envío saliente por Graph API — solo mensajes de sesión (gratis dentro de
  * la ventana de 24h/72h). A propósito NO hay ningún método para enviar
  * plantillas: así el flujo automático nunca puede disparar un cobro por su
@@ -45,13 +56,14 @@ export class MetaGraphService {
     destinatarioId: string,
     texto: string,
   ): Promise<void> {
+    const textoNormalizado = normalizarNegritaWhatsapp(texto);
     if (canal === 'whatsapp') {
-      await this.conReintentos(() => this.enviarWhatsapp(destinatarioId, texto));
+      await this.conReintentos(() => this.enviarWhatsapp(destinatarioId, textoNormalizado));
       return;
     }
     // Messenger e Instagram comparten el mismo Send API una vez que la
     // cuenta de Instagram está vinculada a la Página de Facebook.
-    await this.conReintentos(() => this.enviarMessengerOInstagram(destinatarioId, texto));
+    await this.conReintentos(() => this.enviarMessengerOInstagram(destinatarioId, textoNormalizado));
   }
 
   /**
