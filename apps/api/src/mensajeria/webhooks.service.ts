@@ -52,7 +52,6 @@ export class WebhooksService {
   }
 
   procesarWhatsapp(payload: any): void {
-    this.logger.log(`[DEBUG TEMPORAL] payload whatsapp crudo: ${JSON.stringify(payload)}`);
     this.procesar(this.parsearWhatsapp(payload));
   }
 
