@@ -15,6 +15,21 @@ const DIRECCION = 'Carrera 7 # 17B - 66, Riohacha, La Guajira';
 const NOMBRE_NEGOCIO = 'Pizzería Horebs';
 const URL_CATALOGO = 'https://pizzeriahorebs.shop/catalogo';
 
+// Tamaños y conectores no distinguen un producto de otro — se ignoran al
+// comparar. "pizza personal hawaiana" tiene que matchear "Pizza Hawaiana"
+// aunque la palabra de tamaño se meta en el medio.
+const PALABRAS_IGNORADAS = new Set([
+  'pizza', 'de', 'y', 'la', 'el', 'con', 'una', 'un',
+  'personal', 'mediana', 'grande',
+]);
+
+function palabrasSignificativas(texto: string): string[] {
+  const normalizado = texto.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  return normalizado
+    .split(/[^a-z0-9]+/)
+    .filter((w) => w.length > 1 && !PALABRAS_IGNORADAS.has(w));
+}
+
 const SYSTEM_INSTRUCTION = `Sos el asistente virtual de ${NOMBRE_NEGOCIO}, una pizzería en Riohacha, La Guajira, Colombia. Respondés por WhatsApp con un tono cercano, cálido y directo, como una persona real del equipo — no como un robot.
 
 Reglas estrictas:
@@ -200,17 +215,33 @@ export class GeminiService {
   }
 
   private async textoProducto(nombreBuscado: string): Promise<string> {
-    const normalizar = (s: string) =>
-      s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
-    const buscado = normalizar(nombreBuscado);
     const productos = await this.catalog.getProductos();
-    const encontrado = productos.find((p) => {
-      const nombre = normalizar(p.nombre);
-      return nombre.includes(buscado) || buscado.includes(nombre);
-    });
-    if (!encontrado) {
-      return `No se encontró un producto llamado "${nombreBuscado}" en el catálogo. Ofrecé mandar el link completo con enviar_link_catalogo.`;
+    const buscadas = palabrasSignificativas(nombreBuscado);
+    if (buscadas.length === 0) {
+      return `No se pudo identificar qué producto se pidió a partir de "${nombreBuscado}". Ofrecé mandar el link completo con enviar_link_catalogo.`;
     }
+
+    const puntuados = productos
+      .map((p) => {
+        const palabrasProducto = palabrasSignificativas(p.nombre);
+        const coincidencias = palabrasProducto.filter((w) => buscadas.includes(w)).length;
+        return { producto: p, puntaje: coincidencias };
+      })
+      .filter((r) => r.puntaje > 0)
+      .sort((a, b) => b.puntaje - a.puntaje);
+
+    if (puntuados.length === 0) {
+      return `No se encontró ningún producto que coincida con "${nombreBuscado}" en el catálogo. Ofrecé mandar el link completo con enviar_link_catalogo.`;
+    }
+
+    const mejorPuntaje = puntuados[0].puntaje;
+    const empatados = puntuados.filter((r) => r.puntaje === mejorPuntaje);
+    if (empatados.length > 1) {
+      const nombres = empatados.map((r) => r.producto.nombre).join(', ');
+      return `Hay más de un producto que podría coincidir con "${nombreBuscado}": ${nombres}. Preguntale al cliente cuál de esos quiere.`;
+    }
+
+    const encontrado = empatados[0].producto;
     const variantes = encontrado.variantes
       .map((v) => `${v.nombre}: $${(v.precio_oferta ?? v.precio).toLocaleString('es-CO')}`)
       .join(', ');
