@@ -208,6 +208,8 @@ export class GeminiService {
         : { input: textoEntrante }),
     });
 
+    let derivadoEnEsteTurno = false;
+
     for (let turno = 0; turno < MAX_TURNOS_HERRAMIENTAS; turno++) {
       const llamada = respuesta.steps.find(
         (p): p is PasoFunctionCall => p.type === 'function_call',
@@ -219,6 +221,8 @@ export class GeminiService {
         await this.conversaciones.guardarInteraccionGemini(canal, identificadorExterno, respuesta.id);
         return null;
       }
+
+      if (llamada.name === 'derivar_a_humano') derivadoEnEsteTurno = true;
 
       const resultado = await this.ejecutarHerramienta(
         llamada.name,
@@ -240,7 +244,12 @@ export class GeminiService {
       });
     }
 
-    await this.conversaciones.guardarInteraccionGemini(canal, identificadorExterno, respuesta.id);
+    // Si se derivó a humano, derivarAHumano() ya dejó gemini_interaction_id
+    // en null a propósito — no lo pisamos acá, así la próxima vez que el
+    // bot retome la conversación arranca de cero.
+    if (!derivadoEnEsteTurno) {
+      await this.conversaciones.guardarInteraccionGemini(canal, identificadorExterno, respuesta.id);
+    }
 
     const salida = respuesta.steps.find(
       (p): p is PasoModelOutput => p.type === 'model_output',
