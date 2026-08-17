@@ -4,7 +4,7 @@ import { PedidosModule } from '../pedidos/pedidos.module';
 import { WebhooksController } from './webhooks.controller';
 import { WebhooksService } from './webhooks.service';
 import { MetaGraphService } from './meta-graph.service';
-import { BotFlowService } from './bot-flow.service';
+import { GeminiService } from './gemini.service';
 import { ConversacionesService } from './conversaciones.service';
 
 @Module({
@@ -13,7 +13,7 @@ import { ConversacionesService } from './conversaciones.service';
   providers: [
     WebhooksService,
     MetaGraphService,
-    BotFlowService,
+    GeminiService,
     ConversacionesService,
   ],
 })

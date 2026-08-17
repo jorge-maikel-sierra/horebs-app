@@ -6,6 +6,13 @@ Responde siempre con mensajes de sesión (gratis dentro de la ventana de
 24h, o 72h si la conversación empezó por un clic en anuncio); este módulo
 no tiene ningún método para enviar plantillas pagas.
 
+Las respuestas las genera **Gemini 2.x Flash-Lite** (`gemini.service.ts`)
+vía function-calling contra la Interactions API de Google — el modelo
+decide qué herramienta llamar (menú, horario, estado de pedido, derivar a
+humano), pero el dato real siempre sale de Supabase a través de
+`CatalogService`/`PedidosService`/`ConversacionesService`. El modelo nunca
+inventa precios, horarios ni estados de pedido.
+
 ## Variables de entorno (Railway → Service → Variables)
 
 `apps/api/.env.example` no se pudo editar automáticamente por permisos del
@@ -21,6 +28,8 @@ de en Railway:
 | `WHATSAPP_PHONE_NUMBER_ID` | ID interno de Meta del número — **no** el número de teléfono |
 | `MESSENGER_PAGE_ACCESS_TOKEN` | Token de la Página de Facebook vinculada al Meta App |
 | `MESSENGER_PAGE_ID` | ID de esa Página |
+| `GEMINI_API_KEY` | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) — gratis |
+| `GEMINI_MODEL` | opcional, default `gemini-flash-lite-latest` (el más barato disponible) |
 
 Instagram Direct usa el **mismo** `MESSENGER_PAGE_ACCESS_TOKEN` — así
 funciona la Instagram Messaging API (la cuenta de Instagram tiene que estar
@@ -96,9 +105,11 @@ Webhooks:
 
 - No envía plantillas de marketing — cualquier remarketing pago es una
   acción manual aparte, fuera de este flujo.
-- No usa NLU/LLM — la detección de intención es por palabras clave
-  (`bot-flow.service.ts`), suficiente para el flujo básico pedido
-  (menú/horario/pedido/derivar a humano). Subir a un modelo de lenguaje es
-  una extensión separada si se pide.
+- El modelo (Gemini) nunca inventa datos de negocio — precios, horario y
+  estado de pedido siempre pasan por las herramientas (`gemini.service.ts`)
+  que consultan Supabase directamente.
 - No crea pedidos desde el chat — solo consulta el estado de pedidos ya
   existentes por teléfono.
+- No mantiene historial de conversación entre mensajes — cada respuesta se
+  genera con el mensaje actual, sin memoria de turnos anteriores. Si hace
+  falta ese contexto más adelante, es una extensión aparte.

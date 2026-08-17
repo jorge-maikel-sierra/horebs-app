@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { createHmac, timingSafeEqual } from 'crypto';
-import { BotFlowService } from './bot-flow.service';
+import { GeminiService } from './gemini.service';
 import { MetaGraphService } from './meta-graph.service';
 import { ConversacionesService, type CanalMensajeria } from './conversaciones.service';
 
@@ -30,7 +30,7 @@ export class WebhooksService {
   private readonly logger = new Logger(WebhooksService.name);
 
   constructor(
-    private readonly botFlow: BotFlowService,
+    private readonly gemini: GeminiService,
     private readonly metaGraph: MetaGraphService,
     private readonly conversaciones: ConversacionesService,
   ) {}
@@ -92,7 +92,7 @@ export class WebhooksService {
       return;
     }
 
-    const respuesta = await this.botFlow.responder(
+    const respuesta = await this.gemini.responder(
       evento.canal,
       evento.identificadorExterno,
       evento.telefono,
