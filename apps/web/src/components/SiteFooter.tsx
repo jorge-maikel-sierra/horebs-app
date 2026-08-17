@@ -131,6 +131,14 @@ export default function SiteFooter() {
           © {anio} {NEGOCIO.nombre}. Todos los derechos reservados.
         </p>
         <p className="mt-1">
+          <Link
+            href="/politica-privacidad"
+            className="font-medium text-zinc-600 transition-colors hover:text-brand-orange dark:text-zinc-400"
+          >
+            Política de privacidad
+          </Link>
+        </p>
+        <p className="mt-1">
           Sitio desarrollado por{' '}
           <a
             href="https://jorge-sierra.dev/"
