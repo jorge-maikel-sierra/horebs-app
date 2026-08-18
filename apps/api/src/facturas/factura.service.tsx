@@ -10,17 +10,16 @@ const NEGOCIO = {
   whatsapp: '+57 315 786 1208',
 };
 
-// Datos reales del RUT (Formulario DIAN 14725108989, persona natural) — se
-// muestran tal cual figuran ahí, aunque el RUT esté desactualizado frente a
-// la dirección operativa de arriba; es el registro fiscal legal, no se
-// "corrige" a mano. Esto NO convierte el comprobante en una factura
-// electrónica DIAN — sigue siendo un recibo interno, solo que con los
-// datos del emisor completos.
+// Datos reales del RUT (Formulario DIAN 14725108989, NIT y régimen) — la
+// dirección la corrigió el usuario a la dirección actual del negocio (la
+// del RUT quedó desactualizada). Solo se muestra el nombre comercial, no
+// el nombre personal del titular (persona natural). Esto NO convierte el
+// comprobante en una factura electrónica DIAN — sigue siendo un recibo
+// interno, solo que con los datos del emisor completos.
 const EMISOR_FISCAL = {
-  nombre: 'Jorge Maikel Sierra Amaya',
-  nombreComercial: "Pizzería Horeb's",
+  nombreComercial: 'Pizzería Horebs',
   nit: '1.118.843.420-7',
-  direccion: 'Calle 37 # 7H - 46, Riohacha, La Guajira',
+  direccion: 'Carrera 7 # 17-B66, Riohacha, La Guajira',
   regimen: 'No responsable de IVA',
 };
 
@@ -212,17 +211,15 @@ export class FacturaService {
           <View style={styles.seccion}>
             <Text style={styles.seccionTitulo}>Emisor</Text>
             <View style={styles.filaDato}>
-              <Text style={styles.etiqueta}>Nombre / Razón social</Text>
-              <Text style={styles.valor}>
-                {EMISOR_FISCAL.nombre} ({EMISOR_FISCAL.nombreComercial})
-              </Text>
+              <Text style={styles.etiqueta}>Nombre comercial</Text>
+              <Text style={styles.valor}>{EMISOR_FISCAL.nombreComercial}</Text>
             </View>
             <View style={styles.filaDato}>
               <Text style={styles.etiqueta}>NIT</Text>
               <Text style={styles.valor}>{EMISOR_FISCAL.nit}</Text>
             </View>
             <View style={styles.filaDato}>
-              <Text style={styles.etiqueta}>Dirección registrada (RUT)</Text>
+              <Text style={styles.etiqueta}>Dirección</Text>
               <Text style={styles.valor}>{EMISOR_FISCAL.direccion}</Text>
             </View>
             <View style={styles.filaDato}>
