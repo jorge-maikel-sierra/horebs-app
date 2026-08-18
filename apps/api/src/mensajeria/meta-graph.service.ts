@@ -120,7 +120,11 @@ export class MetaGraphService {
     const form = new FormData();
     form.append('messaging_product', 'whatsapp');
     form.append('type', 'application/pdf');
-    form.append('file', new Blob([pdf], { type: 'application/pdf' }), nombreArchivo);
+    form.append(
+      'file',
+      new Blob([new Uint8Array(pdf)], { type: 'application/pdf' }),
+      nombreArchivo,
+    );
 
     const resMedia = await fetch(
       `https://graph.facebook.com/${this.version}/${this.whatsappPhoneNumberId}/media`,
