@@ -120,6 +120,50 @@ export class MailService {
       throw new Error(`Resend respondió ${res.status}: ${cuerpo}`);
     }
   }
+
+  /**
+   * A diferencia de `enviarNotificacionDomicilio` (fire-and-forget, va al
+   * staff), esto lo dispara una acción del admin que espera confirmación
+   * — por eso relanza el error en vez de solo loguearlo.
+   */
+  async enviarConAdjunto(datos: {
+    destino: string;
+    asunto: string;
+    texto: string;
+    html: string;
+    adjuntoNombre: string;
+    adjuntoPdf: Buffer;
+  }): Promise<void> {
+    if (!this.apiKey) {
+      throw new Error('RESEND_API_KEY no configurada — no se puede enviar el correo.');
+    }
+
+    const res = await fetch(RESEND_API_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: this.remitente,
+        to: datos.destino,
+        subject: datos.asunto,
+        text: datos.texto,
+        html: datos.html,
+        attachments: [
+          {
+            filename: datos.adjuntoNombre,
+            content: datos.adjuntoPdf.toString('base64'),
+          },
+        ],
+      }),
+    });
+
+    if (!res.ok) {
+      const cuerpo = await res.text().catch(() => '');
+      throw new Error(`Resend respondió ${res.status}: ${cuerpo}`);
+    }
+  }
 }
 
 const NARANJA = '#FF6B35';

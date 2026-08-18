@@ -1,4 +1,17 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Res,
+  StreamableFile,
+  UseGuards,
+} from '@nestjs/common';
+import type { Response } from 'express';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { UsuarioActual } from '../auth/usuario.decorator';
@@ -59,6 +72,32 @@ export class AdminController {
     @UsuarioActual() usuario: UsuarioAutenticado,
   ) {
     return this.admin.eliminarPedido(id, usuario.id);
+  }
+
+  @Get('pedidos/:id/factura')
+  @Roles('admin', 'empleado')
+  async descargarFactura(
+    @Param('id') id: string,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    const { buffer, nombreArchivo } = await this.admin.generarFacturaPdf(id);
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="${nombreArchivo}"`,
+    });
+    return new StreamableFile(buffer);
+  }
+
+  @Post('pedidos/:id/factura/correo')
+  @Roles('admin', 'empleado')
+  enviarFacturaPorCorreo(@Param('id') id: string) {
+    return this.admin.enviarFacturaPorCorreo(id);
+  }
+
+  @Post('pedidos/:id/factura/whatsapp')
+  @Roles('admin', 'empleado')
+  enviarFacturaPorWhatsapp(@Param('id') id: string) {
+    return this.admin.enviarFacturaPorWhatsapp(id);
   }
 
   @Get('clientes')

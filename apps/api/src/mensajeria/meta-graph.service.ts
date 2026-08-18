@@ -88,6 +88,76 @@ export class MetaGraphService {
     await this.conReintentos(() => this.enviarWhatsappBotonCatalogo(destinatarioId, url));
   }
 
+  /**
+   * Manda un PDF por WhatsApp (ej. comprobante de pedido desde el panel de
+   * admin). Solo WhatsApp — Messenger/Instagram no están armados para esto
+   * y no se pidió. Igual que cualquier mensaje de sesión, solo funciona
+   * dentro de la ventana de 24h desde el último mensaje del cliente; fuera
+   * de esa ventana la Graph API rechaza el envío (haría falta una
+   * plantilla aprobada, que este módulo no implementa a propósito).
+   */
+  async enviarDocumentoWhatsapp(
+    destinatarioId: string,
+    pdf: Buffer,
+    nombreArchivo: string,
+    caption?: string,
+  ): Promise<void> {
+    await this.conReintentos(() =>
+      this.enviarWhatsappDocumento(destinatarioId, pdf, nombreArchivo, caption),
+    );
+  }
+
+  private async enviarWhatsappDocumento(
+    destinatarioId: string,
+    pdf: Buffer,
+    nombreArchivo: string,
+    caption?: string,
+  ): Promise<void> {
+    if (!this.whatsappToken || !this.whatsappPhoneNumberId) {
+      throw new Error('WhatsApp no está configurado.');
+    }
+
+    const form = new FormData();
+    form.append('messaging_product', 'whatsapp');
+    form.append('type', 'application/pdf');
+    form.append('file', new Blob([pdf], { type: 'application/pdf' }), nombreArchivo);
+
+    const resMedia = await fetch(
+      `https://graph.facebook.com/${this.version}/${this.whatsappPhoneNumberId}/media`,
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${this.whatsappToken}` },
+        body: form,
+      },
+    );
+    if (!resMedia.ok) {
+      const cuerpo = await resMedia.text().catch(() => '');
+      throw new Error(`WhatsApp Media API respondió ${resMedia.status}: ${cuerpo}`);
+    }
+    const { id: mediaId } = (await resMedia.json()) as { id: string };
+
+    const resMensaje = await fetch(
+      `https://graph.facebook.com/${this.version}/${this.whatsappPhoneNumberId}/messages`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.whatsappToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messaging_product: 'whatsapp',
+          to: destinatarioId,
+          type: 'document',
+          document: { id: mediaId, filename: nombreArchivo, caption },
+        }),
+      },
+    );
+    if (!resMensaje.ok) {
+      const cuerpo = await resMensaje.text().catch(() => '');
+      throw new Error(`WhatsApp Graph API respondió ${resMensaje.status}: ${cuerpo}`);
+    }
+  }
+
   private async enviarWhatsappBotonCatalogo(destinatarioId: string, url: string): Promise<void> {
     if (!this.whatsappToken || !this.whatsappPhoneNumberId) {
       throw new Error('WhatsApp no está configurado.');

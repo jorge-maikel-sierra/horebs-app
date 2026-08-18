@@ -26,6 +26,7 @@ type PedidoAdmin = {
     apellido: string | null;
     telefono: string | null;
     direccion: string | null;
+    correo: string | null;
   };
   modalidad: string;
   direccion_entrega: string | null;
@@ -103,6 +104,11 @@ function PedidosInterno() {
   >(null);
   const [guardandoPedido, setGuardandoPedido] = useState(false);
   const [errorPedido, setErrorPedido] = useState<string | null>(null);
+
+  const [accionFacturaId, setAccionFacturaId] = useState<string | null>(null);
+  const [mensajeFactura, setMensajeFactura] = useState<
+    { id: string; texto: string; error: boolean } | null
+  >(null);
 
   useEffect(() => {
     adminFetch('/admin/pedidos')
@@ -337,6 +343,74 @@ function PedidosInterno() {
     }
   }
 
+  async function descargarFactura(p: PedidoAdmin) {
+    setAccionFacturaId(`${p.id}-descargar`);
+    setMensajeFactura(null);
+    try {
+      const res = await adminFetch(`/admin/pedidos/${p.id}/factura`);
+      if (!res.ok) throw new Error('No se pudo generar el comprobante.');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `comprobante-${p.id.slice(0, 8)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setMensajeFactura({
+        id: p.id,
+        texto: err instanceof Error ? err.message : 'No se pudo descargar.',
+        error: true,
+      });
+    } finally {
+      setAccionFacturaId(null);
+    }
+  }
+
+  async function enviarFacturaPorCorreo(p: PedidoAdmin) {
+    setAccionFacturaId(`${p.id}-correo`);
+    setMensajeFactura(null);
+    try {
+      const res = await adminFetch(`/admin/pedidos/${p.id}/factura/correo`, {
+        method: 'POST',
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(body?.message ?? 'No se pudo enviar el correo.');
+      setMensajeFactura({ id: p.id, texto: `Enviado a ${body.destino}.`, error: false });
+    } catch (err) {
+      setMensajeFactura({
+        id: p.id,
+        texto: err instanceof Error ? err.message : 'No se pudo enviar el correo.',
+        error: true,
+      });
+    } finally {
+      setAccionFacturaId(null);
+    }
+  }
+
+  async function enviarFacturaPorWhatsapp(p: PedidoAdmin) {
+    setAccionFacturaId(`${p.id}-whatsapp`);
+    setMensajeFactura(null);
+    try {
+      const res = await adminFetch(`/admin/pedidos/${p.id}/factura/whatsapp`, {
+        method: 'POST',
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(body?.message ?? 'No se pudo enviar por WhatsApp.');
+      setMensajeFactura({ id: p.id, texto: 'Enviado por WhatsApp.', error: false });
+    } catch (err) {
+      setMensajeFactura({
+        id: p.id,
+        texto: err instanceof Error ? err.message : 'No se pudo enviar por WhatsApp.',
+        error: true,
+      });
+    } finally {
+      setAccionFacturaId(null);
+    }
+  }
+
   const productosDeCategoria = categoriaPickerId
     ? productosCatalogo.filter((p) => p.categoria_id === categoriaPickerId)
     : [];
@@ -437,6 +511,42 @@ function PedidosInterno() {
               <span className="text-sm text-zinc-500 dark:text-zinc-400">
                 {formatFecha(p.created_at)}
               </span>
+            </div>
+
+            <div className="mt-2 flex flex-wrap items-center gap-3 border-t border-zinc-100 pt-2 dark:border-zinc-800/60">
+              <button
+                type="button"
+                disabled={accionFacturaId === `${p.id}-descargar`}
+                onClick={() => descargarFactura(p)}
+                className="text-xs font-medium text-zinc-600 underline disabled:opacity-50 dark:text-zinc-400"
+              >
+                {accionFacturaId === `${p.id}-descargar` ? 'Generando…' : 'Descargar comprobante'}
+              </button>
+              <button
+                type="button"
+                disabled={accionFacturaId === `${p.id}-correo` || !p.cliente.correo}
+                title={!p.cliente.correo ? 'El cliente no tiene correo registrado' : undefined}
+                onClick={() => enviarFacturaPorCorreo(p)}
+                className="text-xs font-medium text-zinc-600 underline disabled:opacity-50 dark:text-zinc-400"
+              >
+                {accionFacturaId === `${p.id}-correo` ? 'Enviando…' : 'Enviar a correo'}
+              </button>
+              <button
+                type="button"
+                disabled={accionFacturaId === `${p.id}-whatsapp` || !p.cliente.telefono}
+                title={!p.cliente.telefono ? 'El cliente no tiene teléfono registrado' : undefined}
+                onClick={() => enviarFacturaPorWhatsapp(p)}
+                className="text-xs font-medium text-green-700 underline disabled:opacity-50 dark:text-green-500"
+              >
+                {accionFacturaId === `${p.id}-whatsapp` ? 'Enviando…' : 'Enviar a WhatsApp'}
+              </button>
+              {mensajeFactura?.id === p.id && (
+                <span
+                  className={`text-xs ${mensajeFactura.error ? 'text-red-600' : 'text-brand-orange'}`}
+                >
+                  {mensajeFactura.texto}
+                </span>
+              )}
             </div>
 
             {editandoClienteId === p.cliente.id && (

@@ -3,6 +3,8 @@ import { SupabaseService } from '../supabase/supabase.service';
 import { MailService } from '../mail/mail.service';
 import { InventarioService } from '../inventario/inventario.service';
 import { ConversacionesService } from '../mensajeria/conversaciones.service';
+import { MetaGraphService } from '../mensajeria/meta-graph.service';
+import { FacturaService } from '../facturas/factura.service';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Rol } from '../auth/roles.decorator';
 import type { EstadoConversacion } from '../mensajeria/conversaciones.service';
@@ -112,6 +114,7 @@ export interface PedidoAdminDto {
     apellido: string | null;
     telefono: string | null;
     direccion: string | null;
+    correo: string | null;
   };
   modalidad: string;
   direccion_entrega: string | null;
@@ -146,8 +149,22 @@ const ESTADOS_PEDIDO = [
 ];
 const MODALIDADES_VENTA = ['local', 'retiro', 'domicilio'];
 const COSTO_DOMICILIO_DEFAULT = 5000;
+/**
+ * `clientes.telefono` normalmente se guarda en formato local colombiano
+ * (3157861208, sin indicativo), pero la Graph API de WhatsApp necesita el
+ * ID completo con indicativo de país sin el "+" (573157861208). Espejo de
+ * `normalizarTelefonoCO` en pedidos.service.ts, que hace lo inverso.
+ */
+function telefonoAWhatsappId(telefono: string): string {
+  const digitos = telefono.replace(/\D/g, '');
+  if (digitos.length === 10 && digitos.startsWith('3')) {
+    return `57${digitos}`;
+  }
+  return digitos;
+}
+
 const PEDIDO_ADMIN_SELECT =
-  'id, canal, modalidad, direccion_entrega, costo_domicilio, metodo_pago, estado, total, created_at, clientes(id, nombre, apellido, telefono, direccion), items_pedido(variante_id, nombre_personalizado, cantidad, precio_unitario, variantes_producto(nombre, productos(nombre)))';
+  'id, canal, modalidad, direccion_entrega, costo_domicilio, metodo_pago, estado, total, created_at, clientes(id, nombre, apellido, telefono, direccion, correo), items_pedido(variante_id, nombre_personalizado, cantidad, precio_unitario, variantes_producto(nombre, productos(nombre)))';
 
 @Injectable()
 export class AdminService {
@@ -158,6 +175,8 @@ export class AdminService {
     private readonly mail: MailService,
     private readonly inventario: InventarioService,
     private readonly conversaciones: ConversacionesService,
+    private readonly metaGraph: MetaGraphService,
+    private readonly factura: FacturaService,
   ) {}
 
   private async descontarStockSeguro(
@@ -330,6 +349,66 @@ export class AdminService {
     };
   }
 
+  async obtenerPedido(id: string): Promise<PedidoAdminDto> {
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('pedidos')
+      .select(PEDIDO_ADMIN_SELECT)
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) throw new NotFoundException('Pedido no encontrado.');
+    return this.mapPedido(data);
+  }
+
+  async generarFacturaPdf(id: string): Promise<{ buffer: Buffer; nombreArchivo: string }> {
+    const pedido = await this.obtenerPedido(id);
+    const buffer = await this.factura.generarPdf(pedido);
+    return { buffer, nombreArchivo: this.factura.nombreArchivo(pedido) };
+  }
+
+  async enviarFacturaPorCorreo(id: string): Promise<{ enviado: true; destino: string }> {
+    const pedido = await this.obtenerPedido(id);
+    if (!pedido.cliente.correo) {
+      throw new BadRequestException('El cliente no tiene un correo registrado.');
+    }
+    const buffer = await this.factura.generarPdf(pedido);
+    const { asunto, texto, html } = this.factura.datosCorreo(pedido);
+    await this.mail.enviarConAdjunto({
+      destino: pedido.cliente.correo,
+      asunto,
+      texto,
+      html,
+      adjuntoNombre: this.factura.nombreArchivo(pedido),
+      adjuntoPdf: buffer,
+    });
+    return { enviado: true, destino: pedido.cliente.correo };
+  }
+
+  async enviarFacturaPorWhatsapp(id: string): Promise<{ enviado: true; destino: string }> {
+    const pedido = await this.obtenerPedido(id);
+    if (!pedido.cliente.telefono) {
+      throw new BadRequestException('El cliente no tiene un teléfono registrado.');
+    }
+    const destinatarioId = telefonoAWhatsappId(pedido.cliente.telefono);
+    const buffer = await this.factura.generarPdf(pedido);
+    try {
+      await this.metaGraph.enviarDocumentoWhatsapp(
+        destinatarioId,
+        buffer,
+        this.factura.nombreArchivo(pedido),
+        `Comprobante de tu pedido #${pedido.id.slice(0, 8).toUpperCase()}`,
+      );
+    } catch (err) {
+      throw new BadRequestException(
+        `No se pudo enviar por WhatsApp: ${(err as Error).message}. Puede ser porque ` +
+          'pasaron más de 24h desde el último mensaje del cliente — WhatsApp solo deja ' +
+          'mandar mensajes gratis dentro de esa ventana.',
+      );
+    }
+    return { enviado: true, destino: destinatarioId };
+  }
+
   async listarPedidos(): Promise<PedidoAdminDto[]> {
     const { data, error } = await this.supabase
       .getClient()
@@ -490,6 +569,7 @@ export class AdminService {
         apellido: cliente?.apellido ?? null,
         telefono: cliente?.telefono ?? null,
         direccion: cliente?.direccion ?? null,
+        correo: cliente?.correo ?? null,
       },
       modalidad: p.modalidad,
       direccion_entrega: p.direccion_entrega,

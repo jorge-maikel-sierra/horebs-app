@@ -5,9 +5,10 @@ import { AuthModule } from '../auth/auth.module';
 import { MailModule } from '../mail/mail.module';
 import { InventarioModule } from '../inventario/inventario.module';
 import { MensajeriaModule } from '../mensajeria/mensajeria.module';
+import { FacturaModule } from '../facturas/factura.module';
 
 @Module({
-  imports: [AuthModule, MailModule, InventarioModule, MensajeriaModule],
+  imports: [AuthModule, MailModule, InventarioModule, MensajeriaModule, FacturaModule],
   controllers: [AdminController],
   providers: [AdminService],
 })
