@@ -1,3 +1,5 @@
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { Injectable } from '@nestjs/common';
 import type { PedidoAdminDto } from '../admin/admin.service';
 
@@ -7,6 +9,22 @@ const NEGOCIO = {
   direccion: 'Carrera 7 # 17B - 66, Riohacha, La Guajira',
   whatsapp: '+57 315 786 1208',
 };
+
+// Datos reales del RUT (Formulario DIAN 14725108989, persona natural) — se
+// muestran tal cual figuran ahí, aunque el RUT esté desactualizado frente a
+// la dirección operativa de arriba; es el registro fiscal legal, no se
+// "corrige" a mano. Esto NO convierte el comprobante en una factura
+// electrónica DIAN — sigue siendo un recibo interno, solo que con los
+// datos del emisor completos.
+const EMISOR_FISCAL = {
+  nombre: 'Jorge Maikel Sierra Amaya',
+  nombreComercial: "Pizzería Horeb's",
+  nit: '1.118.843.420-7',
+  direccion: 'Calle 37 # 7H - 46, Riohacha, La Guajira',
+  regimen: 'No responsable de IVA',
+};
+
+const LOGO_PATH = join(__dirname, 'assets', 'logo.png');
 
 const NARANJA = '#FF6B35';
 const AZUL = '#1A3A52';
@@ -75,8 +93,10 @@ function construirDatosCorreo(pedido: PedidoAdminDto): DatosCorreoFactura {
 
 /**
  * Genera un comprobante de pedido en PDF con el diseño de marca del sitio
- * — no es una factura electrónica DIAN (no hay NIT ni resolución de
- * facturación cargados en el proyecto, así que no se inventan).
+ * y los datos fiscales reales del RUT (NIT, nombre, dirección registrada,
+ * régimen) — sigue sin ser una factura electrónica DIAN: eso requiere
+ * resolución de facturación y numeración autorizada, que este comprobante
+ * no tiene.
  *
  * `@react-pdf/renderer` v4 se publica solo como ESM — este proyecto
  * compila a CommonJS, así que un `import` estático rompe en runtime
@@ -86,22 +106,39 @@ function construirDatosCorreo(pedido: PedidoAdminDto): DatosCorreoFactura {
  */
 @Injectable()
 export class FacturaService {
+  private logoBuffer: Buffer | null = null;
+
+  private cargarLogo(): Buffer | null {
+    if (this.logoBuffer) return this.logoBuffer;
+    try {
+      this.logoBuffer = readFileSync(LOGO_PATH);
+      return this.logoBuffer;
+    } catch {
+      // Si el asset no se copió al build por algún motivo, el comprobante
+      // sigue saliendo sin logo en vez de romper la generación entera.
+      return null;
+    }
+  }
+
   async generarPdf(pedido: PedidoAdminDto): Promise<Buffer> {
-    const { Document, Page, Text, View, StyleSheet, renderToBuffer } = await import(
+    const { Document, Page, Text, View, Image, StyleSheet, renderToBuffer } = await import(
       '@react-pdf/renderer'
     );
+    const logo = this.cargarLogo();
 
     const styles = StyleSheet.create({
       page: { padding: 36, fontSize: 10, fontFamily: 'Helvetica', color: '#27272a' },
       header: {
         flexDirection: 'row',
+        alignItems: 'center',
         justifyContent: 'space-between',
-        alignItems: 'flex-start',
         backgroundColor: AZUL,
         padding: 20,
         borderRadius: 8,
         marginBottom: 20,
       },
+      headerIzquierda: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+      logo: { width: 36, height: 36, borderRadius: 6 },
       negocioNombre: { color: '#ffffff', fontSize: 18, fontWeight: 700 },
       negocioDato: { color: '#e4e4e7', fontSize: 9, marginTop: 2 },
       comprobanteEtiqueta: {
@@ -157,15 +194,40 @@ export class FacturaService {
       <Document>
         <Page size="A5" style={styles.page}>
           <View style={styles.header}>
-            <View>
-              <Text style={styles.negocioNombre}>{NEGOCIO.nombre}</Text>
-              <Text style={styles.negocioDato}>{NEGOCIO.direccion}</Text>
-              <Text style={styles.negocioDato}>WhatsApp: {NEGOCIO.whatsapp}</Text>
+            <View style={styles.headerIzquierda}>
+              {logo && <Image src={logo} style={styles.logo} />}
+              <View>
+                <Text style={styles.negocioNombre}>{NEGOCIO.nombre}</Text>
+                <Text style={styles.negocioDato}>{NEGOCIO.direccion}</Text>
+                <Text style={styles.negocioDato}>WhatsApp: {NEGOCIO.whatsapp}</Text>
+              </View>
             </View>
             <View style={{ alignItems: 'flex-end' }}>
               <Text style={styles.comprobanteEtiqueta}>Comprobante de pedido</Text>
               <Text style={styles.comprobanteId}>#{pedido.id.slice(0, 8).toUpperCase()}</Text>
               <Text style={styles.negocioDato}>{formatoFecha(pedido.created_at)}</Text>
+            </View>
+          </View>
+
+          <View style={styles.seccion}>
+            <Text style={styles.seccionTitulo}>Emisor</Text>
+            <View style={styles.filaDato}>
+              <Text style={styles.etiqueta}>Nombre / Razón social</Text>
+              <Text style={styles.valor}>
+                {EMISOR_FISCAL.nombre} ({EMISOR_FISCAL.nombreComercial})
+              </Text>
+            </View>
+            <View style={styles.filaDato}>
+              <Text style={styles.etiqueta}>NIT</Text>
+              <Text style={styles.valor}>{EMISOR_FISCAL.nit}</Text>
+            </View>
+            <View style={styles.filaDato}>
+              <Text style={styles.etiqueta}>Dirección registrada (RUT)</Text>
+              <Text style={styles.valor}>{EMISOR_FISCAL.direccion}</Text>
+            </View>
+            <View style={styles.filaDato}>
+              <Text style={styles.etiqueta}>Régimen</Text>
+              <Text style={styles.valor}>{EMISOR_FISCAL.regimen}</Text>
             </View>
           </View>
 
