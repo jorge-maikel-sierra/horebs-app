@@ -16,6 +16,7 @@ export interface EventoEntrante {
   telefono: string | null; // solo WhatsApp expone el teléfono real
   texto: string;
   procedenciaAnuncio: ProcedenciaAnuncio | null;
+  mensajeId: string | null; // wamid (WhatsApp) o mid (Messenger/Instagram) — para deduplicar reenvíos de Meta
 }
 
 /**
@@ -74,6 +75,26 @@ export class WebhooksService {
   }
 
   private async manejarEvento(evento: EventoEntrante): Promise<void> {
+    if (evento.mensajeId) {
+      let duplicado = false;
+      try {
+        duplicado = await this.conversaciones.yaProcesado(evento.canal, evento.mensajeId);
+      } catch (err) {
+        // Si la verificación de duplicado en sí falla (no el chequeo, sino
+        // el acceso a la tabla), se prefiere procesar el mensaje de más en
+        // un caso raro antes que perder un mensaje real del cliente.
+        this.logger.error(
+          `No se pudo verificar duplicado del mensaje ${evento.mensajeId} — se procesa igual: ${(err as Error).message}`,
+        );
+      }
+      if (duplicado) {
+        this.logger.log(
+          `Mensaje ${evento.mensajeId} ya procesado (reenvío de Meta) — se ignora.`,
+        );
+        return;
+      }
+    }
+
     if (evento.procedenciaAnuncio?.esAnuncio) {
       this.logger.log(
         `Conversación desde anuncio — canal=${evento.canal} id=${evento.identificadorExterno} anuncio_id=${evento.procedenciaAnuncio.anuncioId ?? 'desconocido'} fuente=${evento.procedenciaAnuncio.fuente ?? 'desconocida'}`,
@@ -121,6 +142,7 @@ export class WebhooksService {
             telefono: mensaje.from,
             texto: mensaje.text?.body ?? '',
             procedenciaAnuncio: this.extraerProcedenciaWhatsapp(mensaje),
+            mensajeId: mensaje.id ?? null,
           });
         }
       }
@@ -156,6 +178,7 @@ export class WebhooksService {
           telefono: null, // Messenger/Instagram no exponen el teléfono real
           texto,
           procedenciaAnuncio: this.extraerProcedenciaMessenger(evento),
+          mensajeId: evento.message?.mid ?? null,
         });
       }
     }

@@ -72,13 +72,28 @@ sospechoso por defecto en cualquier código nuevo que compare o agrupe fechas.
 
 - Fetch autenticado: `adminFetch()` de `@/lib/admin-fetch` (agrega el bearer
   token de la sesión de Supabase). Nunca `fetch()` crudo hacia `/admin/*`.
-- Páginas de admin: envolver el contenido en `<RequireRol roles={['admin']}>`
-  (o incluyendo `'empleado'` si aplica). El guard redirige solo si no hay
+- `app/admin/layout.tsx` ya envuelve TODO el árbol `/admin/*` en
+  `<RequireRol roles={['admin', 'empleado']}>` — cualquier página nueva bajo
+  `/admin` hereda ese guard sin hacer nada. Una página solo necesita su
+  propio `<RequireRol roles={['admin']}>` cuando exige un nivel más
+  estricto que el del layout (ver `configuracion`, `blog`, `usuarios`,
+  `seguimiento`); páginas de acceso general (`pos`, `inventario`,
+  `pedidos`) correctamente NO llevan wrapper propio — no es un guard
+  faltante, es composición con el layout. El guard redirige solo si no hay
   sesión — no duplicar esa lógica a mano.
 - Loading state: `<CargandoSkeleton filas={N} />`, no spinners custom.
 - Estilos: clases de marca ya definidas (`brand-orange`, `brand-navy`,
-  `btn-gradient`, `card-gradient`) + variantes `dark:` en cada elemento con
-  color. Sin librería de componentes pesada (no MUI/Chakra/etc.).
+  `btn-gradient`, `card-gradient`). Sin librería de componentes pesada (no
+  MUI/Chakra/etc.).
+- `dark:` solo hace falta en texto/borde/fondo que se apoya directamente en
+  el fondo de la página (grises `zinc-*`, y estados como `text-red-600` que
+  se aclaran a `dark:text-red-400`/`dark:text-green-500` para mantener
+  contraste). `brand-orange` es un valor fijo (`--brand-orange` en
+  `globals.css`, no cambia entre temas) y ya se usa sin `dark:` en todo el
+  sitio a propósito. Badges/botones con fondo sólido y texto blanco
+  (`bg-brand-orange`/`bg-brand-navy`/`bg-red-600` + `text-white`) tampoco
+  necesitan `dark:` — el contraste depende del propio fondo del chip, no
+  del tema de la página.
 
 ## Deploy y verificación
 

@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { MailService } from '../mail/mail.service';
 import { InventarioService } from '../inventario/inventario.service';
@@ -74,8 +74,6 @@ function normalizarTelefonoCO(telefono: string): string {
 
 @Injectable()
 export class PedidosService {
-  private readonly logger = new Logger(PedidosService.name);
-
   constructor(
     private readonly supabase: SupabaseService,
     private readonly mail: MailService,
@@ -137,17 +135,11 @@ export class PedidosService {
     );
     if (itemsError) throw itemsError;
 
-    try {
-      await this.inventario.descontarPorVenta(
-        itemsCalculados.map((i) => ({ variante_id: i.variante_id, cantidad: i.cantidad })),
-        pedido.id,
-        null,
-      );
-    } catch (err) {
-      this.logger.error(
-        `No se pudo descontar stock para el pedido ${pedido.id}: ${(err as Error).message}`,
-      );
-    }
+    await this.inventario.descontarPorVentaSeguro(
+      itemsCalculados.map((i) => ({ variante_id: i.variante_id, cantidad: i.cantidad })),
+      pedido.id,
+      null,
+    );
 
     if (pedido.modalidad === 'domicilio' && pedido.direccion_entrega) {
       this.mail.enviarNotificacionDomicilio({

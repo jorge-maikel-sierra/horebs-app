@@ -251,4 +251,22 @@ export class ConversacionesService {
       );
     if (error) throw error;
   }
+
+  /**
+   * Meta puede reenviar el mismo webhook (mismo id de mensaje) sin avisar
+   * — se registra el id apenas se ve por primera vez; si el insert choca
+   * con la clave primaria (canal, mensaje_id) es que ya se procesó antes.
+   * Cualquier otro error (ej. la tabla no responde) se relanza tal cual —
+   * es responsabilidad del caller decidir si ante un fallo de esta
+   * verificación prefiere igual procesar el mensaje o no.
+   */
+  async yaProcesado(canal: CanalMensajeria, mensajeId: string): Promise<boolean> {
+    const { error } = await this.supabase
+      .getClient()
+      .from('mensajes_procesados')
+      .insert({ canal, mensaje_id: mensajeId });
+    if (!error) return false;
+    if (error.code === '23505') return true;
+    throw error;
+  }
 }

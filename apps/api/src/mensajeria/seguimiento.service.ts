@@ -28,6 +28,14 @@ const TEXTO_OFERTA =
 export class SeguimientoService {
   private readonly logger = new Logger(SeguimientoService.name);
 
+  // Lock en memoria: alcanza porque Railway corre un solo proceso de este
+  // servicio (sin escalado horizontal). Si eso cambia algún día, esto deja
+  // de alcanzar y hace falta un lock real en la base (ej. advisory lock de
+  // Postgres) — hasta entonces, esto evita que una corrida que tarda más
+  // de 10 minutos se pise con la siguiente y mande el mismo recordatorio
+  // u oferta dos veces al mismo cliente.
+  private ejecutando = false;
+
   constructor(
     private readonly conversaciones: ConversacionesService,
     private readonly metaGraph: MetaGraphService,
@@ -37,10 +45,21 @@ export class SeguimientoService {
   // si no se lo damos, y ese global no existe en el Node 18 de Railway.
   @Cron('*/10 * * * *', { name: 'seguimiento-conversaciones' })
   async ejecutar(): Promise<void> {
-    const { recordatorioMinutos, ofertaMinutos } =
-      await this.conversaciones.obtenerConfiguracionSeguimiento();
-    await this.enviarRecordatorios(recordatorioMinutos);
-    await this.enviarOfertas(ofertaMinutos);
+    if (this.ejecutando) {
+      this.logger.warn(
+        'La corrida anterior de seguimiento todavía está en curso — se salta este tick para no duplicar mensajes.',
+      );
+      return;
+    }
+    this.ejecutando = true;
+    try {
+      const { recordatorioMinutos, ofertaMinutos } =
+        await this.conversaciones.obtenerConfiguracionSeguimiento();
+      await this.enviarRecordatorios(recordatorioMinutos);
+      await this.enviarOfertas(ofertaMinutos);
+    } finally {
+      this.ejecutando = false;
+    }
   }
 
   private async enviarRecordatorios(minutosInactividad: number): Promise<void> {

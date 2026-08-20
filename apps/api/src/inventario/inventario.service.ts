@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import { MailService } from '../mail/mail.service';
 
 export interface ItemVendido {
   variante_id: string;
@@ -29,7 +30,12 @@ interface RecetaComponenteFila {
  */
 @Injectable()
 export class InventarioService {
-  constructor(private readonly supabase: SupabaseService) {}
+  private readonly logger = new Logger(InventarioService.name);
+
+  constructor(
+    private readonly supabase: SupabaseService,
+    private readonly mail: MailService,
+  ) {}
 
   /**
    * Receta → subreceta → insumo (máximo 2 niveles). Una subreceta se
@@ -101,6 +107,39 @@ export class InventarioService {
       'venta',
       usuarioId,
     );
+  }
+
+  /**
+   * Igual que `descontarPorVenta`, pero nunca deja al pedido "huérfano"
+   * en silencio: si el descuento falla (ej. la RPC de stock revienta),
+   * marca `pedidos.stock_status = 'pendiente'` y avisa por correo — antes
+   * el error solo se logueaba y el pedido quedaba confirmado con el
+   * inventario real desactualizado, sin que nadie se enterara.
+   */
+  async descontarPorVentaSeguro(
+    items: ItemVendido[],
+    pedidoId: string,
+    usuarioId: string | null,
+  ): Promise<void> {
+    try {
+      await this.descontarPorVenta(items, pedidoId, usuarioId);
+    } catch (err) {
+      const motivo = (err as Error).message;
+      this.logger.error(`No se pudo descontar stock para el pedido ${pedidoId}: ${motivo}`);
+
+      const { error: updateError } = await this.supabase
+        .getClient()
+        .from('pedidos')
+        .update({ stock_status: 'pendiente' })
+        .eq('id', pedidoId);
+      if (updateError) {
+        this.logger.error(
+          `Encima no se pudo marcar stock_status='pendiente' para ${pedidoId}: ${updateError.message}`,
+        );
+      }
+
+      this.mail.enviarAlertaStockPendiente({ pedidoId, motivoError: motivo });
+    }
   }
 
   async revertirPorVenta(

@@ -58,6 +58,65 @@ export class MailService {
     });
   }
 
+  /**
+   * Fire-and-forget, igual que la notificación de domicilio — un pedido
+   * ya se creó, esto solo avisa que hace falta revisarlo a mano. Usa el
+   * mismo correo de `correo_domiciliario` porque hoy es el único destino
+   * de alertas configurado en el sistema; si se quiere un correo de
+   * operaciones separado, hay que agregar esa clave a `configuracion`.
+   */
+  enviarAlertaStockPendiente(datos: { pedidoId: string; motivoError: string }): void {
+    this.enviarAlertaStock(datos).catch((err) => {
+      this.logger.error(
+        `No se pudo enviar la alerta de stock pendiente para el pedido ${datos.pedidoId}: ${(err as Error).message}`,
+      );
+    });
+  }
+
+  private async enviarAlertaStock(datos: { pedidoId: string; motivoError: string }) {
+    if (!this.apiKey) return;
+
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('configuracion')
+      .select('valor')
+      .eq('clave', 'correo_domiciliario')
+      .maybeSingle();
+
+    const destino = error ? null : data?.valor;
+    if (!destino) {
+      this.logger.warn(
+        `No hay correo configurado para alertas — se omite el aviso de stock pendiente del pedido ${datos.pedidoId}.`,
+      );
+      return;
+    }
+
+    const res = await fetch(RESEND_API_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: this.remitente,
+        to: destino,
+        subject: `⚠️ Revisar stock del pedido #${datos.pedidoId.slice(0, 8)}`,
+        text: [
+          `El pedido ${datos.pedidoId} se registró correctamente, pero el descuento automático de stock falló.`,
+          '',
+          `Motivo: ${datos.motivoError}`,
+          '',
+          'Revisá el inventario de ese pedido a mano en el panel de admin.',
+        ].join('\n'),
+      }),
+    });
+
+    if (!res.ok) {
+      const cuerpo = await res.text().catch(() => '');
+      throw new Error(`Resend respondió ${res.status}: ${cuerpo}`);
+    }
+  }
+
   private async enviar(datos: NotificacionDomicilio) {
     if (!this.apiKey) return;
 

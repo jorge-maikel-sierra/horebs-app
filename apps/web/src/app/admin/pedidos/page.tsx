@@ -33,6 +33,7 @@ type PedidoAdmin = {
   costo_domicilio: number;
   metodo_pago: string;
   estado: string;
+  stock_status: string;
   total: number;
   created_at: string;
   items: ItemPedido[];
@@ -450,7 +451,7 @@ function PedidosInterno() {
       />
 
       {cargando && <CargandoSkeleton filas={5} />}
-      {error && <p className="mt-6 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-6 text-sm text-red-600 dark:text-red-400">{error}</p>}
 
       {!cargando && !error && pedidos.length === 0 && (
         <p className="mt-6 text-sm text-zinc-500 dark:text-zinc-400">
@@ -473,6 +474,14 @@ function PedidosInterno() {
                 >
                   {p.canal === 'pos' ? 'Local' : 'Web'}
                 </span>
+                {p.stock_status === 'pendiente' && (
+                  <span
+                    title="El descuento automático de stock falló para este pedido — revisar el inventario a mano."
+                    className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-semibold text-white"
+                  >
+                    ⚠️ Stock pendiente
+                  </span>
+                )}
                 <span className="font-semibold text-zinc-900 dark:text-zinc-50">
                   {p.cliente.nombre
                     ? `${p.cliente.nombre} ${p.cliente.apellido ?? ''}`.trim()
@@ -502,7 +511,7 @@ function PedidosInterno() {
                     type="button"
                     disabled={eliminandoId === p.id}
                     onClick={() => eliminarPedido(p)}
-                    className="text-xs text-red-600 underline disabled:opacity-50"
+                    className="text-xs text-red-600 underline disabled:opacity-50 dark:text-red-400"
                   >
                     {eliminandoId === p.id ? 'Eliminando…' : 'Eliminar'}
                   </button>
@@ -542,7 +551,7 @@ function PedidosInterno() {
               </button>
               {mensajeFactura?.id === p.id && (
                 <span
-                  className={`text-xs ${mensajeFactura.error ? 'text-red-600' : 'text-brand-orange'}`}
+                  className={`text-xs ${mensajeFactura.error ? 'text-red-600 dark:text-red-400' : 'text-brand-orange'}`}
                 >
                   {mensajeFactura.texto}
                 </span>
@@ -578,7 +587,7 @@ function PedidosInterno() {
                   />
                 </div>
                 {errorEdit && (
-                  <p className="text-xs text-red-600">{errorEdit}</p>
+                  <p className="text-xs text-red-600 dark:text-red-400">{errorEdit}</p>
                 )}
                 <div className="flex gap-2">
                   <button
@@ -788,7 +797,7 @@ function PedidosInterno() {
                 </div>
 
                 {errorPedido && (
-                  <p className="text-xs text-red-600">{errorPedido}</p>
+                  <p className="text-xs text-red-600 dark:text-red-400">{errorPedido}</p>
                 )}
                 <div className="flex gap-2">
                   <button

@@ -121,6 +121,7 @@ export interface PedidoAdminDto {
   costo_domicilio: number;
   metodo_pago: string;
   estado: string;
+  stock_status: string;
   total: number;
   created_at: string;
   items: {
@@ -164,7 +165,7 @@ function telefonoAWhatsappId(telefono: string): string {
 }
 
 const PEDIDO_ADMIN_SELECT =
-  'id, canal, modalidad, direccion_entrega, costo_domicilio, metodo_pago, estado, total, created_at, clientes(id, nombre, apellido, telefono, direccion, correo), items_pedido(variante_id, nombre_personalizado, cantidad, precio_unitario, variantes_producto(nombre, productos(nombre)))';
+  'id, canal, modalidad, direccion_entrega, costo_domicilio, metodo_pago, estado, stock_status, total, created_at, clientes(id, nombre, apellido, telefono, direccion, correo), items_pedido(variante_id, nombre_personalizado, cantidad, precio_unitario, variantes_producto(nombre, productos(nombre)))';
 
 @Injectable()
 export class AdminService {
@@ -178,20 +179,6 @@ export class AdminService {
     private readonly metaGraph: MetaGraphService,
     private readonly factura: FacturaService,
   ) {}
-
-  private async descontarStockSeguro(
-    items: { variante_id: string; cantidad: number }[],
-    pedidoId: string,
-    usuarioId: string | null,
-  ): Promise<void> {
-    try {
-      await this.inventario.descontarPorVenta(items, pedidoId, usuarioId);
-    } catch (err) {
-      this.logger.error(
-        `No se pudo descontar stock para el pedido ${pedidoId}: ${(err as Error).message}`,
-      );
-    }
-  }
 
   private async revertirStockSeguro(
     items: { variante_id: string; cantidad: number }[],
@@ -297,7 +284,7 @@ export class AdminService {
     );
     if (itemsError) throw itemsError;
 
-    await this.descontarStockSeguro(
+    await this.inventario.descontarPorVentaSeguro(
       itemsCalculados
         .filter((i) => i.variante_id)
         .map((i) => ({ variante_id: i.variante_id as string, cantidad: i.cantidad })),
@@ -374,14 +361,18 @@ export class AdminService {
     }
     const buffer = await this.factura.generarPdf(pedido);
     const { asunto, texto, html } = this.factura.datosCorreo(pedido);
-    await this.mail.enviarConAdjunto({
-      destino: pedido.cliente.correo,
-      asunto,
-      texto,
-      html,
-      adjuntoNombre: this.factura.nombreArchivo(pedido),
-      adjuntoPdf: buffer,
-    });
+    try {
+      await this.mail.enviarConAdjunto({
+        destino: pedido.cliente.correo,
+        asunto,
+        texto,
+        html,
+        adjuntoNombre: this.factura.nombreArchivo(pedido),
+        adjuntoPdf: buffer,
+      });
+    } catch (err) {
+      throw new BadRequestException(`No se pudo enviar el correo: ${(err as Error).message}`);
+    }
     return { enviado: true, destino: pedido.cliente.correo };
   }
 
@@ -499,7 +490,7 @@ export class AdminService {
       payload.total = totalItems + (pedidoActual.costo_domicilio ?? 0);
 
       if (!cancelando) {
-        await this.descontarStockSeguro(
+        await this.inventario.descontarPorVentaSeguro(
           itemsCalculados
             .filter((i) => i.variante_id)
             .map((i) => ({ variante_id: i.variante_id as string, cantidad: i.cantidad })),
@@ -576,6 +567,7 @@ export class AdminService {
       costo_domicilio: p.costo_domicilio,
       metodo_pago: p.metodo_pago,
       estado: p.estado,
+      stock_status: p.stock_status,
       total: p.total,
       created_at: p.created_at,
       items: items.map((i) => ({
