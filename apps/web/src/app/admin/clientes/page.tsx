@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { adminFetch } from '@/lib/admin-fetch';
 import { useRol } from '@/lib/use-rol';
 import CargandoSkeleton from '@/components/CargandoSkeleton';
@@ -21,6 +21,17 @@ type ConfiguracionPuntos = {
   puntosMinimoCanje: number;
   puntosVencimientoMeses: number;
 };
+
+function IconPapelera() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 7h16" />
+      <path d="M9 7V4h6v3" />
+      <path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13" />
+      <path d="M10 11v6M14 11v6" />
+    </svg>
+  );
+}
 
 function IconConfig() {
   return (
@@ -163,10 +174,13 @@ function PanelConfiguracion() {
 
 export default function AdminClientesPage() {
   const { rol } = useRol();
+  const router = useRouter();
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busqueda, setBusqueda] = useState('');
+  const [eliminandoId, setEliminandoId] = useState<string | null>(null);
+  const [errorEliminar, setErrorEliminar] = useState<string | null>(null);
 
   useEffect(() => {
     setCargando(true);
@@ -182,6 +196,31 @@ export default function AdminClientesPage() {
     }, 300);
     return () => clearTimeout(timeout);
   }, [busqueda]);
+
+  async function eliminarCliente(c: Cliente) {
+    const nombreCompleto = `${c.nombre} ${c.apellido ?? ''}`.trim();
+    if (
+      !window.confirm(
+        `¿Eliminar a "${nombreCompleto}"? Esto solo funciona si el cliente no tiene pedidos registrados.`,
+      )
+    ) {
+      return;
+    }
+    setErrorEliminar(null);
+    setEliminandoId(c.id);
+    try {
+      const res = await adminFetch(`/admin/clientes/${c.id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.message ?? 'No se pudo eliminar el cliente.');
+      }
+      setClientes((prev) => prev.filter((x) => x.id !== c.id));
+    } catch (err) {
+      setErrorEliminar(err instanceof Error ? err.message : 'No se pudo eliminar el cliente.');
+    } finally {
+      setEliminandoId(null);
+    }
+  }
 
   return (
     <div className="p-8">
@@ -201,6 +240,9 @@ export default function AdminClientesPage() {
 
       {cargando && <CargandoSkeleton filas={5} />}
       {error && <p className="mt-6 text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {errorEliminar && (
+        <p className="mt-6 text-sm text-red-600 dark:text-red-400">{errorEliminar}</p>
+      )}
       {!cargando && !error && clientes.length === 0 && (
         <p className="mt-6 text-sm text-zinc-500 dark:text-zinc-400">
           {busqueda ? 'No se encontraron clientes.' : 'Todavía no hay clientes registrados.'}
@@ -209,12 +251,31 @@ export default function AdminClientesPage() {
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {clientes.map((c) => (
-          <Link
+          <div
             key={c.id}
-            href={`/admin/clientes/${c.id}`}
-            className="card-interactive flex flex-col rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
+            role="link"
+            tabIndex={0}
+            onClick={() => router.push(`/admin/clientes/${c.id}`)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') router.push(`/admin/clientes/${c.id}`);
+            }}
+            className="card-interactive relative flex cursor-pointer flex-col rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
           >
-            <p className="truncate font-semibold text-zinc-900 dark:text-zinc-50">
+            {rol === 'admin' && (
+              <button
+                type="button"
+                disabled={eliminandoId === c.id}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  eliminarCliente(c);
+                }}
+                title="Eliminar cliente (solo si no tiene pedidos)"
+                className="btn-press absolute top-3 right-3 rounded-md p-1.5 text-zinc-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+              >
+                <IconPapelera />
+              </button>
+            )}
+            <p className="truncate pr-8 font-semibold text-zinc-900 dark:text-zinc-50">
               {c.nombre} {c.apellido ?? ''}
             </p>
             <p className="mt-0.5 truncate text-xs text-zinc-500 dark:text-zinc-400">
@@ -225,7 +286,7 @@ export default function AdminClientesPage() {
                 {c.correo}
               </p>
             )}
-          </Link>
+          </div>
         ))}
       </div>
     </div>

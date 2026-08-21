@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -40,6 +41,12 @@ export class ClientesController {
   @Roles('admin', 'empleado')
   editar(@Param('id') id: string, @Body() body: EditarClienteInput) {
     return this.clientes.editar(id, body);
+  }
+
+  @Delete(':id')
+  @Roles('admin')
+  eliminar(@Param('id') id: string) {
+    return this.clientes.eliminar(id);
   }
 
   @Get(':id/movimientos-puntos')

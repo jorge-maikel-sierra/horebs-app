@@ -86,6 +86,9 @@ export default function DetalleClientePage() {
   const [ajustando, setAjustando] = useState(false);
   const [errorAjuste, setErrorAjuste] = useState<string | null>(null);
 
+  const [eliminando, setEliminando] = useState(false);
+  const [errorEliminar, setErrorEliminar] = useState<string | null>(null);
+
   function cargar() {
     setCargando(true);
     setError(null);
@@ -173,6 +176,31 @@ export default function DetalleClientePage() {
     }
   }
 
+  async function eliminarCliente() {
+    if (!cliente) return;
+    const nombreCompleto = `${cliente.nombre} ${cliente.apellido ?? ''}`.trim();
+    if (
+      !window.confirm(
+        `¿Eliminar a "${nombreCompleto}"? Esto solo funciona si el cliente no tiene pedidos registrados.`,
+      )
+    ) {
+      return;
+    }
+    setEliminando(true);
+    setErrorEliminar(null);
+    try {
+      const res = await adminFetch(`/admin/clientes/${params.id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.message ?? 'No se pudo eliminar el cliente.');
+      }
+      router.push('/admin/clientes');
+    } catch (err) {
+      setErrorEliminar(err instanceof Error ? err.message : 'No se pudo eliminar el cliente.');
+      setEliminando(false);
+    }
+  }
+
   if (cargando) {
     return (
       <div className="p-8">
@@ -212,14 +240,31 @@ export default function DetalleClientePage() {
             {cliente.nombre} {cliente.apellido ?? ''}
           </h1>
         </div>
-        <button
-          type="button"
-          onClick={() => setEditando((v) => !v)}
-          className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700 hover:border-brand-orange dark:border-zinc-700 dark:text-zinc-300"
-        >
-          {editando ? 'Cancelar' : 'Editar datos'}
-        </button>
+        <div className="flex items-center gap-2">
+          {rol === 'admin' && (
+            <button
+              type="button"
+              onClick={eliminarCliente}
+              disabled={eliminando}
+              title="Solo funciona si el cliente no tiene pedidos registrados"
+              className="rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 hover:border-red-400 disabled:opacity-60 dark:border-red-900/50 dark:text-red-400 dark:hover:border-red-700"
+            >
+              {eliminando ? 'Eliminando…' : 'Eliminar cliente'}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setEditando((v) => !v)}
+            className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700 hover:border-brand-orange dark:border-zinc-700 dark:text-zinc-300"
+          >
+            {editando ? 'Cancelar' : 'Editar datos'}
+          </button>
+        </div>
       </div>
+
+      {errorEliminar && (
+        <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errorEliminar}</p>
+      )}
 
       {editando ? (
         <form

@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 
 export interface ClienteDto {
@@ -133,5 +137,30 @@ export class ClientesService {
       throw error;
     }
     return data;
+  }
+
+  /**
+   * Pensado para limpiar clientes "inventados" (creados sin querer desde
+   * el POS, sin ningún pedido real). `pedidos.cliente_id` tiene
+   * ON DELETE RESTRICT — si el cliente sí tiene pedidos, Postgres
+   * rechaza el delete con 23503 y acá se lo traduce a un mensaje claro
+   * en vez de dejar pasar el error crudo de la base.
+   */
+  async eliminar(id: string): Promise<void> {
+    const { error, count } = await this.supabase
+      .getClient()
+      .from('clientes')
+      .delete({ count: 'exact' })
+      .eq('id', id);
+
+    if (error) {
+      if (error.code === '23503') {
+        throw new BadRequestException(
+          'Este cliente tiene pedidos registrados — no se puede eliminar.',
+        );
+      }
+      throw error;
+    }
+    if (!count) throw new NotFoundException('Cliente no encontrado.');
   }
 }
