@@ -2,7 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { GeminiService } from './gemini.service';
 import { MetaGraphService } from './meta-graph.service';
-import { ConversacionesService, type CanalMensajeria } from './conversaciones.service';
+import {
+  ConversacionesService,
+  type CanalMensajeria,
+} from './conversaciones.service';
 
 export interface ProcedenciaAnuncio {
   esAnuncio: boolean;
@@ -38,6 +41,10 @@ interface WhatsappMensaje {
   id?: string;
   text?: { body?: string };
   referral?: MetaReferral;
+  interactive?: {
+    type: string;
+    button_reply?: { id: string; title: string };
+  };
 }
 
 interface WhatsappWebhookPayload {
@@ -92,7 +99,10 @@ export class WebhooksService {
   ): boolean {
     if (!firmaHeader?.startsWith('sha256=')) return false;
 
-    const firmaRecibida = Buffer.from(firmaHeader.slice('sha256='.length), 'hex');
+    const firmaRecibida = Buffer.from(
+      firmaHeader.slice('sha256='.length),
+      'hex',
+    );
     const firmaCalculada = Buffer.from(
       createHmac('sha256', appSecret).update(rawBody).digest('hex'),
       'hex',
@@ -127,7 +137,10 @@ export class WebhooksService {
     if (evento.mensajeId) {
       let duplicado = false;
       try {
-        duplicado = await this.conversaciones.yaProcesado(evento.canal, evento.mensajeId);
+        duplicado = await this.conversaciones.yaProcesado(
+          evento.canal,
+          evento.mensajeId,
+        );
       } catch (err) {
         // Si la verificación de duplicado en sí falla (no el chequeo, sino
         // el acceso a la tabla), se prefiere procesar el mensaje de más en
@@ -150,7 +163,10 @@ export class WebhooksService {
       );
     }
 
-    await this.conversaciones.registrarInteraccion(evento.canal, evento.identificadorExterno);
+    await this.conversaciones.registrarInteraccion(
+      evento.canal,
+      evento.identificadorExterno,
+    );
     const estado = await this.conversaciones.obtenerEstado(
       evento.canal,
       evento.identificadorExterno,
@@ -177,19 +193,43 @@ export class WebhooksService {
     );
   }
 
+  /**
+   * Texto plano tal cual, o texto sintético cuando el cliente tocó el
+   * botón "Agregar al pedido" de una tarjeta de producto (mostrar_productos
+   * en gemini.service.ts) — el id del botón lleva el nombre del producto,
+   * nunca un id de base de datos, así no hace falta volver a consultar
+   * nada acá: se arma un mensaje natural y Gemini sigue el flujo normal
+   * de toma de pedido como si el cliente lo hubiera escrito.
+   */
+  private textoWhatsapp(mensaje: WhatsappMensaje): string | null {
+    if (mensaje.type === 'text') return mensaje.text?.body ?? '';
+    if (
+      mensaje.type === 'interactive' &&
+      mensaje.interactive?.type === 'button_reply'
+    ) {
+      const id = mensaje.interactive.button_reply?.id ?? '';
+      const nombreProducto = id.startsWith('pedir:')
+        ? id.slice('pedir:'.length)
+        : null;
+      return nombreProducto ? `Quiero pedir ${nombreProducto}` : null;
+    }
+    return null;
+  }
+
   private parsearWhatsapp(payload: WhatsappWebhookPayload): EventoEntrante[] {
     const eventos: EventoEntrante[] = [];
     for (const entry of payload?.entry ?? []) {
       for (const change of entry?.changes ?? []) {
         for (const mensaje of change?.value?.messages ?? []) {
-          // MVP: solo texto — audio/imagen/ubicación quedan para una
-          // extensión posterior, no se pidieron en el flujo básico.
-          if (mensaje.type !== 'text') continue;
+          const texto = this.textoWhatsapp(mensaje);
+          // MVP: solo texto y tap de botón — audio/imagen/ubicación quedan
+          // para una extensión posterior, no se pidieron en el flujo básico.
+          if (texto === null) continue;
           eventos.push({
             canal: 'whatsapp',
             identificadorExterno: mensaje.from,
             telefono: mensaje.from,
-            texto: mensaje.text?.body ?? '',
+            texto,
             procedenciaAnuncio: this.extraerProcedenciaWhatsapp(mensaje),
             mensajeId: mensaje.id ?? null,
           });
@@ -199,7 +239,9 @@ export class WebhooksService {
     return eventos;
   }
 
-  private extraerProcedenciaWhatsapp(mensaje: WhatsappMensaje): ProcedenciaAnuncio | null {
+  private extraerProcedenciaWhatsapp(
+    mensaje: WhatsappMensaje,
+  ): ProcedenciaAnuncio | null {
     const referral = mensaje.referral;
     if (!referral) return null;
     return {
@@ -234,7 +276,9 @@ export class WebhooksService {
     return eventos;
   }
 
-  private extraerProcedenciaMessenger(evento: MessengerEvento): ProcedenciaAnuncio | null {
+  private extraerProcedenciaMessenger(
+    evento: MessengerEvento,
+  ): ProcedenciaAnuncio | null {
     const referral =
       evento.referral ?? evento.message?.referral ?? evento.postback?.referral;
     if (!referral) return null;

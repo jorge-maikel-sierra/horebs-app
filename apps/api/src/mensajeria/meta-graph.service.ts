@@ -5,6 +5,18 @@ import type { CanalMensajeria } from './conversaciones.service';
 const REINTENTOS = 2;
 const BACKOFF_MS = [500, 1500];
 
+export interface TarjetaProducto {
+  nombre: string;
+  descripcion: string | null;
+  imagenUrl: string | null;
+  precioDesde: number;
+}
+
+// WhatsApp corta el título de un botón de respuesta a 20 caracteres — el
+// nombre del producto va en el id del botón (hasta 256 caracteres), nunca
+// en el título.
+const TITULO_BOTON_AGREGAR = 'Agregar al pedido';
+
 /**
  * Gemini responde en Markdown estándar (**negrita**), pero WhatsApp solo
  * reconoce un asterisco de cada lado (*negrita*) — con doble asterisco no
@@ -35,7 +47,9 @@ export class MetaGraphService {
   constructor(private readonly config: ConfigService) {
     this.version = this.config.get<string>('META_GRAPH_API_VERSION') ?? 'v21.0';
     this.whatsappToken = this.config.get<string>('WHATSAPP_ACCESS_TOKEN');
-    this.whatsappPhoneNumberId = this.config.get<string>('WHATSAPP_PHONE_NUMBER_ID');
+    this.whatsappPhoneNumberId = this.config.get<string>(
+      'WHATSAPP_PHONE_NUMBER_ID',
+    );
     this.pageToken = this.config.get<string>('MESSENGER_PAGE_ACCESS_TOKEN');
     this.pageId = this.config.get<string>('MESSENGER_PAGE_ID');
 
@@ -58,12 +72,16 @@ export class MetaGraphService {
   ): Promise<void> {
     const textoNormalizado = normalizarNegritaWhatsapp(texto);
     if (canal === 'whatsapp') {
-      await this.conReintentos(() => this.enviarWhatsapp(destinatarioId, textoNormalizado));
+      await this.conReintentos(() =>
+        this.enviarWhatsapp(destinatarioId, textoNormalizado),
+      );
       return;
     }
     // Messenger e Instagram comparten el mismo Send API una vez que la
     // cuenta de Instagram está vinculada a la Página de Facebook.
-    await this.conReintentos(() => this.enviarMessengerOInstagram(destinatarioId, textoNormalizado));
+    await this.conReintentos(() =>
+      this.enviarMessengerOInstagram(destinatarioId, textoNormalizado),
+    );
   }
 
   /**
@@ -85,7 +103,48 @@ export class MetaGraphService {
       );
       return;
     }
-    await this.conReintentos(() => this.enviarWhatsappBotonCatalogo(destinatarioId, url));
+    await this.conReintentos(() =>
+      this.enviarWhatsappBotonCatalogo(destinatarioId, url),
+    );
+  }
+
+  /**
+   * Manda hasta 3 productos como tarjetas separadas (imagen + nombre +
+   * precio + botón "Agregar al pedido") en vez de una lista de precios en
+   * texto — mejor UX para elegir. Sin catálogo de Meta Commerce vinculado,
+   * no existe un carrusel nativo de WhatsApp fuera de plantillas
+   * aprobadas — se arma a mano con mensajes interactivos tipo botón, uno
+   * por producto, cada uno con su propia imagen como header. El id del
+   * botón lleva el nombre del producto (no un UUID) para que, al tocarlo,
+   * el webhook pueda armar un mensaje de texto natural sin tener que
+   * volver a consultar la base — Gemini sigue el flujo de pedido normal
+   * desde ahí. Solo WhatsApp — Messenger/Instagram no soportan botones
+   * con imagen del mismo modo y no hay canal en producción para probarlo.
+   */
+  async enviarTarjetasProductos(
+    canal: CanalMensajeria,
+    destinatarioId: string,
+    productos: TarjetaProducto[],
+  ): Promise<void> {
+    if (canal !== 'whatsapp') {
+      const lista = productos
+        .map(
+          (p) =>
+            `• ${p.nombre}: desde $${p.precioDesde.toLocaleString('es-CO')}`,
+        )
+        .join('\n');
+      await this.enviarMensajeSesion(
+        canal,
+        destinatarioId,
+        `Estas son algunas opciones:\n${lista}`,
+      );
+      return;
+    }
+    for (const producto of productos) {
+      await this.conReintentos(() =>
+        this.enviarWhatsappTarjetaProducto(destinatarioId, producto),
+      );
+    }
   }
 
   /**
@@ -136,7 +195,9 @@ export class MetaGraphService {
     );
     if (!resMedia.ok) {
       const cuerpo = await resMedia.text().catch(() => '');
-      throw new Error(`WhatsApp Media API respondió ${resMedia.status}: ${cuerpo}`);
+      throw new Error(
+        `WhatsApp Media API respondió ${resMedia.status}: ${cuerpo}`,
+      );
     }
     const { id: mediaId } = (await resMedia.json()) as { id: string };
 
@@ -158,11 +219,16 @@ export class MetaGraphService {
     );
     if (!resMensaje.ok) {
       const cuerpo = await resMensaje.text().catch(() => '');
-      throw new Error(`WhatsApp Graph API respondió ${resMensaje.status}: ${cuerpo}`);
+      throw new Error(
+        `WhatsApp Graph API respondió ${resMensaje.status}: ${cuerpo}`,
+      );
     }
   }
 
-  private async enviarWhatsappBotonCatalogo(destinatarioId: string, url: string): Promise<void> {
+  private async enviarWhatsappBotonCatalogo(
+    destinatarioId: string,
+    url: string,
+  ): Promise<void> {
     if (!this.whatsappToken || !this.whatsappPhoneNumberId) {
       throw new Error('WhatsApp no está configurado.');
     }
@@ -180,7 +246,9 @@ export class MetaGraphService {
           type: 'interactive',
           interactive: {
             type: 'cta_url',
-            body: { text: 'Mirá nuestro catálogo completo con fotos y precios 🍕' },
+            body: {
+              text: 'Mirá nuestro catálogo completo con fotos y precios 🍕',
+            },
             action: {
               name: 'cta_url',
               parameters: { display_text: 'Ver catálogo', url },
@@ -195,7 +263,67 @@ export class MetaGraphService {
     }
   }
 
-  private async enviarWhatsapp(destinatarioId: string, texto: string): Promise<void> {
+  private async enviarWhatsappTarjetaProducto(
+    destinatarioId: string,
+    producto: TarjetaProducto,
+  ): Promise<void> {
+    if (!this.whatsappToken || !this.whatsappPhoneNumberId) {
+      throw new Error('WhatsApp no está configurado.');
+    }
+    const cuerpo = [
+      producto.descripcion,
+      `Desde $${producto.precioDesde.toLocaleString('es-CO')}`,
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    const res = await fetch(
+      `https://graph.facebook.com/${this.version}/${this.whatsappPhoneNumberId}/messages`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.whatsappToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messaging_product: 'whatsapp',
+          to: destinatarioId,
+          type: 'interactive',
+          interactive: {
+            type: 'button',
+            header: producto.imagenUrl
+              ? { type: 'image', image: { link: producto.imagenUrl } }
+              : { type: 'text', text: producto.nombre },
+            body: {
+              text: producto.imagenUrl
+                ? cuerpo
+                : `*${producto.nombre}*\n${cuerpo}`,
+            },
+            action: {
+              buttons: [
+                {
+                  type: 'reply',
+                  reply: {
+                    id: `pedir:${producto.nombre}`,
+                    title: TITULO_BOTON_AGREGAR,
+                  },
+                },
+              ],
+            },
+          },
+        }),
+      },
+    );
+    if (!res.ok) {
+      const detalle = await res.text().catch(() => '');
+      throw new Error(`WhatsApp Graph API respondió ${res.status}: ${detalle}`);
+    }
+  }
+
+  private async enviarWhatsapp(
+    destinatarioId: string,
+    texto: string,
+  ): Promise<void> {
     if (!this.whatsappToken || !this.whatsappPhoneNumberId) {
       throw new Error('WhatsApp no está configurado.');
     }
@@ -245,7 +373,9 @@ export class MetaGraphService {
     );
     if (!res.ok) {
       const cuerpo = await res.text().catch(() => '');
-      throw new Error(`Messenger/Instagram Graph API respondió ${res.status}: ${cuerpo}`);
+      throw new Error(
+        `Messenger/Instagram Graph API respondió ${res.status}: ${cuerpo}`,
+      );
     }
   }
 
@@ -260,8 +390,10 @@ export class MetaGraphService {
         if (intento < REINTENTOS) {
           // intento es un contador interno del for (0..REINTENTOS), nunca
           // input externo — no hay injection posible acá.
-          // eslint-disable-next-line security/detect-object-injection
-          await new Promise((resolve) => setTimeout(resolve, BACKOFF_MS[intento]));
+          await new Promise((resolve) =>
+            // eslint-disable-next-line security/detect-object-injection
+            setTimeout(resolve, BACKOFF_MS[intento]),
+          );
         }
       }
     }

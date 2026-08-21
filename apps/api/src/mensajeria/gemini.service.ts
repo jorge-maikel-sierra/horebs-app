@@ -3,9 +3,14 @@ import { ConfigService } from '@nestjs/config';
 import { CatalogService } from '../catalog/catalog.service';
 import { PedidosService } from '../pedidos/pedidos.service';
 import { MetaGraphService } from './meta-graph.service';
-import { ConversacionesService, type CanalMensajeria } from './conversaciones.service';
+import { COSTO_DOMICILIO_DEFAULT } from '../common/costos';
+import {
+  ConversacionesService,
+  type CanalMensajeria,
+} from './conversaciones.service';
 
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/interactions';
+const GEMINI_URL =
+  'https://generativelanguage.googleapis.com/v1beta/interactions';
 const MODELO_DEFAULT = 'gemini-flash-lite-latest';
 const MAX_TURNOS_HERRAMIENTAS = 4;
 const MAX_OUTPUT_TOKENS = 1024;
@@ -21,16 +26,22 @@ const HORARIO = 'Lunes a domingo, 4:00pm – 11:00pm';
 const DIRECCION = 'Carrera 7 # 17B - 66, Riohacha, La Guajira';
 const NOMBRE_NEGOCIO = 'Pizzería Horebs';
 const URL_CATALOGO = 'https://pizzeriahorebs.shop/catalogo';
-// Mismo valor por defecto que usa el POS (admin.service.ts) — no se
-// inventa un número nuevo acá.
-const COSTO_DOMICILIO = 5000;
 
 // Tamaños y conectores no distinguen un producto de otro — se ignoran al
 // comparar. "pizza personal hawaiana" tiene que matchear "Pizza Hawaiana"
 // aunque la palabra de tamaño se meta en el medio.
 const PALABRAS_IGNORADAS = new Set([
-  'pizza', 'de', 'y', 'la', 'el', 'con', 'una', 'un',
-  'personal', 'mediana', 'grande',
+  'pizza',
+  'de',
+  'y',
+  'la',
+  'el',
+  'con',
+  'una',
+  'un',
+  'personal',
+  'mediana',
+  'grande',
 ]);
 
 function palabrasSignificativas(texto: string): string[] {
@@ -44,8 +55,10 @@ const SYSTEM_INSTRUCTION = `Sos el asistente virtual de ${NOMBRE_NEGOCIO}, una p
 
 Reglas estrictas:
 - Nunca inventes precios, productos, horarios ni el estado de un pedido. Para cualquiera de esos datos, usá siempre la herramienta correspondiente.
-- Si el cliente pide el menú o catálogo en general (sin nombrar un producto puntual), usá enviar_link_catalogo — NO listes todos los precios en el mensaje, eso ya lo manda la herramienta como un botón.
+- Si el cliente pide el menú, pregunta qué tienen, o pide opciones de una categoría (por ejemplo "qué pizzas tienen", "algo para tomar", "qué me recomendás"), usá mostrar_productos — manda hasta 3 tarjetas con foto, precio y un botón para agregar al pedido. NO listes productos ni precios vos en el mensaje, eso ya lo manda la herramienta.
+- Si el cliente pide ver el catálogo COMPLETO (por ejemplo "mandame el link", "quiero ver todo el menú"), usá enviar_link_catalogo en vez de mostrar_productos.
 - Si el cliente pregunta por un producto específico (por ejemplo "cuánto vale la pizza hawaiana", "tienen pizza margarita personal"), usá consultar_producto con el nombre de ese producto.
+- Cuando el mensaje del cliente sea "Quiero pedir <nombre de producto>" (esto pasa cuando toca el botón "Agregar al pedido" de una tarjeta), tratalo como el inicio de un pedido de ese producto — seguí el flujo normal de toma de pedido de abajo, preguntando el tamaño si el producto tiene más de uno.
 - Si el pedido del cliente es vago o genérico (por ejemplo "quiero más información", "contame más", "necesito ayuda") y no queda claro qué dato específico necesita, NO llames a ninguna herramienta todavía — preguntale primero si quiere ver el menú, el horario, el estado de su pedido, o hablar con alguien del equipo. Usá una herramienta recién cuando el cliente ya haya aclarado qué necesita.
 - Si te preguntan algo que ninguna herramienta puede responder, o el cliente pide hablar con alguien del equipo, usá la herramienta derivar_a_humano.
 - Mantené las respuestas breves — como un mensaje real de WhatsApp, no un párrafo largo.
@@ -65,19 +78,37 @@ const HERRAMIENTAS = [
     type: 'function',
     name: 'enviar_link_catalogo',
     description:
-      'Manda el link del catálogo completo con fotos como botón de WhatsApp. Usar cuando el cliente pide ver el menú o catálogo en general, sin preguntar por un producto puntual.',
+      'Manda el link del catálogo completo con fotos como botón de WhatsApp. Usar solo cuando el cliente pide ver el catálogo COMPLETO explícitamente (ej. "mandame el link", "quiero ver todo el menú") — para "qué tienen"/"qué pizzas hay" en general, usar mostrar_productos.',
     parameters: { type: 'object', properties: {} },
   },
   {
     type: 'function',
+    name: 'mostrar_productos',
+    description:
+      'Manda hasta 3 tarjetas de producto (foto, precio y botón para agregar al pedido). Usar cuando el cliente pide el menú, pregunta qué tienen, pide opciones de una categoría, o pide una recomendación — nunca listes productos ni precios vos mismo en el mensaje.',
+    parameters: {
+      type: 'object',
+      properties: {
+        consulta: {
+          type: 'string',
+          description:
+            'Lo que el cliente busca, en sus palabras (ej. "pizzas", "algo para tomar", "pizza hawaiana personal"). Dejar vacío si el cliente no especificó nada — en ese caso se muestran los productos más populares.',
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
     name: 'consultar_producto',
-    description: 'Busca el precio y descripción real de un producto específico del menú por nombre.',
+    description:
+      'Busca el precio y descripción real de un producto específico del menú por nombre.',
     parameters: {
       type: 'object',
       properties: {
         nombre_producto: {
           type: 'string',
-          description: 'Nombre del producto que pidió el cliente, ej. "pizza hawaiana"',
+          description:
+            'Nombre del producto que pidió el cliente, ej. "pizza hawaiana"',
         },
       },
       required: ['nombre_producto'],
@@ -96,10 +127,14 @@ const HERRAMIENTAS = [
           items: {
             type: 'object',
             properties: {
-              producto: { type: 'string', description: 'Nombre del producto, ej. "pizza hawaiana"' },
+              producto: {
+                type: 'string',
+                description: 'Nombre del producto, ej. "pizza hawaiana"',
+              },
               tamano: {
                 type: 'string',
-                description: 'Tamaño elegido: personal, mediana o grande. Vacío si el producto no tiene tamaños (ej. bebidas).',
+                description:
+                  'Tamaño elegido: personal, mediana o grande. Vacío si el producto no tiene tamaños (ej. bebidas).',
               },
               cantidad: { type: 'number', description: 'Cantidad de unidades' },
             },
@@ -109,11 +144,13 @@ const HERRAMIENTAS = [
         modalidad: {
           type: 'string',
           enum: ['domicilio', 'retiro', 'local'],
-          description: 'Modalidad de entrega — exactamente uno de estos tres valores, sin agregarle la dirección ni nada más.',
+          description:
+            'Modalidad de entrega — exactamente uno de estos tres valores, sin agregarle la dirección ni nada más.',
         },
         direccion: {
           type: 'string',
-          description: 'Dirección de entrega. Solo si modalidad es "domicilio" — vacío en los otros casos.',
+          description:
+            'Dirección de entrega. Solo si modalidad es "domicilio" — vacío en los otros casos.',
         },
       },
       required: ['items', 'modalidad'],
@@ -197,7 +234,9 @@ export class GeminiService {
     this.apiKey = this.config.get<string>('GEMINI_API_KEY');
     this.modelo = this.config.get<string>('GEMINI_MODEL') || MODELO_DEFAULT;
     if (!this.apiKey) {
-      this.logger.warn('GEMINI_API_KEY no configurada — el bot no puede responder.');
+      this.logger.warn(
+        'GEMINI_API_KEY no configurada — el bot no puede responder.',
+      );
     }
   }
 
@@ -216,12 +255,13 @@ export class GeminiService {
     }
 
     try {
-      const dentroDelLimite = await this.conversaciones.dentroDelLimiteDeMensajes(
-        canal,
-        identificadorExterno,
-        LIMITE_MENSAJES_VENTANA_MINUTOS,
-        LIMITE_MENSAJES_MAX,
-      );
+      const dentroDelLimite =
+        await this.conversaciones.dentroDelLimiteDeMensajes(
+          canal,
+          identificadorExterno,
+          LIMITE_MENSAJES_VENTANA_MINUTOS,
+          LIMITE_MENSAJES_MAX,
+        );
       if (!dentroDelLimite) {
         this.logger.warn(
           `Límite de mensajes excedido — canal=${canal} id=${identificadorExterno}`,
@@ -237,7 +277,9 @@ export class GeminiService {
         telefono,
         textoEntrante,
       );
-      return respuestaFinal === null ? null : this.truncarParaWhatsapp(respuestaFinal);
+      return respuestaFinal === null
+        ? null
+        : this.truncarParaWhatsapp(respuestaFinal);
     } catch (err) {
       this.logger.error(
         `Error respondiendo a canal=${canal} id=${identificadorExterno}: ${(err as Error).message}`,
@@ -257,10 +299,11 @@ export class GeminiService {
     telefono: string | null,
     textoEntrante: string,
   ): Promise<string | null> {
-    const interaccionPrevia = await this.conversaciones.obtenerUltimaInteraccionGemini(
-      canal,
-      identificadorExterno,
-    );
+    const interaccionPrevia =
+      await this.conversaciones.obtenerUltimaInteraccionGemini(
+        canal,
+        identificadorExterno,
+      );
 
     let respuesta = await this.llamarGemini({
       model: this.modelo,
@@ -281,8 +324,31 @@ export class GeminiService {
       if (!llamada || respuesta.status !== 'requires_action') break;
 
       if (llamada.name === 'enviar_link_catalogo') {
-        await this.metaGraph.enviarBotonCatalogo(canal, identificadorExterno, URL_CATALOGO);
-        await this.conversaciones.guardarInteraccionGemini(canal, identificadorExterno, respuesta.id);
+        await this.metaGraph.enviarBotonCatalogo(
+          canal,
+          identificadorExterno,
+          URL_CATALOGO,
+        );
+        await this.conversaciones.guardarInteraccionGemini(
+          canal,
+          identificadorExterno,
+          respuesta.id,
+        );
+        return null;
+      }
+
+      if (llamada.name === 'mostrar_productos') {
+        const consulta = String(llamada.arguments.consulta ?? '');
+        await this.enviarTarjetasProductos(
+          canal,
+          identificadorExterno,
+          consulta,
+        );
+        await this.conversaciones.guardarInteraccionGemini(
+          canal,
+          identificadorExterno,
+          respuesta.id,
+        );
         return null;
       }
 
@@ -313,7 +379,11 @@ export class GeminiService {
     // en null a propósito — no lo pisamos acá, así la próxima vez que el
     // bot retome la conversación arranca de cero.
     if (!derivadoEnEsteTurno) {
-      await this.conversaciones.guardarInteraccionGemini(canal, identificadorExterno, respuesta.id);
+      await this.conversaciones.guardarInteraccionGemini(
+        canal,
+        identificadorExterno,
+        respuesta.id,
+      );
     }
 
     this.logger.log(
@@ -326,7 +396,10 @@ export class GeminiService {
     const salida = respuesta.steps.find(
       (p): p is PasoModelOutput => p.type === 'model_output',
     );
-    return salida?.content[0]?.text ?? 'Perdón, no pude procesar tu mensaje. Escribí *humano* para hablar con alguien del equipo.';
+    return (
+      salida?.content[0]?.text ??
+      'Perdón, no pude procesar tu mensaje. Escribí *humano* para hablar con alguien del equipo.'
+    );
   }
 
   private async ejecutarHerramienta(
@@ -339,7 +412,9 @@ export class GeminiService {
     try {
       switch (nombre) {
         case 'consultar_producto':
-          return await this.textoProducto(String(argumentos.nombre_producto ?? ''));
+          return await this.textoProducto(
+            String(argumentos.nombre_producto ?? ''),
+          );
         case 'calcular_pedido':
           return await this.textoCalcularPedido(argumentos);
         case 'obtener_horario':
@@ -353,7 +428,9 @@ export class GeminiService {
           return 'Herramienta desconocida.';
       }
     } catch (err) {
-      this.logger.error(`Error ejecutando herramienta ${nombre}: ${(err as Error).message}`);
+      this.logger.error(
+        `Error ejecutando herramienta ${nombre}: ${(err as Error).message}`,
+      );
       return 'No se pudo obtener esta información en este momento.';
     }
   }
@@ -364,42 +441,109 @@ export class GeminiService {
   ): Promise<BusquedaProducto> {
     const buscadas = palabrasSignificativas(nombreBuscado);
     if (buscadas.length === 0) {
-      return { error: `No se pudo identificar el producto "${nombreBuscado}".` };
+      return {
+        error: `No se pudo identificar el producto "${nombreBuscado}".`,
+      };
     }
     const puntuados = productos
       .map((p) => ({
         producto: p,
-        puntaje: palabrasSignificativas(p.nombre).filter((w) => buscadas.includes(w)).length,
+        puntaje: palabrasSignificativas(p.nombre).filter((w) =>
+          buscadas.includes(w),
+        ).length,
       }))
       .filter((r) => r.puntaje > 0)
       .sort((a, b) => b.puntaje - a.puntaje);
 
     if (puntuados.length === 0) {
-      return { error: `No se encontró ningún producto que coincida con "${nombreBuscado}" en el catálogo.` };
+      return {
+        error: `No se encontró ningún producto que coincida con "${nombreBuscado}" en el catálogo.`,
+      };
     }
     const mejorPuntaje = puntuados[0].puntaje;
     const empatados = puntuados.filter((r) => r.puntaje === mejorPuntaje);
     if (empatados.length > 1) {
       const nombres = empatados.map((r) => r.producto.nombre).join(', ');
-      return { error: `"${nombreBuscado}" es ambiguo — podría ser: ${nombres}. Hay que preguntarle al cliente cuál de esos quiere.` };
+      return {
+        error: `"${nombreBuscado}" es ambiguo — podría ser: ${nombres}. Hay que preguntarle al cliente cuál de esos quiere.`,
+      };
     }
     return { encontrado: empatados[0].producto };
   }
 
+  /**
+   * Elige hasta 3 productos para mandar como tarjetas: si `consulta` matchea
+   * palabras del nombre/descripción de algún producto, se ordenan por
+   * puntaje; si no matchea nada o viene vacía, se usa el orden por
+   * defecto de getProductos() (destacado primero — los productos ancla
+   * confirmados en CLAUDE.md), tal cual ya usa el resto del catálogo.
+   */
+  private async enviarTarjetasProductos(
+    canal: CanalMensajeria,
+    identificadorExterno: string,
+    consulta: string,
+  ): Promise<void> {
+    const productos = await this.catalog.getProductos();
+    if (productos.length === 0) return;
+
+    const buscadas = palabrasSignificativas(consulta);
+    let elegidos = productos;
+    if (buscadas.length > 0) {
+      const puntuados = productos
+        .map((p) => ({
+          producto: p,
+          puntaje: palabrasSignificativas(
+            `${p.nombre} ${p.descripcion ?? ''}`,
+          ).filter((w) => buscadas.includes(w)).length,
+        }))
+        .filter((r) => r.puntaje > 0)
+        .sort((a, b) => b.puntaje - a.puntaje);
+      if (puntuados.length > 0) {
+        elegidos = puntuados.map((r) => r.producto);
+      }
+    }
+
+    const tarjetas = elegidos.slice(0, 3).map((p) => ({
+      nombre: p.nombre,
+      descripcion: p.descripcion,
+      imagenUrl: p.imagen_url,
+      precioDesde: Math.min(
+        ...p.variantes.map((v) => v.precio_oferta ?? v.precio),
+      ),
+    }));
+
+    await this.metaGraph.enviarTarjetasProductos(
+      canal,
+      identificadorExterno,
+      tarjetas,
+    );
+  }
+
   private async textoProducto(nombreBuscado: string): Promise<string> {
     const productos = await this.catalog.getProductos();
-    const { encontrado, error } = await this.buscarProductoUnico(nombreBuscado, productos);
-    if (error) return `${error} Si no se puede resolver, ofrecé mandar el link completo con enviar_link_catalogo.`;
+    const { encontrado, error } = await this.buscarProductoUnico(
+      nombreBuscado,
+      productos,
+    );
+    if (error)
+      return `${error} Si no se puede resolver, ofrecé mandar el link completo con enviar_link_catalogo.`;
     const variantes = encontrado!.variantes
-      .map((v) => `${v.nombre}: $${(v.precio_oferta ?? v.precio).toLocaleString('es-CO')}`)
+      .map(
+        (v) =>
+          `${v.nombre}: $${(v.precio_oferta ?? v.precio).toLocaleString('es-CO')}`,
+      )
       .join(', ');
     return `${encontrado!.nombre}${encontrado!.descripcion ? ` — ${encontrado!.descripcion}` : ''}. Precios: ${variantes}`;
   }
 
-  private async textoCalcularPedido(argumentos: Record<string, unknown>): Promise<string> {
+  private async textoCalcularPedido(
+    argumentos: Record<string, unknown>,
+  ): Promise<string> {
     const items = Array.isArray(argumentos.items) ? argumentos.items : [];
     const modalidad = String(argumentos.modalidad ?? '').toLowerCase();
-    const direccion = argumentos.direccion ? String(argumentos.direccion) : null;
+    const direccion = argumentos.direccion
+      ? String(argumentos.direccion)
+      : null;
     if (items.length === 0) {
       return 'No se recibió ningún producto para calcular. Pedile al cliente que confirme qué quiere ordenar.';
     }
@@ -414,7 +558,10 @@ export class GeminiService {
       const cantidad = Math.min(Math.max(cantidadCruda, 1), 20);
       const tamanoBuscado = item.tamano ? String(item.tamano) : null;
 
-      const { encontrado, error } = await this.buscarProductoUnico(nombreProducto, productos);
+      const { encontrado, error } = await this.buscarProductoUnico(
+        nombreProducto,
+        productos,
+      );
       if (error) {
         return `No se pudo calcular el pedido: ${error}`;
       }
@@ -423,10 +570,14 @@ export class GeminiService {
       if (encontrado!.variantes.length > 1) {
         const tamanoPalabras = palabrasSignificativas(tamanoBuscado ?? '');
         const match = encontrado!.variantes.find((v) =>
-          palabrasSignificativas(v.nombre).some((w) => tamanoPalabras.includes(w)),
+          palabrasSignificativas(v.nombre).some((w) =>
+            tamanoPalabras.includes(w),
+          ),
         );
         if (!match) {
-          const opciones = encontrado!.variantes.map((v) => v.nombre).join(', ');
+          const opciones = encontrado!.variantes
+            .map((v) => v.nombre)
+            .join(', ');
           return `Para "${encontrado!.nombre}" falta saber el tamaño — opciones: ${opciones}. Preguntale al cliente cuál quiere.`;
         }
         variante = match;
@@ -441,7 +592,7 @@ export class GeminiService {
     }
 
     const esDomicilio = modalidad === 'domicilio';
-    const costoDomicilio = esDomicilio ? COSTO_DOMICILIO : 0;
+    const costoDomicilio = esDomicilio ? COSTO_DOMICILIO_DEFAULT : 0;
     const total = subtotal + costoDomicilio;
 
     return [
@@ -464,12 +615,17 @@ export class GeminiService {
     }
     const ultimo = pedidos[0];
     const items = ultimo.items
-      .map((i) => `${i.cantidad}x ${i.producto_nombre}${i.variante_nombre ? ` (${i.variante_nombre})` : ''}`)
+      .map(
+        (i) =>
+          `${i.cantidad}x ${i.producto_nombre}${i.variante_nombre ? ` (${i.variante_nombre})` : ''}`,
+      )
       .join(', ');
     return `Último pedido — estado: ${ultimo.estado}. Items: ${items}. Total: $${ultimo.total.toLocaleString('es-CO')}`;
   }
 
-  private async llamarGemini(body: Record<string, unknown>): Promise<RespuestaInteraction> {
+  private async llamarGemini(
+    body: Record<string, unknown>,
+  ): Promise<RespuestaInteraction> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), TIMEOUT_GEMINI_MS);
     try {
