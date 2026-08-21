@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import type { Session } from '@supabase/supabase-js';
 import { useCart } from '@/lib/cart-context';
 import { formatPrecio } from '@/lib/formato';
+import { supabase } from '@/lib/supabase';
 
 function IconPaquete() {
   return (
@@ -64,6 +66,42 @@ type SaldoPuntos = {
   puntosMinimoCanje: number;
 };
 
+function IconGoogle() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 48 48">
+      <path
+        fill="#FFC107"
+        d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l5.7-5.7C33.9 6.1 29.2 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5Z"
+      />
+      <path
+        fill="#FF3D00"
+        d="m6.3 14.7 6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.8 1.1 8 3l5.7-5.7C33.9 6.1 29.2 4 24 4c-7.6 0-14.1 4.3-17.7 10.7Z"
+      />
+      <path
+        fill="#4CAF50"
+        d="M24 44c5.1 0 9.8-2 13.3-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44Z"
+      />
+      <path
+        fill="#1976D2"
+        d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.1-4.1 5.6l6.2 5.2C40.7 36.3 44 30.9 44 24c0-1.3-.1-2.7-.4-3.5Z"
+      />
+    </svg>
+  );
+}
+
+async function iniciarConGoogle() {
+  await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: `${window.location.origin}/checkout` },
+  });
+}
+
+function iniciales(nombre: string, correo: string) {
+  const n = nombre.trim();
+  if (n) return n.slice(0, 2).toUpperCase();
+  return correo.slice(0, 2).toUpperCase();
+}
+
 function OpcionCard({
   selected,
   onClick,
@@ -96,6 +134,7 @@ export default function CheckoutPage() {
   const { items, total, clear } = useCart();
   const router = useRouter();
 
+  const [session, setSession] = useState<Session | null>(null);
   const [nombre, setNombre] = useState('');
   const [apellido, setApellido] = useState('');
   const [telefono, setTelefono] = useState('');
@@ -115,6 +154,29 @@ export default function CheckoutPage() {
   // botón, o un reintento de red), el backend descarta el segundo insert
   // en vez de crear un pedido duplicado.
   const [idempotencyKey] = useState(() => crypto.randomUUID());
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data: subscripcion } = supabase.auth.onAuthStateChange(
+      (_event, nuevaSesion) => setSession(nuevaSesion),
+    );
+    return () => subscripcion.subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!session) return;
+    const meta = session.user.user_metadata ?? {};
+    // Mismo fallback que /cuenta: Google no manda las claves
+    // nombre/apellido propias del registro por email, manda
+    // full_name/name — se usan como default hasta que la persona las
+    // edite (guardarPerfil en /cuenta o, acá, al confirmar el pedido).
+    const nombreGoogle: string = meta.full_name ?? meta.name ?? '';
+    const [nombreDefault, ...restoDefault] = nombreGoogle.split(' ');
+    setNombre(meta.nombre ?? nombreDefault ?? '');
+    setApellido(meta.apellido ?? restoDefault.join(' '));
+    setCorreo(session.user.email ?? '');
+    if (meta.telefono) setTelefono(meta.telefono);
+  }, [session]);
 
   if (items.length === 0) {
     return (
@@ -196,6 +258,12 @@ export default function CheckoutPage() {
       }
 
       const pedido = await res.json();
+      // Fire-and-forget: si vino logueado, guarda/actualiza el teléfono
+      // en el perfil para que el próximo checkout ya no lo pida (o lo
+      // traiga corregido si lo cambió en este pedido).
+      if (session) {
+        supabase.auth.updateUser({ data: { telefono: telefono.trim() } });
+      }
       clear();
       router.push(`/pedido/${pedido.id}`);
     } catch (err) {
@@ -234,17 +302,68 @@ export default function CheckoutPage() {
         </div>
       </div>
 
-      <form onSubmit={enviarPedido} className="animate-fade-up delay-2 mt-6 space-y-4">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label className="block text-sm font-medium">Nombre</label>
-            <input
-              required
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-              className={inputClass}
-            />
+      {session ? (
+        <div className="animate-fade-up delay-2 mt-6 flex items-center gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+          <div className="btn-gradient flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white">
+            {iniciales(nombre, correo)}
           </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+              {nombre ? `${nombre} ${apellido}`.trim() : correo}
+            </p>
+            <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{correo}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => supabase.auth.signOut()}
+            className="shrink-0 text-xs text-zinc-500 underline hover:text-brand-orange dark:text-zinc-400"
+          >
+            No soy yo
+          </button>
+        </div>
+      ) : (
+        <div className="animate-fade-up delay-2 mt-6">
+          <button
+            type="button"
+            onClick={iniciarConGoogle}
+            className="btn-press flex w-full items-center justify-center gap-3 rounded-lg border border-zinc-300 py-3 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
+          >
+            <IconGoogle />
+            Continuar con Google
+          </button>
+          <div className="mt-4 flex items-center gap-3">
+            <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
+            <span className="text-xs text-zinc-400 dark:text-zinc-500">o con tus datos</span>
+            <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
+          </div>
+        </div>
+      )}
+
+      <form onSubmit={enviarPedido} className="animate-fade-up delay-2 mt-6 space-y-4">
+        {!session && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="block text-sm font-medium">Nombre</label>
+              <input
+                required
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium">Apellido</label>
+              <input
+                required
+                value={apellido}
+                onChange={(e) => setApellido(e.target.value)}
+                className={inputClass}
+              />
+            </div>
+          </div>
+        )}
+
+        {session && !apellido.trim() && (
           <div>
             <label className="block text-sm font-medium">Apellido</label>
             <input
@@ -254,7 +373,7 @@ export default function CheckoutPage() {
               className={inputClass}
             />
           </div>
-        </div>
+        )}
 
         <div>
           <label className="block text-sm font-medium">
@@ -270,16 +389,18 @@ export default function CheckoutPage() {
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-medium">Correo electrónico</label>
-          <input
-            required
-            type="email"
-            value={correo}
-            onChange={(e) => setCorreo(e.target.value)}
-            className={inputClass}
-          />
-        </div>
+        {!session && (
+          <div>
+            <label className="block text-sm font-medium">Correo electrónico</label>
+            <input
+              required
+              type="email"
+              value={correo}
+              onChange={(e) => setCorreo(e.target.value)}
+              className={inputClass}
+            />
+          </div>
+        )}
 
         {puedeCanjear && (
           <div className="animate-fade-up flex items-center justify-between gap-3 rounded-lg border border-brand-orange/25 bg-brand-orange/[0.06] px-4 py-3">
