@@ -6,7 +6,8 @@ para cualquier agente que edite código acá. No repite lo que ya está en
 
 ## Stack
 
-- `apps/api` — NestJS 11, TypeScript, Node 18 en Railway (Docker/Nixpacks).
+- `apps/api` — NestJS 11, TypeScript, Node 22 LTS en Railway (builder Railpack,
+  `engines.node` en `apps/api/package.json`).
 - `apps/web` — Next.js 16 App Router, TypeScript, Vercel. Ver
   `apps/web/AGENTS.md` para cambios de API entre versiones de Next.
 - Base de datos: Supabase (Postgres). Sin ORM — cliente `@supabase/supabase-js`

@@ -36,11 +36,14 @@ export class SupabaseService implements OnModuleInit {
     return this.client;
   }
 
-  /** Verifica conectividad real contra Supabase (para /health). */
+  /**
+   * Verifica conectividad real contra Supabase (para /health). `auth.getSession()`
+   * es una lectura local en memoria y nunca llega a hacer un request — por eso
+   * se pega directo a PostgREST contra una tabla que siempre existe.
+   */
   async ping(): Promise<{ ok: boolean; error?: string }> {
     try {
-      // auth.getSession() no requiere ninguna tabla creada de antemano.
-      const { error } = await this.client.auth.getSession();
+      const { error } = await this.client.from('configuracion').select('clave').limit(1);
       if (error) return { ok: false, error: error.message };
       return { ok: true };
     } catch (err) {

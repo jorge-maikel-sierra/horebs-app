@@ -16,18 +16,19 @@ import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { UsuarioActual } from '../auth/usuario.decorator';
 import { AdminService } from './admin.service';
+import { BlogService } from '../blog/blog.service';
 import type { UsuarioAutenticado } from '../auth/roles.guard';
-import type {
-  CrearVentaInput,
-  ItemVentaInput,
-  CrearBlogPostInput,
-} from './admin.service';
+import type { CrearVentaInput, ItemVentaInput } from './admin.service';
+import type { CrearBlogPostInput } from '../blog/blog.service';
 import type { Rol } from '../auth/roles.decorator';
 
 @Controller('admin')
 @UseGuards(RolesGuard)
 export class AdminController {
-  constructor(private readonly admin: AdminService) {}
+  constructor(
+    private readonly admin: AdminService,
+    private readonly blog: BlogService,
+  ) {}
 
   @Get('perfil')
   @Roles('admin', 'empleado')
@@ -189,13 +190,13 @@ export class AdminController {
   @Get('blog')
   @Roles('admin')
   listarBlogPosts() {
-    return this.admin.listarBlogPosts();
+    return this.blog.listarBlogPosts();
   }
 
   @Post('blog')
   @Roles('admin')
   crearBlogPost(@Body() body: CrearBlogPostInput) {
-    return this.admin.crearBlogPost(body);
+    return this.blog.crearBlogPost(body);
   }
 
   @Patch('blog/:id')
@@ -204,12 +205,12 @@ export class AdminController {
     @Param('id') id: string,
     @Body() body: Partial<CrearBlogPostInput>,
   ) {
-    return this.admin.actualizarBlogPost(id, body);
+    return this.blog.actualizarBlogPost(id, body);
   }
 
   @Delete('blog/:id')
   @Roles('admin')
   eliminarBlogPost(@Param('id') id: string) {
-    return this.admin.eliminarBlogPost(id);
+    return this.blog.eliminarBlogPost(id);
   }
 }
