@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { MailService } from '../mail/mail.service';
+import { InsumosService } from './insumos.service';
 
 export interface ItemVendido {
   variante_id: string;
@@ -35,6 +36,7 @@ export class InventarioService {
   constructor(
     private readonly supabase: SupabaseService,
     private readonly mail: MailService,
+    private readonly insumos: InsumosService,
   ) {}
 
   /**
@@ -166,5 +168,13 @@ export class InventarioService {
       p_created_by: usuarioId,
     });
     if (error) throw error;
+
+    // No bloquea la venta si falla — es una alerta, no algo que deba
+    // tumbar el checkout.
+    this.insumos
+      .verificarYAlertarStockBajo(movimientos.map((m) => m.insumo_id))
+      .catch((err) =>
+        this.logger.error(`No se pudo verificar stock bajo tras ${tipo}: ${(err as Error).message}`),
+      );
   }
 }

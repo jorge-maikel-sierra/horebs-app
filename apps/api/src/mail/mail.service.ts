@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SupabaseService } from '../supabase/supabase.service';
 
@@ -73,17 +73,77 @@ export class MailService {
     });
   }
 
-  private async enviarAlertaStock(datos: { pedidoId: string; motivoError: string }) {
-    if (!this.apiKey) return;
+  /**
+   * Fire-and-forget — se dispara apenas un insumo cruza su stock mínimo
+   * (ventas, ajustes o merma), con cooldown de 24h manejado por quien
+   * llama (InsumosService) para no mandar un correo por cada venta.
+   */
+  enviarAlertaStockBajo(
+    insumos: { nombre: string; unidad: string; stockActual: number; stockMinimo: number }[],
+  ): void {
+    this.enviarAlertaStockBajoInterno(insumos).catch((err) => {
+      this.logger.error(`No se pudo enviar la alerta de stock bajo: ${(err as Error).message}`);
+    });
+  }
 
+  private async obtenerCorreoAlertas(): Promise<string | null> {
     const { data, error } = await this.supabase
       .getClient()
       .from('configuracion')
       .select('valor')
       .eq('clave', 'correo_domiciliario')
       .maybeSingle();
+    return error ? null : (data?.valor ?? null);
+  }
 
-    const destino = error ? null : data?.valor;
+  private async enviarAlertaStockBajoInterno(
+    insumos: { nombre: string; unidad: string; stockActual: number; stockMinimo: number }[],
+  ) {
+    if (!this.apiKey || insumos.length === 0) return;
+
+    const destino = await this.obtenerCorreoAlertas();
+    if (!destino) {
+      this.logger.warn('No hay correo configurado para alertas — se omite el aviso de stock bajo.');
+      return;
+    }
+
+    const lineas = insumos.map(
+      (i) => `• ${i.nombre}: ${i.stockActual}${i.unidad} (mínimo: ${i.stockMinimo}${i.unidad})`,
+    );
+
+    const res = await fetch(RESEND_API_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: this.remitente,
+        to: destino,
+        subject:
+          insumos.length === 1
+            ? `⚠️ Stock bajo — ${insumos[0].nombre}`
+            : `⚠️ Stock bajo en ${insumos.length} insumos`,
+        text: [
+          'Estos insumos están en su stock mínimo o por debajo:',
+          '',
+          ...lineas,
+          '',
+          'Revisá si hace falta hacer una compra o corregir el stock desde el panel de admin.',
+        ].join('\n'),
+      }),
+    });
+
+    if (!res.ok) {
+      const cuerpo = await res.text().catch(() => '');
+      throw new Error(`Resend respondió ${res.status}: ${cuerpo}`);
+    }
+  }
+
+  private async enviarAlertaStock(datos: { pedidoId: string; motivoError: string }) {
+    if (!this.apiKey) return;
+
+    const destino = await this.obtenerCorreoAlertas();
     if (!destino) {
       this.logger.warn(
         `No hay correo configurado para alertas — se omite el aviso de stock pendiente del pedido ${datos.pedidoId}.`,
@@ -194,7 +254,7 @@ export class MailService {
     adjuntoPdf: Buffer;
   }): Promise<void> {
     if (!this.apiKey) {
-      throw new Error('RESEND_API_KEY no configurada — no se puede enviar el correo.');
+      throw new BadRequestException('RESEND_API_KEY no configurada — no se puede enviar el correo.');
     }
 
     const res = await fetch(RESEND_API_URL, {
@@ -220,7 +280,7 @@ export class MailService {
 
     if (!res.ok) {
       const cuerpo = await res.text().catch(() => '');
-      throw new Error(`Resend respondió ${res.status}: ${cuerpo}`);
+      throw new BadRequestException(`Resend respondió ${res.status}: ${cuerpo}`);
     }
   }
 }

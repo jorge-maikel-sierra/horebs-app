@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { METODOS_PAGO, type MetodoPago } from '../common/metodos-pago';
+import { InsumosService } from './insumos.service';
 
 export interface DetalleCompraInput {
   insumo_id?: string;
@@ -14,7 +15,6 @@ export interface CrearCompraInput {
   numero_factura?: string;
   proveedor: string;
   fecha: string;
-  subtotal: number;
   otros_cargos?: number;
   metodo_pago: MetodoPago;
   categoria?: string;
@@ -55,7 +55,10 @@ const COMPRA_SELECT =
 export class ComprasService {
   private readonly logger = new Logger(ComprasService.name);
 
-  constructor(private readonly supabase: SupabaseService) {}
+  constructor(
+    private readonly supabase: SupabaseService,
+    private readonly insumos: InsumosService,
+  ) {}
 
   async listar(): Promise<CompraDto[]> {
     const { data, error } = await this.supabase
@@ -74,9 +77,6 @@ export class ComprasService {
     }
     if (!input.fecha) {
       throw new BadRequestException('Falta la fecha de la compra.');
-    }
-    if (typeof input.subtotal !== 'number' || input.subtotal < 0) {
-      throw new BadRequestException('El subtotal no es válido.');
     }
     if (!METODOS_PAGO.includes(input.metodo_pago)) {
       throw new BadRequestException('Método de pago inválido.');
@@ -99,40 +99,37 @@ export class ComprasService {
       }
     }
 
-    const client = this.supabase.getClient();
-    const { data: compra, error: compraError } = await client
-      .from('compras')
-      .insert({
-        numero_factura: input.numero_factura?.trim() || null,
-        proveedor: input.proveedor.trim(),
-        fecha: input.fecha,
-        subtotal: input.subtotal,
-        otros_cargos: input.otros_cargos ?? 0,
-        metodo_pago: input.metodo_pago,
-        categoria: input.categoria?.trim() || null,
-        registrado_por: registradoPor,
-      })
-      .select('id')
-      .single();
-    if (compraError) throw compraError;
+    // El subtotal nunca se toma del cliente — se recalcula desde las
+    // líneas, mismo criterio que calcularItems del checkout público.
+    const subtotal = input.detalle.reduce(
+      (acc, linea) => acc + linea.cantidad * linea.valor_unitario,
+      0,
+    );
 
-    const { error: detalleError } = await client.from('detalle_compra').insert(
-      input.detalle.map((linea) => ({
-        compra_id: compra.id,
-        insumo_id: linea.insumo_id || null,
+    const client = this.supabase.getClient();
+    const { data: compraId, error: rpcError } = await client.rpc('crear_compra_con_detalle', {
+      p_numero_factura: input.numero_factura?.trim() || null,
+      p_proveedor: input.proveedor.trim(),
+      p_fecha: input.fecha,
+      p_subtotal: subtotal,
+      p_otros_cargos: input.otros_cargos ?? 0,
+      p_metodo_pago: input.metodo_pago,
+      p_categoria: input.categoria?.trim() || null,
+      p_registrado_por: registradoPor,
+      p_detalle: input.detalle.map((linea) => ({
+        insumo_id: linea.insumo_id ?? '',
         producto_comprado: linea.producto_comprado.trim(),
         cantidad: linea.cantidad,
         unidad_medida_compra: linea.unidad_medida_compra,
         valor_unitario: linea.valor_unitario,
-        total_linea: linea.cantidad * linea.valor_unitario,
       })),
-    );
-    if (detalleError) throw detalleError;
+    });
+    if (rpcError) throw rpcError;
 
     const { data: creada, error: obtenerError } = await client
       .from('compras')
       .select(COMPRA_SELECT)
-      .eq('id', compra.id)
+      .eq('id', compraId)
       .single();
     if (obtenerError) throw obtenerError;
     return this.mapCompra(creada);
@@ -140,10 +137,20 @@ export class ComprasService {
 
   /** Aplica una línea pendiente al stock del insumo — ver RPC procesar_detalle_compra. */
   async procesarLinea(detalleId: string, procesadoPor: string): Promise<void> {
-    const { error } = await this.supabase.getClient().rpc('procesar_detalle_compra', {
+    const { data, error } = await this.supabase.getClient().rpc('procesar_detalle_compra', {
       p_detalle_id: detalleId,
       p_procesado_por: procesadoPor,
     });
+    if (!error && data?.id) {
+      // Una compra generalmente saca al insumo de stock bajo, pero se
+      // verifica igual por si la cantidad comprada no alcanza a superar
+      // el mínimo — y para resetear la alerta cuando sí lo supera.
+      this.insumos
+        .verificarYAlertarStockBajo([data.id])
+        .catch((err) =>
+          this.logger.error(`No se pudo verificar stock bajo tras procesar compra: ${(err as Error).message}`),
+        );
+    }
     if (error) {
       if (error.message?.includes('no existe')) {
         throw new NotFoundException('Línea de compra no encontrada.');
