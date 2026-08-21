@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { adminFetch } from '@/lib/admin-fetch';
 import { formatPrecio, formatHora } from '@/lib/formato';
@@ -16,6 +17,7 @@ type Variante = {
 type Producto = {
   id: string;
   nombre: string;
+  imagen_url: string | null;
   categoria_id: string;
   variantes: Variante[];
 };
@@ -73,11 +75,160 @@ type TurnoCerrado = {
 
 const COSTO_DOMICILIO_DEFAULT = 5000;
 
-const MODALIDAD_OPCIONES: { valor: Modalidad; etiqueta: string }[] = [
-  { valor: 'local', etiqueta: 'Comer en el local' },
-  { valor: 'retiro', etiqueta: 'Para llevar' },
-  { valor: 'domicilio', etiqueta: 'Domicilio' },
-];
+function IconMesa() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 8h18M5 8v13M19 8v13" />
+      <path d="M9 3v3M15 3v3M7 3h10" />
+    </svg>
+  );
+}
+
+function IconLlevar() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 8V6a3 3 0 0 1 6 0v2" />
+      <path d="M4 8h10l1 12H3L4 8Z" />
+    </svg>
+  );
+}
+
+function IconDomicilio() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 8 12 3 3 8l9 5 9-5Z" />
+      <path d="M3 8v8l9 5 9-5V8" />
+      <path d="M12 13v8" />
+    </svg>
+  );
+}
+
+function IconEfectivo() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="6" width="20" height="12" rx="2" />
+      <circle cx="12" cy="12" r="3" />
+      <path d="M6 9v.01M18 15v.01" />
+    </svg>
+  );
+}
+
+function IconTransferencia() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 4v6h6" />
+      <path d="M20 20v-6h-6" />
+      <path d="M4.5 15a8 8 0 0 0 14.5 3.4M19.5 9A8 8 0 0 0 5 5.6" />
+    </svg>
+  );
+}
+
+function IconTarjeta() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="5" width="20" height="14" rx="2" />
+      <path d="M2 10h20" />
+      <path d="M6 15h4" />
+    </svg>
+  );
+}
+
+function IconPlato() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="4.5" />
+    </svg>
+  );
+}
+
+function OpcionBoton({
+  selected,
+  onClick,
+  icon,
+  label,
+}: {
+  selected: boolean;
+  onClick: () => void;
+  icon: ReactNode;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={`btn-press card-interactive flex flex-1 flex-col items-center gap-1.5 rounded-xl border p-3 text-center transition-colors ${
+        selected
+          ? 'btn-gradient border-transparent text-white shadow-sm'
+          : 'card-gradient border-zinc-200 text-zinc-700 dark:border-zinc-800 dark:text-zinc-300'
+      }`}
+    >
+      {icon}
+      <span className="text-xs font-semibold">{label}</span>
+    </button>
+  );
+}
+
+function ProductoCard({
+  producto,
+  onAgregar,
+}: {
+  producto: Producto;
+  onAgregar: (variante: Variante) => void;
+}) {
+  const unaVariante = producto.variantes.length === 1;
+
+  return (
+    <div className="card-interactive card-gradient flex flex-col overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800">
+      <div className="group relative h-24 w-full shrink-0 overflow-hidden bg-zinc-100 dark:bg-zinc-900">
+        {producto.imagen_url ? (
+          <Image
+            src={producto.imagen_url}
+            alt={producto.nombre}
+            fill
+            sizes="(min-width: 1024px) 200px, 45vw"
+            className="object-cover transition-transform duration-500 group-hover:scale-110"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-zinc-300 dark:text-zinc-700">
+            <IconPlato />
+          </div>
+        )}
+      </div>
+      <div className="flex flex-1 flex-col p-2.5">
+        <p className="line-clamp-2 text-xs leading-snug font-semibold text-zinc-900 dark:text-zinc-50">
+          {producto.nombre}
+        </p>
+        {unaVariante ? (
+          <button
+            type="button"
+            onClick={() => onAgregar(producto.variantes[0])}
+            className="btn-press mt-auto flex items-center justify-between gap-1 rounded-lg bg-brand-orange/10 px-2 py-1.5 text-[11px] font-bold text-brand-orange transition-colors hover:bg-brand-orange hover:text-white"
+          >
+            <span>Agregar</span>
+            <span>
+              {formatPrecio(producto.variantes[0].precio_oferta ?? producto.variantes[0].precio)}
+            </span>
+          </button>
+        ) : (
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            {producto.variantes.map((v) => (
+              <button
+                key={v.id}
+                type="button"
+                onClick={() => onAgregar(v)}
+                className="btn-press rounded-full bg-zinc-100 px-2 py-1 text-[10px] font-semibold text-zinc-700 transition-colors hover:bg-brand-orange hover:text-white dark:bg-zinc-800 dark:text-zinc-300"
+              >
+                {v.nombre} · {formatPrecio(v.precio_oferta ?? v.precio)}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function PosInterno() {
   const [categorias, setCategorias] = useState<Categoria[]>([]);
@@ -134,6 +285,7 @@ function PosInterno() {
       .then(([cats, prods]) => {
         setCategorias(cats);
         setProductos(prods);
+        if (cats.length > 0) setCategoriaSeleccionada((prev) => prev ?? cats[0].id);
       })
       .catch(() => setError('No se pudo cargar el catálogo.'));
   }, []);
@@ -454,14 +606,15 @@ function PosInterno() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-8">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
             Punto de venta
           </h1>
           {turno && (
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            <p className="mt-1 flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
               Turno abierto desde las {formatHora(turno.abierto_en)} — caja
               inicial {formatPrecio(turno.monto_inicial)}
             </p>
@@ -486,70 +639,47 @@ function PosInterno() {
         </div>
       </div>
 
-      <div className="mt-6 grid gap-8 lg:grid-cols-2">
+      <div className="mt-6 grid gap-6 lg:grid-cols-2 lg:items-start lg:gap-8">
         <div>
           <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
             Productos
           </h2>
 
-          {!categoriaSeleccionada ? (
-            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {categorias.length > 0 && (
+            <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
               {categorias.map((cat) => (
                 <button
                   key={cat.id}
                   type="button"
                   onClick={() => setCategoriaSeleccionada(cat.id)}
-                  className="rounded-lg border border-zinc-200 p-4 text-center font-semibold text-zinc-900 hover:border-brand-orange dark:border-zinc-800 dark:text-zinc-50"
+                  className={`btn-press shrink-0 rounded-full px-4 py-2 text-sm font-semibold whitespace-nowrap transition-colors ${
+                    categoriaSeleccionada === cat.id
+                      ? 'btn-gradient text-white shadow-sm'
+                      : 'card-gradient border border-zinc-200 text-zinc-600 dark:border-zinc-800 dark:text-zinc-300'
+                  }`}
                 >
                   {cat.nombre}
                 </button>
               ))}
             </div>
-          ) : (
-            <div className="mt-3">
-              <button
-                type="button"
-                onClick={() => setCategoriaSeleccionada(null)}
-                className="text-sm text-brand-orange underline"
-              >
-                ← Volver a categorías
-              </button>
-              <div className="mt-3 max-h-[28rem] space-y-3 overflow-y-auto pr-2">
-                {productosDeCategoria.map((producto) => (
-                  <div
-                    key={producto.id}
-                    className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800"
-                  >
-                    <p className="font-semibold text-zinc-900 dark:text-zinc-50">
-                      {producto.nombre}
-                    </p>
-                    <ul className="mt-2 space-y-1 text-sm">
-                      {producto.variantes.map((v) => (
-                        <li
-                          key={v.id}
-                          className="flex items-center justify-between gap-2"
-                        >
-                          <span>
-                            {v.nombre} —{' '}
-                            {formatPrecio(v.precio_oferta ?? v.precio)}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => agregarItem(producto, v)}
-                            className="shrink-0 rounded-full bg-brand-orange px-2.5 py-0.5 text-xs font-semibold text-white hover:opacity-90"
-                          >
-                            Agregar
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            </div>
           )}
 
-          <div className="mt-4 rounded-lg border border-dashed border-zinc-300 p-3 dark:border-zinc-700">
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {productosDeCategoria.map((producto) => (
+              <ProductoCard
+                key={producto.id}
+                producto={producto}
+                onAgregar={(v) => agregarItem(producto, v)}
+              />
+            ))}
+          </div>
+          {categoriaSeleccionada && productosDeCategoria.length === 0 && (
+            <p className="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
+              No hay productos en esta categoría.
+            </p>
+          )}
+
+          <div className="mt-4 rounded-2xl border border-dashed border-zinc-300 p-3 dark:border-zinc-700">
             <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
               Producto personalizado
             </p>
@@ -583,282 +713,292 @@ function PosInterno() {
           </div>
         </div>
 
-        <div>
-          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-            Venta actual
-          </h2>
+        <div className="lg:sticky lg:top-6">
+          <div className="card-gradient rounded-2xl border border-zinc-200 p-4 shadow-sm dark:border-zinc-800">
+            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+              Venta actual
+            </h2>
 
-          {items.length === 0 ? (
-            <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400">
-              Todavía no agregaste productos.
-            </p>
-          ) : (
-            <ul className="mt-3 space-y-2">
-              {items.map((i) => (
-                <li
-                  key={i.id}
-                  className="flex items-center justify-between gap-2 text-sm"
-                >
-                  <span className="min-w-0 truncate">
-                    {i.varianteNombre
-                      ? `${i.productoNombre} (${i.varianteNombre})`
-                      : i.productoNombre}
-                  </span>
-                  <span className="flex shrink-0 items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => actualizarCantidad(i.id, i.cantidad - 1)}
-                      className="h-6 w-6 rounded-full border border-zinc-300 text-xs dark:border-zinc-700"
-                    >
-                      −
-                    </button>
-                    {i.cantidad}
-                    <button
-                      type="button"
-                      onClick={() => actualizarCantidad(i.id, i.cantidad + 1)}
-                      className="h-6 w-6 rounded-full border border-zinc-300 text-xs dark:border-zinc-700"
-                    >
-                      +
-                    </button>
-                    {editandoPrecioId === i.id ? (
-                      <input
-                        type="number"
-                        min={0}
-                        autoFocus
-                        defaultValue={i.precio}
-                        onBlur={(e) => {
-                          editarPrecio(i.id, Number(e.target.value));
-                          setEditandoPrecioId(null);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') e.currentTarget.blur();
-                        }}
-                        className="w-20 rounded-md border border-zinc-300 px-1.5 py-0.5 text-right text-sm dark:border-zinc-700 dark:bg-zinc-900"
-                      />
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setEditandoPrecioId(i.id)}
-                        title="Editar precio unitario"
-                        className="w-20 text-right font-medium underline decoration-dotted"
-                      >
-                        {formatPrecio(i.precio * i.cantidad)}
-                      </button>
-                    )}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          <div className="mt-4 border-t border-zinc-200 pt-3 dark:border-zinc-800">
-            {modalidad === 'domicilio' && (
-              <>
-                <div className="flex justify-between text-sm text-zinc-500 dark:text-zinc-400">
-                  <span>Subtotal</span>
-                  <span>{formatPrecio(totalItems)}</span>
-                </div>
-                <div className="flex justify-between text-sm text-zinc-500 dark:text-zinc-400">
-                  <span>Domicilio</span>
-                  <span>{formatPrecio(costoDomicilio)}</span>
-                </div>
-              </>
-            )}
-            {descuentoPuntos > 0 && (
-              <div className="flex justify-between text-sm text-green-700 dark:text-green-500">
-                <span>Descuento · {canjePuntos} puntos</span>
-                <span>-{formatPrecio(descuentoPuntos)}</span>
-              </div>
-            )}
-            <div className="flex justify-between font-semibold">
-              <span>Total</span>
-              <span className="text-brand-orange">{formatPrecio(totalConDescuento)}</span>
-            </div>
-          </div>
-
-          <form onSubmit={registrarVenta} className="mt-6 space-y-3">
-            <div className="relative">
-              <label className="block text-sm font-medium">
-                Buscar cliente existente
-              </label>
-              <input
-                value={busquedaCliente}
-                onChange={(e) => setBusquedaCliente(e.target.value)}
-                placeholder="Nombre o teléfono…"
-                className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
-              />
-              {resultadosCliente.length > 0 && (
-                <ul className="absolute z-10 mt-1 w-full rounded-md border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
-                  {resultadosCliente.map((c) => (
-                    <li key={c.id}>
-                      <button
-                        type="button"
-                        onClick={() => seleccionarCliente(c)}
-                        className="block w-full px-3 py-2 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                      >
-                        <span className="font-medium">
-                          {c.nombre} {c.apellido ?? ''}
-                        </span>
-                        {c.telefono && (
-                          <span className="ml-2 text-zinc-500 dark:text-zinc-400">
-                            {c.telefono}
-                          </span>
-                        )}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <label className="block text-sm font-medium">Nombre</label>
-                <input
-                  required
-                  value={nombre}
-                  onChange={(e) => setNombre(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium">Apellido</label>
-                <input
-                  value={apellido}
-                  onChange={(e) => setApellido(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
-                />
-              </div>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <label className="block text-sm font-medium">
-                  Teléfono (opcional)
-                </label>
-                <input
-                  value={telefono}
-                  onChange={(e) => setTelefono(e.target.value)}
-                  onBlur={() => consultarSaldoPuntos(telefono)}
-                  className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium">
-                  Correo (opcional)
-                </label>
-                <input
-                  type="email"
-                  value={correo}
-                  onChange={(e) => setCorreo(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
-                />
-              </div>
-            </div>
-
-            {puedeCanjear && (
-              <div className="flex items-center justify-between gap-3 rounded-md border border-brand-orange/25 bg-brand-orange/[0.06] px-3 py-2">
-                <label htmlFor="pos-usar-puntos" className="text-sm text-zinc-700 dark:text-zinc-300">
-                  {saldoPuntos?.puntos} puntos disponibles — usar {canjePuntos} (
-                  {formatPrecio(canjePuntos * (saldoPuntos?.valorPuntoPesos ?? 0))})
-                </label>
-                <input
-                  id="pos-usar-puntos"
-                  type="checkbox"
-                  checked={usarPuntos}
-                  onChange={(e) => setUsarPuntos(e.target.checked)}
-                  className="h-5 w-5 shrink-0 accent-brand-orange"
-                />
-              </div>
-            )}
-
-            <div>
-              <span className="block text-sm font-medium">Modalidad</span>
-              <div className="mt-1 flex flex-wrap gap-4">
-                {MODALIDAD_OPCIONES.map((op) => (
-                  <label
-                    key={op.valor}
-                    className="flex items-center gap-2 text-sm"
+            {items.length === 0 ? (
+              <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400">
+                Todavía no agregaste productos.
+              </p>
+            ) : (
+              <ul className="mt-3 space-y-1.5">
+                {items.map((i) => (
+                  <li
+                    key={i.id}
+                    className="flex items-center justify-between gap-2 rounded-lg border border-zinc-100 px-2.5 py-1.5 text-sm dark:border-zinc-800/70"
                   >
-                    <input
-                      type="radio"
-                      name="modalidad"
-                      checked={modalidad === op.valor}
-                      onChange={() => setModalidad(op.valor)}
-                    />
-                    {op.etiqueta}
-                  </label>
+                    <span className="min-w-0 truncate">
+                      {i.varianteNombre
+                        ? `${i.productoNombre} (${i.varianteNombre})`
+                        : i.productoNombre}
+                    </span>
+                    <span className="flex shrink-0 items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => actualizarCantidad(i.id, i.cantidad - 1)}
+                        className="btn-press h-6 w-6 rounded-full border border-zinc-300 text-xs dark:border-zinc-700"
+                      >
+                        −
+                      </button>
+                      {i.cantidad}
+                      <button
+                        type="button"
+                        onClick={() => actualizarCantidad(i.id, i.cantidad + 1)}
+                        className="btn-press h-6 w-6 rounded-full border border-zinc-300 text-xs dark:border-zinc-700"
+                      >
+                        +
+                      </button>
+                      {editandoPrecioId === i.id ? (
+                        <input
+                          type="number"
+                          min={0}
+                          autoFocus
+                          defaultValue={i.precio}
+                          onBlur={(e) => {
+                            editarPrecio(i.id, Number(e.target.value));
+                            setEditandoPrecioId(null);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') e.currentTarget.blur();
+                          }}
+                          className="w-20 rounded-md border border-zinc-300 px-1.5 py-0.5 text-right text-sm dark:border-zinc-700 dark:bg-zinc-900"
+                        />
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setEditandoPrecioId(i.id)}
+                          title="Editar precio unitario"
+                          className="w-20 text-right font-medium underline decoration-dotted"
+                        >
+                          {formatPrecio(i.precio * i.cantidad)}
+                        </button>
+                      )}
+                    </span>
+                  </li>
                 ))}
+              </ul>
+            )}
+
+            <div className="mt-4 border-t border-zinc-200 pt-3 dark:border-zinc-800">
+              {modalidad === 'domicilio' && (
+                <>
+                  <div className="flex justify-between text-sm text-zinc-500 dark:text-zinc-400">
+                    <span>Subtotal</span>
+                    <span>{formatPrecio(totalItems)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm text-zinc-500 dark:text-zinc-400">
+                    <span>Domicilio</span>
+                    <span>{formatPrecio(costoDomicilio)}</span>
+                  </div>
+                </>
+              )}
+              {descuentoPuntos > 0 && (
+                <div className="flex justify-between text-sm text-green-700 dark:text-green-500">
+                  <span>Descuento · {canjePuntos} puntos</span>
+                  <span>-{formatPrecio(descuentoPuntos)}</span>
+                </div>
+              )}
+              <div className="flex justify-between font-semibold">
+                <span>Total</span>
+                <span className="text-brand-orange">{formatPrecio(totalConDescuento)}</span>
               </div>
             </div>
 
-            {modalidad === 'domicilio' && (
-              <>
-                <div>
-                  <label className="block text-sm font-medium">
-                    Dirección de entrega
-                  </label>
-                  <input
-                    required
-                    value={direccionEntrega}
-                    onChange={(e) => setDireccionEntrega(e.target.value)}
-                    className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium">
-                    Costo de domicilio
-                  </label>
-                  <input
-                    required
-                    type="number"
-                    min={0}
-                    step={500}
-                    value={costoDomicilio}
-                    onChange={(e) => setCostoDomicilio(Number(e.target.value))}
-                    className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
-                  />
-                </div>
-              </>
-            )}
-
-            <div>
-              <span className="block text-sm font-medium">Método de pago</span>
-              <div className="mt-1 flex flex-wrap gap-4">
-                {(['efectivo', 'transferencia', 'tarjeta'] as const).map(
-                  (m) => (
-                    <label
-                      key={m}
-                      className="flex items-center gap-2 text-sm capitalize"
-                    >
-                      <input
-                        type="radio"
-                        name="metodoPago"
-                        checked={metodoPago === m}
-                        onChange={() => setMetodoPago(m)}
-                      />
-                      {m}
-                    </label>
-                  ),
+            <form onSubmit={registrarVenta} className="mt-6 space-y-3">
+              <div className="relative">
+                <label className="block text-sm font-medium">
+                  Buscar cliente existente
+                </label>
+                <input
+                  value={busquedaCliente}
+                  onChange={(e) => setBusquedaCliente(e.target.value)}
+                  placeholder="Nombre o teléfono…"
+                  className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+                />
+                {resultadosCliente.length > 0 && (
+                  <ul className="absolute z-10 mt-1 w-full rounded-md border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
+                    {resultadosCliente.map((c) => (
+                      <li key={c.id}>
+                        <button
+                          type="button"
+                          onClick={() => seleccionarCliente(c)}
+                          className="block w-full px-3 py-2 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                        >
+                          <span className="font-medium">
+                            {c.nombre} {c.apellido ?? ''}
+                          </span>
+                          {c.telefono && (
+                            <span className="ml-2 text-zinc-500 dark:text-zinc-400">
+                              {c.telefono}
+                            </span>
+                          )}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
                 )}
               </div>
-            </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-medium">Nombre</label>
+                  <input
+                    required
+                    value={nombre}
+                    onChange={(e) => setNombre(e.target.value)}
+                    className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium">Apellido</label>
+                  <input
+                    value={apellido}
+                    onChange={(e) => setApellido(e.target.value)}
+                    className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+                  />
+                </div>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-medium">
+                    Teléfono (opcional)
+                  </label>
+                  <input
+                    value={telefono}
+                    onChange={(e) => setTelefono(e.target.value)}
+                    onBlur={() => consultarSaldoPuntos(telefono)}
+                    className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium">
+                    Correo (opcional)
+                  </label>
+                  <input
+                    type="email"
+                    value={correo}
+                    onChange={(e) => setCorreo(e.target.value)}
+                    className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+                  />
+                </div>
+              </div>
 
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            {mensaje && <p className="text-sm text-green-600">{mensaje}</p>}
+              {puedeCanjear && (
+                <div className="flex items-center justify-between gap-3 rounded-md border border-brand-orange/25 bg-brand-orange/[0.06] px-3 py-2">
+                  <label htmlFor="pos-usar-puntos" className="text-sm text-zinc-700 dark:text-zinc-300">
+                    {saldoPuntos?.puntos} puntos disponibles — usar {canjePuntos} (
+                    {formatPrecio(canjePuntos * (saldoPuntos?.valorPuntoPesos ?? 0))})
+                  </label>
+                  <input
+                    id="pos-usar-puntos"
+                    type="checkbox"
+                    checked={usarPuntos}
+                    onChange={(e) => setUsarPuntos(e.target.checked)}
+                    className="h-5 w-5 shrink-0 accent-brand-orange"
+                  />
+                </div>
+              )}
 
-            <button
-              type="submit"
-              disabled={enviando}
-              className="w-full rounded-lg bg-brand-orange py-3 font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
-            >
-              {enviando ? 'Registrando…' : 'Registrar venta'}
-            </button>
-          </form>
+              <div>
+                <span className="block text-sm font-medium">Modalidad</span>
+                <div className="mt-2 flex gap-2">
+                  <OpcionBoton
+                    selected={modalidad === 'local'}
+                    onClick={() => setModalidad('local')}
+                    icon={<IconMesa />}
+                    label="Comer en el local"
+                  />
+                  <OpcionBoton
+                    selected={modalidad === 'retiro'}
+                    onClick={() => setModalidad('retiro')}
+                    icon={<IconLlevar />}
+                    label="Para llevar"
+                  />
+                  <OpcionBoton
+                    selected={modalidad === 'domicilio'}
+                    onClick={() => setModalidad('domicilio')}
+                    icon={<IconDomicilio />}
+                    label="A domicilio"
+                  />
+                </div>
+              </div>
+
+              {modalidad === 'domicilio' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium">
+                      Dirección de entrega
+                    </label>
+                    <input
+                      required
+                      value={direccionEntrega}
+                      onChange={(e) => setDireccionEntrega(e.target.value)}
+                      className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium">
+                      Costo de domicilio
+                    </label>
+                    <input
+                      required
+                      type="number"
+                      min={0}
+                      step={500}
+                      value={costoDomicilio}
+                      onChange={(e) => setCostoDomicilio(Number(e.target.value))}
+                      className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+                    />
+                  </div>
+                </>
+              )}
+
+              <div>
+                <span className="block text-sm font-medium">Método de pago</span>
+                <div className="mt-2 flex gap-2">
+                  <OpcionBoton
+                    selected={metodoPago === 'efectivo'}
+                    onClick={() => setMetodoPago('efectivo')}
+                    icon={<IconEfectivo />}
+                    label="Efectivo"
+                  />
+                  <OpcionBoton
+                    selected={metodoPago === 'transferencia'}
+                    onClick={() => setMetodoPago('transferencia')}
+                    icon={<IconTransferencia />}
+                    label="Transferencia"
+                  />
+                  <OpcionBoton
+                    selected={metodoPago === 'tarjeta'}
+                    onClick={() => setMetodoPago('tarjeta')}
+                    icon={<IconTarjeta />}
+                    label="Tarjeta"
+                  />
+                </div>
+              </div>
+
+              {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+              {mensaje && (
+                <p className="text-sm text-green-600 dark:text-green-500">{mensaje}</p>
+              )}
+
+              <button
+                type="submit"
+                disabled={enviando}
+                className="btn-press w-full rounded-lg btn-gradient py-3 font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+              >
+                {enviando ? 'Registrando…' : 'Registrar venta'}
+              </button>
+            </form>
+          </div>
         </div>
       </div>
 
       {!turno && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-lg bg-white p-6 dark:bg-zinc-900">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="animate-fade-up w-full max-w-md rounded-2xl bg-white p-6 dark:bg-zinc-900">
             <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
               Abrir turno
             </h2>
@@ -883,12 +1023,12 @@ function PosInterno() {
                 />
               </div>
               {errorTurno && (
-                <p className="text-sm text-red-600">{errorTurno}</p>
+                <p className="text-sm text-red-600 dark:text-red-400">{errorTurno}</p>
               )}
               <button
                 type="submit"
                 disabled={abriendoTurno}
-                className="w-full rounded-lg bg-brand-orange py-3 font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+                className="btn-press w-full rounded-lg btn-gradient py-3 font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
               >
                 {abriendoTurno ? 'Abriendo…' : 'Abrir turno'}
               </button>
@@ -898,8 +1038,8 @@ function PosInterno() {
       )}
 
       {mostrarCierre && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-lg bg-white p-6 dark:bg-zinc-900">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="animate-fade-up w-full max-w-md rounded-2xl bg-white p-6 dark:bg-zinc-900">
             {resultadoCierre ? (
               <>
                 <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
@@ -940,8 +1080,8 @@ function PosInterno() {
                           resultadoCierre.diferencia_caja === 0
                             ? ''
                             : resultadoCierre.diferencia_caja > 0
-                              ? 'text-green-600'
-                              : 'text-red-600'
+                              ? 'text-green-600 dark:text-green-500'
+                              : 'text-red-600 dark:text-red-400'
                         }
                       >
                         {formatPrecio(resultadoCierre.diferencia_caja)}
@@ -952,7 +1092,7 @@ function PosInterno() {
                 <button
                   type="button"
                   onClick={cerrarModalCierre}
-                  className="mt-6 w-full rounded-lg bg-brand-orange py-3 font-semibold text-white hover:opacity-90"
+                  className="btn-press mt-6 w-full rounded-lg btn-gradient py-3 font-semibold text-white hover:opacity-90"
                 >
                   Listo
                 </button>
@@ -1024,7 +1164,7 @@ function PosInterno() {
                     />
                   </div>
                   {errorTurno && (
-                    <p className="text-sm text-red-600">{errorTurno}</p>
+                    <p className="text-sm text-red-600 dark:text-red-400">{errorTurno}</p>
                   )}
                   <div className="flex gap-2">
                     <button

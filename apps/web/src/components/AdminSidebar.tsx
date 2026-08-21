@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, type ReactElement } from 'react';
+import { useEffect, useState, type ReactElement } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useRol } from '@/lib/use-rol';
 import { supabase } from '@/lib/supabase';
+
+const CLAVE_COLAPSADO = 'horebs-admin-sidebar-colapsado';
 
 function IconPanel() {
   return (
@@ -138,6 +140,14 @@ function IconCerrar() {
   );
 }
 
+function IconChevron() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m9 6 6 6-6 6" />
+    </svg>
+  );
+}
+
 type NavItem = {
   href: string;
   label: string;
@@ -164,10 +174,12 @@ const NAV_ADMIN: NavItem[] = [
 function NavLink({
   item,
   activo,
+  colapsado,
   onClick,
 }: {
   item: NavItem;
   activo: boolean;
+  colapsado: boolean;
   onClick: () => void;
 }) {
   const Icon = item.icon;
@@ -175,14 +187,20 @@ function NavLink({
     <Link
       href={item.href}
       onClick={onClick}
+      title={colapsado ? item.label : undefined}
+      aria-label={item.label}
       className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+        colapsado ? 'justify-center' : ''
+      } ${
         activo
           ? 'btn-gradient text-white shadow-sm'
           : 'text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-900'
       }`}
     >
-      <Icon />
-      {item.label}
+      <span className="shrink-0">
+        <Icon />
+      </span>
+      {!colapsado && <span className="truncate">{item.label}</span>}
     </Link>
   );
 }
@@ -191,12 +209,14 @@ function SidebarContenido({
   pathname,
   rol,
   email,
+  colapsado = false,
   onNavigate,
   onCerrarSesion,
 }: {
   pathname: string;
   rol: string | null;
   email: string | null;
+  colapsado?: boolean;
   onNavigate: () => void;
   onCerrarSesion: () => void;
 }) {
@@ -208,31 +228,36 @@ function SidebarContenido({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-2 px-2">
+      <div className={`flex items-center gap-2 px-2 ${colapsado ? 'justify-center px-0' : ''}`}>
         <span className="btn-gradient flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white shadow-sm">
           PH
         </span>
-        <div className="min-w-0">
-          <p className="truncate text-sm font-bold text-zinc-900 dark:text-zinc-50">
-            Pizzería Horebs
-          </p>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            Panel de gestión
-          </p>
-        </div>
+        {!colapsado && (
+          <div className="min-w-0">
+            <p className="truncate text-sm font-bold text-zinc-900 dark:text-zinc-50">
+              Pizzería Horebs
+            </p>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              Panel de gestión
+            </p>
+          </div>
+        )}
       </div>
 
-      <nav className="mt-6 flex-1 space-y-6 overflow-y-auto px-1">
+      <nav className="mt-6 flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-1">
         <div>
-          <p className="px-3 text-xs font-semibold tracking-wide text-zinc-400 uppercase dark:text-zinc-500">
-            General
-          </p>
-          <div className="mt-2 space-y-1">
+          {!colapsado && (
+            <p className="px-3 text-xs font-semibold tracking-wide text-zinc-400 uppercase dark:text-zinc-500">
+              General
+            </p>
+          )}
+          <div className={`space-y-1 ${colapsado ? '' : 'mt-2'}`}>
             {NAV_GENERAL.map((item) => (
               <NavLink
                 key={item.href}
                 item={item}
                 activo={esActivo(item)}
+                colapsado={colapsado}
                 onClick={onNavigate}
               />
             ))}
@@ -241,15 +266,18 @@ function SidebarContenido({
 
         {rol === 'admin' && (
           <div>
-            <p className="px-3 text-xs font-semibold tracking-wide text-zinc-400 uppercase dark:text-zinc-500">
-              Administración
-            </p>
-            <div className="mt-2 space-y-1">
+            {!colapsado && (
+              <p className="px-3 text-xs font-semibold tracking-wide text-zinc-400 uppercase dark:text-zinc-500">
+                Administración
+              </p>
+            )}
+            <div className={`space-y-1 ${colapsado ? '' : 'mt-2'}`}>
               {NAV_ADMIN.map((item) => (
                 <NavLink
                   key={item.href}
                   item={item}
                   activo={esActivo(item)}
+                  colapsado={colapsado}
                   onClick={onNavigate}
                 />
               ))}
@@ -259,33 +287,46 @@ function SidebarContenido({
       </nav>
 
       <div className="mt-4 space-y-1 border-t border-zinc-200 pt-4 dark:border-zinc-800">
-        <div className="flex items-center gap-2 px-3 py-1.5">
+        <div
+          className={`flex items-center gap-2 px-3 py-1.5 ${colapsado ? 'justify-center px-0' : ''}`}
+          title={colapsado ? (email ?? undefined) : undefined}
+        >
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-orange/15 text-xs font-semibold text-brand-orange">
             {(email ?? '?').charAt(0).toUpperCase()}
           </span>
-          <div className="min-w-0">
-            <p className="truncate text-xs font-semibold text-zinc-900 dark:text-zinc-50">
-              {email}
-            </p>
-            <p className="text-xs text-zinc-500 capitalize dark:text-zinc-400">
-              {rol}
-            </p>
-          </div>
+          {!colapsado && (
+            <div className="min-w-0">
+              <p className="truncate text-xs font-semibold text-zinc-900 dark:text-zinc-50">
+                {email}
+              </p>
+              <p className="text-xs text-zinc-500 capitalize dark:text-zinc-400">
+                {rol}
+              </p>
+            </div>
+          )}
         </div>
         <Link
           href="/"
-          className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-900"
+          title={colapsado ? 'Volver al sitio' : undefined}
+          aria-label="Volver al sitio"
+          className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-900 ${
+            colapsado ? 'justify-center' : ''
+          }`}
         >
           <IconVolver />
-          Volver al sitio
+          {!colapsado && 'Volver al sitio'}
         </Link>
         <button
           type="button"
           onClick={onCerrarSesion}
-          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-zinc-600 transition-colors hover:bg-red-50 hover:text-red-600 dark:text-zinc-400 dark:hover:bg-red-950/30"
+          title={colapsado ? 'Cerrar sesión' : undefined}
+          aria-label="Cerrar sesión"
+          className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-zinc-600 transition-colors hover:bg-red-50 hover:text-red-600 dark:text-zinc-400 dark:hover:bg-red-950/30 ${
+            colapsado ? 'justify-center' : ''
+          }`}
         >
           <IconSalir />
-          Cerrar sesión
+          {!colapsado && 'Cerrar sesión'}
         </button>
       </div>
     </div>
@@ -298,6 +339,19 @@ export default function AdminSidebar() {
   const { session, rol } = useRol();
   const [abierto, setAbierto] = useState(false);
   const [confirmandoSalir, setConfirmandoSalir] = useState(false);
+  const [colapsado, setColapsado] = useState(false);
+
+  useEffect(() => {
+    setColapsado(localStorage.getItem(CLAVE_COLAPSADO) === '1');
+  }, []);
+
+  function alternarColapsado() {
+    setColapsado((prev) => {
+      const siguiente = !prev;
+      localStorage.setItem(CLAVE_COLAPSADO, siguiente ? '1' : '0');
+      return siguiente;
+    });
+  }
 
   async function cerrarSesion() {
     await supabase.auth.signOut();
@@ -321,12 +375,28 @@ export default function AdminSidebar() {
         </button>
       </div>
 
-      <aside className="hidden w-64 shrink-0 sm:block">
-        <div className="card-gradient sticky top-6 max-h-[calc(100vh-3rem)] rounded-2xl border border-zinc-200 p-4 shadow-sm dark:border-zinc-800">
+      <aside
+        className={`hidden shrink-0 transition-[width] duration-200 sm:block ${
+          colapsado ? 'w-[4.5rem]' : 'w-64'
+        }`}
+      >
+        <div className="card-gradient relative sticky top-6 max-h-[calc(100vh-3rem)] rounded-2xl border border-zinc-200 p-4 shadow-sm dark:border-zinc-800">
+          <button
+            type="button"
+            onClick={alternarColapsado}
+            aria-label={colapsado ? 'Expandir panel' : 'Colapsar panel'}
+            title={colapsado ? 'Expandir panel' : 'Colapsar panel'}
+            className="btn-press absolute top-6 -right-3 flex h-6 w-6 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-500 shadow-sm hover:text-brand-orange dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400"
+          >
+            <span className={`transition-transform duration-200 ${colapsado ? '' : 'rotate-180'}`}>
+              <IconChevron />
+            </span>
+          </button>
           <SidebarContenido
             pathname={pathname}
             rol={rol}
             email={session?.user.email ?? null}
+            colapsado={colapsado}
             onNavigate={() => {}}
             onCerrarSesion={() => setConfirmandoSalir(true)}
           />
