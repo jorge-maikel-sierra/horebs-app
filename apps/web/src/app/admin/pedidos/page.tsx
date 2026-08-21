@@ -70,6 +70,77 @@ const MODALIDAD_LABEL: Record<string, string> = {
 
 const METODO_PAGO_OPCIONES = ['efectivo', 'transferencia', 'tarjeta'] as const;
 
+function IconChevron({ abierto }: { abierto: boolean }) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={`shrink-0 transition-transform duration-200 ${abierto ? 'rotate-180' : ''}`}
+    >
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  );
+}
+
+function IconLapiz() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+    </svg>
+  );
+}
+
+function IconPedido() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 11H4l1.5-4.5A2 2 0 0 1 7.4 5h9.2a2 2 0 0 1 1.9 1.5L20 11h-5" />
+      <path d="M4 11v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7" />
+      <path d="M9 11v3a3 3 0 0 0 6 0v-3" />
+    </svg>
+  );
+}
+
+function IconBasura() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 6h18" />
+      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6" />
+    </svg>
+  );
+}
+
+function IconDescargar() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3v12m0 0-4-4m4 4 4-4" />
+      <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+    </svg>
+  );
+}
+
+function IconCorreo() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="m3 7 9 6 9-6" />
+    </svg>
+  );
+}
+
+function IconWhatsapp() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12.04 2c-5.52 0-10 4.48-10 10 0 1.76.46 3.48 1.34 5L2 22l5.14-1.35a10 10 0 0 0 4.9 1.25h.01c5.52 0 10-4.48 10-10s-4.48-10-10.01-10Zm0 18.2h-.01a8.2 8.2 0 0 1-4.18-1.14l-.3-.18-3.1.81.83-3.02-.2-.31a8.2 8.2 0 0 1-1.25-4.36c0-4.54 3.7-8.24 8.25-8.24 2.2 0 4.27.86 5.83 2.42a8.19 8.19 0 0 1 2.41 5.83c0 4.55-3.7 8.24-8.28 8.24Zm4.52-6.17c-.25-.12-1.47-.72-1.7-.81-.23-.08-.4-.12-.56.13-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.12-1.05-.39-1.99-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.02-.38.11-.51.11-.11.25-.29.37-.43.12-.14.16-.25.25-.41.08-.17.04-.31-.02-.44-.06-.12-.56-1.36-.77-1.86-.2-.49-.41-.42-.56-.43h-.48c-.17 0-.44.06-.67.31-.23.25-.87.86-.87 2.09s.9 2.42 1.02 2.59c.12.17 1.77 2.7 4.28 3.78.6.26 1.06.41 1.43.53.6.19 1.15.16 1.58.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.08.14-1.18-.06-.11-.23-.17-.48-.29Z" />
+    </svg>
+  );
+}
+
 function PedidosInterno() {
   const { rol } = useRol();
   const [pedidos, setPedidos] = useState<PedidoAdmin[]>([]);
@@ -110,6 +181,7 @@ function PedidosInterno() {
   const [mensajeFactura, setMensajeFactura] = useState<
     { id: string; texto: string; error: boolean } | null
   >(null);
+  const [expandidoId, setExpandidoId] = useState<string | null>(null);
 
   useEffect(() => {
     adminFetch('/admin/pedidos')
@@ -133,6 +205,7 @@ function PedidosInterno() {
   }, []);
 
   function empezarEdicion(p: PedidoAdmin) {
+    setExpandidoId(p.id);
     setEditandoClienteId(p.cliente.id);
     setNombreEdit(p.cliente.nombre);
     setApellidoEdit(p.cliente.apellido ?? '');
@@ -189,6 +262,7 @@ function PedidosInterno() {
   }
 
   function empezarEdicionPedido(p: PedidoAdmin) {
+    setExpandidoId(p.id);
     setEditandoPedidoId(p.id);
     setItemsEdit(
       p.items.map((i) => ({ ...i, id: i.variante_id ?? crypto.randomUUID() })),
@@ -462,104 +536,168 @@ function PedidosInterno() {
         </p>
       )}
 
-      <ul className="mt-6 space-y-3">
-        {pedidosFiltrados.map((p) => (
-          <li
-            key={p.id}
-            className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800"
-          >
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <span
-                  className={`rounded-full px-2 py-0.5 text-xs font-semibold text-white ${
-                    p.canal === 'pos' ? 'bg-brand-navy' : 'bg-brand-orange'
-                  }`}
-                >
-                  {p.canal === 'pos' ? 'Local' : 'Web'}
-                </span>
-                {p.stock_status === 'pendiente' && (
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {pedidosFiltrados.map((p) => {
+          const abierto =
+            expandidoId === p.id ||
+            editandoClienteId === p.cliente.id ||
+            editandoPedidoId === p.id;
+          const nombreCompleto = p.cliente.nombre
+            ? `${p.cliente.nombre} ${p.cliente.apellido ?? ''}`.trim()
+            : 'Cliente sin nombre';
+
+          return (
+            <div
+              key={p.id}
+              className={`flex flex-col rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 ${
+                abierto ? 'sm:col-span-2 xl:col-span-3' : ''
+              }`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                   <span
-                    title="El descuento automático de stock falló para este pedido — revisar el inventario a mano."
-                    className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-semibold text-white"
+                    className={`rounded-full px-2 py-0.5 text-[11px] font-semibold text-white ${
+                      p.canal === 'pos' ? 'bg-brand-navy' : 'bg-brand-orange'
+                    }`}
                   >
-                    ⚠️ Stock pendiente
+                    {p.canal === 'pos' ? 'Local' : 'Web'}
                   </span>
-                )}
-                <span className="font-semibold text-zinc-900 dark:text-zinc-50">
-                  {p.cliente.nombre
-                    ? `${p.cliente.nombre} ${p.cliente.apellido ?? ''}`.trim()
-                    : 'Cliente sin nombre'}
-                </span>
-                {p.cliente.telefono && (
-                  <span className="text-sm text-zinc-500 dark:text-zinc-400">
-                    {p.cliente.telefono}
+                  <span className="rounded-md bg-zinc-100 px-1.5 py-0.5 font-mono text-[11px] font-medium text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+                    #{p.id.slice(0, 8)}
                   </span>
-                )}
+                  {p.stock_status === 'pendiente' && (
+                    <span
+                      title="El descuento automático de stock falló para este pedido — revisar el inventario a mano."
+                      className="rounded-full bg-red-600 px-2 py-0.5 text-[11px] font-semibold text-white"
+                    >
+                      ⚠️ Stock
+                    </span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setExpandidoId(abierto ? null : p.id)}
+                  aria-label={abierto ? 'Contraer pedido' : 'Ver detalle del pedido'}
+                  className="btn-press shrink-0 rounded-md p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                >
+                  <IconChevron abierto={abierto} />
+                </button>
+              </div>
+
+              <div className="mt-2.5">
+                <p className="truncate font-semibold text-zinc-900 dark:text-zinc-50">
+                  {nombreCompleto}
+                </p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">
+                    {p.cliente.telefono ?? 'Sin teléfono'} · {formatFecha(p.created_at)}
+                  </p>
+                </div>
+              </div>
+
+              {!abierto && (
+                <ul className="mt-2.5 flex-1 space-y-0.5 text-xs text-zinc-600 dark:text-zinc-400">
+                  {p.items.slice(0, 3).map((i, idx) => (
+                    <li key={i.variante_id ?? idx} className="truncate">
+                      {i.cantidad}×{' '}
+                      {i.variante_nombre
+                        ? `${i.producto_nombre} (${i.variante_nombre})`
+                        : i.producto_nombre}
+                    </li>
+                  ))}
+                  {p.items.length > 3 && (
+                    <li className="text-zinc-400 dark:text-zinc-500">
+                      +{p.items.length - 3} más
+                    </li>
+                  )}
+                </ul>
+              )}
+
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-zinc-100 pt-2.5 text-xs dark:border-zinc-800/60">
+                <div className="flex flex-wrap items-center gap-1.5 text-zinc-500 dark:text-zinc-400">
+                  <span className="rounded-md bg-zinc-100 px-1.5 py-0.5 dark:bg-zinc-800">
+                    {MODALIDAD_LABEL[p.modalidad] ?? p.modalidad}
+                  </span>
+                  <span className="rounded-md bg-zinc-100 px-1.5 py-0.5 capitalize dark:bg-zinc-800">
+                    {p.metodo_pago}
+                  </span>
+                  <span className="rounded-md bg-zinc-100 px-1.5 py-0.5 capitalize dark:bg-zinc-800">
+                    {p.estado.replace('_', ' ')}
+                  </span>
+                </div>
+                <div className="text-right">
+                  <p className="font-bold text-brand-orange">{formatPrecio(p.total)}</p>
+                  {p.costo_domicilio > 0 && (
+                    <p className="text-[10px] text-zinc-400 dark:text-zinc-500">
+                      incl. {formatPrecio(p.costo_domicilio)} domicilio
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-2.5 flex flex-wrap items-center gap-1 border-t border-zinc-100 pt-2.5 dark:border-zinc-800/60">
                 <button
                   type="button"
                   onClick={() => empezarEdicion(p)}
-                  className="text-xs text-brand-orange underline"
+                  title="Editar cliente"
+                  className="btn-press rounded-md p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-brand-orange dark:text-zinc-400 dark:hover:bg-zinc-800"
                 >
-                  Editar cliente
+                  <IconLapiz />
                 </button>
                 <button
                   type="button"
                   onClick={() => empezarEdicionPedido(p)}
-                  className="text-xs text-brand-orange underline"
+                  title="Editar pedido"
+                  className="btn-press rounded-md p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-brand-orange dark:text-zinc-400 dark:hover:bg-zinc-800"
                 >
-                  Editar pedido
+                  <IconPedido />
+                </button>
+                <button
+                  type="button"
+                  disabled={accionFacturaId === `${p.id}-descargar`}
+                  onClick={() => descargarFactura(p)}
+                  title="Descargar comprobante"
+                  className="btn-press rounded-md p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-brand-orange disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                >
+                  <IconDescargar />
+                </button>
+                <button
+                  type="button"
+                  disabled={accionFacturaId === `${p.id}-correo` || !p.cliente.correo}
+                  title={!p.cliente.correo ? 'El cliente no tiene correo registrado' : 'Enviar a correo'}
+                  onClick={() => enviarFacturaPorCorreo(p)}
+                  className="btn-press rounded-md p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-brand-orange disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                >
+                  <IconCorreo />
+                </button>
+                <button
+                  type="button"
+                  disabled={accionFacturaId === `${p.id}-whatsapp` || !p.cliente.telefono}
+                  title={!p.cliente.telefono ? 'El cliente no tiene teléfono registrado' : 'Enviar por WhatsApp'}
+                  onClick={() => enviarFacturaPorWhatsapp(p)}
+                  className="btn-press rounded-md p-1.5 text-green-700 hover:bg-green-50 disabled:opacity-40 dark:text-green-500 dark:hover:bg-green-950/30"
+                >
+                  <IconWhatsapp />
                 </button>
                 {rol === 'admin' && (
                   <button
                     type="button"
                     disabled={eliminandoId === p.id}
                     onClick={() => eliminarPedido(p)}
-                    className="text-xs text-red-600 underline disabled:opacity-50 dark:text-red-400"
+                    title="Eliminar pedido"
+                    className="btn-press ml-auto rounded-md p-1.5 text-red-600 hover:bg-red-50 disabled:opacity-40 dark:text-red-400 dark:hover:bg-red-950/30"
                   >
-                    {eliminandoId === p.id ? 'Eliminando…' : 'Eliminar'}
+                    <IconBasura />
                   </button>
                 )}
+                {mensajeFactura?.id === p.id && (
+                  <span
+                    className={`w-full text-[11px] ${mensajeFactura.error ? 'text-red-600 dark:text-red-400' : 'text-brand-orange'}`}
+                  >
+                    {mensajeFactura.texto}
+                  </span>
+                )}
               </div>
-              <span className="text-sm text-zinc-500 dark:text-zinc-400">
-                {formatFecha(p.created_at)}
-              </span>
-            </div>
-
-            <div className="mt-2 flex flex-wrap items-center gap-3 border-t border-zinc-100 pt-2 dark:border-zinc-800/60">
-              <button
-                type="button"
-                disabled={accionFacturaId === `${p.id}-descargar`}
-                onClick={() => descargarFactura(p)}
-                className="text-xs font-medium text-zinc-600 underline disabled:opacity-50 dark:text-zinc-400"
-              >
-                {accionFacturaId === `${p.id}-descargar` ? 'Generando…' : 'Descargar comprobante'}
-              </button>
-              <button
-                type="button"
-                disabled={accionFacturaId === `${p.id}-correo` || !p.cliente.correo}
-                title={!p.cliente.correo ? 'El cliente no tiene correo registrado' : undefined}
-                onClick={() => enviarFacturaPorCorreo(p)}
-                className="text-xs font-medium text-zinc-600 underline disabled:opacity-50 dark:text-zinc-400"
-              >
-                {accionFacturaId === `${p.id}-correo` ? 'Enviando…' : 'Enviar a correo'}
-              </button>
-              <button
-                type="button"
-                disabled={accionFacturaId === `${p.id}-whatsapp` || !p.cliente.telefono}
-                title={!p.cliente.telefono ? 'El cliente no tiene teléfono registrado' : undefined}
-                onClick={() => enviarFacturaPorWhatsapp(p)}
-                className="text-xs font-medium text-green-700 underline disabled:opacity-50 dark:text-green-500"
-              >
-                {accionFacturaId === `${p.id}-whatsapp` ? 'Enviando…' : 'Enviar a WhatsApp'}
-              </button>
-              {mensajeFactura?.id === p.id && (
-                <span
-                  className={`text-xs ${mensajeFactura.error ? 'text-red-600 dark:text-red-400' : 'text-brand-orange'}`}
-                >
-                  {mensajeFactura.texto}
-                </span>
-              )}
-            </div>
 
             {editandoClienteId === p.cliente.id && (
               <div className="mt-3 space-y-2 rounded-md border border-zinc-200 p-3 dark:border-zinc-700">
@@ -821,37 +959,38 @@ function PedidosInterno() {
                 </div>
               </div>
             ) : (
-              <ul className="mt-2 space-y-0.5 text-sm text-zinc-600 dark:text-zinc-400">
-                {p.items.map((i, idx) => (
-                  <li key={i.variante_id ?? idx}>
-                    {i.cantidad}×{' '}
-                    {i.variante_nombre
-                      ? `${i.producto_nombre} (${i.variante_nombre})`
-                      : i.producto_nombre}
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm">
-              <div className="flex flex-wrap items-center gap-3 text-zinc-500 dark:text-zinc-400">
-                <span>{MODALIDAD_LABEL[p.modalidad] ?? p.modalidad}</span>
-                {p.direccion_entrega && <span>{p.direccion_entrega}</span>}
-                <span className="capitalize">{p.metodo_pago}</span>
-                <span className="capitalize">{p.estado}</span>
-              </div>
-              <span className="font-semibold text-brand-orange">
-                {formatPrecio(p.total)}
-                {p.costo_domicilio > 0 && (
-                  <span className="ml-1 font-normal text-zinc-500 dark:text-zinc-400">
-                    (incl. {formatPrecio(p.costo_domicilio)} domicilio)
+              abierto && (
+                <div className="mt-3 rounded-md border border-zinc-200 p-3 dark:border-zinc-700">
+                  <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                    Productos
                   </span>
-                )}
-              </span>
+                  <ul className="mt-1 space-y-0.5 text-sm text-zinc-600 dark:text-zinc-400">
+                    {p.items.map((i, idx) => (
+                      <li key={i.variante_id ?? idx} className="flex justify-between gap-3">
+                        <span>
+                          {i.cantidad}×{' '}
+                          {i.variante_nombre
+                            ? `${i.producto_nombre} (${i.variante_nombre})`
+                            : i.producto_nombre}
+                        </span>
+                        <span className="shrink-0 text-zinc-500 dark:text-zinc-400">
+                          {formatPrecio(i.precio_unitario * i.cantidad)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  {p.direccion_entrega && (
+                    <p className="mt-2 border-t border-zinc-100 pt-2 text-xs text-zinc-500 dark:border-zinc-800/60 dark:text-zinc-400">
+                      Entrega: {p.direccion_entrega}
+                    </p>
+                  )}
+                </div>
+              )
+            )}
             </div>
-          </li>
-        ))}
-      </ul>
+          );
+        })}
+      </div>
     </div>
   );
 }

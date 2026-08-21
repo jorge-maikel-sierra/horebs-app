@@ -1,6 +1,7 @@
 import Link from 'next/link';
-import { whatsappUrl } from '@/lib/negocio';
+import { NEGOCIO, whatsappUrl } from '@/lib/negocio';
 import { formatPrecio } from '@/lib/formato';
+import BotonCopiar from '@/components/BotonCopiar';
 
 type PedidoItem = {
   producto_nombre: string;
@@ -15,6 +16,7 @@ type Pedido = {
   cliente: { nombre: string; apellido: string | null; telefono: string };
   modalidad: string;
   direccion_entrega: string | null;
+  costo_domicilio: number;
   metodo_pago: string;
   estado: string;
   total: number;
@@ -31,16 +33,22 @@ async function getPedido(id: string): Promise<Pedido | null> {
 }
 
 function mensajeWhatsapp(pedido: Pedido): string {
+  const esDomicilio = pedido.modalidad === 'domicilio';
   const lineas = [
+    '🌐 *Pedido desde la página web* — llega por WhatsApp, no es un chat en vivo.',
+    '',
     `¡Hola! Quiero confirmar mi pedido #${pedido.id.slice(0, 8)}:`,
     '',
     ...pedido.items.map(
       (i) => `• ${i.cantidad}x ${i.producto_nombre} (${i.variante_nombre})`,
     ),
     '',
-    `Total: ${formatPrecio(pedido.total)}`,
-    `Modalidad: ${pedido.modalidad === 'domicilio' ? 'Domicilio' : 'Retiro en local'}`,
-    ...(pedido.modalidad === 'domicilio' && pedido.direccion_entrega
+    ...(esDomicilio
+      ? [`Domicilio: ${formatPrecio(pedido.costo_domicilio)}`]
+      : []),
+    `*Total: ${formatPrecio(pedido.total)}*`,
+    `Modalidad: ${esDomicilio ? 'Domicilio' : 'Retiro en local'}`,
+    ...(esDomicilio && pedido.direccion_entrega
       ? [`Dirección: ${pedido.direccion_entrega}`]
       : []),
     `Método de pago: ${pedido.metodo_pago}`,
@@ -132,7 +140,13 @@ export default async function PedidoConfirmacionPage({
             <span className="shrink-0">{formatPrecio(i.subtotal)}</span>
           </div>
         ))}
-        <div className="mt-2 flex justify-between border-t border-zinc-200 pt-2 font-semibold dark:border-zinc-800">
+        {pedido.modalidad === 'domicilio' && (
+          <div className="flex justify-between gap-3 border-t border-zinc-100 py-1.5 pt-2 text-zinc-500 dark:border-zinc-800/60 dark:text-zinc-400">
+            <span>Domicilio</span>
+            <span className="shrink-0">{formatPrecio(pedido.costo_domicilio)}</span>
+          </div>
+        )}
+        <div className="mt-1 flex justify-between border-t border-zinc-200 pt-2 font-semibold dark:border-zinc-800">
           <span>Total</span>
           <span className="text-brand-orange">{formatPrecio(pedido.total)}</span>
         </div>
@@ -155,6 +169,49 @@ export default async function PedidoConfirmacionPage({
           </div>
         </dl>
       </div>
+
+      {pedido.metodo_pago === 'transferencia' && (
+        <div className="animate-fade-up delay-4 mt-4 overflow-hidden rounded-lg border border-[#820AD1]/25 bg-[#820AD1]/[0.04] dark:border-[#c084fc]/25 dark:bg-[#c084fc]/[0.06]">
+          <div className="flex items-center gap-2 border-b border-[#820AD1]/15 bg-[#820AD1]/[0.06] px-4 py-2.5 dark:border-[#c084fc]/15 dark:bg-[#c084fc]/[0.08]">
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#820AD1] text-[10px] font-bold text-white dark:bg-[#c084fc] dark:text-[#2a0845]">
+              N
+            </span>
+            <p className="text-xs font-semibold text-[#820AD1] dark:text-[#c084fc]">
+              Datos para transferir por Nu
+            </p>
+          </div>
+          <div className="space-y-3 px-4 py-3.5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[11px] tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
+                  Banco
+                </p>
+                <p className="font-semibold text-zinc-900 dark:text-zinc-50">
+                  {NEGOCIO.transferencia.banco}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[11px] tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
+                  Llave
+                </p>
+                <p className="font-mono text-base font-semibold text-zinc-900 dark:text-zinc-50">
+                  {NEGOCIO.transferencia.llave}
+                </p>
+              </div>
+              <BotonCopiar texto={NEGOCIO.transferencia.llave} />
+            </div>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              Transferí el total de{' '}
+              <span className="font-semibold text-zinc-700 dark:text-zinc-300">
+                {formatPrecio(pedido.total)}
+              </span>{' '}
+              y mandá el comprobante junto con la confirmación por WhatsApp.
+            </p>
+          </div>
+        </div>
+      )}
 
       <a
         href={urlWhatsapp}

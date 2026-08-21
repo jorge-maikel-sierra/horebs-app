@@ -40,8 +40,9 @@ carrito y checkout en línea.
 - Métodos de pago históricos: ~77% efectivo, ~22% transferencia bancaria,
   <1% tarjeta — priorizar efectivo/transferencia en el checkout; tarjeta es
   opcional y está pendiente de decisión
-- Costo de domicilio por defecto: $5.000 (`COSTO_DOMICILIO_DEFAULT` en
-  `admin.service.ts`) — se usa cuando el POS no especifica un costo manual
+- Costo de domicilio: $5.000 (`COSTO_DOMICILIO_DEFAULT` en
+  `apps/api/src/common/costos.ts`) — fijo en el checkout web, y valor
+  sugerido cuando el POS no especifica un costo manual
 - Descuento de la oferta de seguimiento por conversación abandonada: 10%
   (`DESCUENTO_OFERTA_PORCENTAJE` en `seguimiento.service.ts`) — se ofrece si
   el cliente no responde tras el recordatorio de las 3 horas
