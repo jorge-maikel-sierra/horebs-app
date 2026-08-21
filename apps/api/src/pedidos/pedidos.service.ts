@@ -3,6 +3,7 @@ import { SupabaseService } from '../supabase/supabase.service';
 import { MailService } from '../mail/mail.service';
 import { InventarioService } from '../inventario/inventario.service';
 import { calcularItems } from './calcular-items';
+import { METODOS_PAGO } from '../common/metodos-pago';
 
 export interface CrearPedidoItemInput {
   variante_id: string;
@@ -21,6 +22,15 @@ export interface CrearPedidoInput {
   metodo_pago: 'efectivo' | 'transferencia' | 'tarjeta';
   notas?: string;
   items: CrearPedidoItemInput[];
+  /**
+   * El frontend genera un UUID una sola vez por intento de checkout (no
+   * por click) y lo reenvía tal cual en reintentos de red o si el mismo
+   * submit dispara dos requests casi simultáneos (doble clic más rápido
+   * que el disabled del botón). Con la columna `idempotency_key` (unique)
+   * de `pedidos`, el segundo insert choca contra la restricción en vez de
+   * crear un pedido duplicado con el stock descontado dos veces.
+   */
+  idempotency_key?: string;
 }
 
 export interface PedidoItemDto {
@@ -58,7 +68,6 @@ export interface PedidoResumenDto {
 }
 
 const MODALIDADES = ['domicilio', 'retiro'];
-const METODOS_PAGO = ['efectivo', 'transferencia', 'tarjeta'];
 
 /**
  * Meta entrega el teléfono con código de país (573157861208); en
@@ -118,11 +127,21 @@ export class PedidosService {
         metodo_pago: input.metodo_pago,
         total,
         notas: input.notas ?? null,
+        idempotency_key: input.idempotency_key ?? null,
       })
       .select('id, modalidad, direccion_entrega, metodo_pago, estado, total, notas, created_at')
       .single();
 
-    if (pedidoError) throw pedidoError;
+    if (pedidoError) {
+      // El insert chocó contra la restricción unique de idempotency_key:
+      // ya existe un pedido de este mismo intento de checkout (reintento
+      // de red o doble clic más rápido que el disabled del botón) — se
+      // devuelve el pedido ya creado en vez de duplicarlo.
+      if (pedidoError.code === '23505' && input.idempotency_key) {
+        return this.obtenerPorIdempotencyKey(input.idempotency_key);
+      }
+      throw pedidoError;
+    }
 
     const { error: itemsError } = await client.from('items_pedido').insert(
       itemsCalculados.map((i) => ({
@@ -182,6 +201,17 @@ export class PedidosService {
         subtotal: i.subtotal,
       })),
     };
+  }
+
+  private async obtenerPorIdempotencyKey(idempotencyKey: string): Promise<PedidoDto> {
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('pedidos')
+      .select('id')
+      .eq('idempotency_key', idempotencyKey)
+      .single();
+    if (error) throw error;
+    return this.obtener(data.id);
   }
 
   async obtener(id: string): Promise<PedidoDto> {
@@ -272,17 +302,32 @@ export class PedidosService {
     if (!input.cliente?.nombre?.trim()) {
       throw new BadRequestException('Falta el nombre del cliente.');
     }
+    if (input.cliente.nombre.trim().length > 100) {
+      throw new BadRequestException('El nombre es demasiado largo.');
+    }
     if (!input.cliente?.apellido?.trim()) {
       throw new BadRequestException('Falta el apellido del cliente.');
     }
+    if (input.cliente.apellido.trim().length > 100) {
+      throw new BadRequestException('El apellido es demasiado largo.');
+    }
     if (!input.cliente?.telefono?.trim()) {
       throw new BadRequestException('Falta el teléfono del cliente.');
+    }
+    if (!/^\+?[0-9 ()-]{7,20}$/.test(input.cliente.telefono.trim())) {
+      throw new BadRequestException('El teléfono no tiene un formato válido.');
     }
     if (!MODALIDADES.includes(input.modalidad)) {
       throw new BadRequestException('Modalidad inválida.');
     }
     if (input.modalidad === 'domicilio' && !input.direccion_entrega?.trim()) {
       throw new BadRequestException('Falta la dirección de entrega.');
+    }
+    if (input.direccion_entrega && input.direccion_entrega.trim().length > 300) {
+      throw new BadRequestException('La dirección es demasiado larga.');
+    }
+    if (input.notas && input.notas.trim().length > 500) {
+      throw new BadRequestException('Las notas son demasiado largas.');
     }
     if (!METODOS_PAGO.includes(input.metodo_pago)) {
       throw new BadRequestException('Método de pago inválido.');

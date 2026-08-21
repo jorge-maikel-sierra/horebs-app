@@ -1,5 +1,6 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import { METODOS_PAGO, type MetodoPago } from '../common/metodos-pago';
 
 export interface DetalleCompraInput {
   insumo_id?: string;
@@ -15,7 +16,7 @@ export interface CrearCompraInput {
   fecha: string;
   subtotal: number;
   otros_cargos?: number;
-  metodo_pago: 'efectivo' | 'transferencia' | 'tarjeta';
+  metodo_pago: MetodoPago;
   categoria?: string;
   detalle: DetalleCompraInput[];
 }
@@ -46,13 +47,14 @@ export interface CompraDto {
   detalle: DetalleCompraDto[];
 }
 
-const METODOS_PAGO = ['efectivo', 'transferencia', 'tarjeta'];
 const UNIDADES = ['kg', 'g'];
 const COMPRA_SELECT =
   'id, numero_factura, proveedor, fecha, subtotal, otros_cargos, metodo_pago, categoria, created_at, detalle_compra(id, insumo_id, producto_comprado, cantidad, unidad_medida_compra, valor_unitario, total_linea, estado_procesado, fecha_procesado, insumos(nombre))';
 
 @Injectable()
 export class ComprasService {
+  private readonly logger = new Logger(ComprasService.name);
+
   constructor(private readonly supabase: SupabaseService) {}
 
   async listar(): Promise<CompraDto[]> {
@@ -146,7 +148,18 @@ export class ComprasService {
       if (error.message?.includes('no existe')) {
         throw new NotFoundException('Línea de compra no encontrada.');
       }
-      throw new BadRequestException(error.message);
+      // El resto de mensajes que arma procesar_detalle_compra() son de negocio
+      // (línea no pendiente, sin insumo asignado) y son seguros de mostrar tal
+      // cual. Cualquier otro error de Postgres (constraint, tipo, conexión) no
+      // se expone crudo al cliente — solo se loguea del lado del servidor.
+      if (
+        error.message?.includes('no está pendiente') ||
+        error.message?.includes('no tiene insumo asignado')
+      ) {
+        throw new BadRequestException(error.message);
+      }
+      this.logger.error(`procesar_detalle_compra falló para ${detalleId}: ${error.message}`);
+      throw new BadRequestException('No se pudo procesar la línea de compra.');
     }
   }
 

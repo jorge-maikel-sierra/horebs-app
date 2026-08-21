@@ -1,5 +1,6 @@
 import { setDefaultResultOrder } from 'node:dns';
 import { NestFactory } from '@nestjs/core';
+import { Logger } from '@nestjs/common';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
@@ -21,9 +22,12 @@ async function bootstrap() {
     .map((url) => url.trim());
   app.enableCors({ origin: frontendUrls, credentials: true });
 
+  // Railway manda SIGTERM en cada redeploy — sin esto, Nest mata el
+  // proceso al toque y corta requests en curso a mitad de camino.
+  app.enableShutdownHooks();
+
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
-  // eslint-disable-next-line no-console
-  console.log(`API corriendo en http://localhost:${port}`);
+  new Logger('Bootstrap').log(`API corriendo en http://localhost:${port}`);
 }
 bootstrap();

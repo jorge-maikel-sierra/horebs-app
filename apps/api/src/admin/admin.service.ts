@@ -5,6 +5,7 @@ import { InventarioService } from '../inventario/inventario.service';
 import { ConversacionesService } from '../mensajeria/conversaciones.service';
 import { MetaGraphService } from '../mensajeria/meta-graph.service';
 import { FacturaService } from '../facturas/factura.service';
+import { METODOS_PAGO, type MetodoPago } from '../common/metodos-pago';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Rol } from '../auth/roles.decorator';
 import type { EstadoConversacion } from '../mensajeria/conversaciones.service';
@@ -114,7 +115,6 @@ export interface UsuarioStaffDto {
   created_at: string;
 }
 
-const METODOS_PAGO = ['efectivo', 'transferencia', 'tarjeta'];
 const ESTADOS_PEDIDO = [
   'pendiente',
   'confirmado',
@@ -397,7 +397,7 @@ export class AdminService {
   ): Promise<PedidoAdminDto> {
     if (
       cambios.metodo_pago !== undefined &&
-      !METODOS_PAGO.includes(cambios.metodo_pago)
+      !METODOS_PAGO.includes(cambios.metodo_pago as MetodoPago)
     ) {
       throw new BadRequestException('Método de pago inválido.');
     }

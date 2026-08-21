@@ -269,4 +269,49 @@ export class ConversacionesService {
     if (error.code === '23505') return true;
     throw error;
   }
+
+  /**
+   * Freno de costo: sin esto, un número real mandando mensajes seguidos (o
+   * un loop/bug del lado de Meta) dispara una llamada paga a Gemini por
+   * cada uno, sin techo. Ventana simple en la misma fila de la conversación
+   * — no hace falta exactitud perfecta bajo carrera, es un freno de costo,
+   * no un límite de seguridad.
+   */
+  async dentroDelLimiteDeMensajes(
+    canal: CanalMensajeria,
+    identificadorExterno: string,
+    ventanaMinutos: number,
+    maxMensajes: number,
+  ): Promise<boolean> {
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('conversaciones_bot')
+      .select('limite_ventana_inicio, limite_ventana_contador')
+      .eq('canal', canal)
+      .eq('identificador_externo', identificadorExterno)
+      .maybeSingle();
+    if (error) throw error;
+
+    const ahora = new Date();
+    const inicioPrevio = data?.limite_ventana_inicio ? new Date(data.limite_ventana_inicio) : null;
+    const siguePreDentroDeVentana =
+      inicioPrevio !== null && ahora.getTime() - inicioPrevio.getTime() < ventanaMinutos * 60 * 1000;
+    const nuevoContador = (siguePreDentroDeVentana ? data?.limite_ventana_contador ?? 0 : 0) + 1;
+
+    const { error: upsertError } = await this.supabase
+      .getClient()
+      .from('conversaciones_bot')
+      .upsert(
+        {
+          canal,
+          identificador_externo: identificadorExterno,
+          limite_ventana_inicio: siguePreDentroDeVentana ? inicioPrevio!.toISOString() : ahora.toISOString(),
+          limite_ventana_contador: nuevoContador,
+        },
+        { onConflict: 'canal,identificador_externo' },
+      );
+    if (upsertError) throw upsertError;
+
+    return nuevoContador <= maxMensajes;
+  }
 }

@@ -1,7 +1,34 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { Injectable } from '@nestjs/common';
-import type { PedidoAdminDto } from '../admin/admin.service';
+
+/**
+ * `FacturaService` es de bajo nivel — lo consume `AdminModule`, no al
+ * revés. Este tipo describe solo lo que el comprobante necesita, en vez de
+ * importar `PedidoAdminDto` desde `admin.service.ts` (eso invertía la
+ * dirección de dependencia). Cualquier objeto con esta forma sirve —
+ * `PedidoAdminDto` la cumple de sobra.
+ */
+export interface PedidoParaFactura {
+  id: string;
+  cliente: {
+    nombre: string;
+    apellido: string | null;
+    telefono: string | null;
+  };
+  modalidad: string;
+  direccion_entrega: string | null;
+  costo_domicilio: number;
+  metodo_pago: string;
+  total: number;
+  created_at: string;
+  items: {
+    producto_nombre: string;
+    variante_nombre: string;
+    cantidad: number;
+    precio_unitario: number;
+  }[];
+}
 
 // Datos reales del negocio (CLAUDE.md) — nunca inventar otros acá.
 const NEGOCIO = {
@@ -58,11 +85,11 @@ export interface DatosCorreoFactura {
   html: string;
 }
 
-function construirNombreArchivo(pedido: PedidoAdminDto): string {
+function construirNombreArchivo(pedido: PedidoParaFactura): string {
   return `comprobante-${pedido.id.slice(0, 8)}.pdf`;
 }
 
-function construirDatosCorreo(pedido: PedidoAdminDto): DatosCorreoFactura {
+function construirDatosCorreo(pedido: PedidoParaFactura): DatosCorreoFactura {
   const nombreCliente = pedido.cliente.nombre || 'cliente';
   const idCorto = pedido.id.slice(0, 8).toUpperCase();
   const texto = `¡Hola ${nombreCliente}! Te adjuntamos el comprobante de tu pedido #${idCorto} en ${NEGOCIO.nombre}. Total: ${formatoPrecio(pedido.total)}. ¡Gracias por tu compra!`;
@@ -119,7 +146,7 @@ export class FacturaService {
     }
   }
 
-  async generarPdf(pedido: PedidoAdminDto): Promise<Buffer> {
+  async generarPdf(pedido: PedidoParaFactura): Promise<Buffer> {
     const { Document, Page, Text, View, Image, StyleSheet, renderToBuffer } = await import(
       '@react-pdf/renderer'
     );
@@ -306,11 +333,11 @@ export class FacturaService {
     return renderToBuffer(documento);
   }
 
-  nombreArchivo(pedido: PedidoAdminDto): string {
+  nombreArchivo(pedido: PedidoParaFactura): string {
     return construirNombreArchivo(pedido);
   }
 
-  datosCorreo(pedido: PedidoAdminDto): DatosCorreoFactura {
+  datosCorreo(pedido: PedidoParaFactura): DatosCorreoFactura {
     return construirDatosCorreo(pedido);
   }
 }

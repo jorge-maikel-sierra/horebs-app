@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CatalogService } from '../catalog/catalog.service';
 import { PedidosService } from '../pedidos/pedidos.service';
 import { MetaGraphService } from './meta-graph.service';
@@ -7,6 +8,12 @@ import { ConversacionesService, type CanalMensajeria } from './conversaciones.se
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/interactions';
 const MODELO_DEFAULT = 'gemini-flash-lite-latest';
 const MAX_TURNOS_HERRAMIENTAS = 4;
+const MAX_OUTPUT_TOKENS = 1024;
+const TIMEOUT_GEMINI_MS = 20_000;
+const LIMITE_MENSAJES_VENTANA_MINUTOS = 60;
+const LIMITE_MENSAJES_MAX = 40;
+// WhatsApp rechaza mensajes de más de 4096 caracteres.
+const MAX_LARGO_MENSAJE_WHATSAPP = 4096;
 
 // Datos reales de CLAUDE.md — el modelo nunca los inventa, siempre los
 // recibe a través de la herramienta obtener_horario.
@@ -174,13 +181,14 @@ export class GeminiService {
   private readonly modelo: string;
 
   constructor(
+    private readonly config: ConfigService,
     private readonly catalog: CatalogService,
     private readonly pedidos: PedidosService,
     private readonly conversaciones: ConversacionesService,
     private readonly metaGraph: MetaGraphService,
   ) {
-    this.apiKey = process.env.GEMINI_API_KEY;
-    this.modelo = process.env.GEMINI_MODEL || MODELO_DEFAULT;
+    this.apiKey = this.config.get<string>('GEMINI_API_KEY');
+    this.modelo = this.config.get<string>('GEMINI_MODEL') || MODELO_DEFAULT;
     if (!this.apiKey) {
       this.logger.warn('GEMINI_API_KEY no configurada — el bot no puede responder.');
     }
@@ -200,6 +208,48 @@ export class GeminiService {
       return 'En este momento no puedo responder automáticamente — escribí *humano* para que te atienda alguien del equipo.';
     }
 
+    try {
+      const dentroDelLimite = await this.conversaciones.dentroDelLimiteDeMensajes(
+        canal,
+        identificadorExterno,
+        LIMITE_MENSAJES_VENTANA_MINUTOS,
+        LIMITE_MENSAJES_MAX,
+      );
+      if (!dentroDelLimite) {
+        this.logger.warn(
+          `Límite de mensajes excedido — canal=${canal} id=${identificadorExterno}`,
+        );
+        return this.truncarParaWhatsapp(
+          'Estás mandando muchos mensajes seguidos — dame un momento o escribí *humano* para que te atienda alguien del equipo.',
+        );
+      }
+
+      const respuestaFinal = await this.conversarConGemini(
+        canal,
+        identificadorExterno,
+        telefono,
+        textoEntrante,
+      );
+      return respuestaFinal === null ? null : this.truncarParaWhatsapp(respuestaFinal);
+    } catch (err) {
+      this.logger.error(
+        `Error respondiendo a canal=${canal} id=${identificadorExterno}: ${(err as Error).message}`,
+      );
+      return 'Perdón, tuve un problema para procesar tu mensaje. Escribí *humano* para hablar con alguien del equipo.';
+    }
+  }
+
+  private truncarParaWhatsapp(texto: string): string {
+    if (texto.length <= MAX_LARGO_MENSAJE_WHATSAPP) return texto;
+    return `${texto.slice(0, MAX_LARGO_MENSAJE_WHATSAPP - 1)}…`;
+  }
+
+  private async conversarConGemini(
+    canal: CanalMensajeria,
+    identificadorExterno: string,
+    telefono: string | null,
+    textoEntrante: string,
+  ): Promise<string | null> {
     const interaccionPrevia = await this.conversaciones.obtenerUltimaInteraccionGemini(
       canal,
       identificadorExterno,
@@ -209,6 +259,7 @@ export class GeminiService {
       model: this.modelo,
       system_instruction: SYSTEM_INSTRUCTION,
       tools: HERRAMIENTAS,
+      max_output_tokens: MAX_OUTPUT_TOKENS,
       ...(interaccionPrevia
         ? { previous_interaction_id: interaccionPrevia, input: textoEntrante }
         : { input: textoEntrante }),
@@ -240,6 +291,7 @@ export class GeminiService {
 
       respuesta = await this.llamarGemini({
         model: this.modelo,
+        max_output_tokens: MAX_OUTPUT_TOKENS,
         previous_interaction_id: respuesta.id,
         input: {
           type: 'function_result',
@@ -344,7 +396,8 @@ export class GeminiService {
 
     for (const item of items as Record<string, unknown>[]) {
       const nombreProducto = String(item.producto ?? '');
-      const cantidad = Number(item.cantidad ?? 1) || 1;
+      const cantidadCruda = Math.round(Number(item.cantidad ?? 1)) || 1;
+      const cantidad = Math.min(Math.max(cantidadCruda, 1), 20);
       const tamanoBuscado = item.tamano ? String(item.tamano) : null;
 
       const { encontrado, error } = await this.buscarProductoUnico(nombreProducto, productos);
@@ -403,18 +456,30 @@ export class GeminiService {
   }
 
   private async llamarGemini(body: Record<string, unknown>): Promise<RespuestaInteraction> {
-    const res = await fetch(GEMINI_URL, {
-      method: 'POST',
-      headers: {
-        'x-goog-api-key': this.apiKey as string,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      const detalle = await res.text();
-      throw new Error(`Gemini respondió ${res.status}: ${detalle}`);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), TIMEOUT_GEMINI_MS);
+    try {
+      const res = await fetch(GEMINI_URL, {
+        method: 'POST',
+        headers: {
+          'x-goog-api-key': this.apiKey as string,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        const detalle = await res.text();
+        throw new Error(`Gemini respondió ${res.status}: ${detalle}`);
+      }
+      return await res.json();
+    } catch (err) {
+      if ((err as Error).name === 'AbortError') {
+        throw new Error(`Gemini no respondió en ${TIMEOUT_GEMINI_MS / 1000}s`);
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeout);
     }
-    return res.json();
   }
 }

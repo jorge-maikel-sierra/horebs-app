@@ -20,6 +20,55 @@ export interface EventoEntrante {
 }
 
 /**
+ * Solo los campos que este servicio realmente lee de cada payload — así un
+ * cambio de forma en la API de Meta lo marca el compilador en vez de
+ * romperse en silencio en runtime.
+ */
+interface MetaReferral {
+  source_id?: string;
+  source_type?: string;
+  ctwa_clid?: string;
+  source?: string;
+  ad_id?: string;
+}
+
+interface WhatsappMensaje {
+  type: string;
+  from: string;
+  id?: string;
+  text?: { body?: string };
+  referral?: MetaReferral;
+}
+
+interface WhatsappWebhookPayload {
+  entry?: {
+    changes?: {
+      value?: {
+        messages?: WhatsappMensaje[];
+      };
+    }[];
+  }[];
+}
+
+interface MessengerEvento {
+  sender?: { id?: string };
+  message?: {
+    text?: string;
+    is_echo?: boolean;
+    mid?: string;
+    referral?: MetaReferral;
+  };
+  referral?: MetaReferral;
+  postback?: { referral?: MetaReferral };
+}
+
+interface MessengerWebhookPayload {
+  entry?: {
+    messaging?: MessengerEvento[];
+  }[];
+}
+
+/**
  * Verifica la firma, parsea el payload (WhatsApp vs Messenger/Instagram
  * tienen forma distinta), detecta si la conversación viene de un clic en
  * anuncio, y orquesta la respuesta — todo llamado sin `await` desde el
@@ -52,15 +101,15 @@ export class WebhooksService {
     return timingSafeEqual(firmaRecibida, firmaCalculada);
   }
 
-  procesarWhatsapp(payload: any): void {
+  procesarWhatsapp(payload: WhatsappWebhookPayload): void {
     this.procesar(this.parsearWhatsapp(payload));
   }
 
-  procesarMessenger(payload: any): void {
+  procesarMessenger(payload: MessengerWebhookPayload): void {
     this.procesar(this.parsearMessengerOInstagram(payload, 'messenger'));
   }
 
-  procesarInstagram(payload: any): void {
+  procesarInstagram(payload: MessengerWebhookPayload): void {
     this.procesar(this.parsearMessengerOInstagram(payload, 'instagram'));
   }
 
@@ -128,7 +177,7 @@ export class WebhooksService {
     );
   }
 
-  private parsearWhatsapp(payload: any): EventoEntrante[] {
+  private parsearWhatsapp(payload: WhatsappWebhookPayload): EventoEntrante[] {
     const eventos: EventoEntrante[] = [];
     for (const entry of payload?.entry ?? []) {
       for (const change of entry?.changes ?? []) {
@@ -150,7 +199,7 @@ export class WebhooksService {
     return eventos;
   }
 
-  private extraerProcedenciaWhatsapp(mensaje: any): ProcedenciaAnuncio | null {
+  private extraerProcedenciaWhatsapp(mensaje: WhatsappMensaje): ProcedenciaAnuncio | null {
     const referral = mensaje.referral;
     if (!referral) return null;
     return {
@@ -161,7 +210,7 @@ export class WebhooksService {
   }
 
   private parsearMessengerOInstagram(
-    payload: any,
+    payload: MessengerWebhookPayload,
     canal: 'messenger' | 'instagram',
   ): EventoEntrante[] {
     const eventos: EventoEntrante[] = [];
@@ -185,7 +234,7 @@ export class WebhooksService {
     return eventos;
   }
 
-  private extraerProcedenciaMessenger(evento: any): ProcedenciaAnuncio | null {
+  private extraerProcedenciaMessenger(evento: MessengerEvento): ProcedenciaAnuncio | null {
     const referral =
       evento.referral ?? evento.message?.referral ?? evento.postback?.referral;
     if (!referral) return null;
