@@ -13,7 +13,6 @@ const GEMINI_URL =
   'https://generativelanguage.googleapis.com/v1beta/interactions';
 const MODELO_DEFAULT = 'gemini-flash-lite-latest';
 const MAX_TURNOS_HERRAMIENTAS = 4;
-const MAX_OUTPUT_TOKENS = 1024;
 const TIMEOUT_GEMINI_MS = 20_000;
 const LIMITE_MENSAJES_VENTANA_MINUTOS = 60;
 const LIMITE_MENSAJES_MAX = 40;
@@ -309,7 +308,6 @@ export class GeminiService {
       model: this.modelo,
       system_instruction: SYSTEM_INSTRUCTION,
       tools: HERRAMIENTAS,
-      max_output_tokens: MAX_OUTPUT_TOKENS,
       ...(interaccionPrevia
         ? { previous_interaction_id: interaccionPrevia, input: textoEntrante }
         : { input: textoEntrante }),
@@ -364,7 +362,6 @@ export class GeminiService {
 
       respuesta = await this.llamarGemini({
         model: this.modelo,
-        max_output_tokens: MAX_OUTPUT_TOKENS,
         previous_interaction_id: respuesta.id,
         input: {
           type: 'function_result',
