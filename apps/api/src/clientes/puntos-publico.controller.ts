@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, NotFoundException, Query } from '@nestjs/common';
 import { PuntosService } from './puntos.service';
 
 /**
@@ -11,8 +11,15 @@ export class PuntosPublicoController {
   constructor(private readonly puntos: PuntosService) {}
 
   @Get('saldo')
-  obtenerSaldo(@Query('telefono') telefono?: string) {
-    if (!telefono?.trim()) return null;
-    return this.puntos.obtenerSaldoPorTelefono(telefono.trim());
+  async obtenerSaldo(@Query('telefono') telefono?: string) {
+    const saldo = telefono?.trim()
+      ? await this.puntos.obtenerSaldoPorTelefono(telefono.trim())
+      : null;
+    // Nest responde con body vacío (no el literal "null") cuando el
+    // handler devuelve null, y eso rompe el res.json() del frontend —
+    // mismo criterio que CatalogController.getProductoPorSlug: 404 en
+    // vez de un 200 con null.
+    if (!saldo) throw new NotFoundException('Cliente no encontrado.');
+    return saldo;
   }
 }
