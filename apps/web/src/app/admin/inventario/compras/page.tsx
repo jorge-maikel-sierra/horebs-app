@@ -52,6 +52,12 @@ const LINEA_VACIA: LineaForm = {
 
 const METODOS_PAGO = ['efectivo', 'transferencia', 'tarjeta'] as const;
 
+// El negocio opera en hora de Bogotá — usar toISOString() acá daría la
+// fecha en UTC, que ya es "mañana" desde ~7pm hora local en adelante.
+function fechaHoyBogota(): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date());
+}
+
 const ESTADO_LABEL: Record<string, string> = {
   pendiente: 'Pendiente',
   procesado: 'Procesado',
@@ -73,7 +79,7 @@ export default function InventarioComprasPage() {
   const [mostrarForm, setMostrarForm] = useState(false);
   const [proveedor, setProveedor] = useState('');
   const [numeroFactura, setNumeroFactura] = useState('');
-  const [fecha, setFecha] = useState(() => new Date().toISOString().slice(0, 10));
+  const [fecha, setFecha] = useState(fechaHoyBogota);
   const [otrosCargos, setOtrosCargos] = useState('0');
   const [metodoPago, setMetodoPago] = useState<(typeof METODOS_PAGO)[number]>('efectivo');
   const [categoria, setCategoria] = useState('');
@@ -179,6 +185,7 @@ export default function InventarioComprasPage() {
 
   async function procesarLinea(compraId: string, detalleId: string) {
     setProcesandoId(detalleId);
+    setError(null);
     try {
       const res = await adminFetch(`/inventario/compras/detalle/${detalleId}/procesar`, {
         method: 'PATCH',
@@ -202,7 +209,7 @@ export default function InventarioComprasPage() {
         ),
       );
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'No se pudo procesar la línea.');
+      setError(err instanceof Error ? err.message : 'No se pudo procesar la línea.');
     } finally {
       setProcesandoId(null);
     }
@@ -345,7 +352,7 @@ export default function InventarioComprasPage() {
                   <button
                     type="button"
                     onClick={() => setLineas((prev) => prev.filter((_, i) => i !== idx))}
-                    className="rounded-md border border-zinc-300 px-2 text-xs text-red-600 dark:border-zinc-700"
+                    className="rounded-md border border-zinc-300 px-2 text-xs text-red-600 dark:border-zinc-700 dark:text-red-400"
                   >
                     Quitar
                   </button>
@@ -365,7 +372,7 @@ export default function InventarioComprasPage() {
             Subtotal: <span className="font-semibold">{formatPrecio(subtotalCalculado)}</span>
           </p>
 
-          {errorForm && <p className="text-xs text-red-600">{errorForm}</p>}
+          {errorForm && <p className="text-xs text-red-600 dark:text-red-400">{errorForm}</p>}
           <button
             type="button"
             disabled={guardando}
@@ -378,7 +385,7 @@ export default function InventarioComprasPage() {
       )}
 
       {cargando && <CargandoSkeleton />}
-      {error && <p className="mt-6 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-6 text-sm text-red-600 dark:text-red-400">{error}</p>}
       {!cargando && !error && compras.length === 0 && (
         <p className="mt-6 text-sm text-zinc-500 dark:text-zinc-400">
           Todavía no hay compras registradas.

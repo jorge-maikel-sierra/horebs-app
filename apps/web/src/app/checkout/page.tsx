@@ -100,6 +100,11 @@ export default function CheckoutPage() {
   const [notas, setNotas] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Una sola clave por intento de checkout (no por click) — si el mismo
+  // submit dispara dos requests (doble clic más rápido que el disabled del
+  // botón, o un reintento de red), el backend descarta el segundo insert
+  // en vez de crear un pedido duplicado.
+  const [idempotencyKey] = useState(() => crypto.randomUUID());
 
   if (items.length === 0) {
     return (
@@ -143,6 +148,7 @@ export default function CheckoutPage() {
             variante_id: i.varianteId,
             cantidad: i.cantidad,
           })),
+          idempotency_key: idempotencyKey,
         }),
       });
 
@@ -288,7 +294,7 @@ export default function CheckoutPage() {
         </div>
 
         {error && (
-          <p className="animate-fade-up text-sm text-red-600">{error}</p>
+          <p className="animate-fade-up text-sm text-red-600 dark:text-red-400">{error}</p>
         )}
 
         <button

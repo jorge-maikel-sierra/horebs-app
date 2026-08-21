@@ -326,6 +326,7 @@ function PedidosInterno() {
       return;
     }
     setEliminandoId(p.id);
+    setMensajeFactura(null);
     try {
       const res = await adminFetch(`/admin/pedidos/${p.id}`, {
         method: 'DELETE',
@@ -336,9 +337,11 @@ function PedidosInterno() {
       }
       setPedidos((prev) => prev.filter((x) => x.id !== p.id));
     } catch (err) {
-      alert(
-        err instanceof Error ? err.message : 'No se pudo eliminar el pedido.',
-      );
+      setMensajeFactura({
+        id: p.id,
+        texto: err instanceof Error ? err.message : 'No se pudo eliminar el pedido.',
+        error: true,
+      });
     } finally {
       setEliminandoId(null);
     }
