@@ -262,7 +262,12 @@ export default function CheckoutPage() {
       // en el perfil para que el próximo checkout ya no lo pida (o lo
       // traiga corregido si lo cambió en este pedido).
       if (session) {
-        supabase.auth.updateUser({ data: { telefono: telefono.trim() } });
+        supabase.auth
+          .updateUser({ data: { telefono: telefono.trim() } })
+          .catch(() => {
+            // Silencioso a propósito — el pedido ya se creó, esto es solo
+            // para no volver a pedir el teléfono la próxima vez.
+          });
       }
       clear();
       router.push(`/pedido/${pedido.id}`);
@@ -274,6 +279,10 @@ export default function CheckoutPage() {
 
   const inputClass =
     'mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 outline-none transition-colors focus:border-brand-orange dark:border-zinc-700 dark:bg-zinc-900';
+  // Solo la trae Google (login por email no tiene foto) — el avatar
+  // vive únicamente en user_metadata, no hay carga manual todavía.
+  const avatarUrl: string | undefined =
+    session?.user.user_metadata?.avatar_url ?? session?.user.user_metadata?.picture;
 
   return (
     <div className="mx-auto max-w-2xl p-8">
@@ -304,9 +313,18 @@ export default function CheckoutPage() {
 
       {session ? (
         <div className="animate-fade-up delay-2 mt-6 flex items-center gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
-          <div className="btn-gradient flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white">
-            {iniciales(nombre, correo)}
-          </div>
+          {avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- URL externa de Google, no vale la pena optimizarla con next/image.
+            <img
+              src={avatarUrl}
+              alt=""
+              className="h-10 w-10 shrink-0 rounded-full object-cover"
+            />
+          ) : (
+            <div className="btn-gradient flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white">
+              {iniciales(nombre, correo)}
+            </div>
+          )}
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-50">
               {nombre ? `${nombre} ${apellido}`.trim() : correo}

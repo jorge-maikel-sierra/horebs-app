@@ -275,13 +275,26 @@ export default function CuentaPage() {
     const nombreCompleto = perfilNombre
       ? `${perfilNombre} ${perfilApellido}`.trim()
       : session.user.email;
+    // Solo la trae Google (login por email no tiene foto) — el avatar
+    // vive únicamente en user_metadata, no hay carga manual todavía.
+    const avatarUrl: string | undefined =
+      session.user.user_metadata?.avatar_url ?? session.user.user_metadata?.picture;
 
     return (
       <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
         <div className="animate-fade-up flex flex-wrap items-center gap-4">
-          <div className="btn-gradient animate-pop-in flex h-16 w-16 shrink-0 items-center justify-center rounded-full text-xl font-bold text-white shadow-sm">
-            {iniciales(perfilNombre, perfilApellido, session.user.email ?? '')}
-          </div>
+          {avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- URL externa de Google, no vale la pena optimizarla con next/image.
+            <img
+              src={avatarUrl}
+              alt=""
+              className="animate-pop-in h-16 w-16 shrink-0 rounded-full object-cover shadow-sm"
+            />
+          ) : (
+            <div className="btn-gradient animate-pop-in flex h-16 w-16 shrink-0 items-center justify-center rounded-full text-xl font-bold text-white shadow-sm">
+              {iniciales(perfilNombre, perfilApellido, session.user.email ?? '')}
+            </div>
+          )}
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
               {nombreCompleto}
