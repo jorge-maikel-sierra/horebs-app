@@ -120,8 +120,8 @@ export class AdminController {
 
   @Post('usuarios')
   @Roles('admin')
-  asignarRol(@Body() body: { email: string; rol: Rol }) {
-    return this.admin.asignarRol(body.email, body.rol);
+  asignarRol(@Body() body: { email: string; rol: Rol; cedula?: string }) {
+    return this.admin.asignarRol(body.email, body.rol, body.cedula);
   }
 
   @Delete('usuarios/:id')

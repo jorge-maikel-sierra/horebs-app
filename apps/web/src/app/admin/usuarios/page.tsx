@@ -6,12 +6,19 @@ import { adminFetch } from '@/lib/admin-fetch';
 import type { Rol } from '@/lib/use-rol';
 import CargandoSkeleton from '@/components/CargandoSkeleton';
 
-type UsuarioStaff = { id: string; email: string; rol: Rol; created_at: string };
+type UsuarioStaff = {
+  id: string;
+  email: string;
+  rol: Rol;
+  cedula: string | null;
+  created_at: string;
+};
 
 function UsuariosInterno() {
   const [usuarios, setUsuarios] = useState<UsuarioStaff[]>([]);
   const [cargando, setCargando] = useState(true);
   const [email, setEmail] = useState('');
+  const [cedula, setCedula] = useState('');
   const [rolNuevo, setRolNuevo] = useState<Rol>('empleado');
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
@@ -34,13 +41,14 @@ function UsuariosInterno() {
     try {
       const res = await adminFetch('/admin/usuarios', {
         method: 'POST',
-        body: JSON.stringify({ email, rol: rolNuevo }),
+        body: JSON.stringify({ email, rol: rolNuevo, cedula: cedula || undefined }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
         throw new Error(body?.message ?? 'No se pudo asignar el rol.');
       }
       setEmail('');
+      setCedula('');
       await cargarUsuarios();
     } catch (err) {
       setError(
@@ -74,6 +82,14 @@ function UsuariosInterno() {
           />
         </div>
         <div>
+          <label className="block text-sm font-medium">Cédula (opcional)</label>
+          <input
+            value={cedula}
+            onChange={(e) => setCedula(e.target.value)}
+            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+          />
+        </div>
+        <div>
           <label className="block text-sm font-medium">Rol</label>
           <select
             value={rolNuevo}
@@ -92,7 +108,7 @@ function UsuariosInterno() {
           Asignar
         </button>
       </form>
-      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
       <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
         La persona tiene que haberse registrado antes en /cuenta — recién ahí
         se le puede asignar un rol.
@@ -118,12 +134,13 @@ function UsuariosInterno() {
                   </p>
                   <p className="text-xs text-zinc-500 capitalize dark:text-zinc-400">
                     {u.rol}
+                    {u.cedula && ` · C.C. ${u.cedula}`}
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => quitar(u.id)}
-                  className="text-sm text-red-600 hover:underline"
+                  className="text-sm text-red-600 dark:text-red-400 hover:underline"
                 >
                   Quitar
                 </button>

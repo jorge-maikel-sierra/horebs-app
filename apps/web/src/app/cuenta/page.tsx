@@ -19,6 +19,36 @@ function iniciales(nombre: string, apellido: string, email: string) {
   return email.slice(0, 2).toUpperCase();
 }
 
+function IconGoogle() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 48 48">
+      <path
+        fill="#FFC107"
+        d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l5.7-5.7C33.9 6.1 29.2 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5Z"
+      />
+      <path
+        fill="#FF3D00"
+        d="m6.3 14.7 6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.8 1.1 8 3l5.7-5.7C33.9 6.1 29.2 4 24 4c-7.6 0-14.1 4.3-17.7 10.7Z"
+      />
+      <path
+        fill="#4CAF50"
+        d="M24 44c5.1 0 9.8-2 13.3-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44Z"
+      />
+      <path
+        fill="#1976D2"
+        d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.1-4.1 5.6l6.2 5.2C40.7 36.3 44 30.9 44 24c0-1.3-.1-2.7-.4-3.5Z"
+      />
+    </svg>
+  );
+}
+
+async function iniciarConGoogle() {
+  await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: `${window.location.origin}/cuenta` },
+  });
+}
+
 export default function CuentaPage() {
   const router = useRouter();
   const [session, setSession] = useState<Session | null>(null);
@@ -77,8 +107,14 @@ export default function CuentaPage() {
   useEffect(() => {
     if (!session) return;
     const meta = session.user.user_metadata ?? {};
-    setPerfilNombre(meta.nombre ?? '');
-    setPerfilApellido(meta.apellido ?? '');
+    // Primer login con Google: no hay meta.nombre/apellido propios
+    // todavía (esas claves las llenamos nosotros en el registro por
+    // email), pero Google sí manda full_name/name — se usa como default
+    // hasta que la persona guarde sus datos desde acá.
+    const nombreGoogle: string = meta.full_name ?? meta.name ?? '';
+    const [nombreDefault, ...restoDefault] = nombreGoogle.split(' ');
+    setPerfilNombre(meta.nombre ?? nombreDefault ?? '');
+    setPerfilApellido(meta.apellido ?? restoDefault.join(' '));
     setPerfilTelefono(meta.telefono ?? '');
     setPerfilDireccion(meta.direccion ?? '');
     setNuevoEmail(session.user.email ?? '');
@@ -323,7 +359,7 @@ export default function CuentaPage() {
                 </div>
               </div>
               {perfilError && (
-                <p className="animate-fade-up text-sm text-red-600">{perfilError}</p>
+                <p className="animate-fade-up text-sm text-red-600 dark:text-red-400">{perfilError}</p>
               )}
               {perfilMensaje && (
                 <p className="animate-fade-up text-sm text-brand-orange">{perfilMensaje}</p>
@@ -365,7 +401,7 @@ export default function CuentaPage() {
               </button>
             </form>
             {emailError && (
-              <p className="animate-fade-up mt-2 text-sm text-red-600">{emailError}</p>
+              <p className="animate-fade-up mt-2 text-sm text-red-600 dark:text-red-400">{emailError}</p>
             )}
             {emailMensaje && (
               <p className="animate-fade-up mt-2 text-sm text-brand-orange">{emailMensaje}</p>
@@ -406,7 +442,7 @@ export default function CuentaPage() {
                 </div>
               </div>
               {passwordError && (
-                <p className="animate-fade-up text-sm text-red-600">{passwordError}</p>
+                <p className="animate-fade-up text-sm text-red-600 dark:text-red-400">{passwordError}</p>
               )}
               {passwordMensaje && (
                 <p className="animate-fade-up text-sm text-brand-orange">{passwordMensaje}</p>
@@ -458,6 +494,21 @@ export default function CuentaPage() {
           >
             Crear cuenta
           </button>
+        </div>
+
+        <button
+          type="button"
+          onClick={iniciarConGoogle}
+          className="btn-press mt-6 flex w-full items-center justify-center gap-3 rounded-lg border border-zinc-300 py-3 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
+        >
+          <IconGoogle />
+          Continuar con Google
+        </button>
+
+        <div className="mt-6 flex items-center gap-3">
+          <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
+          <span className="text-xs text-zinc-400 dark:text-zinc-500">o con tu correo</span>
+          <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
         </div>
 
         <form onSubmit={enviar} className="mt-6 space-y-4">
@@ -520,7 +571,7 @@ export default function CuentaPage() {
                   : '¿Olvidaste tu contraseña?'}
               </button>
               {recuperarError && (
-                <p className="animate-fade-up mt-1 text-sm text-red-600">{recuperarError}</p>
+                <p className="animate-fade-up mt-1 text-sm text-red-600 dark:text-red-400">{recuperarError}</p>
               )}
               {recuperarMensaje && (
                 <p className="animate-fade-up mt-1 text-sm text-brand-orange">
@@ -530,7 +581,7 @@ export default function CuentaPage() {
             </div>
           )}
 
-          {error && <p className="animate-fade-up text-sm text-red-600">{error}</p>}
+          {error && <p className="animate-fade-up text-sm text-red-600 dark:text-red-400">{error}</p>}
           {mensaje && <p className="animate-fade-up text-sm text-brand-orange">{mensaje}</p>}
 
           <button

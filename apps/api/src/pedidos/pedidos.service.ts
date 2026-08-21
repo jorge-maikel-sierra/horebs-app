@@ -21,6 +21,7 @@ export interface CrearPedidoInput {
     nombre: string;
     apellido: string;
     telefono: string;
+    correo: string;
     direccion?: string;
   };
   modalidad: 'domicilio' | 'retiro';
@@ -54,6 +55,7 @@ export interface PedidoDto {
     nombre: string;
     apellido: string | null;
     telefono: string;
+    correo: string | null;
     direccion: string | null;
   };
   modalidad: string;
@@ -128,6 +130,7 @@ export class PedidosService {
       nombre: input.cliente.nombre,
       apellido: input.cliente.apellido,
       telefono: input.cliente.telefono,
+      correo: input.cliente.correo,
     };
     if (input.cliente.direccion) {
       clienteUpsert.direccion = input.cliente.direccion;
@@ -136,7 +139,7 @@ export class PedidosService {
     const { data: cliente, error: clienteError } = await client
       .from('clientes')
       .upsert(clienteUpsert, { onConflict: 'telefono' })
-      .select('id, nombre, apellido, telefono, direccion')
+      .select('id, nombre, apellido, telefono, correo, direccion')
       .single();
 
     if (clienteError) throw clienteError;
@@ -237,6 +240,7 @@ export class PedidosService {
         nombre: cliente.nombre,
         apellido: cliente.apellido,
         telefono: cliente.telefono,
+        correo: cliente.correo,
         direccion: cliente.direccion,
       },
       modalidad: pedido.modalidad,
@@ -278,7 +282,7 @@ export class PedidosService {
     const { data: pedido, error } = await client
       .from('pedidos')
       .select(
-        'id, modalidad, direccion_entrega, costo_domicilio, metodo_pago, estado, total, notas, created_at, puntos_canjeados, descuento_puntos, puntos_ganados, clientes(nombre, apellido, telefono, direccion), items_pedido(cantidad, precio_unitario, subtotal, variantes_producto(nombre, productos(nombre)))',
+        'id, modalidad, direccion_entrega, costo_domicilio, metodo_pago, estado, total, notas, created_at, puntos_canjeados, descuento_puntos, puntos_ganados, clientes(nombre, apellido, telefono, correo, direccion), items_pedido(cantidad, precio_unitario, subtotal, variantes_producto(nombre, productos(nombre)))',
       )
       .eq('id', id)
       .maybeSingle();
@@ -295,6 +299,7 @@ export class PedidosService {
         nombre: cliente?.nombre ?? '',
         apellido: cliente?.apellido ?? null,
         telefono: cliente?.telefono ?? '',
+        correo: cliente?.correo ?? null,
         direccion: cliente?.direccion ?? null,
       },
       modalidad: pedido.modalidad,
@@ -379,6 +384,12 @@ export class PedidosService {
     }
     if (!/^\+?[0-9 ()-]{7,20}$/.test(input.cliente.telefono.trim())) {
       throw new BadRequestException('El teléfono no tiene un formato válido.');
+    }
+    if (!input.cliente?.correo?.trim()) {
+      throw new BadRequestException('Falta el correo del cliente.');
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.cliente.correo.trim())) {
+      throw new BadRequestException('El correo no tiene un formato válido.');
     }
     if (!MODALIDADES.includes(input.modalidad)) {
       throw new BadRequestException('Modalidad inválida.');

@@ -115,6 +115,7 @@ export interface UsuarioStaffDto {
   id: string;
   email: string;
   rol: Rol;
+  cedula: string | null;
   created_at: string;
 }
 
@@ -707,14 +708,18 @@ export class AdminService {
     const { data, error } = await this.supabase
       .getClient()
       .from('perfiles_staff')
-      .select('id, email, rol, created_at')
+      .select('id, email, rol, cedula, created_at')
       .order('created_at');
 
     if (error) throw error;
     return data ?? [];
   }
 
-  async asignarRol(email: string, rol: Rol): Promise<UsuarioStaffDto> {
+  async asignarRol(
+    email: string,
+    rol: Rol,
+    cedula?: string,
+  ): Promise<UsuarioStaffDto> {
     const client = this.supabase.getClient();
     const emailNormalizado = email.trim().toLowerCase();
 
@@ -725,13 +730,19 @@ export class AdminService {
       );
     }
 
+    const payload: Record<string, string | null> = {
+      id: usuario.id,
+      email: usuario.email ?? emailNormalizado,
+      rol,
+    };
+    // Solo se toca la columna si esta llamada trae cedula — así reasignar
+    // un rol sin repetirla no borra la que ya estaba guardada.
+    if (cedula !== undefined) payload.cedula = cedula.trim() || null;
+
     const { data, error } = await client
       .from('perfiles_staff')
-      .upsert(
-        { id: usuario.id, email: usuario.email ?? emailNormalizado, rol },
-        { onConflict: 'id' },
-      )
-      .select('id, email, rol, created_at')
+      .upsert(payload, { onConflict: 'id' })
+      .select('id, email, rol, cedula, created_at')
       .single();
 
     if (error) throw error;

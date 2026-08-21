@@ -99,6 +99,7 @@ export default function CheckoutPage() {
   const [nombre, setNombre] = useState('');
   const [apellido, setApellido] = useState('');
   const [telefono, setTelefono] = useState('');
+  const [correo, setCorreo] = useState('');
   const [modalidad, setModalidad] = useState<'domicilio' | 'retiro'>('domicilio');
   const [direccion, setDireccion] = useState('');
   const [metodoPago, setMetodoPago] = useState<'efectivo' | 'transferencia' | 'tarjeta'>(
@@ -175,7 +176,7 @@ export default function CheckoutPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          cliente: { nombre, apellido, telefono, direccion: direccion || undefined },
+          cliente: { nombre, apellido, telefono, correo, direccion: direccion || undefined },
           modalidad,
           direccion_entrega: modalidad === 'domicilio' ? direccion : undefined,
           metodo_pago: metodoPago,
@@ -265,6 +266,17 @@ export default function CheckoutPage() {
             value={telefono}
             onChange={(e) => setTelefono(e.target.value)}
             onBlur={consultarSaldoPuntos}
+            className={inputClass}
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium">Correo electrónico</label>
+          <input
+            required
+            type="email"
+            value={correo}
+            onChange={(e) => setCorreo(e.target.value)}
             className={inputClass}
           />
         </div>
