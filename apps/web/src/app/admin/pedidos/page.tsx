@@ -638,9 +638,10 @@ function PedidosInterno() {
               <div className="mt-2.5 flex flex-wrap items-center gap-1 border-t border-zinc-100 pt-2.5 dark:border-zinc-800/60">
                 <button
                   type="button"
+                  disabled={!p.cliente.id}
                   onClick={() => empezarEdicion(p)}
-                  title="Editar cliente"
-                  className="btn-press rounded-md p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-brand-orange dark:text-zinc-400 dark:hover:bg-zinc-800"
+                  title={!p.cliente.id ? 'El cliente de este pedido fue eliminado' : 'Editar cliente'}
+                  className="btn-press rounded-md p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-brand-orange disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800"
                 >
                   <IconLapiz />
                 </button>

@@ -140,11 +140,12 @@ export class ClientesService {
   }
 
   /**
-   * Pensado para limpiar clientes "inventados" (creados sin querer desde
-   * el POS, sin ningún pedido real). `pedidos.cliente_id` tiene
-   * ON DELETE RESTRICT — si el cliente sí tiene pedidos, Postgres
-   * rechaza el delete con 23503 y acá se lo traduce a un mensaje claro
-   * en vez de dejar pasar el error crudo de la base.
+   * Pensado para limpiar clientes "inventados" (ej. el cajero cargó
+   * "Llevar"/"Mesa" como nombre en el POS en vez de un cliente real).
+   * `pedidos.cliente_id` es ON DELETE SET NULL a propósito: el pedido y
+   * su venta quedan intactos para informes/reportes, solo se pierde el
+   * vínculo al cliente. `movimientos_puntos` sí se borra en cascada,
+   * porque el saldo de puntos pertenece al cliente, no al pedido.
    */
   async eliminar(id: string): Promise<void> {
     const { error, count } = await this.supabase
@@ -153,14 +154,7 @@ export class ClientesService {
       .delete({ count: 'exact' })
       .eq('id', id);
 
-    if (error) {
-      if (error.code === '23503') {
-        throw new BadRequestException(
-          'Este cliente tiene pedidos registrados — no se puede eliminar.',
-        );
-      }
-      throw error;
-    }
+    if (error) throw error;
     if (!count) throw new NotFoundException('Cliente no encontrado.');
   }
 }
