@@ -346,8 +346,8 @@ export class PuntosService {
    * generó puntos haya sido hace más de puntosVencimientoMeses. Pensado
    * para correr una vez al día desde un @Cron, no desde un request.
    */
-  // Nombre explícito: @nestjs/schedule genera uno con crypto.randomUUID()
-  // si no se lo damos, y ese global no existe en el Node 18 de Railway.
+  // Nombre explícito, mismo criterio que seguimiento.service.ts: evita
+  // depender del nombre autogenerado de @nestjs/schedule.
   @Cron('0 3 * * *', { name: 'vencer-puntos-inactivos' })
   async vencerPuntosInactivos(): Promise<number> {
     if (this.venciendoPuntos) {
