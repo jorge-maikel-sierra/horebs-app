@@ -65,10 +65,28 @@ export class MailService {
    * de alertas configurado en el sistema; si se quiere un correo de
    * operaciones separado, hay que agregar esa clave a `configuracion`.
    */
-  enviarAlertaStockPendiente(datos: { pedidoId: string; motivoError: string }): void {
+  enviarAlertaStockPendiente(datos: {
+    pedidoId: string;
+    motivoError: string;
+  }): void {
     this.enviarAlertaStock(datos).catch((err) => {
       this.logger.error(
         `No se pudo enviar la alerta de stock pendiente para el pedido ${datos.pedidoId}: ${(err as Error).message}`,
+      );
+    });
+  }
+
+  /**
+   * Mismo patrón que enviarAlertaStockPendiente — el canje de puntos falló
+   * después de crear el pedido, hay que revisarlo a mano.
+   */
+  enviarAlertaPuntosPendientes(datos: {
+    pedidoId: string;
+    motivoError: string;
+  }): void {
+    this.enviarAlertaPuntos(datos).catch((err) => {
+      this.logger.error(
+        `No se pudo enviar la alerta de puntos pendientes para el pedido ${datos.pedidoId}: ${(err as Error).message}`,
       );
     });
   }
@@ -79,10 +97,17 @@ export class MailService {
    * llama (InsumosService) para no mandar un correo por cada venta.
    */
   enviarAlertaStockBajo(
-    insumos: { nombre: string; unidad: string; stockActual: number; stockMinimo: number }[],
+    insumos: {
+      nombre: string;
+      unidad: string;
+      stockActual: number;
+      stockMinimo: number;
+    }[],
   ): void {
     this.enviarAlertaStockBajoInterno(insumos).catch((err) => {
-      this.logger.error(`No se pudo enviar la alerta de stock bajo: ${(err as Error).message}`);
+      this.logger.error(
+        `No se pudo enviar la alerta de stock bajo: ${(err as Error).message}`,
+      );
     });
   }
 
@@ -97,18 +122,26 @@ export class MailService {
   }
 
   private async enviarAlertaStockBajoInterno(
-    insumos: { nombre: string; unidad: string; stockActual: number; stockMinimo: number }[],
+    insumos: {
+      nombre: string;
+      unidad: string;
+      stockActual: number;
+      stockMinimo: number;
+    }[],
   ) {
     if (!this.apiKey || insumos.length === 0) return;
 
     const destino = await this.obtenerCorreoAlertas();
     if (!destino) {
-      this.logger.warn('No hay correo configurado para alertas — se omite el aviso de stock bajo.');
+      this.logger.warn(
+        'No hay correo configurado para alertas — se omite el aviso de stock bajo.',
+      );
       return;
     }
 
     const lineas = insumos.map(
-      (i) => `• ${i.nombre}: ${i.stockActual}${i.unidad} (mínimo: ${i.stockMinimo}${i.unidad})`,
+      (i) =>
+        `• ${i.nombre}: ${i.stockActual}${i.unidad} (mínimo: ${i.stockMinimo}${i.unidad})`,
     );
 
     const res = await fetch(RESEND_API_URL, {
@@ -140,7 +173,10 @@ export class MailService {
     }
   }
 
-  private async enviarAlertaStock(datos: { pedidoId: string; motivoError: string }) {
+  private async enviarAlertaStock(datos: {
+    pedidoId: string;
+    motivoError: string;
+  }) {
     if (!this.apiKey) return;
 
     const destino = await this.obtenerCorreoAlertas();
@@ -167,6 +203,46 @@ export class MailService {
           `Motivo: ${datos.motivoError}`,
           '',
           'Revisá el inventario de ese pedido a mano en el panel de admin.',
+        ].join('\n'),
+      }),
+    });
+
+    if (!res.ok) {
+      const cuerpo = await res.text().catch(() => '');
+      throw new Error(`Resend respondió ${res.status}: ${cuerpo}`);
+    }
+  }
+
+  private async enviarAlertaPuntos(datos: {
+    pedidoId: string;
+    motivoError: string;
+  }) {
+    if (!this.apiKey) return;
+
+    const destino = await this.obtenerCorreoAlertas();
+    if (!destino) {
+      this.logger.warn(
+        `No hay correo configurado para alertas — se omite el aviso de puntos pendientes del pedido ${datos.pedidoId}.`,
+      );
+      return;
+    }
+
+    const res = await fetch(RESEND_API_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: this.remitente,
+        to: destino,
+        subject: `⚠️ Revisar puntos del pedido #${datos.pedidoId.slice(0, 8)}`,
+        text: [
+          `El pedido ${datos.pedidoId} se registró correctamente, pero el canje de puntos de fidelidad falló.`,
+          '',
+          `Motivo: ${datos.motivoError}`,
+          '',
+          'Revisá el saldo de puntos del cliente a mano en el panel de admin.',
         ].join('\n'),
       }),
     });
@@ -254,7 +330,9 @@ export class MailService {
     adjuntoPdf: Buffer;
   }): Promise<void> {
     if (!this.apiKey) {
-      throw new BadRequestException('RESEND_API_KEY no configurada — no se puede enviar el correo.');
+      throw new BadRequestException(
+        'RESEND_API_KEY no configurada — no se puede enviar el correo.',
+      );
     }
 
     const res = await fetch(RESEND_API_URL, {
@@ -280,7 +358,9 @@ export class MailService {
 
     if (!res.ok) {
       const cuerpo = await res.text().catch(() => '');
-      throw new BadRequestException(`Resend respondió ${res.status}: ${cuerpo}`);
+      throw new BadRequestException(
+        `Resend respondió ${res.status}: ${cuerpo}`,
+      );
     }
   }
 }

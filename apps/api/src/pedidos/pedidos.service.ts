@@ -1,7 +1,12 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { MailService } from '../mail/mail.service';
 import { InventarioService } from '../inventario/inventario.service';
+import { PuntosService } from '../clientes/puntos.service';
 import { calcularItems } from './calcular-items';
 import { METODOS_PAGO } from '../common/metodos-pago';
 import { COSTO_DOMICILIO_DEFAULT } from '../common/costos';
@@ -23,6 +28,7 @@ export interface CrearPedidoInput {
   metodo_pago: 'efectivo' | 'transferencia' | 'tarjeta';
   notas?: string;
   items: CrearPedidoItemInput[];
+  usar_puntos?: boolean;
   /**
    * El frontend genera un UUID una sola vez por intento de checkout (no
    * por click) y lo reenvía tal cual en reintentos de red o si el mismo
@@ -59,6 +65,9 @@ export interface PedidoDto {
   notas: string | null;
   created_at: string;
   items: PedidoItemDto[];
+  puntos_canjeados: number;
+  descuento_puntos: number;
+  puntos_ganados: number;
 }
 
 export interface PedidoResumenDto {
@@ -66,7 +75,11 @@ export interface PedidoResumenDto {
   estado: string;
   total: number;
   created_at: string;
-  items: { producto_nombre: string; variante_nombre: string; cantidad: number }[];
+  items: {
+    producto_nombre: string;
+    variante_nombre: string;
+    cantidad: number;
+  }[];
 }
 
 const MODALIDADES = ['domicilio', 'retiro'];
@@ -89,17 +102,22 @@ export class PedidosService {
     private readonly supabase: SupabaseService,
     private readonly mail: MailService,
     private readonly inventario: InventarioService,
+    private readonly puntos: PuntosService,
   ) {}
 
   async crear(input: CrearPedidoInput): Promise<PedidoDto> {
     this.validar(input);
     const client = this.supabase.getClient();
 
-    const { itemsCalculados, total: subtotal } = await calcularItems(client, input.items);
+    const { itemsCalculados, total: subtotalItems } = await calcularItems(
+      client,
+      input.items,
+    );
     // Costo de domicilio fijo, no editable por el cliente — a diferencia
     // del POS, acá nunca se confía en un valor que mande el frontend.
-    const costoDomicilio = input.modalidad === 'domicilio' ? COSTO_DOMICILIO_DEFAULT : 0;
-    const total = subtotal + costoDomicilio;
+    const costoDomicilio =
+      input.modalidad === 'domicilio' ? COSTO_DOMICILIO_DEFAULT : 0;
+    const subtotal = subtotalItems + costoDomicilio;
 
     // Upsert atómico por teléfono: evita la condición de carrera de un
     // select-then-insert cuando dos pedidos del mismo cliente llegan a la
@@ -123,6 +141,11 @@ export class PedidosService {
 
     if (clienteError) throw clienteError;
 
+    const canje = input.usar_puntos
+      ? await this.puntos.calcularCanjeMaximo(cliente.id, subtotal)
+      : { puntos: 0, descuento: 0 };
+    const total = subtotal - canje.descuento;
+
     const { data: pedido, error: pedidoError } = await client
       .from('pedidos')
       .insert({
@@ -135,6 +158,8 @@ export class PedidosService {
         total,
         notas: input.notas ?? null,
         idempotency_key: input.idempotency_key ?? null,
+        puntos_canjeados: canje.puntos,
+        descuento_puntos: canje.descuento,
       })
       .select(
         'id, modalidad, direccion_entrega, costo_domicilio, metodo_pago, estado, total, notas, created_at',
@@ -164,9 +189,28 @@ export class PedidosService {
     if (itemsError) throw itemsError;
 
     await this.inventario.descontarPorVentaSeguro(
-      itemsCalculados.map((i) => ({ variante_id: i.variante_id, cantidad: i.cantidad })),
+      itemsCalculados.map((i) => ({
+        variante_id: i.variante_id,
+        cantidad: i.cantidad,
+      })),
       pedido.id,
       null,
+    );
+
+    if (canje.puntos > 0) {
+      try {
+        await this.puntos.registrarCanje(cliente.id, canje.puntos, pedido.id);
+      } catch (err) {
+        await this.puntos.marcarCanjePendiente(
+          pedido.id,
+          (err as Error).message,
+        );
+      }
+    }
+    const puntosGanados = await this.puntos.otorgarPuntosPorCompraSeguro(
+      cliente.id,
+      total,
+      pedido.id,
     );
 
     if (pedido.modalidad === 'domicilio' && pedido.direccion_entrega) {
@@ -210,10 +254,15 @@ export class PedidosService {
         precio_unitario: i.precio_unitario,
         subtotal: i.subtotal,
       })),
+      puntos_canjeados: canje.puntos,
+      descuento_puntos: canje.descuento,
+      puntos_ganados: puntosGanados,
     };
   }
 
-  private async obtenerPorIdempotencyKey(idempotencyKey: string): Promise<PedidoDto> {
+  private async obtenerPorIdempotencyKey(
+    idempotencyKey: string,
+  ): Promise<PedidoDto> {
     const { data, error } = await this.supabase
       .getClient()
       .from('pedidos')
@@ -229,7 +278,7 @@ export class PedidosService {
     const { data: pedido, error } = await client
       .from('pedidos')
       .select(
-        'id, modalidad, direccion_entrega, costo_domicilio, metodo_pago, estado, total, notas, created_at, clientes(nombre, apellido, telefono, direccion), items_pedido(cantidad, precio_unitario, subtotal, variantes_producto(nombre, productos(nombre)))',
+        'id, modalidad, direccion_entrega, costo_domicilio, metodo_pago, estado, total, notas, created_at, puntos_canjeados, descuento_puntos, puntos_ganados, clientes(nombre, apellido, telefono, direccion), items_pedido(cantidad, precio_unitario, subtotal, variantes_producto(nombre, productos(nombre)))',
       )
       .eq('id', id)
       .maybeSingle();
@@ -263,6 +312,9 @@ export class PedidosService {
         precio_unitario: i.precio_unitario,
         subtotal: i.subtotal,
       })),
+      puntos_canjeados: pedido.puntos_canjeados,
+      descuento_puntos: pedido.descuento_puntos,
+      puntos_ganados: pedido.puntos_ganados,
     };
   }
 
@@ -334,7 +386,10 @@ export class PedidosService {
     if (input.modalidad === 'domicilio' && !input.direccion_entrega?.trim()) {
       throw new BadRequestException('Falta la dirección de entrega.');
     }
-    if (input.direccion_entrega && input.direccion_entrega.trim().length > 300) {
+    if (
+      input.direccion_entrega &&
+      input.direccion_entrega.trim().length > 300
+    ) {
       throw new BadRequestException('La dirección es demasiado larga.');
     }
     if (input.notas && input.notas.trim().length > 500) {

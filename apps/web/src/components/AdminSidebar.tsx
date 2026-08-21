@@ -35,6 +35,16 @@ function IconPedidos() {
   );
 }
 
+function IconClientes() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="8" r="3.5" />
+      <path d="M5 20c0-3.9 3.1-7 7-7s7 3.1 7 7" />
+      <path d="M16.5 4.5a3 3 0 0 1 0 5.9" />
+    </svg>
+  );
+}
+
 function IconUsuarios() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -139,6 +149,7 @@ const NAV_GENERAL: NavItem[] = [
   { href: '/admin', label: 'Panel', icon: IconPanel, exacto: true },
   { href: '/admin/pos', label: 'Punto de venta', icon: IconPos },
   { href: '/admin/pedidos', label: 'Pedidos', icon: IconPedidos },
+  { href: '/admin/clientes', label: 'Clientes', icon: IconClientes },
   { href: '/admin/inventario', label: 'Inventario', icon: IconInventario },
 ];
 

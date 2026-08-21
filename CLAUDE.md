@@ -49,6 +49,12 @@ carrito y checkout en línea.
 - Transferencia bancaria: Banco Nu, llave `1118843420` (mismo número que el
   NIT del RUT) — se muestra en la página de confirmación de pedido cuando
   el método de pago es transferencia
+- Programa de fidelidad (puntos): 1 punto por cada $1.000 gastados, cada
+  punto vale $50 de descuento, mínimo 100 puntos para canjear, vencen a los
+  12 meses de inactividad (sin compras que generen puntos). Configurable
+  desde `admin/clientes` (tabla `configuracion`, servicio `PuntosService`).
+  Aplica tanto en el checkout web como en el POS. No se migró histórico de
+  WooCommerce — todos los clientes arrancaron en 0 puntos.
 
 ## Estilo visual de marca
 

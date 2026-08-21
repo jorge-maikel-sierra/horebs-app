@@ -6,7 +6,6 @@ import {
   Param,
   Patch,
   Post,
-  Query,
   Res,
   StreamableFile,
   UseGuards,
@@ -101,28 +100,6 @@ export class AdminController {
     return this.admin.enviarFacturaPorWhatsapp(id);
   }
 
-  @Get('clientes')
-  @Roles('admin', 'empleado')
-  buscarClientes(@Query('q') q?: string) {
-    return this.admin.buscarClientes(q ?? '');
-  }
-
-  @Patch('clientes/:id')
-  @Roles('admin', 'empleado')
-  editarCliente(
-    @Param('id') id: string,
-    @Body()
-    body: {
-      nombre?: string;
-      apellido?: string;
-      telefono?: string;
-      direccion?: string;
-      correo?: string;
-    },
-  ) {
-    return this.admin.editarCliente(id, body);
-  }
-
   @Get('configuracion')
   @Roles('admin')
   obtenerConfiguracion() {
@@ -131,9 +108,7 @@ export class AdminController {
 
   @Patch('configuracion')
   @Roles('admin')
-  actualizarConfiguracion(
-    @Body() body: { correo_domiciliario: string },
-  ) {
+  actualizarConfiguracion(@Body() body: { correo_domiciliario: string }) {
     return this.admin.actualizarConfiguracion(body.correo_domiciliario);
   }
 

@@ -57,6 +57,13 @@ function IconTarjeta() {
   );
 }
 
+type SaldoPuntos = {
+  nombre: string;
+  puntos: number;
+  valorPuntoPesos: number;
+  puntosMinimoCanje: number;
+};
+
 function OpcionCard({
   selected,
   onClick,
@@ -100,6 +107,8 @@ export default function CheckoutPage() {
   const [notas, setNotas] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saldoPuntos, setSaldoPuntos] = useState<SaldoPuntos | null>(null);
+  const [usarPuntos, setUsarPuntos] = useState(false);
   // Una sola clave por intento de checkout (no por click) — si el mismo
   // submit dispara dos requests (doble clic más rápido que el disabled del
   // botón, o un reintento de red), el backend descarta el segundo insert
@@ -122,6 +131,33 @@ export default function CheckoutPage() {
       </div>
     );
   }
+
+  async function consultarSaldoPuntos() {
+    const tel = telefono.trim();
+    if (!tel) {
+      setSaldoPuntos(null);
+      setUsarPuntos(false);
+      return;
+    }
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
+      const res = await fetch(`${apiUrl}/puntos/saldo?telefono=${encodeURIComponent(tel)}`);
+      if (!res.ok) return;
+      const saldo: SaldoPuntos | null = await res.json();
+      setSaldoPuntos(saldo);
+      if (!saldo || saldo.puntos < saldo.puntosMinimoCanje) setUsarPuntos(false);
+    } catch {
+      // Silencioso — la consulta de saldo es un extra, no debe frenar el checkout.
+    }
+  }
+
+  const puedeCanjear = saldoPuntos !== null && saldoPuntos.puntos >= saldoPuntos.puntosMinimoCanje;
+  const canjePuntos =
+    puedeCanjear && saldoPuntos
+      ? Math.min(saldoPuntos.puntos, Math.floor(total / saldoPuntos.valorPuntoPesos))
+      : 0;
+  const descuentoPuntos = usarPuntos ? canjePuntos * (saldoPuntos?.valorPuntoPesos ?? 0) : 0;
+  const totalConDescuento = total - descuentoPuntos;
 
   async function enviarPedido(e: React.FormEvent) {
     e.preventDefault();
@@ -149,6 +185,7 @@ export default function CheckoutPage() {
             cantidad: i.cantidad,
           })),
           idempotency_key: idempotencyKey,
+          usar_puntos: usarPuntos,
         }),
       });
 
@@ -184,9 +221,15 @@ export default function CheckoutPage() {
             <span className="shrink-0">{formatPrecio(i.precio * i.cantidad)}</span>
           </div>
         ))}
+        {descuentoPuntos > 0 && (
+          <div className="flex justify-between gap-3 border-t border-zinc-100 py-1.5 pt-2 text-green-700 dark:border-zinc-800/60 dark:text-green-500">
+            <span>Descuento · {canjePuntos} puntos</span>
+            <span className="shrink-0">-{formatPrecio(descuentoPuntos)}</span>
+          </div>
+        )}
         <div className="mt-2 flex justify-between border-t border-zinc-200 pt-2 font-semibold dark:border-zinc-800">
           <span>Total</span>
-          <span className="text-brand-orange">{formatPrecio(total)}</span>
+          <span className="text-brand-orange">{formatPrecio(totalConDescuento)}</span>
         </div>
       </div>
 
@@ -221,9 +264,38 @@ export default function CheckoutPage() {
             type="tel"
             value={telefono}
             onChange={(e) => setTelefono(e.target.value)}
+            onBlur={consultarSaldoPuntos}
             className={inputClass}
           />
         </div>
+
+        {puedeCanjear && (
+          <div className="animate-fade-up flex items-center justify-between gap-3 rounded-lg border border-brand-orange/25 bg-brand-orange/[0.06] px-4 py-3">
+            <div className="flex items-center gap-3">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-orange text-sm">
+                ⭐
+              </span>
+              <label htmlFor="usar-puntos" className="text-sm text-zinc-700 dark:text-zinc-300">
+                Tenés{' '}
+                <span className="font-semibold text-zinc-900 dark:text-zinc-50">
+                  {saldoPuntos?.puntos} puntos
+                </span>
+                . Usar {canjePuntos} para un descuento de{' '}
+                <span className="font-semibold text-zinc-900 dark:text-zinc-50">
+                  {formatPrecio(canjePuntos * (saldoPuntos?.valorPuntoPesos ?? 0))}
+                </span>
+                .
+              </label>
+            </div>
+            <input
+              id="usar-puntos"
+              type="checkbox"
+              checked={usarPuntos}
+              onChange={(e) => setUsarPuntos(e.target.checked)}
+              className="h-5 w-5 shrink-0 accent-brand-orange"
+            />
+          </div>
+        )}
 
         <div>
           <span className="block text-sm font-medium">Modalidad</span>

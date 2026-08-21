@@ -41,6 +41,13 @@ type ClienteBusqueda = {
   correo: string | null;
 };
 
+type SaldoPuntos = {
+  nombre: string;
+  puntos: number;
+  valorPuntoPesos: number;
+  puntosMinimoCanje: number;
+};
+
 type Modalidad = 'local' | 'retiro' | 'domicilio';
 
 type TurnoDto = {
@@ -101,6 +108,8 @@ function PosInterno() {
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mensaje, setMensaje] = useState<string | null>(null);
+  const [saldoPuntos, setSaldoPuntos] = useState<SaldoPuntos | null>(null);
+  const [usarPuntos, setUsarPuntos] = useState(false);
 
   const [turno, setTurno] = useState<TurnoDto | null>(null);
   const [resumenTurno, setResumenTurno] = useState<ResumenVentas | null>(null);
@@ -164,6 +173,20 @@ function PosInterno() {
     setCorreo(c.correo ?? '');
     setBusquedaCliente('');
     setResultadosCliente([]);
+    if (c.telefono) void consultarSaldoPuntos(c.telefono);
+  }
+
+  async function consultarSaldoPuntos(tel: string) {
+    if (!tel.trim()) {
+      setSaldoPuntos(null);
+      setUsarPuntos(false);
+      return;
+    }
+    const res = await adminFetch(`/puntos/saldo?telefono=${encodeURIComponent(tel.trim())}`);
+    if (!res.ok) return;
+    const saldo: SaldoPuntos | null = await res.json();
+    setSaldoPuntos(saldo);
+    if (!saldo || saldo.puntos < saldo.puntosMinimoCanje) setUsarPuntos(false);
   }
 
   function agregarItem(producto: Producto, variante: Variante) {
@@ -239,6 +262,13 @@ function PosInterno() {
 
   const totalItems = items.reduce((acc, i) => acc + i.precio * i.cantidad, 0);
   const total = totalItems + (modalidad === 'domicilio' ? costoDomicilio : 0);
+  const puedeCanjear = saldoPuntos !== null && saldoPuntos.puntos >= saldoPuntos.puntosMinimoCanje;
+  const canjePuntos =
+    puedeCanjear && saldoPuntos
+      ? Math.min(saldoPuntos.puntos, Math.floor(total / saldoPuntos.valorPuntoPesos))
+      : 0;
+  const descuentoPuntos = usarPuntos ? canjePuntos * (saldoPuntos?.valorPuntoPesos ?? 0) : 0;
+  const totalConDescuento = total - descuentoPuntos;
 
   const productosDeCategoria = categoriaSeleccionada
     ? productos.filter((p) => p.categoria_id === categoriaSeleccionada)
@@ -378,6 +408,7 @@ function PosInterno() {
                   precio_unitario: i.precio,
                 },
           ),
+          usar_puntos: usarPuntos,
         }),
       });
 
@@ -387,7 +418,10 @@ function PosInterno() {
       }
 
       const venta = await res.json();
-      setMensaje(`Venta registrada — total ${formatPrecio(venta.total)}.`);
+      setMensaje(
+        `Venta registrada — total ${formatPrecio(venta.total)}.` +
+          (venta.puntos_ganados > 0 ? ` Ganó ${venta.puntos_ganados} puntos.` : ''),
+      );
       setItems([]);
       setNombre('');
       setApellido('');
@@ -400,6 +434,8 @@ function PosInterno() {
       setDireccionEntrega('');
       setCostoDomicilio(COSTO_DOMICILIO_DEFAULT);
       setMetodoPago('efectivo');
+      setSaldoPuntos(null);
+      setUsarPuntos(false);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'No se pudo registrar la venta.',
@@ -628,9 +664,15 @@ function PosInterno() {
                 </div>
               </>
             )}
+            {descuentoPuntos > 0 && (
+              <div className="flex justify-between text-sm text-green-700 dark:text-green-500">
+                <span>Descuento · {canjePuntos} puntos</span>
+                <span>-{formatPrecio(descuentoPuntos)}</span>
+              </div>
+            )}
             <div className="flex justify-between font-semibold">
               <span>Total</span>
-              <span className="text-brand-orange">{formatPrecio(total)}</span>
+              <span className="text-brand-orange">{formatPrecio(totalConDescuento)}</span>
             </div>
           </div>
 
@@ -695,6 +737,7 @@ function PosInterno() {
                 <input
                   value={telefono}
                   onChange={(e) => setTelefono(e.target.value)}
+                  onBlur={() => consultarSaldoPuntos(telefono)}
                   className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
                 />
               </div>
@@ -710,6 +753,23 @@ function PosInterno() {
                 />
               </div>
             </div>
+
+            {puedeCanjear && (
+              <div className="flex items-center justify-between gap-3 rounded-md border border-brand-orange/25 bg-brand-orange/[0.06] px-3 py-2">
+                <label htmlFor="pos-usar-puntos" className="text-sm text-zinc-700 dark:text-zinc-300">
+                  {saldoPuntos?.puntos} puntos disponibles — usar {canjePuntos} (
+                  {formatPrecio(canjePuntos * (saldoPuntos?.valorPuntoPesos ?? 0))})
+                </label>
+                <input
+                  id="pos-usar-puntos"
+                  type="checkbox"
+                  checked={usarPuntos}
+                  onChange={(e) => setUsarPuntos(e.target.checked)}
+                  className="h-5 w-5 shrink-0 accent-brand-orange"
+                />
+              </div>
+            )}
+
             <div>
               <span className="block text-sm font-medium">Modalidad</span>
               <div className="mt-1 flex flex-wrap gap-4">

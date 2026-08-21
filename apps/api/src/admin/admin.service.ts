@@ -1,10 +1,16 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { MailService } from '../mail/mail.service';
 import { InventarioService } from '../inventario/inventario.service';
 import { ConversacionesService } from '../mensajeria/conversaciones.service';
 import { MetaGraphService } from '../mensajeria/meta-graph.service';
 import { FacturaService } from '../facturas/factura.service';
+import { PuntosService } from '../clientes/puntos.service';
 import { METODOS_PAGO, type MetodoPago } from '../common/metodos-pago';
 import { COSTO_DOMICILIO_DEFAULT } from '../common/costos';
 import { obtenerVariantesActivas } from '../pedidos/calcular-items';
@@ -48,6 +54,7 @@ export interface CrearVentaInput {
   metodo_pago: 'efectivo' | 'transferencia' | 'tarjeta';
   notas?: string;
   items: ItemVentaInput[];
+  usar_puntos?: boolean;
 }
 
 export interface VentaDto {
@@ -71,15 +78,9 @@ export interface VentaDto {
     precio_unitario: number;
     subtotal: number;
   }[];
-}
-
-export interface ClienteDto {
-  id: string;
-  nombre: string;
-  apellido: string | null;
-  telefono: string | null;
-  direccion: string | null;
-  correo: string | null;
+  puntos_canjeados: number;
+  descuento_puntos: number;
+  puntos_ganados: number;
 }
 
 export interface PedidoAdminDto {
@@ -153,6 +154,7 @@ export class AdminService {
     private readonly conversaciones: ConversacionesService,
     private readonly metaGraph: MetaGraphService,
     private readonly factura: FacturaService,
+    private readonly puntos: PuntosService,
   ) {}
 
   private async revertirStockSeguro(
@@ -191,20 +193,22 @@ export class AdminService {
         ? (input.costo_domicilio ?? COSTO_DOMICILIO_DEFAULT)
         : 0;
     if (costoDomicilio < 0) {
-      throw new BadRequestException('El costo de domicilio no puede ser negativo.');
+      throw new BadRequestException(
+        'El costo de domicilio no puede ser negativo.',
+      );
     }
 
     const client = this.supabase.getClient();
-    const { itemsCalculados, total: totalItems } = await this.calcularItemsVenta(
-      client,
-      input.items,
-    );
-    const total = totalItems + costoDomicilio;
+    const { itemsCalculados, total: totalItems } =
+      await this.calcularItemsVenta(client, input.items);
+    const subtotal = totalItems + costoDomicilio;
 
     // A diferencia de los pedidos web, una venta sin teléfono no se
     // puede "upsertear" (no hay clave para reconocer al mismo cliente)
     // — cada visita sin teléfono queda como su propio registro, y eso
-    // está bien para una venta rápida de local.
+    // está bien para una venta rápida de local. Tampoco puede acumular
+    // ni canjear puntos: sin teléfono no hay forma de reconocer al mismo
+    // cliente en la próxima visita.
     const telefono = input.cliente.telefono?.trim();
     const apellido = input.cliente.apellido?.trim() || null;
     const correo = input.cliente.correo?.trim() || null;
@@ -225,6 +229,12 @@ export class AdminService {
 
     if (clienteError) throw clienteError;
 
+    const canje =
+      telefono && input.usar_puntos
+        ? await this.puntos.calcularCanjeMaximo(cliente.id, subtotal)
+        : { puntos: 0, descuento: 0 };
+    const total = subtotal - canje.descuento;
+
     const { data: pedido, error: pedidoError } = await client
       .from('pedidos')
       .insert({
@@ -239,6 +249,8 @@ export class AdminService {
         registrado_por: registradoPor,
         total,
         notas: input.notas ?? null,
+        puntos_canjeados: canje.puntos,
+        descuento_puntos: canje.descuento,
       })
       .select(
         'id, modalidad, direccion_entrega, costo_domicilio, metodo_pago, total, created_at',
@@ -262,10 +274,32 @@ export class AdminService {
     await this.inventario.descontarPorVentaSeguro(
       itemsCalculados
         .filter((i) => i.variante_id)
-        .map((i) => ({ variante_id: i.variante_id as string, cantidad: i.cantidad })),
+        .map((i) => ({
+          variante_id: i.variante_id as string,
+          cantidad: i.cantidad,
+        })),
       pedido.id,
       registradoPor,
     );
+
+    let puntosGanados = 0;
+    if (telefono) {
+      if (canje.puntos > 0) {
+        try {
+          await this.puntos.registrarCanje(cliente.id, canje.puntos, pedido.id);
+        } catch (err) {
+          await this.puntos.marcarCanjePendiente(
+            pedido.id,
+            (err as Error).message,
+          );
+        }
+      }
+      puntosGanados = await this.puntos.otorgarPuntosPorCompraSeguro(
+        cliente.id,
+        total,
+        pedido.id,
+      );
+    }
 
     if (pedido.modalidad === 'domicilio' && pedido.direccion_entrega) {
       this.mail.enviarNotificacionDomicilio({
@@ -308,6 +342,9 @@ export class AdminService {
         precio_unitario: i.precio_unitario,
         subtotal: i.subtotal,
       })),
+      puntos_canjeados: canje.puntos,
+      descuento_puntos: canje.descuento,
+      puntos_ganados: puntosGanados,
     };
   }
 
@@ -323,16 +360,22 @@ export class AdminService {
     return this.mapPedido(data);
   }
 
-  async generarFacturaPdf(id: string): Promise<{ buffer: Buffer; nombreArchivo: string }> {
+  async generarFacturaPdf(
+    id: string,
+  ): Promise<{ buffer: Buffer; nombreArchivo: string }> {
     const pedido = await this.obtenerPedido(id);
     const buffer = await this.factura.generarPdf(pedido);
     return { buffer, nombreArchivo: this.factura.nombreArchivo(pedido) };
   }
 
-  async enviarFacturaPorCorreo(id: string): Promise<{ enviado: true; destino: string }> {
+  async enviarFacturaPorCorreo(
+    id: string,
+  ): Promise<{ enviado: true; destino: string }> {
     const pedido = await this.obtenerPedido(id);
     if (!pedido.cliente.correo) {
-      throw new BadRequestException('El cliente no tiene un correo registrado.');
+      throw new BadRequestException(
+        'El cliente no tiene un correo registrado.',
+      );
     }
     const buffer = await this.factura.generarPdf(pedido);
     const { asunto, texto, html } = this.factura.datosCorreo(pedido);
@@ -346,15 +389,21 @@ export class AdminService {
         adjuntoPdf: buffer,
       });
     } catch (err) {
-      throw new BadRequestException(`No se pudo enviar el correo: ${(err as Error).message}`);
+      throw new BadRequestException(
+        `No se pudo enviar el correo: ${(err as Error).message}`,
+      );
     }
     return { enviado: true, destino: pedido.cliente.correo };
   }
 
-  async enviarFacturaPorWhatsapp(id: string): Promise<{ enviado: true; destino: string }> {
+  async enviarFacturaPorWhatsapp(
+    id: string,
+  ): Promise<{ enviado: true; destino: string }> {
     const pedido = await this.obtenerPedido(id);
     if (!pedido.cliente.telefono) {
-      throw new BadRequestException('El cliente no tiene un teléfono registrado.');
+      throw new BadRequestException(
+        'El cliente no tiene un teléfono registrado.',
+      );
     }
     const destinatarioId = telefonoAWhatsappId(pedido.cliente.telefono);
     const buffer = await this.factura.generarPdf(pedido);
@@ -402,7 +451,10 @@ export class AdminService {
     ) {
       throw new BadRequestException('Método de pago inválido.');
     }
-    if (cambios.estado !== undefined && !ESTADOS_PEDIDO.includes(cambios.estado)) {
+    if (
+      cambios.estado !== undefined &&
+      !ESTADOS_PEDIDO.includes(cambios.estado)
+    ) {
       throw new BadRequestException('Estado inválido.');
     }
 
@@ -410,17 +462,25 @@ export class AdminService {
 
     const { data: pedidoActual, error: pedidoError } = await client
       .from('pedidos')
-      .select('id, costo_domicilio, estado, items_pedido(variante_id, cantidad)')
+      .select(
+        'id, costo_domicilio, estado, items_pedido(variante_id, cantidad)',
+      )
       .eq('id', id)
       .maybeSingle();
     if (pedidoError) throw pedidoError;
     if (!pedidoActual) throw new NotFoundException('Pedido no encontrado.');
 
     const itemsActuales = (
-      (pedidoActual.items_pedido ?? []) as { variante_id: string | null; cantidad: number }[]
+      (pedidoActual.items_pedido ?? []) as {
+        variante_id: string | null;
+        cantidad: number;
+      }[]
     )
       .filter((i) => i.variante_id)
-      .map((i) => ({ variante_id: i.variante_id as string, cantidad: i.cantidad }));
+      .map((i) => ({
+        variante_id: i.variante_id as string,
+        cantidad: i.cantidad,
+      }));
 
     const cancelando =
       cambios.estado === 'cancelado' && pedidoActual.estado !== 'cancelado';
@@ -468,7 +528,10 @@ export class AdminService {
         await this.inventario.descontarPorVentaSeguro(
           itemsCalculados
             .filter((i) => i.variante_id)
-            .map((i) => ({ variante_id: i.variante_id as string, cantidad: i.cantidad })),
+            .map((i) => ({
+              variante_id: i.variante_id as string,
+              cantidad: i.cantidad,
+            })),
           id,
           usuarioId,
         );
@@ -505,10 +568,16 @@ export class AdminService {
     if (!pedido) throw new NotFoundException('Pedido no encontrado.');
 
     const itemsActuales = (
-      (pedido.items_pedido ?? []) as { variante_id: string | null; cantidad: number }[]
+      (pedido.items_pedido ?? []) as {
+        variante_id: string | null;
+        cantidad: number;
+      }[]
     )
       .filter((i) => i.variante_id)
-      .map((i) => ({ variante_id: i.variante_id as string, cantidad: i.cantidad }));
+      .map((i) => ({
+        variante_id: i.variante_id as string,
+        cantidad: i.cantidad,
+      }));
 
     // items_pedido tiene ON DELETE CASCADE hacia pedidos — se borran solos.
     const { error, count } = await client
@@ -634,70 +703,6 @@ export class AdminService {
     return { itemsCalculados, total };
   }
 
-  async buscarClientes(query: string): Promise<ClienteDto[]> {
-    const q = query.trim().replace(/[,()%]/g, '');
-    if (!q) return [];
-
-    const { data, error } = await this.supabase
-      .getClient()
-      .from('clientes')
-      .select('id, nombre, apellido, telefono, direccion, correo')
-      .or(`nombre.ilike.%${q}%,apellido.ilike.%${q}%,telefono.ilike.%${q}%`)
-      .order('nombre')
-      .limit(10);
-
-    if (error) throw error;
-    return data ?? [];
-  }
-
-  async editarCliente(
-    id: string,
-    cambios: {
-      nombre?: string;
-      apellido?: string;
-      telefono?: string;
-      direccion?: string;
-      correo?: string;
-    },
-  ): Promise<ClienteDto> {
-    if (cambios.nombre !== undefined && !cambios.nombre.trim()) {
-      throw new BadRequestException('El nombre no puede quedar vacío.');
-    }
-
-    const payload: Record<string, string | null> = {};
-    if (cambios.nombre !== undefined) payload.nombre = cambios.nombre.trim();
-    if (cambios.apellido !== undefined) {
-      payload.apellido = cambios.apellido.trim() || null;
-    }
-    if (cambios.telefono !== undefined) {
-      payload.telefono = cambios.telefono.trim() || null;
-    }
-    if (cambios.direccion !== undefined) {
-      payload.direccion = cambios.direccion.trim() || null;
-    }
-    if (cambios.correo !== undefined) {
-      payload.correo = cambios.correo.trim() || null;
-    }
-
-    const { data, error } = await this.supabase
-      .getClient()
-      .from('clientes')
-      .update(payload)
-      .eq('id', id)
-      .select('id, nombre, apellido, telefono, direccion, correo')
-      .single();
-
-    if (error) {
-      if (error.code === '23505') {
-        throw new BadRequestException(
-          'Ya existe otro cliente con ese teléfono.',
-        );
-      }
-      throw error;
-    }
-    return data;
-  }
-
   async listarUsuarios(): Promise<UsuarioStaffDto[]> {
     const { data, error } = await this.supabase
       .getClient()
@@ -733,7 +738,9 @@ export class AdminService {
     return data;
   }
 
-  async obtenerConfiguracion(): Promise<{ correo_domiciliario: string | null }> {
+  async obtenerConfiguracion(): Promise<{
+    correo_domiciliario: string | null;
+  }> {
     const { data, error } = await this.supabase
       .getClient()
       .from('configuracion')
@@ -766,10 +773,16 @@ export class AdminService {
   async obtenerConfiguracionSeguimiento() {
     const { recordatorioMinutos, ofertaMinutos } =
       await this.conversaciones.obtenerConfiguracionSeguimiento();
-    return { recordatorio_minutos: recordatorioMinutos, oferta_minutos: ofertaMinutos };
+    return {
+      recordatorio_minutos: recordatorioMinutos,
+      oferta_minutos: ofertaMinutos,
+    };
   }
 
-  async actualizarConfiguracionSeguimiento(recordatorioMinutos: number, ofertaMinutos: number) {
+  async actualizarConfiguracionSeguimiento(
+    recordatorioMinutos: number,
+    ofertaMinutos: number,
+  ) {
     if (
       !Number.isInteger(recordatorioMinutos) ||
       !Number.isInteger(ofertaMinutos) ||
@@ -782,7 +795,10 @@ export class AdminService {
       recordatorioMinutos,
       ofertaMinutos,
     );
-    return { recordatorio_minutos: recordatorioMinutos, oferta_minutos: ofertaMinutos };
+    return {
+      recordatorio_minutos: recordatorioMinutos,
+      oferta_minutos: ofertaMinutos,
+    };
   }
 
   async listarConversacionesBot() {
@@ -791,9 +807,11 @@ export class AdminService {
 
   async actualizarEstadoConversacion(id: string, estado: string) {
     if (estado !== 'bot' && estado !== 'derivado') {
-      throw new BadRequestException('Estado inválido — debe ser "bot" o "derivado".');
+      throw new BadRequestException(
+        'Estado inválido — debe ser "bot" o "derivado".',
+      );
     }
-    await this.conversaciones.actualizarEstadoManual(id, estado as EstadoConversacion);
+    await this.conversaciones.actualizarEstadoManual(id, estado);
     return { id, estado };
   }
 

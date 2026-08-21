@@ -7,6 +7,7 @@ import { InventarioModule } from '../inventario/inventario.module';
 import { MensajeriaModule } from '../mensajeria/mensajeria.module';
 import { FacturaModule } from '../facturas/factura.module';
 import { BlogModule } from '../blog/blog.module';
+import { ClientesModule } from '../clientes/clientes.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { BlogModule } from '../blog/blog.module';
     MensajeriaModule,
     FacturaModule,
     BlogModule,
+    ClientesModule,
   ],
   controllers: [AdminController],
   providers: [AdminService],

@@ -22,6 +22,9 @@ type Pedido = {
   total: number;
   notas: string | null;
   items: PedidoItem[];
+  puntos_canjeados: number;
+  descuento_puntos: number;
+  puntos_ganados: number;
 };
 
 
@@ -45,6 +48,9 @@ function mensajeWhatsapp(pedido: Pedido): string {
     '',
     ...(esDomicilio
       ? [`Domicilio: ${formatPrecio(pedido.costo_domicilio)}`]
+      : []),
+    ...(pedido.descuento_puntos > 0
+      ? [`Descuento por ${pedido.puntos_canjeados} puntos: -${formatPrecio(pedido.descuento_puntos)}`]
       : []),
     `*Total: ${formatPrecio(pedido.total)}*`,
     `Modalidad: ${esDomicilio ? 'Domicilio' : 'Retiro en local'}`,
@@ -146,6 +152,12 @@ export default async function PedidoConfirmacionPage({
             <span className="shrink-0">{formatPrecio(pedido.costo_domicilio)}</span>
           </div>
         )}
+        {pedido.descuento_puntos > 0 && (
+          <div className="flex justify-between gap-3 border-t border-zinc-100 py-1.5 pt-2 text-green-700 dark:border-zinc-800/60 dark:text-green-500">
+            <span>Descuento · {pedido.puntos_canjeados} puntos</span>
+            <span className="shrink-0">-{formatPrecio(pedido.descuento_puntos)}</span>
+          </div>
+        )}
         <div className="mt-1 flex justify-between border-t border-zinc-200 pt-2 font-semibold dark:border-zinc-800">
           <span>Total</span>
           <span className="text-brand-orange">{formatPrecio(pedido.total)}</span>
@@ -210,6 +222,21 @@ export default async function PedidoConfirmacionPage({
               y mandá el comprobante junto con la confirmación por WhatsApp.
             </p>
           </div>
+        </div>
+      )}
+
+      {pedido.puntos_ganados > 0 && (
+        <div className="animate-fade-up delay-4 mt-4 flex items-center gap-3 rounded-lg border border-brand-orange/25 bg-brand-orange/[0.06] px-4 py-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-orange text-base">
+            ⭐
+          </span>
+          <p className="text-sm text-zinc-700 dark:text-zinc-300">
+            Ganaste{' '}
+            <span className="font-semibold text-zinc-900 dark:text-zinc-50">
+              {pedido.puntos_ganados} puntos
+            </span>{' '}
+            con este pedido. Acumulalos con tu número de teléfono para canjear descuentos en tu próxima compra.
+          </p>
         </div>
       )}
 
