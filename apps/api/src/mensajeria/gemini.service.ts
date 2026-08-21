@@ -157,6 +157,13 @@ interface RespuestaInteraction {
   id: string;
   status: 'completed' | 'requires_action';
   steps: (PasoFunctionCall | PasoModelOutput | { type: string })[];
+  // No documentados de forma estable en esta API en beta — se loguean si
+  // vienen, para poder correlacionar un cambio de comportamiento con un
+  // alias de modelo o un consumo de tokens puntual, sin depender de que
+  // existan (el pinning de modelo por alias es una decisión consciente,
+  // ver README de mensajeria/).
+  model?: string;
+  usage?: { input_tokens?: number; output_tokens?: number };
 }
 
 type Producto = Awaited<ReturnType<CatalogService['getProductos']>>[number];
@@ -308,6 +315,13 @@ export class GeminiService {
     if (!derivadoEnEsteTurno) {
       await this.conversaciones.guardarInteraccionGemini(canal, identificadorExterno, respuesta.id);
     }
+
+    this.logger.log(
+      `canal=${canal} id=${identificadorExterno} modelo=${respuesta.model ?? this.modelo}` +
+        (respuesta.usage
+          ? ` tokens_in=${respuesta.usage.input_tokens ?? '?'} tokens_out=${respuesta.usage.output_tokens ?? '?'}`
+          : ''),
+    );
 
     const salida = respuesta.steps.find(
       (p): p is PasoModelOutput => p.type === 'model_output',

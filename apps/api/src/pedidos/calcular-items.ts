@@ -15,9 +15,43 @@ export interface ItemCalculado {
   variante_nombre: string;
 }
 
+export interface VarianteActiva {
+  id: string;
+  nombre: string;
+  precio: number;
+  precio_oferta: number | null;
+  productos: { nombre: string } | null;
+}
+
+/**
+ * Trae y valida las variantes activas por id — el único paso que
+ * `calcularItems` (carrito público) y `calcularItemsVenta` (POS,
+ * `admin.service.ts`) comparten de verdad. El resto de cada uno diverge
+ * a propósito: el POS admite precio manual e items sin `variante_id`
+ * (personalizados), algo que el checkout público nunca debe aceptar.
+ */
+export async function obtenerVariantesActivas(
+  client: SupabaseClient,
+  varianteIds: string[],
+): Promise<Map<string, VarianteActiva>> {
+  if (varianteIds.length === 0) return new Map();
+  const { data, error } = await client
+    .from('variantes_producto')
+    .select('id, nombre, precio, precio_oferta, productos(nombre)')
+    .in('id', varianteIds)
+    .eq('activo', true);
+
+  if (error) throw error;
+  if (!data || data.length !== new Set(varianteIds).size) {
+    throw new BadRequestException('Uno o más productos ya no están disponibles.');
+  }
+  return new Map(data.map((v) => [v.id, v as unknown as VarianteActiva]));
+}
+
 /**
  * Recalcula precios desde la base (nunca confía en precios enviados por
- * el cliente). Compartido entre pedidos web y ventas de POS.
+ * el cliente). Checkout web — para el POS ver `calcularItemsVenta` en
+ * `admin.service.ts`.
  */
 export async function calcularItems(
   client: SupabaseClient,
@@ -32,21 +66,10 @@ export async function calcularItems(
     }
   }
 
-  const varianteIds = items.map((i) => i.variante_id);
-  const { data: variantes, error } = await client
-    .from('variantes_producto')
-    .select('id, nombre, precio, precio_oferta, productos(nombre)')
-    .in('id', varianteIds)
-    .eq('activo', true);
-
-  if (error) throw error;
-  if (!variantes || variantes.length !== new Set(varianteIds).size) {
-    throw new BadRequestException(
-      'Uno o más productos ya no están disponibles.',
-    );
-  }
-
-  const varianteById = new Map(variantes.map((v) => [v.id, v]));
+  const varianteById = await obtenerVariantesActivas(
+    client,
+    items.map((i) => i.variante_id),
+  );
 
   const itemsCalculados: ItemCalculado[] = items.map((item) => {
     const variante = varianteById.get(item.variante_id);
@@ -59,7 +82,7 @@ export async function calcularItems(
       cantidad: item.cantidad,
       precio_unitario: precioUnitario,
       subtotal: precioUnitario * item.cantidad,
-      producto_nombre: (variante as any).productos?.nombre ?? '',
+      producto_nombre: variante.productos?.nombre ?? '',
       variante_nombre: variante.nombre,
     };
   });

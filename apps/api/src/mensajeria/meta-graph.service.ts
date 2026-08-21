@@ -258,6 +258,9 @@ export class MetaGraphService {
       } catch (err) {
         ultimoError = err;
         if (intento < REINTENTOS) {
+          // intento es un contador interno del for (0..REINTENTOS), nunca
+          // input externo — no hay injection posible acá.
+          // eslint-disable-next-line security/detect-object-injection
           await new Promise((resolve) => setTimeout(resolve, BACKOFF_MS[intento]));
         }
       }

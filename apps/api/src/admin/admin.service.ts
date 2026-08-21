@@ -6,6 +6,7 @@ import { ConversacionesService } from '../mensajeria/conversaciones.service';
 import { MetaGraphService } from '../mensajeria/meta-graph.service';
 import { FacturaService } from '../facturas/factura.service';
 import { METODOS_PAGO, type MetodoPago } from '../common/metodos-pago';
+import { obtenerVariantesActivas } from '../pedidos/calcular-items';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Rol } from '../auth/roles.decorator';
 import type { EstadoConversacion } from '../mensajeria/conversaciones.service';
@@ -576,21 +577,7 @@ export class AdminService {
       .filter((i) => i.variante_id)
       .map((i) => i.variante_id as string);
 
-    let variantePorId = new Map<string, any>();
-    if (varianteIds.length > 0) {
-      const { data, error } = await client
-        .from('variantes_producto')
-        .select('id, nombre, precio, precio_oferta, productos(nombre)')
-        .in('id', varianteIds)
-        .eq('activo', true);
-      if (error) throw error;
-      if (!data || data.length !== new Set(varianteIds).size) {
-        throw new BadRequestException(
-          'Uno o más productos ya no están disponibles.',
-        );
-      }
-      variantePorId = new Map(data.map((v) => [v.id, v]));
-    }
+    const variantePorId = await obtenerVariantesActivas(client, varianteIds);
 
     const itemsCalculados: ItemVentaCalculado[] = items.map((item) => {
       if (!Number.isInteger(item.cantidad) || item.cantidad <= 0) {
