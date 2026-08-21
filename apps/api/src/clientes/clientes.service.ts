@@ -12,6 +12,7 @@ export interface ClienteDto {
   telefono: string | null;
   direccion: string | null;
   correo: string | null;
+  cedula: string | null;
 }
 
 export interface ClienteDetalleDto extends ClienteDto {
@@ -28,9 +29,11 @@ export interface EditarClienteInput {
   telefono?: string;
   direccion?: string;
   correo?: string;
+  cedula?: string;
 }
 
-const SELECT_CLIENTE = 'id, nombre, apellido, telefono, direccion, correo';
+const SELECT_CLIENTE =
+  'id, nombre, apellido, telefono, direccion, correo, cedula';
 
 /**
  * Extraído de AdminService — mismo criterio que BlogService: CRUD de
@@ -118,6 +121,9 @@ export class ClientesService {
     }
     if (cambios.correo !== undefined) {
       payload.correo = cambios.correo.trim() || null;
+    }
+    if (cambios.cedula !== undefined) {
+      payload.cedula = cambios.cedula.trim() || null;
     }
 
     const { data, error } = await this.supabase

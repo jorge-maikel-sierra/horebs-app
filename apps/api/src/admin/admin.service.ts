@@ -47,6 +47,7 @@ export interface CrearVentaInput {
     apellido?: string;
     telefono?: string;
     correo?: string;
+    cedula?: string;
   };
   modalidad: 'local' | 'retiro' | 'domicilio';
   direccion_entrega?: string;
@@ -64,6 +65,7 @@ export interface VentaDto {
     apellido: string | null;
     telefono: string | null;
     correo: string | null;
+    cedula: string | null;
   };
   modalidad: string;
   direccion_entrega: string | null;
@@ -213,19 +215,26 @@ export class AdminService {
     const telefono = input.cliente.telefono?.trim();
     const apellido = input.cliente.apellido?.trim() || null;
     const correo = input.cliente.correo?.trim() || null;
+    const cedula = input.cliente.cedula?.trim() || null;
     const { data: cliente, error: clienteError } = telefono
       ? await client
           .from('clientes')
           .upsert(
-            { nombre: input.cliente.nombre, apellido, telefono, correo },
+            {
+              nombre: input.cliente.nombre,
+              apellido,
+              telefono,
+              correo,
+              cedula,
+            },
             { onConflict: 'telefono' },
           )
-          .select('id, nombre, apellido, telefono, correo')
+          .select('id, nombre, apellido, telefono, correo, cedula')
           .single()
       : await client
           .from('clientes')
-          .insert({ nombre: input.cliente.nombre, apellido, correo })
-          .select('id, nombre, apellido, telefono, correo')
+          .insert({ nombre: input.cliente.nombre, apellido, correo, cedula })
+          .select('id, nombre, apellido, telefono, correo, cedula')
           .single();
 
     if (clienteError) throw clienteError;
@@ -329,6 +338,7 @@ export class AdminService {
         apellido: cliente.apellido,
         telefono: cliente.telefono,
         correo: cliente.correo,
+        cedula: cliente.cedula,
       },
       modalidad: pedido.modalidad,
       direccion_entrega: pedido.direccion_entrega,

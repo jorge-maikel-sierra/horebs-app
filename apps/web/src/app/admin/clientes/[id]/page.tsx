@@ -15,6 +15,7 @@ type ClienteDetalle = {
   telefono: string | null;
   direccion: string | null;
   correo: string | null;
+  cedula: string | null;
   puntos_actuales: number;
   puntos_ultima_actividad: string | null;
   total_pedidos: number;
@@ -78,6 +79,7 @@ export default function DetalleClientePage() {
   const [telefono, setTelefono] = useState('');
   const [direccion, setDireccion] = useState('');
   const [correo, setCorreo] = useState('');
+  const [cedula, setCedula] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [errorEdicion, setErrorEdicion] = useState<string | null>(null);
 
@@ -109,6 +111,7 @@ export default function DetalleClientePage() {
         setTelefono(c.telefono ?? '');
         setDireccion(c.direccion ?? '');
         setCorreo(c.correo ?? '');
+        setCedula(c.cedula ?? '');
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Error desconocido.'))
       .finally(() => setCargando(false));
@@ -129,6 +132,7 @@ export default function DetalleClientePage() {
           telefono: telefono || null,
           direccion: direccion || null,
           correo: correo || null,
+          cedula: cedula || null,
         }),
       });
       if (!res.ok) {
@@ -287,6 +291,10 @@ export default function DetalleClientePage() {
             <label className="block text-sm font-medium">Correo</label>
             <input value={correo} onChange={(e) => setCorreo(e.target.value)} className={inputClass} />
           </div>
+          <div>
+            <label className="block text-sm font-medium">Cédula</label>
+            <input value={cedula} onChange={(e) => setCedula(e.target.value)} className={inputClass} />
+          </div>
           <div className="sm:col-span-2">
             <label className="block text-sm font-medium">Dirección</label>
             <input value={direccion} onChange={(e) => setDireccion(e.target.value)} className={inputClass} />
@@ -309,6 +317,8 @@ export default function DetalleClientePage() {
             <p className="font-medium text-zinc-900 dark:text-zinc-50">{cliente.telefono ?? '—'}</p>
             <p className="mt-2 text-zinc-500 dark:text-zinc-400">Correo</p>
             <p className="font-medium text-zinc-900 dark:text-zinc-50">{cliente.correo ?? '—'}</p>
+            <p className="mt-2 text-zinc-500 dark:text-zinc-400">Cédula</p>
+            <p className="font-medium text-zinc-900 dark:text-zinc-50">{cliente.cedula ?? '—'}</p>
             <p className="mt-2 text-zinc-500 dark:text-zinc-400">Dirección</p>
             <p className="font-medium text-zinc-900 dark:text-zinc-50">{cliente.direccion ?? '—'}</p>
           </div>

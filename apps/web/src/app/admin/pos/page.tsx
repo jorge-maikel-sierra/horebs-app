@@ -41,6 +41,7 @@ type ClienteBusqueda = {
   telefono: string | null;
   direccion: string | null;
   correo: string | null;
+  cedula: string | null;
 };
 
 type SaldoPuntos = {
@@ -178,17 +179,19 @@ function ProductoCard({
   onAgregar: (variante: Variante) => void;
 }) {
   const unaVariante = producto.variantes.length === 1;
+  const [imagenRota, setImagenRota] = useState(false);
 
   return (
     <div className="card-interactive card-gradient flex flex-col overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800">
       <div className="group relative h-24 w-full shrink-0 overflow-hidden bg-zinc-100 dark:bg-zinc-900">
-        {producto.imagen_url ? (
+        {producto.imagen_url && !imagenRota ? (
           <Image
             src={producto.imagen_url}
             alt={producto.nombre}
             fill
             sizes="(min-width: 1024px) 200px, 45vw"
             className="object-cover transition-transform duration-500 group-hover:scale-110"
+            onError={() => setImagenRota(true)}
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-zinc-300 dark:text-zinc-700">
@@ -241,6 +244,7 @@ function PosInterno() {
   const [apellido, setApellido] = useState('');
   const [telefono, setTelefono] = useState('');
   const [correo, setCorreo] = useState('');
+  const [cedula, setCedula] = useState('');
   const [busquedaCliente, setBusquedaCliente] = useState('');
   const [resultadosCliente, setResultadosCliente] = useState<
     ClienteBusqueda[]
@@ -323,6 +327,7 @@ function PosInterno() {
     setApellido(c.apellido ?? '');
     setTelefono(c.telefono ?? '');
     setCorreo(c.correo ?? '');
+    setCedula(c.cedula ?? '');
     setBusquedaCliente('');
     setResultadosCliente([]);
     if (c.telefono) void consultarSaldoPuntos(c.telefono);
@@ -541,6 +546,7 @@ function PosInterno() {
             apellido: apellido || undefined,
             telefono: telefono || undefined,
             correo: correo || undefined,
+            cedula: cedula || undefined,
           },
           modalidad,
           direccion_entrega:
@@ -579,6 +585,7 @@ function PosInterno() {
       setApellido('');
       setTelefono('');
       setCorreo('');
+      setCedula('');
       setNombrePersonalizado('');
       setPrecioPersonalizado('');
       setEditandoPrecioId(null);
@@ -883,6 +890,16 @@ function PosInterno() {
                     className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
                   />
                 </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium">
+                  Cédula (opcional)
+                </label>
+                <input
+                  value={cedula}
+                  onChange={(e) => setCedula(e.target.value)}
+                  className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+                />
               </div>
 
               {puedeCanjear && (
