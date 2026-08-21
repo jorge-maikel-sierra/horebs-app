@@ -45,6 +45,9 @@ carrito y checkout en línea.
 - Descuento de la oferta de seguimiento por conversación abandonada: 10%
   (`DESCUENTO_OFERTA_PORCENTAJE` en `seguimiento.service.ts`) — se ofrece si
   el cliente no responde tras el recordatorio de las 3 horas
+- Transferencia bancaria: Banco Nu, llave `1118843420` (mismo número que el
+  NIT del RUT) — se muestra en la página de confirmación de pedido cuando
+  el método de pago es transferencia
 
 ## Estilo visual de marca
 

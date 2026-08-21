@@ -4,6 +4,7 @@ import { MailService } from '../mail/mail.service';
 import { InventarioService } from '../inventario/inventario.service';
 import { calcularItems } from './calcular-items';
 import { METODOS_PAGO } from '../common/metodos-pago';
+import { COSTO_DOMICILIO_DEFAULT } from '../common/costos';
 
 export interface CrearPedidoItemInput {
   variante_id: string;
@@ -51,6 +52,7 @@ export interface PedidoDto {
   };
   modalidad: string;
   direccion_entrega: string | null;
+  costo_domicilio: number;
   metodo_pago: string;
   estado: string;
   total: number;
@@ -93,7 +95,11 @@ export class PedidosService {
     this.validar(input);
     const client = this.supabase.getClient();
 
-    const { itemsCalculados, total } = await calcularItems(client, input.items);
+    const { itemsCalculados, total: subtotal } = await calcularItems(client, input.items);
+    // Costo de domicilio fijo, no editable por el cliente — a diferencia
+    // del POS, acá nunca se confía en un valor que mande el frontend.
+    const costoDomicilio = input.modalidad === 'domicilio' ? COSTO_DOMICILIO_DEFAULT : 0;
+    const total = subtotal + costoDomicilio;
 
     // Upsert atómico por teléfono: evita la condición de carrera de un
     // select-then-insert cuando dos pedidos del mismo cliente llegan a la
@@ -124,12 +130,15 @@ export class PedidosService {
         modalidad: input.modalidad,
         direccion_entrega:
           input.modalidad === 'domicilio' ? input.direccion_entrega : null,
+        costo_domicilio: costoDomicilio,
         metodo_pago: input.metodo_pago,
         total,
         notas: input.notas ?? null,
         idempotency_key: input.idempotency_key ?? null,
       })
-      .select('id, modalidad, direccion_entrega, metodo_pago, estado, total, notas, created_at')
+      .select(
+        'id, modalidad, direccion_entrega, costo_domicilio, metodo_pago, estado, total, notas, created_at',
+      )
       .single();
 
     if (pedidoError) {
@@ -171,7 +180,7 @@ export class PedidosService {
           nombre: `${i.producto_nombre} (${i.variante_nombre})`,
           precioUnitario: i.precio_unitario,
         })),
-        costoDomicilio: null,
+        costoDomicilio: pedido.costo_domicilio || null,
         metodoPago: pedido.metodo_pago,
         total: pedido.total,
         notas: pedido.notas,
@@ -188,6 +197,7 @@ export class PedidosService {
       },
       modalidad: pedido.modalidad,
       direccion_entrega: pedido.direccion_entrega,
+      costo_domicilio: pedido.costo_domicilio,
       metodo_pago: pedido.metodo_pago,
       estado: pedido.estado,
       total: pedido.total,
@@ -219,7 +229,7 @@ export class PedidosService {
     const { data: pedido, error } = await client
       .from('pedidos')
       .select(
-        'id, modalidad, direccion_entrega, metodo_pago, estado, total, notas, created_at, clientes(nombre, apellido, telefono, direccion), items_pedido(cantidad, precio_unitario, subtotal, variantes_producto(nombre, productos(nombre)))',
+        'id, modalidad, direccion_entrega, costo_domicilio, metodo_pago, estado, total, notas, created_at, clientes(nombre, apellido, telefono, direccion), items_pedido(cantidad, precio_unitario, subtotal, variantes_producto(nombre, productos(nombre)))',
       )
       .eq('id', id)
       .maybeSingle();
@@ -240,6 +250,7 @@ export class PedidosService {
       },
       modalidad: pedido.modalidad,
       direccion_entrega: pedido.direccion_entrega,
+      costo_domicilio: pedido.costo_domicilio,
       metodo_pago: pedido.metodo_pago,
       estado: pedido.estado,
       total: pedido.total,

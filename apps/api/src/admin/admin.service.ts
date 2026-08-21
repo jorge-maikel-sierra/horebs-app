@@ -6,6 +6,7 @@ import { ConversacionesService } from '../mensajeria/conversaciones.service';
 import { MetaGraphService } from '../mensajeria/meta-graph.service';
 import { FacturaService } from '../facturas/factura.service';
 import { METODOS_PAGO, type MetodoPago } from '../common/metodos-pago';
+import { COSTO_DOMICILIO_DEFAULT } from '../common/costos';
 import { obtenerVariantesActivas } from '../pedidos/calcular-items';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Rol } from '../auth/roles.decorator';
@@ -124,7 +125,6 @@ const ESTADOS_PEDIDO = [
   'cancelado',
 ];
 const MODALIDADES_VENTA = ['local', 'retiro', 'domicilio'];
-const COSTO_DOMICILIO_DEFAULT = 5000;
 /**
  * `clientes.telefono` normalmente se guarda en formato local colombiano
  * (3157861208, sin indicativo), pero la Graph API de WhatsApp necesita el
