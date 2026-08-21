@@ -7,6 +7,8 @@ const TABS = [
   { href: '/admin/inventario', label: 'Insumos' },
   { href: '/admin/inventario/compras', label: 'Compras' },
   { href: '/admin/inventario/recetas', label: 'Recetas' },
+  { href: '/admin/inventario/movimientos', label: 'Movimientos' },
+  { href: '/admin/inventario/reportes', label: 'Reportes' },
 ];
 
 export default function InventarioTabs() {
