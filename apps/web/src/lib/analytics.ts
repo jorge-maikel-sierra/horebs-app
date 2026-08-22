@@ -20,16 +20,6 @@ type ItemGA4 = {
 };
 
 /**
- * Wrapper de fbq — el Pixel de Facebook puede no estar configurado
- * (falta NEXT_PUBLIC_FACEBOOK_PIXEL_ID) o su script todavía no cargó;
- * en ambos casos esto no debe romper el resto del tracking.
- */
-function fbq(...args: unknown[]) {
-  const w = window as typeof window & { fbq?: (...a: unknown[]) => void };
-  w.fbq?.(...args);
-}
-
-/**
  * GA4 recomienda vaciar el objeto ecommerce anterior antes de empujar uno
  * nuevo — si no, un tag puede terminar leyendo items del evento previo.
  * https://developers.google.com/tag-platform/tag-manager/datalayer#ecommerce
@@ -48,6 +38,12 @@ function itemAGA4(item: ItemCarrito, quantity: number): ItemGA4 {
   };
 }
 
+/**
+ * Único punto de entrada de medición del sitio: todo se empuja al
+ * dataLayer de GTM. El Pixel de Facebook, GA4 y Google Ads se
+ * configuran como tags DENTRO de GTM (leyendo estos mismos eventos),
+ * no acá — así hay un solo medidor cargado en el sitio, nunca dos.
+ */
 export function trackViewItem(producto: {
   nombre: string;
   variantes: { id: string; nombre: string; precio: number; precio_oferta: number | null }[];
@@ -69,13 +65,6 @@ export function trackViewItem(producto: {
 
   limpiarEcommerceAnterior();
   sendGTMEvent({ event: 'view_item', ecommerce: { currency: MONEDA, value, items } });
-  fbq('track', 'ViewContent', {
-    content_ids: items.map((i) => i.item_id),
-    content_name: producto.nombre,
-    content_type: 'product',
-    value,
-    currency: MONEDA,
-  });
 }
 
 export function trackAddToCart(item: ItemCarrito, cantidad: number) {
@@ -86,13 +75,6 @@ export function trackAddToCart(item: ItemCarrito, cantidad: number) {
   sendGTMEvent({
     event: 'add_to_cart',
     ecommerce: { currency: MONEDA, value, items: [ga4Item] },
-  });
-  fbq('track', 'AddToCart', {
-    content_ids: [item.varianteId],
-    content_name: item.productoNombre,
-    content_type: 'product',
-    value,
-    currency: MONEDA,
   });
 }
 
@@ -105,13 +87,6 @@ export function trackBeginCheckout(items: (ItemCarrito & { cantidad: number })[]
   sendGTMEvent({
     event: 'begin_checkout',
     ecommerce: { currency: MONEDA, value, items: ga4Items },
-  });
-  fbq('track', 'InitiateCheckout', {
-    content_ids: items.map((i) => i.varianteId),
-    contents: items.map((i) => ({ id: i.varianteId, quantity: i.cantidad })),
-    num_items: items.reduce((acc, i) => acc + i.cantidad, 0),
-    value,
-    currency: MONEDA,
   });
 }
 
@@ -153,16 +128,9 @@ export function trackPurchase(pedido: {
       items: ga4Items,
     },
   });
-  fbq('track', 'Purchase', {
-    content_ids: ga4Items.map((i) => i.item_id),
-    contents: ga4Items.map((i) => ({ id: i.item_id, quantity: i.quantity })),
-    value: pedido.total,
-    currency: MONEDA,
-  });
 }
 
 /** WhatsApp es el canal de contacto principal del sitio — se trackea como lead. */
 export function trackContact() {
   sendGTMEvent({ event: 'generate_lead', method: 'whatsapp' });
-  fbq('track', 'Contact');
 }
