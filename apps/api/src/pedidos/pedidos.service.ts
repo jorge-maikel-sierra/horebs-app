@@ -42,6 +42,7 @@ export interface CrearPedidoInput {
 }
 
 export interface PedidoItemDto {
+  variante_id: string | null;
   producto_nombre: string;
   variante_nombre: string;
   cantidad: number;
@@ -142,7 +143,9 @@ export class PedidosService {
       .select('id, nombre, apellido, telefono, correo, direccion')
       .single();
 
-    if (clienteError) throw clienteError;
+    if (clienteError) {
+      throw new BadRequestException('No se pudo registrar el cliente.');
+    }
 
     const canje = input.usar_puntos
       ? await this.puntos.calcularCanjeMaximo(cliente.id, subtotal)
@@ -177,7 +180,7 @@ export class PedidosService {
       if (pedidoError.code === '23505' && input.idempotency_key) {
         return this.obtenerPorIdempotencyKey(input.idempotency_key);
       }
-      throw pedidoError;
+      throw new BadRequestException('No se pudo crear el pedido.');
     }
 
     const { error: itemsError } = await client.from('items_pedido').insert(
@@ -189,7 +192,9 @@ export class PedidosService {
         subtotal: i.subtotal,
       })),
     );
-    if (itemsError) throw itemsError;
+    if (itemsError) {
+      throw new BadRequestException('No se pudieron registrar los productos del pedido.');
+    }
 
     await this.inventario.descontarPorVentaSeguro(
       itemsCalculados.map((i) => ({
@@ -252,6 +257,7 @@ export class PedidosService {
       notas: pedido.notas,
       created_at: pedido.created_at,
       items: itemsCalculados.map((i) => ({
+        variante_id: i.variante_id,
         producto_nombre: i.producto_nombre,
         variante_nombre: i.variante_nombre,
         cantidad: i.cantidad,
@@ -273,7 +279,9 @@ export class PedidosService {
       .select('id')
       .eq('idempotency_key', idempotencyKey)
       .single();
-    if (error) throw error;
+    if (error) {
+      throw new BadRequestException('No se pudo recuperar el pedido.');
+    }
     return this.obtener(data.id);
   }
 
@@ -282,12 +290,14 @@ export class PedidosService {
     const { data: pedido, error } = await client
       .from('pedidos')
       .select(
-        'id, modalidad, direccion_entrega, costo_domicilio, metodo_pago, estado, total, notas, created_at, puntos_canjeados, descuento_puntos, puntos_ganados, clientes(nombre, apellido, telefono, correo, direccion), items_pedido(cantidad, precio_unitario, subtotal, variantes_producto(nombre, productos(nombre)))',
+        'id, modalidad, direccion_entrega, costo_domicilio, metodo_pago, estado, total, notas, created_at, puntos_canjeados, descuento_puntos, puntos_ganados, clientes(nombre, apellido, telefono, correo, direccion), items_pedido(variante_id, cantidad, precio_unitario, subtotal, variantes_producto(nombre, productos(nombre)))',
       )
       .eq('id', id)
       .maybeSingle();
 
-    if (error) throw error;
+    if (error) {
+      throw new BadRequestException('No se pudo obtener el pedido.');
+    }
     if (!pedido) throw new NotFoundException('Pedido no encontrado.');
 
     const cliente = (pedido as any).clientes;
@@ -311,6 +321,7 @@ export class PedidosService {
       notas: pedido.notas,
       created_at: pedido.created_at,
       items: items.map((i) => ({
+        variante_id: i.variante_id,
         producto_nombre: i.variantes_producto?.productos?.nombre ?? '',
         variante_nombre: i.variantes_producto?.nombre ?? '',
         cantidad: i.cantidad,
@@ -340,7 +351,9 @@ export class PedidosService {
       .select('id')
       .eq('telefono', local)
       .maybeSingle();
-    if (clienteError) throw clienteError;
+    if (clienteError) {
+      throw new BadRequestException('No se pudo buscar el cliente.');
+    }
     if (!cliente) return [];
 
     const { data, error } = await client
@@ -351,7 +364,9 @@ export class PedidosService {
       .eq('cliente_id', cliente.id)
       .order('created_at', { ascending: false })
       .limit(3);
-    if (error) throw error;
+    if (error) {
+      throw new BadRequestException('No se pudieron obtener los pedidos.');
+    }
 
     return (data ?? []).map((p: any) => ({
       id: p.id,

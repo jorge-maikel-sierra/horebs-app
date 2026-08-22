@@ -2,8 +2,10 @@ import Link from 'next/link';
 import { NEGOCIO, whatsappUrl } from '@/lib/negocio';
 import { formatPrecio } from '@/lib/formato';
 import BotonCopiar from '@/components/BotonCopiar';
+import TrackPurchase from '@/components/TrackPurchase';
 
 type PedidoItem = {
+  variante_id: string | null;
   producto_nombre: string;
   variante_nombre: string;
   cantidad: number;
@@ -92,6 +94,12 @@ export default async function PedidoConfirmacionPage({
 
   return (
     <div className="mx-auto max-w-2xl p-8">
+      <TrackPurchase
+        id={pedido.id}
+        total={pedido.total}
+        costoDomicilio={pedido.costo_domicilio}
+        items={pedido.items}
+      />
       <div className="relative mx-auto flex h-20 w-20 items-center justify-center">
         <span
           className="absolute inset-0 rounded-full bg-green-500/25"

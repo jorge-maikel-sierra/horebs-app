@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { NEGOCIO, whatsappUrl } from '@/lib/negocio';
 import ScrollReveal from '@/components/ScrollReveal';
+import WhatsappCta from '@/components/WhatsappCta';
 
 export const metadata: Metadata = {
   title: 'Contacto | Pizzería Horebs',
@@ -93,14 +94,12 @@ export default function ContactoPage() {
           <p className="mt-3 text-sm font-semibold text-zinc-500 dark:text-zinc-400">
             WhatsApp
           </p>
-          <a
+          <WhatsappCta
             href={mensajeWhatsapp}
-            target="_blank"
-            rel="noopener noreferrer"
             className="mt-0.5 block text-zinc-900 transition-colors hover:text-brand-orange dark:text-zinc-50"
           >
             {NEGOCIO.whatsapp}
-          </a>
+          </WhatsappCta>
         </div>
 
         <div className="card-gradient card-interactive rounded-2xl border border-zinc-200 p-5 dark:border-zinc-800">
@@ -130,15 +129,13 @@ export default function ContactoPage() {
         </div>
       </div>
 
-      <a
+      <WhatsappCta
         href={mensajeWhatsapp}
-        target="_blank"
-        rel="noopener noreferrer"
         className="btn-press animate-fade-up delay-3 mt-6 flex items-center justify-center gap-2 rounded-lg bg-[#25D366] py-3 font-semibold text-white shadow-sm transition hover:opacity-90"
       >
         <WhatsappIcon />
         Escribinos por WhatsApp
-      </a>
+      </WhatsappCta>
 
       <ScrollReveal className="mt-8 overflow-hidden rounded-2xl border border-zinc-200 shadow-lg shadow-zinc-900/5 dark:border-zinc-800 dark:shadow-black/30">
         <iframe

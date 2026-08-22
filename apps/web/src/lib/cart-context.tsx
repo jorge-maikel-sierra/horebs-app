@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { trackAddToCart } from './analytics';
 
 export type CartItem = {
   varianteId: string;
@@ -62,6 +63,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
       return [...prev, { ...item, cantidad }];
     });
+    trackAddToCart(item, cantidad);
   };
 
   const removeItem: CartContextValue['removeItem'] = (varianteId) => {

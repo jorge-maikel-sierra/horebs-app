@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import AgregarAlCarritoBoton from '@/components/AgregarAlCarritoBoton';
 import ScrollReveal from '@/components/ScrollReveal';
+import TrackViewItem from '@/components/TrackViewItem';
 import { formatPrecio } from '@/lib/formato';
 import { NEGOCIO } from '@/lib/negocio';
 import { breadcrumbJsonLd, jsonLdScript } from '@/lib/json-ld';
@@ -128,6 +129,7 @@ export default async function ProductoPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdScript(breadcrumbLd) }}
       />
+      <TrackViewItem nombre={producto.nombre} variantes={producto.variantes} />
 
       <Link
         href="/catalogo"

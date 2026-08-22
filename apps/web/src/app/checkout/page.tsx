@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { Session } from '@supabase/supabase-js';
 import { useCart } from '@/lib/cart-context';
 import { formatPrecio } from '@/lib/formato';
 import { supabase } from '@/lib/supabase';
+import { trackBeginCheckout } from '@/lib/analytics';
 
 function IconPaquete() {
   return (
@@ -154,6 +155,16 @@ export default function CheckoutPage() {
   // botón, o un reintento de red), el backend descarta el segundo insert
   // en vez de crear un pedido duplicado.
   const [idempotencyKey] = useState(() => crypto.randomUUID());
+
+  // Una sola vez por visita al checkout — sin este guard, cualquier
+  // cambio de estado (ej. tipear el teléfono) volvería a disparar el
+  // evento al re-renderizar.
+  const beginCheckoutDisparado = useRef(false);
+  useEffect(() => {
+    if (items.length === 0 || beginCheckoutDisparado.current) return;
+    beginCheckoutDisparado.current = true;
+    trackBeginCheckout(items, total);
+  }, [items, total]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
