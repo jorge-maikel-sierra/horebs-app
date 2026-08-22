@@ -1,4 +1,11 @@
-import { Controller, Get, NotFoundException, Param, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Header,
+  NotFoundException,
+  Param,
+  Query,
+} from '@nestjs/common';
 import { CatalogService } from './catalog.service';
 
 @Controller('catalogo')
@@ -8,6 +15,13 @@ export class CatalogController {
   @Get('categorias')
   getCategorias() {
     return this.catalog.getCategorias();
+  }
+
+  /** Fuente de datos programada para Meta Commerce Manager. */
+  @Get('feed.csv')
+  @Header('Content-Type', 'text/csv; charset=utf-8')
+  getFeedCsv() {
+    return this.catalog.getFeedCsv();
   }
 
   @Get('productos')
