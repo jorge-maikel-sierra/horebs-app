@@ -14,7 +14,7 @@ type DetalleCompra = {
   insumo_nombre: string | null;
   producto_comprado: string;
   cantidad: number;
-  unidad_medida_compra: 'kg' | 'g';
+  unidad_medida_compra: 'kg' | 'g' | 'unidad';
   valor_unitario: number;
   total_linea: number;
   estado_procesado: 'pendiente' | 'procesado' | 'excluido';
@@ -38,7 +38,7 @@ type LineaForm = {
   insumo_id: string;
   producto_comprado: string;
   cantidad: string;
-  unidad_medida_compra: 'kg' | 'g';
+  unidad_medida_compra: 'kg' | 'g' | 'unidad';
   valor_unitario: string;
 };
 
@@ -269,7 +269,17 @@ export default function InventarioComprasPage() {
               type="date"
               value={fecha}
               onChange={(e) => setFecha(e.target.value)}
-              className="rounded-md border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+              onClick={(e) => {
+                // Sin esto, el picker nativo solo se abre si el clic cae
+                // justo en el ícono de calendario, no en el resto del input.
+                try {
+                  e.currentTarget.showPicker();
+                } catch {
+                  // Safari no implementa showPicker() — el input igual
+                  // funciona a mano, solo no se abre el picker con un clic.
+                }
+              }}
+              className="[color-scheme:light] dark:[color-scheme:dark] rounded-md border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
             />
             <input
               value={categoria}
@@ -302,12 +312,15 @@ export default function InventarioComprasPage() {
             <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Líneas</p>
             <div className="mt-2 space-y-2">
               {lineas.map((l, idx) => (
-                <div key={idx} className="grid gap-2 sm:grid-cols-[2fr_1fr_1fr_1fr_1.5fr_auto]">
+                <div
+                  key={idx}
+                  className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[2fr_1fr_1fr_1fr_1.5fr_auto]"
+                >
                   <input
                     value={l.producto_comprado}
                     onChange={(e) => actualizarLinea(idx, { producto_comprado: e.target.value })}
                     placeholder="Descripción (de la factura)"
-                    className="rounded-md border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+                    className="min-w-0 rounded-md border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
                   />
                   <input
                     type="number"
@@ -316,17 +329,20 @@ export default function InventarioComprasPage() {
                     value={l.cantidad}
                     onChange={(e) => actualizarLinea(idx, { cantidad: e.target.value })}
                     placeholder="Cantidad"
-                    className="rounded-md border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+                    className="min-w-0 rounded-md border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
                   />
                   <select
                     value={l.unidad_medida_compra}
                     onChange={(e) =>
-                      actualizarLinea(idx, { unidad_medida_compra: e.target.value as 'kg' | 'g' })
+                      actualizarLinea(idx, {
+                        unidad_medida_compra: e.target.value as 'kg' | 'g' | 'unidad',
+                      })
                     }
-                    className="rounded-md border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+                    className="min-w-0 rounded-md border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
                   >
                     <option value="kg">kg</option>
                     <option value="g">g</option>
+                    <option value="unidad">unidad</option>
                   </select>
                   <input
                     type="number"
@@ -335,12 +351,12 @@ export default function InventarioComprasPage() {
                     value={l.valor_unitario}
                     onChange={(e) => actualizarLinea(idx, { valor_unitario: e.target.value })}
                     placeholder="Valor unitario"
-                    className="rounded-md border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+                    className="min-w-0 rounded-md border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
                   />
                   <select
                     value={l.insumo_id}
                     onChange={(e) => actualizarLinea(idx, { insumo_id: e.target.value })}
-                    className="rounded-md border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+                    className="min-w-0 rounded-md border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
                   >
                     <option value="">Sin insumo (vincular después)</option>
                     {insumos.map((i) => (
@@ -352,7 +368,7 @@ export default function InventarioComprasPage() {
                   <button
                     type="button"
                     onClick={() => setLineas((prev) => prev.filter((_, i) => i !== idx))}
-                    className="rounded-md border border-zinc-300 px-2 text-xs text-red-600 dark:border-zinc-700 dark:text-red-400"
+                    className="rounded-md border border-zinc-300 px-2 py-1.5 text-xs text-red-600 dark:border-zinc-700 dark:text-red-400"
                   >
                     Quitar
                   </button>

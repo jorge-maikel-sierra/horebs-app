@@ -7,7 +7,7 @@ export interface DetalleCompraInput {
   insumo_id?: string;
   producto_comprado: string;
   cantidad: number;
-  unidad_medida_compra: 'kg' | 'g';
+  unidad_medida_compra: 'kg' | 'g' | 'unidad';
   valor_unitario: number;
 }
 
@@ -27,7 +27,7 @@ export interface DetalleCompraDto {
   insumo_nombre: string | null;
   producto_comprado: string;
   cantidad: number;
-  unidad_medida_compra: 'kg' | 'g';
+  unidad_medida_compra: 'kg' | 'g' | 'unidad';
   valor_unitario: number;
   total_linea: number;
   estado_procesado: 'pendiente' | 'procesado' | 'excluido';
@@ -47,7 +47,7 @@ export interface CompraDto {
   detalle: DetalleCompraDto[];
 }
 
-const UNIDADES = ['kg', 'g'];
+const UNIDADES = ['kg', 'g', 'unidad'];
 const COMPRA_SELECT =
   'id, numero_factura, proveedor, fecha, subtotal, otros_cargos, metodo_pago, categoria, created_at, detalle_compra(id, insumo_id, producto_comprado, cantidad, unidad_medida_compra, valor_unitario, total_linea, estado_procesado, fecha_procesado, insumos(nombre))';
 
