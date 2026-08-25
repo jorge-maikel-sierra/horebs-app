@@ -47,6 +47,15 @@ function IconClientes() {
   );
 }
 
+function IconNomina() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="3" width="16" height="18" rx="1.5" />
+      <path d="M8 8h8M8 12h8M8 16h5" />
+    </svg>
+  );
+}
+
 function IconUsuarios() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -161,6 +170,7 @@ const NAV_GENERAL: NavItem[] = [
   { href: '/admin/pedidos', label: 'Pedidos', icon: IconPedidos },
   { href: '/admin/clientes', label: 'Clientes', icon: IconClientes },
   { href: '/admin/inventario', label: 'Inventario', icon: IconInventario },
+  { href: '/admin/nomina', label: 'Nómina', icon: IconNomina },
 ];
 
 const NAV_ADMIN: NavItem[] = [
@@ -321,7 +331,7 @@ function SidebarContenido({
           onClick={onCerrarSesion}
           title={colapsado ? 'Cerrar sesión' : undefined}
           aria-label="Cerrar sesión"
-          className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-zinc-600 transition-colors hover:bg-red-50 hover:text-red-600 dark:text-zinc-400 dark:hover:bg-red-950/30 ${
+          className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-zinc-600 transition-colors hover:bg-red-50 hover:text-red-600 dark:text-zinc-400 dark:hover:bg-red-950/30 dark:hover:text-red-400 ${
             colapsado ? 'justify-center' : ''
           }`}
         >
