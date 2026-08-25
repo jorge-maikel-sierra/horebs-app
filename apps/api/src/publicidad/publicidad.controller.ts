@@ -5,11 +5,11 @@ import { MetaAdsSnapshotService } from './meta-ads-snapshot.service';
 
 @Controller('publicidad')
 @UseGuards(RolesGuard)
-@Roles('admin')
 export class PublicidadController {
   constructor(private readonly snapshots: MetaAdsSnapshotService) {}
 
   @Get('meta-ads')
+  @Roles('admin')
   async obtener() {
     const snapshot = await this.snapshots.obtenerUltimoSnapshot();
     if (!snapshot) {
@@ -19,6 +19,7 @@ export class PublicidadController {
   }
 
   @Post('meta-ads/refrescar')
+  @Roles('admin')
   async refrescar() {
     await this.snapshots.ejecutar();
     const snapshot = await this.snapshots.obtenerUltimoSnapshot();
