@@ -44,6 +44,43 @@ type InformeDto = {
   };
 };
 
+type PublicidadCampana = {
+  campana_id: string;
+  nombre: string;
+  estado: string;
+  presupuesto_diario: number | null;
+  presupuesto_total: number | null;
+  gasto_hoy: number;
+  clics_hoy: number;
+  cpc_hoy: number | null;
+  ctr_hoy: number | null;
+};
+
+type PublicidadMetaAdsDto = {
+  capturado_en: string;
+  moneda: string;
+  cuenta: {
+    gasto_hoy: number;
+    impresiones_hoy: number;
+    clics_hoy: number;
+    cpc_hoy: number | null;
+    cpm_hoy: number | null;
+    ctr_hoy: number | null;
+    compras_hoy: number;
+    valor_compras_hoy: number;
+    roas_hoy: number | null;
+    presupuesto_diario_total: number;
+  };
+  serie_ultimos_7_dias: { fecha: string; gasto: number }[];
+  campanas: PublicidadCampana[];
+  comparacion_hoy: {
+    gasto_meta: number;
+    ventas_reales_hoy: number;
+    compras_atribuidas_meta: number;
+    valor_compras_atribuidas_meta: number;
+  };
+};
+
 type RangoPreset = 'hoy' | '7dias' | 'mes' | 'mes_pasado' | 'anio' | 'personalizado';
 
 const PRESETS: { key: RangoPreset; label: string }[] = [
@@ -190,6 +227,43 @@ function IconClienteRecurrente() {
       <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" />
       <path d="M17 8a3 3 0 1 1-1 5.8" />
       <path d="M20 8v3h-3" />
+    </svg>
+  );
+}
+
+function IconMegafono() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 11v2a2 2 0 0 0 2 2h1l3 5V4l-3 5H5a2 2 0 0 0-2 2Z" />
+      <path d="M14 7a5 5 0 0 1 0 10M18 4a9 9 0 0 1 0 16" />
+    </svg>
+  );
+}
+
+function IconObjetivo() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="5" />
+      <circle cx="12" cy="12" r="1" />
+    </svg>
+  );
+}
+
+function IconClic() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 4v2M4 9H2M9 20v2M20 9h2M5.6 5.6l1.4 1.4M18.4 5.6 17 7" />
+      <path d="M11 11 21 15l-4 1.5L15 21l-4-10Z" />
+    </svg>
+  );
+}
+
+function IconOjo() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+      <circle cx="12" cy="12" r="3" />
     </svg>
   );
 }
@@ -466,6 +540,84 @@ function ListaCategorias({ categorias }: { categorias: InformeCategoria[] }) {
   );
 }
 
+function GraficoGastoPublicidad({ datos }: { datos: { fecha: string; gasto: number }[] }) {
+  const max = Math.max(1, ...datos.map((d) => d.gasto));
+  return (
+    <div className="flex items-end gap-1 overflow-x-auto pt-8 pb-1" style={{ minHeight: ALTURA_GRAFICO + 28 }}>
+      {datos.map((d) => (
+        <div key={d.fecha} className="group relative flex min-w-[22px] flex-1 flex-col items-center justify-end">
+          <div className="pointer-events-none absolute -top-7 z-10 hidden rounded-md bg-zinc-900 px-2 py-1 text-[11px] font-semibold whitespace-nowrap text-white group-hover:block dark:bg-zinc-100 dark:text-zinc-900">
+            {formatPrecio(d.gasto)}
+          </div>
+          <div
+            className="w-full max-w-8 rounded-t-md"
+            style={{
+              height: Math.max((d.gasto / max) * ALTURA_GRAFICO, 3),
+              backgroundImage:
+                'linear-gradient(180deg, var(--brand-navy), color-mix(in srgb, var(--brand-navy) 55%, white))',
+            }}
+          />
+          <span className="mt-1.5 text-[10px] whitespace-nowrap text-zinc-500 dark:text-zinc-400">
+            {formatDiaCorto(d.fecha)}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const ESTADO_CAMPANA_LABEL: Record<string, string> = {
+  ACTIVE: 'Activa',
+  PAUSED: 'Pausada',
+};
+
+function EstadoCampanaBadge({ estado }: { estado: string }) {
+  const activa = estado === 'ACTIVE';
+  return (
+    <span
+      className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium ${
+        activa
+          ? 'bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-400'
+          : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-900 dark:text-zinc-500'
+      }`}
+    >
+      <span className={`h-1.5 w-1.5 rounded-full ${activa ? 'bg-green-600 dark:bg-green-400' : 'bg-zinc-400 dark:bg-zinc-500'}`} />
+      {ESTADO_CAMPANA_LABEL[estado] ?? estado}
+    </span>
+  );
+}
+
+function ListaCampanasPublicidad({ campanas }: { campanas: PublicidadCampana[] }) {
+  if (campanas.length === 0) {
+    return <p className="text-sm text-zinc-500 dark:text-zinc-400">Sin campañas activas.</p>;
+  }
+  const max = Math.max(1, ...campanas.map((c) => c.gasto_hoy));
+  return (
+    <ul className="space-y-3">
+      {campanas.map((c) => (
+        <li key={c.campana_id}>
+          <div className="flex items-center justify-between gap-2 text-sm">
+            <span className="flex min-w-0 items-center gap-2">
+              <span className="truncate font-medium text-zinc-700 dark:text-zinc-300">{c.nombre}</span>
+              <EstadoCampanaBadge estado={c.estado} />
+            </span>
+            <span className="shrink-0 font-semibold text-zinc-900 dark:text-zinc-50">
+              {formatPrecio(c.gasto_hoy)}
+            </span>
+          </div>
+          <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+            <div className="btn-gradient h-full rounded-full" style={{ width: `${(c.gasto_hoy / max) * 100}%` }} />
+          </div>
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">
+            Presupuesto diario {c.presupuesto_diario != null ? formatPrecio(c.presupuesto_diario) : '—'} · CTR{' '}
+            {c.ctr_hoy != null ? `${c.ctr_hoy.toFixed(2)}%` : '—'}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function Panel({
   titulo,
   subtitulo,
@@ -498,6 +650,10 @@ export default function InformesPage() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [publicidad, setPublicidad] = useState<PublicidadMetaAdsDto | null>(null);
+  const [cargandoPublicidad, setCargandoPublicidad] = useState(true);
+  const [publicidadDisponible, setPublicidadDisponible] = useState(true);
+
   const cargar = useCallback((d: string, h: string) => {
     setCargando(true);
     setError(null);
@@ -521,6 +677,45 @@ export default function InformesPage() {
     setHasta(rango.hasta);
     cargar(rango.desde, rango.hasta);
   }, [cargar]);
+
+  // Independiente del selector de fechas de arriba a propósito: siempre
+  // muestra "hoy" + la tendencia de los últimos 7 días guardados por el
+  // cron horario, no el rango arbitrario que elija el usuario.
+  const cargarPublicidad = useCallback(() => {
+    setCargandoPublicidad(true);
+    adminFetch('/publicidad/meta-ads')
+      .then(async (res) => {
+        if (res.status === 404) {
+          setPublicidadDisponible(false);
+          setPublicidad(null);
+          return;
+        }
+        if (!res.ok) throw new Error('No se pudo cargar la publicidad.');
+        setPublicidadDisponible(true);
+        setPublicidad(await res.json());
+      })
+      .catch(() => setPublicidadDisponible(false))
+      .finally(() => setCargandoPublicidad(false));
+  }, []);
+
+  useEffect(() => {
+    cargarPublicidad();
+  }, [cargarPublicidad]);
+
+  const [actualizandoPublicidad, setActualizandoPublicidad] = useState(false);
+
+  async function actualizarPublicidadAhora() {
+    setActualizandoPublicidad(true);
+    try {
+      const res = await adminFetch('/publicidad/meta-ads/refrescar', { method: 'POST' });
+      if (res.ok) {
+        setPublicidadDisponible(true);
+        setPublicidad(await res.json());
+      }
+    } finally {
+      setActualizandoPublicidad(false);
+    }
+  }
 
   function aplicarPreset(p: RangoPreset) {
     setPreset(p);
@@ -589,7 +784,7 @@ export default function InformesPage() {
       </div>
 
       {cargando && <CargandoSkeleton filas={8} />}
-      {error && <p className="mt-8 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-8 text-sm text-red-600 dark:text-red-400">{error}</p>}
 
       {!cargando && !error && informe && r && (
         <>
@@ -701,6 +896,103 @@ export default function InformesPage() {
               subtitulo="Ranking por total comprado en el período"
             >
               <ListaTopClientes clientes={informe.clientes.top_clientes} />
+            </Panel>
+          </div>
+        </>
+      )}
+
+      <div className="mt-8 flex items-center justify-between gap-3">
+        <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">Publicidad</h2>
+        {publicidadDisponible && (
+          <button
+            type="button"
+            onClick={actualizarPublicidadAhora}
+            disabled={actualizandoPublicidad}
+            className="btn-press rounded-xl border border-zinc-300 px-3.5 py-1.5 text-sm font-semibold text-zinc-600 shadow-sm transition-colors hover:border-brand-orange hover:text-brand-orange disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300"
+          >
+            {actualizandoPublicidad ? 'Actualizando…' : 'Actualizar ahora'}
+          </button>
+        )}
+      </div>
+      <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+        Cuenta de Meta Ads completa — gasto de hoy, se refresca solo cada hora.
+      </p>
+
+      {cargandoPublicidad && <CargandoSkeleton filas={4} />}
+
+      {!cargandoPublicidad && !publicidadDisponible && (
+        <p className="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
+          Todavía no hay datos de Meta Ads capturados — verificá que las credenciales estén
+          configuradas o esperá a que corra el próximo refresco horario.
+        </p>
+      )}
+
+      {!cargandoPublicidad && publicidadDisponible && publicidad && (
+        <>
+          <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <TarjetaMetrica icon={IconMegafono} label="Gasto hoy" valor={formatPrecio(publicidad.cuenta.gasto_hoy)} />
+            <TarjetaMetrica
+              icon={IconObjetivo}
+              label="Presupuesto diario"
+              valor={formatPrecio(publicidad.cuenta.presupuesto_diario_total)}
+            />
+            <TarjetaMetrica
+              icon={IconClic}
+              label="CPC"
+              valor={publicidad.cuenta.cpc_hoy != null ? formatPrecio(publicidad.cuenta.cpc_hoy) : '—'}
+            />
+            <TarjetaMetrica
+              icon={IconOjo}
+              label="CPM"
+              valor={publicidad.cuenta.cpm_hoy != null ? formatPrecio(publicidad.cuenta.cpm_hoy) : '—'}
+            />
+            <TarjetaMetrica
+              icon={IconTendencia}
+              label="CTR"
+              valor={publicidad.cuenta.ctr_hoy != null ? `${publicidad.cuenta.ctr_hoy.toFixed(2)}%` : '—'}
+            />
+            <TarjetaMetrica
+              icon={IconTendencia}
+              label="ROAS"
+              valor={publicidad.cuenta.roas_hoy != null ? `${publicidad.cuenta.roas_hoy.toFixed(2)}x` : '—'}
+            />
+          </div>
+
+          <div className="mt-4">
+            <Panel titulo="Gasto vs Ventas de hoy">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <p className="text-xs font-semibold tracking-wide text-zinc-400 uppercase dark:text-zinc-500">
+                    Gasto en anuncios (Meta)
+                  </p>
+                  <p className="mt-1 text-2xl font-bold tabular-nums text-zinc-900 dark:text-zinc-50">
+                    {formatPrecio(publicidad.comparacion_hoy.gasto_meta)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold tracking-wide text-zinc-400 uppercase dark:text-zinc-500">
+                    Ventas reales de hoy
+                  </p>
+                  <p className="mt-1 text-2xl font-bold tabular-nums text-zinc-900 dark:text-zinc-50">
+                    {formatPrecio(publicidad.comparacion_hoy.ventas_reales_hoy)}
+                  </p>
+                </div>
+              </div>
+              <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
+                Meta se autoatribuye {publicidad.comparacion_hoy.compras_atribuidas_meta} compra
+                {publicidad.comparacion_hoy.compras_atribuidas_meta === 1 ? '' : 's'} por{' '}
+                {formatPrecio(publicidad.comparacion_hoy.valor_compras_atribuidas_meta)} y puede sobrecontar — el
+                número de ventas reales viene de nuestros pedidos registrados, no de Meta.
+              </p>
+            </Panel>
+          </div>
+
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            <Panel titulo="Campañas activas">
+              <ListaCampanasPublicidad campanas={publicidad.campanas} />
+            </Panel>
+            <Panel titulo="Gasto de los últimos 7 días">
+              <GraficoGastoPublicidad datos={publicidad.serie_ultimos_7_dias} />
             </Panel>
           </div>
         </>
