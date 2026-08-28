@@ -42,7 +42,10 @@ carrito y checkout en línea.
   opcional y está pendiente de decisión
 - Costo de domicilio: $5.000 (`COSTO_DOMICILIO_DEFAULT` en
   `apps/api/src/common/costos.ts`) — fijo en el checkout web, y valor
-  sugerido cuando el POS no especifica un costo manual
+  sugerido cuando el POS no especifica un costo manual. El domicilio
+  **nunca** es gratis salvo que se decida una promoción puntual explícita.
+- Tamaños de pizza y porciones que trae cada uno: Personal = 6 porciones,
+  Mediana = 8 porciones, Grande = 12 porciones
 - Descuento de la oferta de seguimiento por conversación abandonada: 10%
   (`DESCUENTO_OFERTA_PORCENTAJE` en `seguimiento.service.ts`) — se ofrece si
   el cliente no responde tras el recordatorio de las 3 horas

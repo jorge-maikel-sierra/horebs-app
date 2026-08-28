@@ -26,6 +26,11 @@ const DIRECCION = 'Carrera 7 # 17B - 66, Riohacha, La Guajira';
 const NOMBRE_NEGOCIO = 'Pizzería Horebs';
 const URL_CATALOGO = 'https://pizzeriahorebs.shop/catalogo';
 
+// Igual criterio que HORARIO/DIRECCION — dato real de CLAUDE.md, entregado
+// solo a través de obtener_tamanos_pizza. Antes no existía en ningún lado
+// del sistema, así que el modelo lo inventaba cuando le preguntaban.
+const TAMANOS_PIZZA = 'Personal: 6 porciones. Mediana: 8 porciones. Grande: 12 porciones.';
+
 // Tamaños y conectores no distinguen un producto de otro — se ignoran al
 // comparar. "pizza personal hawaiana" tiene que matchear "Pizza Hawaiana"
 // aunque la palabra de tamaño se meta en el medio.
@@ -53,7 +58,9 @@ function palabrasSignificativas(texto: string): string[] {
 const SYSTEM_INSTRUCTION = `Sos el asistente virtual de ${NOMBRE_NEGOCIO}, una pizzería en Riohacha, La Guajira, Colombia. Respondés por WhatsApp con un tono cercano, cálido y directo, como una persona real del equipo — no como un robot.
 
 Reglas estrictas:
-- Nunca inventes precios, productos, horarios ni el estado de un pedido. Para cualquiera de esos datos, usá siempre la herramienta correspondiente.
+- Nunca inventes precios, productos, horarios, tamaños/porciones ni el estado de un pedido. Para cualquiera de esos datos, usá siempre la herramienta correspondiente y copiá el dato TAL CUAL te lo devuelve — nunca lo redondees, resumas ni cambies de memoria, aunque te "suene" distinto a lo que dijiste antes en la misma conversación.
+- Si te preguntan cuántas porciones trae un tamaño (personal, mediana, grande), usá SIEMPRE obtener_tamanos_pizza — nunca respondas ese dato de memoria, es un error frecuente y grave.
+- El costo de domicilio SIEMPRE es el que te devuelve calcular_pedido, literal — nunca digas "el domicilio es gratis" ni lo redondees a $0 salvo que la herramienta lo devuelva exactamente en $0. Es un error grave que ya pasó antes: perdés plata real de la pizzería si lo regalás por error.
 - Si el cliente pide el menú, pregunta qué tienen, o pide opciones de una categoría (por ejemplo "qué pizzas tienen", "algo para tomar", "qué me recomendás"), usá mostrar_productos — manda hasta 3 tarjetas con foto, precio y un botón para agregar al pedido. NO listes productos ni precios vos en el mensaje, eso ya lo manda la herramienta.
 - Si el cliente pide ver el catálogo COMPLETO (por ejemplo "mandame el link", "quiero ver todo el menú"), usá enviar_link_catalogo en vez de mostrar_productos.
 - Si el cliente pregunta por un producto específico (por ejemplo "cuánto vale la pizza hawaiana", "tienen pizza margarita personal"), usá consultar_producto con el nombre de ese producto.
@@ -69,9 +76,8 @@ Cómo tomar un pedido (importante, seguí este orden):
 2. Preguntá si es para domicilio, para retirar, o para comer en el local. Si es domicilio, pedí la dirección.
 3. Antes de calcular el total, pedile el nombre COMPLETO (nombre y apellido) de quien hace el pedido — es obligatorio, no lo saltees aunque ya venga charlando hace rato. Si solo da un nombre, preguntale el apellido también.
 4. Cuando el cliente confirme que ya terminó de elegir todo y ya te dio su nombre completo, usá calcular_pedido con la lista completa de items, el nombre, el apellido, la modalidad (SOLO "domicilio", "retiro" o "local" — nunca metas la dirección ahí) y la dirección en el campo direccion si es domicilio — esa herramienta calcula el total real con los precios del catálogo, incluyendo el domicilio. NUNCA sumes los precios vos mismo ni inventes el costo del domicilio.
-5. Mostrale al cliente exactamente el resumen que te devuelve la herramienta (cliente, productos, domicilio si aplica, total) y preguntale cuál va a ser su método de pago (efectivo, transferencia o tarjeta).
-6. Apenas el cliente te diga el método de pago, usá derivar_a_humano para que una persona del equipo verifique y registre el pedido — no lo registrás vos, solo avisale al cliente que en breve alguien del equipo confirma todo.
-- No es necesario crear el pedido en el sistema — nunca prometas que el pedido "ya quedó registrado", decí que una persona del equipo lo va a confirmar.
+5. Copiá el resumen que te devuelve calcular_pedido PALABRA POR PALABRA en tu respuesta al cliente (cliente, productos, línea de domicilio con su costo, total) — no lo reescribas ni lo resumas con tus propias palabras, ni cambies ningún número. Después preguntale cuál va a ser su método de pago (efectivo, transferencia o tarjeta).
+6. Apenas el cliente te diga el método de pago, usá derivar_a_humano para que una persona del equipo verifique y registre el pedido. Tu último mensaje antes de derivar tiene que decir que una persona del equipo va a confirmar el pedido en breve — NUNCA digas "tu pedido ya quedó registrado", "ya fue registrado" ni nada que suene a confirmado, porque todavía no lo está.
 - El número de teléfono de contacto ya lo tenés (es el mismo WhatsApp desde el que te escribe) — no hace falta pedirlo aparte.`;
 
 const HERRAMIENTAS = [
@@ -175,6 +181,13 @@ const HERRAMIENTAS = [
   },
   {
     type: 'function',
+    name: 'obtener_tamanos_pizza',
+    description:
+      'Devuelve cuántas porciones trae cada tamaño de pizza (personal, mediana, grande). Usar siempre que pregunten por porciones o "para cuántos alcanza" — nunca responder ese dato de memoria.',
+    parameters: { type: 'object', properties: {} },
+  },
+  {
+    type: 'function',
     name: 'consultar_pedido',
     description:
       'Busca el estado del último pedido del cliente que está escribiendo, usando su número de teléfono.',
@@ -204,7 +217,9 @@ interface PasoModelOutput {
 interface RespuestaInteraction {
   id: string;
   status: 'completed' | 'requires_action';
-  steps: (PasoFunctionCall | PasoModelOutput | { type: string })[];
+  // Opcional de verdad — un response real en producción llegó sin este
+  // campo (API en beta), ver el uso con (respuesta.steps ?? []) abajo.
+  steps?: (PasoFunctionCall | PasoModelOutput | { type: string })[];
   // No documentados de forma estable en esta API en beta — se loguean si
   // vienen, para poder correlacionar un cambio de comportamiento con un
   // alias de modelo o un consumo de tokens puntual, sin depender de que
@@ -328,7 +343,12 @@ export class GeminiService {
     let derivadoEnEsteTurno = false;
 
     for (let turno = 0; turno < MAX_TURNOS_HERRAMIENTAS; turno++) {
-      const llamada = respuesta.steps.find(
+      // (respuesta.steps ?? []) — la Interactions API de Gemini está en
+      // beta y en algún response real llegó sin steps, tirando "Cannot
+      // read properties of undefined (reading 'find')" (visto en logs de
+      // producción); mejor tratarlo como "sin function_call" que romper
+      // la conversación con un error genérico.
+      const llamada = (respuesta.steps ?? []).find(
         (p): p is PasoFunctionCall => p.type === 'function_call',
       );
       if (!llamada || respuesta.status !== 'requires_action') break;
@@ -402,7 +422,7 @@ export class GeminiService {
           : ''),
     );
 
-    const salida = respuesta.steps.find(
+    const salida = (respuesta.steps ?? []).find(
       (p): p is PasoModelOutput => p.type === 'model_output',
     );
     return (
@@ -428,6 +448,8 @@ export class GeminiService {
           return await this.textoCalcularPedido(argumentos);
         case 'obtener_horario':
           return `Horario: ${HORARIO}\nDirección: ${DIRECCION}`;
+        case 'obtener_tamanos_pizza':
+          return TAMANOS_PIZZA;
         case 'consultar_pedido':
           return await this.textoPedido(telefono);
         case 'derivar_a_humano':
@@ -614,11 +636,11 @@ export class GeminiService {
     const total = subtotal + costoDomicilio;
 
     return [
-      'Resumen del pedido:',
+      'Resumen del pedido (copiá estos datos tal cual, no los cambies ni los redondees):',
       `Cliente: ${nombre} ${apellido}`,
       ...lineas,
       esDomicilio
-        ? `Domicilio a ${direccion ?? 'dirección sin especificar'}: $${costoDomicilio.toLocaleString('es-CO')}`
+        ? `Domicilio a ${direccion ?? 'dirección sin especificar'}: $${costoDomicilio.toLocaleString('es-CO')} (NO es gratis, cobrale este valor exacto)`
         : `Modalidad: ${modalidad || 'sin especificar'}`,
       `Total: $${total.toLocaleString('es-CO')}`,
     ].join('\n');
