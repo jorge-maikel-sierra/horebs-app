@@ -131,13 +131,13 @@ export class AdminController {
   }
 
   @Get('seguimiento/configuracion')
-  @Roles('admin')
+  @Roles('admin', 'empleado')
   obtenerConfiguracionSeguimiento() {
     return this.admin.obtenerConfiguracionSeguimiento();
   }
 
   @Patch('seguimiento/configuracion')
-  @Roles('admin')
+  @Roles('admin', 'empleado')
   actualizarConfiguracionSeguimiento(
     @Body() body: { recordatorio_minutos: number; oferta_minutos: number },
   ) {
@@ -148,18 +148,34 @@ export class AdminController {
   }
 
   @Get('seguimiento/conversaciones')
-  @Roles('admin')
+  @Roles('admin', 'empleado')
   listarConversacionesBot() {
     return this.admin.listarConversacionesBot();
   }
 
   @Patch('seguimiento/conversaciones/:id')
-  @Roles('admin')
+  @Roles('admin', 'empleado')
   actualizarEstadoConversacion(
     @Param('id') id: string,
     @Body() body: { estado: string },
   ) {
     return this.admin.actualizarEstadoConversacion(id, body.estado);
+  }
+
+  @Get('seguimiento/conversaciones/:id/mensajes')
+  @Roles('admin', 'empleado')
+  listarMensajesConversacion(@Param('id') id: string) {
+    return this.admin.listarMensajesConversacion(id);
+  }
+
+  @Post('seguimiento/conversaciones/:id/mensajes')
+  @Roles('admin', 'empleado')
+  enviarMensajeHumano(
+    @Param('id') id: string,
+    @Body() body: { texto: string },
+    @UsuarioActual() usuario: UsuarioAutenticado,
+  ) {
+    return this.admin.enviarMensajeHumano(id, body.texto, usuario.id);
   }
 
   @Get('blog')

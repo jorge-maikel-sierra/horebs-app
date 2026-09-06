@@ -1,11 +1,13 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import RequireRol from '@/components/RequireRol';
 import { adminFetch } from '@/lib/admin-fetch';
 import CargandoSkeleton from '@/components/CargandoSkeleton';
+import { useRol } from '@/lib/use-rol';
 
 type EstadoConversacion = 'bot' | 'derivado';
+type DireccionMensaje = 'entrante' | 'saliente_bot' | 'saliente_humano';
 
 type Conversacion = {
   id: string;
@@ -15,6 +17,15 @@ type Conversacion = {
   seguimiento_etapa: 'ninguna' | 'recordatorio_enviado' | 'oferta_enviada';
   seguimiento_enviado_en: string | null;
   ultima_interaccion: string;
+};
+
+type Mensaje = {
+  id: string;
+  conversacion_id: string;
+  direccion: DireccionMensaje;
+  texto: string;
+  autor_usuario_id: string | null;
+  created_at: string;
 };
 
 const ETIQUETA_ETAPA: Record<Conversacion['seguimiento_etapa'], string> = {
@@ -29,12 +40,58 @@ const ETIQUETA_CANAL: Record<Conversacion['canal'], string> = {
   instagram: 'Instagram',
 };
 
+// Bien por debajo del rate limit de 120 req/min de la API — cada callback
+// además chequea document.hidden y no dispara el fetch con la pestaña en
+// background.
+const INTERVALO_LISTA_MS = 15_000;
+const INTERVALO_HILO_MS = 5_000;
+
 function formatearFecha(iso: string) {
   return new Date(iso).toLocaleString('es-CO', {
     timeZone: 'America/Bogota',
     dateStyle: 'short',
     timeStyle: 'short',
   });
+}
+
+function formatearHora(iso: string) {
+  return new Date(iso).toLocaleString('es-CO', {
+    timeZone: 'America/Bogota',
+    timeStyle: 'short',
+  });
+}
+
+function IconEnviar() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M22 2 11 13" />
+      <path d="M22 2 15 22l-4-9-9-4 20-7Z" />
+    </svg>
+  );
+}
+
+function BadgeEstado({ estado }: { estado: EstadoConversacion }) {
+  if (estado === 'derivado') {
+    return (
+      <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
+        Derivado
+      </span>
+    );
+  }
+  return (
+    <span className="shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+      Bot
+    </span>
+  );
 }
 
 function ConfiguracionSeguimiento() {
@@ -123,91 +180,290 @@ function ConfiguracionSeguimiento() {
       >
         {guardando ? 'Guardando…' : 'Guardar'}
       </button>
-      {error && <p className="w-full text-sm text-red-600">{error}</p>}
+      {error && <p className="w-full text-sm text-red-600 dark:text-red-400">{error}</p>}
       {mensaje && <p className="w-full text-sm text-brand-orange">{mensaje}</p>}
     </form>
   );
 }
 
 function ListaConversaciones() {
-  const [conversaciones, setConversaciones] = useState<Conversacion[]>([]);
-  const [cargando, setCargando] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [guardandoId, setGuardandoId] = useState<string | null>(null);
+  const { session } = useRol();
+  const usuarioId = session?.user.id ?? null;
 
-  async function cargar() {
-    setCargando(true);
+  const [conversaciones, setConversaciones] = useState<Conversacion[]>([]);
+  const [cargandoLista, setCargandoLista] = useState(true);
+  const [errorLista, setErrorLista] = useState<string | null>(null);
+
+  const [seleccionadoId, setSeleccionadoId] = useState<string | null>(null);
+  const [mensajes, setMensajes] = useState<Mensaje[]>([]);
+  const [cargandoMensajes, setCargandoMensajes] = useState(false);
+  const [errorMensajes, setErrorMensajes] = useState<string | null>(null);
+
+  const [textoRespuesta, setTextoRespuesta] = useState('');
+  const [enviando, setEnviando] = useState(false);
+  const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
+  const [guardandoEstado, setGuardandoEstado] = useState(false);
+
+  const hiloRef = useRef<HTMLDivElement>(null);
+
+  async function cargarLista() {
     try {
       const res = await adminFetch('/admin/seguimiento/conversaciones');
       if (!res.ok) throw new Error('No se pudo cargar la lista.');
       setConversaciones(await res.json());
+      setErrorLista(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido.');
+      setErrorLista(err instanceof Error ? err.message : 'Error desconocido.');
     } finally {
-      setCargando(false);
+      setCargandoLista(false);
     }
   }
 
+  // Primera carga + refresco periódico de la lista — se pausa si la
+  // pestaña está en background para no gastar cupo del rate limit al
+  // pedo.
   useEffect(() => {
-    cargar();
+    cargarLista();
+    const id = setInterval(() => {
+      if (!document.hidden) cargarLista();
+    }, INTERVALO_LISTA_MS);
+    return () => clearInterval(id);
   }, []);
 
-  async function cambiarEstado(id: string, estado: EstadoConversacion) {
-    setGuardandoId(id);
+  async function cargarMensajes(conversacionId: string, mostrarCarga: boolean) {
+    if (mostrarCarga) setCargandoMensajes(true);
     try {
-      const res = await adminFetch(`/admin/seguimiento/conversaciones/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ estado }),
-      });
-      if (!res.ok) throw new Error('No se pudo actualizar el estado.');
-      await cargar();
+      const res = await adminFetch(
+        `/admin/seguimiento/conversaciones/${conversacionId}/mensajes`,
+      );
+      if (!res.ok) throw new Error('No se pudo cargar la conversación.');
+      setMensajes(await res.json());
+      setErrorMensajes(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido.');
+      setErrorMensajes(
+        err instanceof Error ? err.message : 'Error desconocido.',
+      );
     } finally {
-      setGuardandoId(null);
+      if (mostrarCarga) setCargandoMensajes(false);
     }
   }
 
-  if (cargando) return <CargandoSkeleton filas={4} />;
-  if (error) return <p className="text-sm text-red-600">{error}</p>;
-  if (conversaciones.length === 0) {
-    return (
-      <p className="text-sm text-zinc-500 dark:text-zinc-400">
-        Todavía no hay conversaciones con el bot.
-      </p>
-    );
+  // Un solo hilo abierto a la vez — al cambiar de conversación se limpia
+  // el intervalo anterior y arranca uno nuevo para la conversación actual.
+  useEffect(() => {
+    if (!seleccionadoId) return;
+    cargarMensajes(seleccionadoId, true);
+    const id = setInterval(() => {
+      if (!document.hidden) cargarMensajes(seleccionadoId, false);
+    }, INTERVALO_HILO_MS);
+    return () => clearInterval(id);
+  }, [seleccionadoId]);
+
+  useEffect(() => {
+    hiloRef.current?.scrollTo({ top: hiloRef.current.scrollHeight });
+  }, [mensajes]);
+
+  const seleccionado =
+    conversaciones.find((c) => c.id === seleccionadoId) ?? null;
+
+  async function cambiarEstado(estado: EstadoConversacion) {
+    if (!seleccionado) return;
+    setGuardandoEstado(true);
+    try {
+      const res = await adminFetch(
+        `/admin/seguimiento/conversaciones/${seleccionado.id}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify({ estado }),
+        },
+      );
+      if (!res.ok) throw new Error('No se pudo actualizar el estado.');
+      await cargarLista();
+    } catch (err) {
+      setErrorLista(err instanceof Error ? err.message : 'Error desconocido.');
+    } finally {
+      setGuardandoEstado(false);
+    }
+  }
+
+  async function enviarMensaje(e: FormEvent) {
+    e.preventDefault();
+    if (!seleccionado || !textoRespuesta.trim()) return;
+    setEnviando(true);
+    setErrorEnvio(null);
+    try {
+      const res = await adminFetch(
+        `/admin/seguimiento/conversaciones/${seleccionado.id}/mensajes`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ texto: textoRespuesta.trim() }),
+        },
+      );
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.message ?? 'No se pudo enviar el mensaje.');
+      }
+      setTextoRespuesta('');
+      await cargarMensajes(seleccionado.id, false);
+    } catch (err) {
+      setErrorEnvio(err instanceof Error ? err.message : 'No se pudo enviar.');
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  if (cargandoLista) return <CargandoSkeleton filas={4} />;
+  if (errorLista && conversaciones.length === 0) {
+    return <p className="text-sm text-red-600 dark:text-red-400">{errorLista}</p>;
   }
 
   return (
-    <ul className="space-y-2">
-      {conversaciones.map((c) => (
-        <li
-          key={c.id}
-          className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800"
-        >
-          <div className="min-w-0">
-            <p className="font-medium text-zinc-900 dark:text-zinc-50">
-              {ETIQUETA_CANAL[c.canal]} · {c.identificador_externo}
-            </p>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Última actividad: {formatearFecha(c.ultima_interaccion)} ·{' '}
-              {ETIQUETA_ETAPA[c.seguimiento_etapa]}
-            </p>
+    <div className="mt-3 grid gap-4 lg:grid-cols-[320px_1fr]">
+      {/* Columna izquierda: lista de conversaciones */}
+      <div className="max-h-[32rem] overflow-y-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
+        {conversaciones.length === 0 ? (
+          <p className="p-4 text-sm text-zinc-500 dark:text-zinc-400">
+            Todavía no hay conversaciones con el bot.
+          </p>
+        ) : (
+          <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
+            {conversaciones.map((c) => (
+              <li key={c.id}>
+                <button
+                  type="button"
+                  onClick={() => setSeleccionadoId(c.id)}
+                  className={`block w-full px-3 py-3 text-left transition-colors ${
+                    c.id === seleccionadoId
+                      ? 'bg-brand-orange/10 dark:bg-brand-orange/15'
+                      : 'hover:bg-zinc-50 dark:hover:bg-zinc-900'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                      {ETIQUETA_CANAL[c.canal]} · {c.identificador_externo}
+                    </p>
+                    <BadgeEstado estado={c.estado} />
+                  </div>
+                  <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                    {formatearFecha(c.ultima_interaccion)} ·{' '}
+                    {ETIQUETA_ETAPA[c.seguimiento_etapa]}
+                  </p>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* Columna derecha: hilo de la conversación seleccionada */}
+      <div className="flex min-h-[24rem] flex-col rounded-lg border border-zinc-200 dark:border-zinc-800">
+        {!seleccionado ? (
+          <div className="flex flex-1 items-center justify-center p-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
+            Elegí una conversación de la lista para ver el hilo de mensajes.
           </div>
-          <select
-            value={c.estado}
-            disabled={guardandoId === c.id}
-            onChange={(e) =>
-              cambiarEstado(c.id, e.target.value as EstadoConversacion)
-            }
-            className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm capitalize disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900"
-          >
-            <option value="bot">Bot respondiendo</option>
-            <option value="derivado">Derivado a humano</option>
-          </select>
-        </li>
-      ))}
-    </ul>
+        ) : (
+          <>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 p-3 dark:border-zinc-800">
+              <div className="min-w-0">
+                <p className="truncate font-medium text-zinc-900 dark:text-zinc-50">
+                  {ETIQUETA_CANAL[seleccionado.canal]} ·{' '}
+                  {seleccionado.identificador_externo}
+                </p>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  Última actividad: {formatearFecha(seleccionado.ultima_interaccion)}
+                </p>
+              </div>
+              <select
+                value={seleccionado.estado}
+                disabled={guardandoEstado}
+                onChange={(e) =>
+                  cambiarEstado(e.target.value as EstadoConversacion)
+                }
+                className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900"
+              >
+                <option value="bot">Bot respondiendo</option>
+                <option value="derivado">Derivado a humano</option>
+              </select>
+            </div>
+
+            <div ref={hiloRef} className="flex-1 space-y-2 overflow-y-auto p-3">
+              {cargandoMensajes ? (
+                <CargandoSkeleton filas={3} />
+              ) : errorMensajes ? (
+                <p className="text-sm text-red-600 dark:text-red-400">{errorMensajes}</p>
+              ) : mensajes.length === 0 ? (
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                  Todavía no hay mensajes en esta conversación.
+                </p>
+              ) : (
+                mensajes.map((m) => {
+                  const esEntrante = m.direccion === 'entrante';
+                  const etiqueta =
+                    m.direccion === 'entrante'
+                      ? 'Cliente'
+                      : m.direccion === 'saliente_bot'
+                        ? 'Bot'
+                        : m.autor_usuario_id === usuarioId
+                          ? 'Vos'
+                          : 'Equipo';
+                  return (
+                    <div
+                      key={m.id}
+                      className={`flex ${esEntrante ? 'justify-start' : 'justify-end'}`}
+                    >
+                      <div
+                        className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
+                          esEntrante
+                            ? 'bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-50'
+                            : 'bg-brand-orange/15 text-zinc-900 dark:bg-brand-orange/20 dark:text-zinc-50'
+                        }`}
+                      >
+                        <p className="mb-0.5 text-[10px] font-semibold tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
+                          {etiqueta} · {formatearHora(m.created_at)}
+                        </p>
+                        <p className="whitespace-pre-wrap">{m.texto}</p>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="border-t border-zinc-200 p-3 dark:border-zinc-800">
+              {seleccionado.estado !== 'derivado' ? (
+                <p className="rounded-md bg-zinc-50 px-3 py-2 text-xs text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400">
+                  El bot está atendiendo esta conversación — cambiá el estado
+                  a &quot;Derivado a humano&quot; para poder responder desde
+                  acá.
+                </p>
+              ) : (
+                <form onSubmit={enviarMensaje} className="flex items-end gap-2">
+                  <textarea
+                    value={textoRespuesta}
+                    onChange={(e) => setTextoRespuesta(e.target.value)}
+                    maxLength={4096}
+                    rows={2}
+                    placeholder="Escribí una respuesta…"
+                    className="flex-1 resize-none rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+                  />
+                  <button
+                    type="submit"
+                    disabled={enviando || !textoRespuesta.trim()}
+                    className="btn-press flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-orange text-white disabled:opacity-50"
+                    aria-label="Enviar mensaje"
+                  >
+                    <IconEnviar />
+                  </button>
+                </form>
+              )}
+              {errorEnvio && (
+                <p className="mt-2 text-xs text-red-600 dark:text-red-400">{errorEnvio}</p>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -235,12 +491,10 @@ function SeguimientoInterna() {
           Conversaciones
         </h2>
         <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-          Cambiar el estado acá resetea la memoria del bot y cualquier
-          seguimiento pendiente para esa conversación.
+          Elegí una conversación derivada para leer qué escribió el cliente y
+          responderle directamente desde acá.
         </p>
-        <div className="mt-3">
-          <ListaConversaciones />
-        </div>
+        <ListaConversaciones />
       </div>
     </div>
   );
@@ -248,7 +502,7 @@ function SeguimientoInterna() {
 
 export default function SeguimientoPage() {
   return (
-    <RequireRol roles={['admin']}>
+    <RequireRol roles={['admin', 'empleado']}>
       <SeguimientoInterna />
     </RequireRol>
   );

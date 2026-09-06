@@ -171,11 +171,11 @@ const NAV_GENERAL: NavItem[] = [
   { href: '/admin/clientes', label: 'Clientes', icon: IconClientes },
   { href: '/admin/inventario', label: 'Inventario', icon: IconInventario },
   { href: '/admin/nomina', label: 'Nómina', icon: IconNomina },
+  { href: '/admin/seguimiento', label: 'Seguimiento del bot', icon: IconSeguimiento },
 ];
 
 const NAV_ADMIN: NavItem[] = [
   { href: '/admin/informes', label: 'Informes', icon: IconInformes },
-  { href: '/admin/seguimiento', label: 'Seguimiento del bot', icon: IconSeguimiento },
   { href: '/admin/usuarios', label: 'Usuarios', icon: IconUsuarios },
   { href: '/admin/blog', label: 'Blog', icon: IconBlog },
   { href: '/admin/configuracion', label: 'Configuración', icon: IconConfig },

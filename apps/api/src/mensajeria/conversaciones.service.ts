@@ -20,6 +20,17 @@ export interface ConversacionCompleta {
   ultima_interaccion: string;
 }
 
+export type DireccionMensaje = 'entrante' | 'saliente_bot' | 'saliente_humano';
+
+export interface MensajeConversacion {
+  id: string;
+  conversacion_id: string;
+  direccion: DireccionMensaje;
+  texto: string;
+  autor_usuario_id: string | null;
+  created_at: string;
+}
+
 export interface ConfiguracionSeguimiento {
   recordatorioMinutos: number;
   ofertaMinutos: number;
@@ -90,11 +101,17 @@ export class ConversacionesService {
     if (error) throw error;
   }
 
+  /**
+   * Devuelve la fila completa (`.select().single()`) para que el caller
+   * tenga el `id` de la conversación sin una query extra — lo necesita
+   * `webhooks.service.ts` para persistir el mensaje entrante y decidir el
+   * corte por `estado==='derivado'` sin volver a consultar.
+   */
   async registrarInteraccion(
     canal: CanalMensajeria,
     identificadorExterno: string,
-  ): Promise<void> {
-    const { error } = await this.supabase
+  ): Promise<ConversacionCompleta> {
+    const { data, error } = await this.supabase
       .getClient()
       .from('conversaciones_bot')
       .upsert(
@@ -108,8 +125,13 @@ export class ConversacionesService {
           seguimiento_enviado_en: null,
         },
         { onConflict: 'canal,identificador_externo' },
-      );
+      )
+      .select(
+        'id, canal, identificador_externo, estado, seguimiento_etapa, seguimiento_enviado_en, ultima_interaccion',
+      )
+      .single();
     if (error) throw error;
+    return data;
   }
 
   /** Conversaciones sin resolver (nunca derivadas) sin actividad del
@@ -193,6 +215,58 @@ export class ConversacionesService {
         'id, canal, identificador_externo, estado, seguimiento_etapa, seguimiento_enviado_en, ultima_interaccion',
       )
       .order('ultima_interaccion', { ascending: false });
+    if (error) throw error;
+    return data ?? [];
+  }
+
+  /** Solo lo mínimo para que el endpoint de "enviar mensaje humano" resuelva
+   * a quién mandarle sin que el frontend tenga que conocer
+   * canal/identificador_externo. */
+  async obtenerPorId(id: string): Promise<ConversacionCompleta | null> {
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('conversaciones_bot')
+      .select(
+        'id, canal, identificador_externo, estado, seguimiento_etapa, seguimiento_enviado_en, ultima_interaccion',
+      )
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw error;
+    return data;
+  }
+
+  /** Persiste el texto de un mensaje (entrante del cliente, o saliente del
+   * bot/de un humano) — antes de esto no quedaba ningún registro del
+   * contenido de la conversación, solo metadatos de estado. */
+  async registrarMensaje(
+    conversacionId: string,
+    direccion: DireccionMensaje,
+    texto: string,
+    autorUsuarioId?: string,
+  ): Promise<MensajeConversacion> {
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('mensajes_conversacion')
+      .insert({
+        conversacion_id: conversacionId,
+        direccion,
+        texto,
+        autor_usuario_id: autorUsuarioId ?? null,
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
+
+  /** Hilo completo de una conversación, en orden cronológico. */
+  async listarMensajes(conversacionId: string): Promise<MensajeConversacion[]> {
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('mensajes_conversacion')
+      .select()
+      .eq('conversacion_id', conversacionId)
+      .order('created_at', { ascending: true });
     if (error) throw error;
     return data ?? [];
   }

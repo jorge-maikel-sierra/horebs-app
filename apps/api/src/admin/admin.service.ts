@@ -836,6 +836,47 @@ export class AdminService {
     return { id, estado };
   }
 
+  async listarMensajesConversacion(id: string) {
+    const conversacion = await this.conversaciones.obtenerPorId(id);
+    if (!conversacion) {
+      throw new NotFoundException('Conversación no encontrada.');
+    }
+    return this.conversaciones.listarMensajes(id);
+  }
+
+  /** Un admin/empleado le contesta directo a un cliente derivado — resuelve
+   * canal/identificador_externo sin que el frontend tenga que conocerlos,
+   * manda el mensaje real vía Graph API, y lo deja registrado como
+   * `saliente_humano` con quién lo mandó. */
+  async enviarMensajeHumano(id: string, texto: string, usuarioId: string) {
+    const textoLimpio = texto?.trim() ?? '';
+    if (!textoLimpio) {
+      throw new BadRequestException('El mensaje no puede estar vacío.');
+    }
+    if (textoLimpio.length > 4096) {
+      throw new BadRequestException(
+        'El mensaje no puede superar los 4096 caracteres.',
+      );
+    }
+
+    const conversacion = await this.conversaciones.obtenerPorId(id);
+    if (!conversacion) {
+      throw new NotFoundException('Conversación no encontrada.');
+    }
+
+    await this.metaGraph.enviarMensajeSesion(
+      conversacion.canal,
+      conversacion.identificador_externo,
+      textoLimpio,
+    );
+    return this.conversaciones.registrarMensaje(
+      id,
+      'saliente_humano',
+      textoLimpio,
+      usuarioId,
+    );
+  }
+
   async quitarRol(id: string): Promise<void> {
     const { error } = await this.supabase
       .getClient()

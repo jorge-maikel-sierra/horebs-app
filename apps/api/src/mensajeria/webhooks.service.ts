@@ -163,15 +163,19 @@ export class WebhooksService {
       );
     }
 
-    await this.conversaciones.registrarInteraccion(
+    const conversacion = await this.conversaciones.registrarInteraccion(
       evento.canal,
       evento.identificadorExterno,
     );
-    const estado = await this.conversaciones.obtenerEstado(
-      evento.canal,
-      evento.identificadorExterno,
+    // Se persiste el mensaje entrante ANTES del corte por `derivado` de
+    // abajo — si no, el mensaje del cliente se perdía por completo una vez
+    // que la conversación ya estaba en manos de una persona.
+    await this.conversaciones.registrarMensaje(
+      conversacion.id,
+      'entrante',
+      evento.texto,
     );
-    if (estado === 'derivado') {
+    if (conversacion.estado === 'derivado') {
       this.logger.log(
         `Conversación ya derivada a humano, no se auto-responde — canal=${evento.canal} id=${evento.identificadorExterno}`,
       );
@@ -183,12 +187,19 @@ export class WebhooksService {
       evento.identificadorExterno,
       evento.telefono,
       evento.texto,
+      conversacion.id,
     );
-    // null = la herramienta (ej. el botón de catálogo) ya mandó el mensaje.
+    // null = la herramienta (ej. el botón de catálogo) ya mandó el mensaje
+    // y ya lo dejó registrado ella misma (ver gemini.service.ts).
     if (respuesta === null) return;
     await this.metaGraph.enviarMensajeSesion(
       evento.canal,
       evento.identificadorExterno,
+      respuesta,
+    );
+    await this.conversaciones.registrarMensaje(
+      conversacion.id,
+      'saliente_bot',
       respuesta,
     );
   }

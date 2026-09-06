@@ -275,6 +275,7 @@ export class GeminiService {
     identificadorExterno: string,
     telefono: string | null,
     textoEntrante: string,
+    conversacionId: string,
   ): Promise<string | null> {
     if (!this.apiKey) {
       return 'En este momento no puedo responder automáticamente — escribí *humano* para que te atienda alguien del equipo.';
@@ -302,6 +303,7 @@ export class GeminiService {
         identificadorExterno,
         telefono,
         textoEntrante,
+        conversacionId,
       );
       return respuestaFinal === null
         ? null
@@ -324,6 +326,7 @@ export class GeminiService {
     identificadorExterno: string,
     telefono: string | null,
     textoEntrante: string,
+    conversacionId: string,
   ): Promise<string | null> {
     const interaccionPrevia =
       await this.conversaciones.obtenerUltimaInteraccionGemini(
@@ -354,10 +357,16 @@ export class GeminiService {
       if (!llamada || respuesta.status !== 'requires_action') break;
 
       if (llamada.name === 'enviar_link_catalogo') {
+        const textoCatalogo = `Mirá nuestro catálogo completo con fotos y precios acá: ${URL_CATALOGO}`;
         await this.metaGraph.enviarBotonCatalogo(
           canal,
           identificadorExterno,
           URL_CATALOGO,
+        );
+        await this.conversaciones.registrarMensaje(
+          conversacionId,
+          'saliente_bot',
+          textoCatalogo,
         );
         await this.conversaciones.guardarInteraccionGemini(
           canal,
@@ -369,11 +378,19 @@ export class GeminiService {
 
       if (llamada.name === 'mostrar_productos') {
         const consulta = String(llamada.arguments.consulta ?? '');
-        await this.enviarTarjetasProductos(
+        const tarjetas = await this.enviarTarjetasProductos(
           canal,
           identificadorExterno,
           consulta,
         );
+        if (tarjetas.length > 0) {
+          const textoTarjetas = `Productos mostrados: ${tarjetas.map((t) => t.nombre).join(', ')}`;
+          await this.conversaciones.registrarMensaje(
+            conversacionId,
+            'saliente_bot',
+            textoTarjetas,
+          );
+        }
         await this.conversaciones.guardarInteraccionGemini(
           canal,
           identificadorExterno,
@@ -513,9 +530,9 @@ export class GeminiService {
     canal: CanalMensajeria,
     identificadorExterno: string,
     consulta: string,
-  ): Promise<void> {
+  ): Promise<{ nombre: string }[]> {
     const productos = await this.catalog.getProductos();
-    if (productos.length === 0) return;
+    if (productos.length === 0) return [];
 
     const buscadas = palabrasSignificativas(consulta);
     let elegidos = productos;
@@ -548,6 +565,7 @@ export class GeminiService {
       identificadorExterno,
       tarjetas,
     );
+    return tarjetas.map((t) => ({ nombre: t.nombre }));
   }
 
   private async textoProducto(nombreBuscado: string): Promise<string> {
