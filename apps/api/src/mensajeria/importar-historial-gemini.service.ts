@@ -5,6 +5,10 @@ import { ConversacionesService, type DireccionMensaje } from './conversaciones.s
 
 const GEMINI_INTERACTIONS_URL =
   'https://generativelanguage.googleapis.com/v1beta/interactions';
+// Cada interaction es UN solo intercambio (no la conversación completa) y
+// encadena hacia atrás vía previous_interaction_id — hay que recorrer toda
+// la cadena. Techo defensivo por si algún día apareciera un ciclo raro.
+const MAX_SALTOS_CADENA = 200;
 
 interface PasoInteraction {
   type: string;
@@ -15,6 +19,7 @@ interface RespuestaInteraction {
   id: string;
   created?: string;
   updated?: string;
+  previous_interaction_id?: string | null;
   steps?: PasoInteraction[];
 }
 
@@ -24,6 +29,7 @@ export interface ResultadoImportacionConversacion {
   identificadorExterno: string;
   mensajesImportados: number;
   pasosOmitidos: number;
+  saltosCadena: number;
   omitida: 'ya_tenia_mensajes' | null;
   error: string | null;
 }
@@ -35,6 +41,12 @@ export interface ResultadoImportacionConversacion {
  * servicio trae ese historial hacia la base propia para las conversaciones
  * que todavía lo tienen — se borra apenas se usa una vez, no es una
  * funcionalidad permanente (ver admin.controller.ts).
+ *
+ * Cada interaction de Gemini representa UN solo intercambio (no la
+ * conversación entera) y apunta a la anterior vía `previous_interaction_id`
+ * — hay que recorrer toda la cadena hacia atrás hasta llegar a la primera
+ * (confirmado a mano contra la API real: el `gemini_interaction_id` guardado
+ * en `conversaciones_bot` es solo el último eslabón).
  */
 @Injectable()
 export class ImportarHistorialGeminiService {
@@ -72,6 +84,7 @@ export class ImportarHistorialGeminiService {
           identificadorExterno: fila.identificador_externo,
           mensajesImportados: 0,
           pasosOmitidos: 0,
+          saltosCadena: 0,
           omitida: null,
           error: (err as Error).message,
         });
@@ -81,6 +94,16 @@ export class ImportarHistorialGeminiService {
       }
     }
     return resultados;
+  }
+
+  private async obtenerInteraction(id: string): Promise<RespuestaInteraction> {
+    const res = await fetch(`${GEMINI_INTERACTIONS_URL}/${id}`, {
+      headers: { 'x-goog-api-key': this.apiKey as string },
+    });
+    if (!res.ok) {
+      throw new Error(`Gemini respondió ${res.status} para ${id}`);
+    }
+    return (await res.json()) as RespuestaInteraction;
   }
 
   private async importarUna(
@@ -107,51 +130,51 @@ export class ImportarHistorialGeminiService {
         identificadorExterno: fila.identificador_externo,
         mensajesImportados: 0,
         pasosOmitidos: 0,
+        saltosCadena: 0,
         omitida: 'ya_tenia_mensajes',
         error: null,
       };
     }
 
-    const res = await fetch(
-      `${GEMINI_INTERACTIONS_URL}/${fila.gemini_interaction_id}`,
-      { headers: { 'x-goog-api-key': this.apiKey as string } },
-    );
-    if (!res.ok) {
-      throw new Error(`Gemini respondió ${res.status} para ${fila.gemini_interaction_id}`);
-    }
-    const interaction = (await res.json()) as RespuestaInteraction;
-    const pasos = interaction.steps ?? [];
-
-    const inicio = interaction.created ? new Date(interaction.created) : null;
-    const fin = interaction.updated
-      ? new Date(interaction.updated)
-      : new Date(fila.ultima_interaccion);
-
-    const mensajes: { direccion: DireccionMensaje; texto: string; timestamp: Date }[] = [];
+    // Se recorre la cadena hacia atrás (más nueva -> más vieja). Cada
+    // eslabón visitado es más viejo que todo lo ya juntado, así que sus
+    // mensajes se anteponen — pero el orden DENTRO de un mismo eslabón
+    // (ej. user_input antes que model_output) se mantiene tal cual viene,
+    // nunca se invierte.
+    let mensajes: { direccion: DireccionMensaje; texto: string; timestamp: Date }[] = [];
     let pasosOmitidos = 0;
-    pasos.forEach((paso, indice) => {
-      const texto = (paso.content ?? [])
-        .filter((c) => c.type === 'text' && c.text)
-        .map((c) => c.text)
-        .join('\n')
-        .trim();
+    let saltosCadena = 0;
+    let cursor: string | null = fila.gemini_interaction_id;
 
-      let direccion: DireccionMensaje | null = null;
-      if (paso.type === 'user_input') direccion = 'entrante';
-      else if (paso.type === 'model_output') direccion = 'saliente_bot';
+    while (cursor && saltosCadena < MAX_SALTOS_CADENA) {
+      const interaction = await this.obtenerInteraction(cursor);
+      saltosCadena += 1;
+      const timestamp = interaction.created
+        ? new Date(interaction.created)
+        : new Date(fila.ultima_interaccion);
 
-      if (!direccion || !texto) {
-        pasosOmitidos += 1;
-        return;
+      const mensajesDeEsteEslabon: { direccion: DireccionMensaje; texto: string; timestamp: Date }[] = [];
+      for (const paso of interaction.steps ?? []) {
+        const texto = (paso.content ?? [])
+          .filter((c) => c.type === 'text' && c.text)
+          .map((c) => c.text)
+          .join('\n')
+          .trim();
+
+        let direccion: DireccionMensaje | null = null;
+        if (paso.type === 'user_input') direccion = 'entrante';
+        else if (paso.type === 'model_output') direccion = 'saliente_bot';
+
+        if (!direccion || !texto) {
+          pasosOmitidos += 1;
+          continue;
+        }
+        mensajesDeEsteEslabon.push({ direccion, texto, timestamp });
       }
+      mensajes = [...mensajesDeEsteEslabon, ...mensajes];
 
-      const proporcion = pasos.length > 1 ? indice / (pasos.length - 1) : 0;
-      const timestamp =
-        inicio && fin
-          ? new Date(inicio.getTime() + (fin.getTime() - inicio.getTime()) * proporcion)
-          : fin;
-      mensajes.push({ direccion, texto, timestamp });
-    });
+      cursor = interaction.previous_interaction_id ?? null;
+    }
 
     if (!dryRun) {
       for (const mensaje of mensajes) {
@@ -170,6 +193,7 @@ export class ImportarHistorialGeminiService {
       identificadorExterno: fila.identificador_externo,
       mensajesImportados: mensajes.length,
       pasosOmitidos,
+      saltosCadena,
       omitida: null,
       error: null,
     };
