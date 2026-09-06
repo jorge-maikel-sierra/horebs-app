@@ -9,6 +9,7 @@ import { MailService } from '../mail/mail.service';
 import { InventarioService } from '../inventario/inventario.service';
 import { ConversacionesService } from '../mensajeria/conversaciones.service';
 import { MetaGraphService } from '../mensajeria/meta-graph.service';
+import { ImportarHistorialGeminiService } from '../mensajeria/importar-historial-gemini.service';
 import { FacturaService } from '../facturas/factura.service';
 import { PuntosService } from '../clientes/puntos.service';
 import { METODOS_PAGO, type MetodoPago } from '../common/metodos-pago';
@@ -158,6 +159,7 @@ export class AdminService {
     private readonly metaGraph: MetaGraphService,
     private readonly factura: FacturaService,
     private readonly puntos: PuntosService,
+    private readonly importarHistorial: ImportarHistorialGeminiService,
   ) {}
 
   private async revertirStockSeguro(
@@ -875,6 +877,11 @@ export class AdminService {
       textoLimpio,
       usuarioId,
     );
+  }
+
+  /** TEMPORAL — ver comentario en admin.controller.ts. */
+  importarHistorialGemini(dryRun: boolean) {
+    return this.importarHistorial.importarTodas(dryRun);
   }
 
   async quitarRol(id: string): Promise<void> {

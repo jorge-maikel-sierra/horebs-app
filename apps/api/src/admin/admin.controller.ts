@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Res,
   StreamableFile,
   UseGuards,
@@ -176,6 +177,16 @@ export class AdminController {
     @UsuarioActual() usuario: UsuarioAutenticado,
   ) {
     return this.admin.enviarMensajeHumano(id, body.texto, usuario.id);
+  }
+
+  // TEMPORAL — migración de una sola vez para traer el historial que había
+  // quedado solo del lado de Gemini antes de que existiera
+  // mensajes_conversacion. Borrar esta ruta (y ImportarHistorialGeminiService)
+  // una vez usada.
+  @Post('seguimiento/importar-historial-gemini')
+  @Roles('admin')
+  importarHistorialGemini(@Query('dryRun') dryRun?: string) {
+    return this.admin.importarHistorialGemini(dryRun === 'true');
   }
 
   @Get('blog')

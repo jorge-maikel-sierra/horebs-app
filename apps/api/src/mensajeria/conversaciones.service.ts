@@ -259,6 +259,31 @@ export class ConversacionesService {
     return data;
   }
 
+  /** Igual que `registrarMensaje`, pero con `created_at` explícito — solo
+   * para la importación de historial viejo desde Gemini (ver
+   * `importar-historial-gemini.service.ts`), donde el momento real del
+   * mensaje no es "ahora" sino una fecha pasada aproximada. */
+  async registrarMensajeConTimestamp(
+    conversacionId: string,
+    direccion: DireccionMensaje,
+    texto: string,
+    createdAt: Date,
+  ): Promise<MensajeConversacion> {
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('mensajes_conversacion')
+      .insert({
+        conversacion_id: conversacionId,
+        direccion,
+        texto,
+        created_at: createdAt.toISOString(),
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
+
   /** Hilo completo de una conversación, en orden cronológico. */
   async listarMensajes(conversacionId: string): Promise<MensajeConversacion[]> {
     const { data, error } = await this.supabase

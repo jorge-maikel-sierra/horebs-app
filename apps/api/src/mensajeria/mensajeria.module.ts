@@ -8,6 +8,7 @@ import { MetaGraphService } from './meta-graph.service';
 import { GeminiService } from './gemini.service';
 import { ConversacionesService } from './conversaciones.service';
 import { SeguimientoService } from './seguimiento.service';
+import { ImportarHistorialGeminiService } from './importar-historial-gemini.service';
 
 @Module({
   imports: [CatalogModule, PedidosModule, ScheduleModule.forRoot()],
@@ -18,7 +19,8 @@ import { SeguimientoService } from './seguimiento.service';
     GeminiService,
     ConversacionesService,
     SeguimientoService,
+    ImportarHistorialGeminiService,
   ],
-  exports: [ConversacionesService, MetaGraphService],
+  exports: [ConversacionesService, MetaGraphService, ImportarHistorialGeminiService],
 })
 export class MensajeriaModule {}
