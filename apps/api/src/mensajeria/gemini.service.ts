@@ -19,6 +19,19 @@ const LIMITE_MENSAJES_MAX = 40;
 // WhatsApp rechaza mensajes de más de 4096 caracteres.
 const MAX_LARGO_MENSAJE_WHATSAPP = 4096;
 
+/**
+ * El modelo tiene la instrucción de usar un solo asterisco (el formato real
+ * de WhatsApp), pero en la práctica sigue devolviendo negrita estilo
+ * Markdown (**texto**) y viñetas ("* texto") con bastante frecuencia — un
+ * "lite" no obedece esto de forma confiable solo con el prompt. Se corrige
+ * acá, determinístico, en vez de confiar en que el modelo lo haga bien.
+ */
+function formatearParaWhatsapp(texto: string): string {
+  return texto
+    .replace(/^[ \t]*\*[ \t]+/gm, '- ')
+    .replace(/\*\*(.+?)\*\*/g, '*$1*');
+}
+
 // Datos reales de CLAUDE.md — el modelo nunca los inventa, siempre los
 // recibe a través de la herramienta obtener_horario.
 const HORARIO = 'Lunes a domingo, 4:00pm – 11:00pm';
@@ -442,9 +455,9 @@ export class GeminiService {
     const salida = (respuesta.steps ?? []).find(
       (p): p is PasoModelOutput => p.type === 'model_output',
     );
-    return (
+    return formatearParaWhatsapp(
       salida?.content[0]?.text ??
-      'Perdón, no pude procesar tu mensaje. Escribí *humano* para hablar con alguien del equipo.'
+        'Perdón, no pude procesar tu mensaje. Escribí *humano* para hablar con alguien del equipo.',
     );
   }
 
