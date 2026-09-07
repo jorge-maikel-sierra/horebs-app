@@ -49,7 +49,14 @@ export function useRol(): EstadoRol {
     supabase.auth.getSession().then(({ data }) => cargar(data.session));
 
     const { data: subscripcion } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
+        // TOKEN_REFRESHED se dispara solo, sin cambio real de sesión, cada
+        // vez que la pestaña recupera el foco (comportamiento del SDK) — no
+        // debe forzar un remount de todo lo que usa RequireRol.
+        if (event === 'TOKEN_REFRESHED') {
+          setEstado((prev) => ({ ...prev, session }));
+          return;
+        }
         setEstado((prev) => ({ ...prev, cargando: true }));
         cargar(session);
       },
