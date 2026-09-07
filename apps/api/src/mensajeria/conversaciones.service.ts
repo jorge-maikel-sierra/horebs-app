@@ -6,6 +6,7 @@ export type EstadoConversacion = 'bot' | 'derivado';
 export type EtapaSeguimiento = 'ninguna' | 'recordatorio_enviado' | 'oferta_enviada';
 
 export interface ConversacionParaSeguimiento {
+  id: string;
   canal: CanalMensajeria;
   identificador_externo: string;
 }
@@ -144,7 +145,7 @@ export class ConversacionesService {
     const { data, error } = await this.supabase
       .getClient()
       .from('conversaciones_bot')
-      .select('canal, identificador_externo')
+      .select('id, canal, identificador_externo')
       .eq('estado', 'bot')
       .eq('seguimiento_etapa', 'ninguna')
       .lt('ultima_interaccion', limite);
@@ -162,7 +163,7 @@ export class ConversacionesService {
     const { data, error } = await this.supabase
       .getClient()
       .from('conversaciones_bot')
-      .select('canal, identificador_externo')
+      .select('id, canal, identificador_externo')
       .eq('estado', 'bot')
       .eq('seguimiento_etapa', 'recordatorio_enviado')
       .lt('seguimiento_enviado_en', limite);

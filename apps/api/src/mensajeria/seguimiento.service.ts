@@ -69,6 +69,7 @@ export class SeguimientoService {
     for (const c of candidatas) {
       try {
         await this.metaGraph.enviarMensajeSesion(c.canal, c.identificador_externo, TEXTO_RECORDATORIO);
+        await this.conversaciones.registrarMensaje(c.id, 'saliente_bot', TEXTO_RECORDATORIO);
         await this.conversaciones.marcarSeguimientoEnviado(
           c.canal,
           c.identificador_externo,
@@ -90,6 +91,7 @@ export class SeguimientoService {
     for (const c of candidatas) {
       try {
         await this.metaGraph.enviarMensajeSesion(c.canal, c.identificador_externo, TEXTO_OFERTA);
+        await this.conversaciones.registrarMensaje(c.id, 'saliente_bot', TEXTO_OFERTA);
         await this.conversaciones.marcarSeguimientoEnviado(
           c.canal,
           c.identificador_externo,
