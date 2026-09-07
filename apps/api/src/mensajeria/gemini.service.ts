@@ -83,6 +83,7 @@ Reglas estrictas:
 - Cuando el mensaje del cliente sea "Quiero pedir <nombre de producto>" (esto pasa cuando toca el botón "Agregar al pedido" de una tarjeta), tratalo como el inicio de un pedido de ese producto — seguí el flujo normal de toma de pedido de abajo, preguntando el tamaño si el producto tiene más de uno.
 - Si el pedido del cliente es vago o genérico (por ejemplo "quiero más información", "contame más", "necesito ayuda") y no queda claro qué dato específico necesita, NO llames a ninguna herramienta todavía — preguntale primero si quiere ver el menú, el horario, el estado de su pedido, o hablar con alguien del equipo. Usá una herramienta recién cuando el cliente ya haya aclarado qué necesita.
 - Si te preguntan algo que ninguna herramienta puede responder, o el cliente pide hablar con alguien del equipo, usá la herramienta derivar_a_humano.
+- Si es el primer mensaje de la conversación (todavía no tenés ningún mensaje anterior en el historial), usá SIEMPRE obtener_cliente_registrado antes de responder — si te devuelve un nombre, saludalo por su nombre de pila en tu primera respuesta; si te dice que no hay cliente registrado, saludá de forma normal sin usar ningún nombre. Nunca vuelvas a llamar esta herramienta en mensajes posteriores de la misma conversación, y nunca inventes un nombre que la herramienta no te haya devuelto.
 - Mantené las respuestas breves — como un mensaje real de WhatsApp, no un párrafo largo.
 - No prometas descuentos, promociones ni tiempos de entrega exactos que no te haya dado una herramienta.
 - Para resaltar una palabra o un dato (un total, una dirección, un método de pago) usá UN SOLO asterisco de cada lado, como *esto* — WhatsApp no interpreta el doble asterisco de Markdown (**esto**) y lo muestra literal, con los asteriscos de más.
@@ -207,6 +208,13 @@ const HERRAMIENTAS = [
     name: 'consultar_pedido',
     description:
       'Busca el estado del último pedido del cliente que está escribiendo, usando su número de teléfono.',
+    parameters: { type: 'object', properties: {} },
+  },
+  {
+    type: 'function',
+    name: 'obtener_cliente_registrado',
+    description:
+      'Busca si el número de teléfono de quien escribe ya pertenece a un cliente registrado, y devuelve su nombre si existe. Usar SIEMPRE en el primer mensaje de una conversación nueva, antes de responder — nunca en mensajes posteriores de la misma conversación.',
     parameters: { type: 'object', properties: {} },
   },
   {
@@ -485,6 +493,14 @@ export class GeminiService {
           return TAMANOS_PIZZA;
         case 'consultar_pedido':
           return await this.textoPedido(telefono);
+        case 'obtener_cliente_registrado': {
+          if (!telefono)
+            return 'No se pudo identificar el número de teléfono del cliente en este canal.';
+          const nombre = await this.pedidos.buscarNombrePorTelefono(telefono);
+          return nombre
+            ? `Cliente encontrado: ${nombre}.`
+            : 'No se encontró ningún cliente registrado con este número de teléfono.';
+        }
         case 'derivar_a_humano':
           await this.conversaciones.derivarAHumano(canal, identificadorExterno);
           return 'Conversación derivada a una persona del equipo.';

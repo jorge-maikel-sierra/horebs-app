@@ -381,6 +381,26 @@ export class PedidosService {
     }));
   }
 
+  /**
+   * Nombre del cliente registrado con este teléfono, o `null` si no existe
+   * — usado por el bot para saludar por nombre en el primer mensaje de una
+   * conversación nueva. Mismo criterio de normalización que
+   * `buscarPorTelefono`.
+   */
+  async buscarNombrePorTelefono(telefono: string): Promise<string | null> {
+    const local = normalizarTelefonoCO(telefono);
+    if (!local) return null;
+
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('clientes')
+      .select('nombre')
+      .eq('telefono', local)
+      .maybeSingle();
+    if (error) throw error;
+    return data?.nombre ?? null;
+  }
+
   private validar(input: CrearPedidoInput) {
     if (!input.cliente?.nombre?.trim()) {
       throw new BadRequestException('Falta el nombre del cliente.');
