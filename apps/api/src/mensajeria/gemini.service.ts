@@ -42,7 +42,10 @@ const URL_CATALOGO = 'https://pizzeriahorebs.shop/catalogo';
 // Igual criterio que HORARIO/DIRECCION — dato real de CLAUDE.md, entregado
 // solo a través de obtener_tamanos_pizza. Antes no existía en ningún lado
 // del sistema, así que el modelo lo inventaba cuando le preguntaban.
-const TAMANOS_PIZZA = 'Personal: 6 porciones. Mediana: 8 porciones. Grande: 12 porciones.';
+const TAMANOS_PIZZA =
+  'Personal: 6 porciones, 24 centímetros de diámetro. ' +
+  'Mediana: 8 porciones, 30 centímetros de diámetro. ' +
+  'Grande: 12 porciones, 40 centímetros de diámetro.';
 
 // Tamaños y conectores no distinguen un producto de otro — se ignoran al
 // comparar. "pizza personal hawaiana" tiene que matchear "Pizza Hawaiana"
@@ -72,7 +75,7 @@ const SYSTEM_INSTRUCTION = `Sos el asistente virtual de ${NOMBRE_NEGOCIO}, una p
 
 Reglas estrictas:
 - Nunca inventes precios, productos, horarios, tamaños/porciones ni el estado de un pedido. Para cualquiera de esos datos, usá siempre la herramienta correspondiente y copiá el dato TAL CUAL te lo devuelve — nunca lo redondees, resumas ni cambies de memoria, aunque te "suene" distinto a lo que dijiste antes en la misma conversación.
-- Si te preguntan cuántas porciones trae un tamaño (personal, mediana, grande), usá SIEMPRE obtener_tamanos_pizza — nunca respondas ese dato de memoria, es un error frecuente y grave.
+- Si te preguntan cuántas porciones trae un tamaño (personal, mediana, grande) o cuántos centímetros de diámetro mide, usá SIEMPRE obtener_tamanos_pizza — nunca respondas esos datos de memoria, es un error frecuente y grave.
 - El costo de domicilio SIEMPRE es el que te devuelve calcular_pedido, literal — nunca digas "el domicilio es gratis" ni lo redondees a $0 salvo que la herramienta lo devuelva exactamente en $0. Es un error grave que ya pasó antes: perdés plata real de la pizzería si lo regalás por error.
 - Si el cliente pide el menú, pregunta qué tienen, o pide opciones de una categoría (por ejemplo "qué pizzas tienen", "algo para tomar", "qué me recomendás"), usá mostrar_productos — manda hasta 3 tarjetas con foto, precio y un botón para agregar al pedido. NO listes productos ni precios vos en el mensaje, eso ya lo manda la herramienta.
 - Si el cliente pide ver el catálogo COMPLETO (por ejemplo "mandame el link", "quiero ver todo el menú"), usá enviar_link_catalogo en vez de mostrar_productos.
@@ -196,7 +199,7 @@ const HERRAMIENTAS = [
     type: 'function',
     name: 'obtener_tamanos_pizza',
     description:
-      'Devuelve cuántas porciones trae cada tamaño de pizza (personal, mediana, grande). Usar siempre que pregunten por porciones o "para cuántos alcanza" — nunca responder ese dato de memoria.',
+      'Devuelve cuántas porciones trae y cuántos centímetros de diámetro mide cada tamaño de pizza (personal, mediana, grande). Usar siempre que pregunten por porciones, "para cuántos alcanza", o el tamaño/diámetro en centímetros — nunca responder esos datos de memoria.',
     parameters: { type: 'object', properties: {} },
   },
   {
