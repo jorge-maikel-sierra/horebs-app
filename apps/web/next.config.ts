@@ -4,7 +4,12 @@ import type { NextConfig } from "next";
 // Si se agrega una integración nueva (otro storage, otro dominio de
 // imágenes, etc.) hay que sumarla acá o el navegador la va a bloquear.
 const SUPABASE_ORIGIN = 'https://afvwtoseszjpudelxywn.supabase.co';
-const API_ORIGIN = 'https://horebs-api-production.up.railway.app';
+// Misma variable que ya usa el resto del sitio para hablarle a la API
+// (apps/web/src/lib/admin-fetch.ts) — así, si el backend se migra de host
+// (Railway, otra cuenta, etc.), alcanza con cambiar NEXT_PUBLIC_API_URL en
+// Vercel, sin tocar código ni re-hardcodear esta URL de nuevo.
+const API_ORIGIN =
+  process.env.NEXT_PUBLIC_API_URL ?? 'https://horebs-api-production.up.railway.app';
 
 // Google Tag Manager y el Pixel de Facebook cargan su propio script desde
 // estos dominios. OJO: cualquier tag NUEVO que se agregue después desde la
