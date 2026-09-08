@@ -47,6 +47,15 @@ const TAMANOS_PIZZA =
   'Mediana: 8 porciones, 30 centímetros de diámetro. ' +
   'Grande: 12 porciones, 40 centímetros de diámetro.';
 
+// Mensaje fijo para cerrar la conversación recién al derivar — antes el
+// modelo componía su propio cierre y en producción llegó a decir "tu
+// pedido ya quedó registrado" con un tiempo de entrega inventado, sin
+// preguntar el método de pago ni derivar de verdad a un humano. Se le da
+// el texto exacto para copiar, mismo criterio que el resumen de
+// calcular_pedido.
+const MENSAJE_DERIVACION =
+  'Ya avisé al equipo — en breve una persona confirma tu pedido por acá mismo. ¡Gracias por tu paciencia!';
+
 // Tamaños y conectores no distinguen un producto de otro — se ignoran al
 // comparar. "pizza personal hawaiana" tiene que matchear "Pizza Hawaiana"
 // aunque la palabra de tamaño se meta en el medio.
@@ -79,7 +88,7 @@ Reglas estrictas:
 - El costo de domicilio SIEMPRE es el que te devuelve calcular_pedido, literal — nunca digas "el domicilio es gratis" ni lo redondees a $0 salvo que la herramienta lo devuelva exactamente en $0. Es un error grave que ya pasó antes: perdés plata real de la pizzería si lo regalás por error.
 - Si el cliente pide el menú, pregunta qué tienen, o pide opciones de una categoría (por ejemplo "qué pizzas tienen", "algo para tomar", "qué me recomendás"), usá mostrar_productos — manda hasta 3 tarjetas con foto, precio y un botón para agregar al pedido. NO listes productos ni precios vos en el mensaje, eso ya lo manda la herramienta.
 - Si el cliente pide ver el catálogo COMPLETO (por ejemplo "mandame el link", "quiero ver todo el menú"), usá enviar_link_catalogo en vez de mostrar_productos.
-- Si el cliente pregunta por un producto específico (por ejemplo "cuánto vale la pizza hawaiana", "tienen pizza margarita personal"), usá consultar_producto con el nombre de ese producto.
+- Si el cliente pregunta por un producto específico (por ejemplo "cuánto vale la pizza hawaiana", "tienen pizza margarita personal"), usá consultar_producto con el nombre de ese producto. Si la herramienta te dice que no lo encontró, decile simplemente que no tenemos ese producto en el menú y ofrecele el catálogo o mostrarle los productos disponibles — nunca le preguntes de qué local o pizzería está hablando, vos ya sabés que sos el asistente de Pizzería Horebs.
 - Cuando el mensaje del cliente sea "Quiero pedir <nombre de producto>" (esto pasa cuando toca el botón "Agregar al pedido" de una tarjeta), tratalo como el inicio de un pedido de ese producto — seguí el flujo normal de toma de pedido de abajo, preguntando el tamaño si el producto tiene más de uno.
 - Si el pedido del cliente es vago o genérico (por ejemplo "quiero más información", "contame más", "necesito ayuda") y no queda claro qué dato específico necesita, NO llames a ninguna herramienta todavía — preguntale primero si quiere ver el menú, el horario, el estado de su pedido, o hablar con alguien del equipo. Usá una herramienta recién cuando el cliente ya haya aclarado qué necesita.
 - Si te preguntan algo que ninguna herramienta puede responder, o el cliente pide hablar con alguien del equipo, usá la herramienta derivar_a_humano.
@@ -94,7 +103,7 @@ Cómo tomar un pedido (importante, seguí este orden):
 3. Antes de calcular el total, pedile el nombre COMPLETO (nombre y apellido) de quien hace el pedido — es obligatorio, no lo saltees aunque ya venga charlando hace rato. Si solo da un nombre, preguntale el apellido también.
 4. Cuando el cliente confirme que ya terminó de elegir todo y ya te dio su nombre completo, usá calcular_pedido con la lista completa de items, el nombre, el apellido, la modalidad (SOLO "domicilio", "retiro" o "local" — nunca metas la dirección ahí) y la dirección en el campo direccion si es domicilio — esa herramienta calcula el total real con los precios del catálogo, incluyendo el domicilio. NUNCA sumes los precios vos mismo ni inventes el costo del domicilio.
 5. Copiá el resumen que te devuelve calcular_pedido PALABRA POR PALABRA en tu respuesta al cliente (cliente, productos, línea de domicilio con su costo, total) — no lo reescribas ni lo resumas con tus propias palabras, ni cambies ningún número. Después preguntale cuál va a ser su método de pago (efectivo, transferencia o tarjeta).
-6. Apenas el cliente te diga el método de pago, usá derivar_a_humano para que una persona del equipo verifique y registre el pedido. Tu último mensaje antes de derivar tiene que decir que una persona del equipo va a confirmar el pedido en breve — NUNCA digas "tu pedido ya quedó registrado", "ya fue registrado" ni nada que suene a confirmado, porque todavía no lo está.
+6. Apenas el cliente te diga el método de pago, usá derivar_a_humano para que una persona del equipo verifique y registre el pedido — copiá el mensaje que te devuelve esa herramienta TAL CUAL, es el único cierre permitido. Es un error grave que ya pasó antes: un cliente real terminó pensando que su pedido ya estaba confirmado y listo para retirar en 20-30 minutos, sin que nadie del equipo se enterara, porque nunca se llamó a derivar_a_humano. NUNCA digas "tu pedido ya quedó registrado", "ya fue registrado", ni dés un tiempo de entrega o de recogida de tu propia cuenta — eso no lo sabés vos.
 - El número de teléfono de contacto ya lo tenés (es el mismo WhatsApp desde el que te escribe) — no hace falta pedirlo aparte.`;
 
 const HERRAMIENTAS = [
@@ -503,7 +512,7 @@ export class GeminiService {
         }
         case 'derivar_a_humano':
           await this.conversaciones.derivarAHumano(canal, identificadorExterno);
-          return 'Conversación derivada a una persona del equipo.';
+          return `Conversación derivada. Respondé al cliente con este mensaje EXACTO, sin cambiarlo ni agregar nada de "confirmado" o tiempos de entrega: "${MENSAJE_DERIVACION}"`;
         default:
           return 'Herramienta desconocida.';
       }
@@ -693,6 +702,12 @@ export class GeminiService {
         ? `Domicilio a ${direccion ?? 'dirección sin especificar'}: $${costoDomicilio.toLocaleString('es-CO')} (NO es gratis, cobrale este valor exacto)`
         : `Modalidad: ${modalidad || 'sin especificar'}`,
       `Total: $${total.toLocaleString('es-CO')}`,
+      // Refuerzo dentro del propio resultado de la herramienta — ya pasó
+      // en producción que el modelo, después de este resumen, saltó
+      // directo a decir "tu pedido ya quedó registrado" e inventó un
+      // tiempo de entrega, sin preguntar el método de pago ni derivar a
+      // un humano. Nadie del equipo se enteró de ese pedido.
+      '⚠️ Este pedido TODAVÍA NO está confirmado. Preguntale el método de pago (efectivo, transferencia o tarjeta) — recién cuando te lo diga, usá derivar_a_humano. Nunca digas "quedó registrado" ni nada que suene a confirmado, y nunca inventes un tiempo de entrega o de recogida, eso no lo sabés.',
     ].join('\n');
   }
 
