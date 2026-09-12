@@ -1,4 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CatalogService } from '../catalog/catalog.service';
 import { PedidosService } from '../pedidos/pedidos.service';
@@ -78,6 +82,14 @@ function palabrasSignificativas(texto: string): string[] {
   return normalizado
     .split(/[^a-z0-9]+/)
     .filter((w) => w.length > 1 && !PALABRAS_IGNORADAS.has(w));
+}
+
+// Mismo formato que espera el "to" de la Graph API (código de país sin "+",
+// ej. 573157861208) — PERSONAL_COCINA_WHATSAPP se carga en formato local
+// (3157861208), igual que se muestran los números acá en Colombia.
+function formatearNumeroWhatsappCO(numero: string): string {
+  const digitos = numero.replace(/\D/g, '');
+  return digitos.startsWith('57') ? digitos : `57${digitos}`;
 }
 
 const SYSTEM_INSTRUCTION = `Sos el asistente virtual de ${NOMBRE_NEGOCIO}, una pizzería en Riohacha, La Guajira, Colombia. Respondés por WhatsApp con un tono cercano, cálido y directo, como una persona real del equipo — no como un robot.
@@ -284,6 +296,7 @@ export class GeminiService {
   private readonly logger = new Logger(GeminiService.name);
   private readonly apiKey?: string;
   private readonly modelo: string;
+  private readonly numerosCocina: string[];
 
   constructor(
     private readonly config: ConfigService,
@@ -299,6 +312,13 @@ export class GeminiService {
         'GEMINI_API_KEY no configurada — el bot no puede responder.',
       );
     }
+    this.numerosCocina = (
+      this.config.get<string>('PERSONAL_COCINA_WHATSAPP') ?? ''
+    )
+      .split(',')
+      .map((n) => n.trim())
+      .filter(Boolean)
+      .map(formatearNumeroWhatsappCO);
   }
 
   /**
@@ -514,6 +534,7 @@ export class GeminiService {
         }
         case 'derivar_a_humano':
           await this.conversaciones.derivarAHumano(canal, identificadorExterno);
+          this.notificarEquipoDerivacion(canal, identificadorExterno);
           return `Conversación derivada. Respondé al cliente con este mensaje EXACTO, sin cambiarlo ni agregar nada de "confirmado" o tiempos de entrega: "${MENSAJE_DERIVACION}"`;
         default:
           return 'Herramienta desconocida.';
@@ -523,6 +544,29 @@ export class GeminiService {
         `Error ejecutando herramienta ${nombre}: ${(err as Error).message}`,
       );
       return 'No se pudo obtener esta información en este momento.';
+    }
+  }
+
+  /**
+   * Avisa al equipo de cocina por WhatsApp que hay un cliente derivado
+   * esperando contacto. Fire-and-forget a propósito, mismo patrón que
+   * MailService.enviarNotificacionDomicilio — si falla (ej. el número de
+   * cocina no le escribió al bot en las últimas 24h y Meta rechaza el
+   * mensaje de sesión), se loguea pero nunca rompe la derivación real al
+   * cliente, que ya quedó registrada.
+   */
+  private notificarEquipoDerivacion(
+    canal: CanalMensajeria,
+    identificadorExterno: string,
+  ): void {
+    if (this.numerosCocina.length === 0) return;
+    const texto = `🔔 Cliente derivado a un humano — canal: ${canal}, contacto: ${identificadorExterno}. Contactalo para confirmar su pedido.`;
+    for (const numero of this.numerosCocina) {
+      this.metaGraph.enviarMensajeSesion('whatsapp', numero, texto).catch((err) =>
+        this.logger.error(
+          `No se pudo notificar a cocina (${numero}) sobre la derivación: ${(err as Error).message}`,
+        ),
+      );
     }
   }
 
@@ -748,12 +792,16 @@ export class GeminiService {
       });
       if (!res.ok) {
         const detalle = await res.text();
-        throw new Error(`Gemini respondió ${res.status}: ${detalle}`);
+        throw new ServiceUnavailableException(
+          `Gemini respondió ${res.status}: ${detalle}`,
+        );
       }
       return await res.json();
     } catch (err) {
       if ((err as Error).name === 'AbortError') {
-        throw new Error(`Gemini no respondió en ${TIMEOUT_GEMINI_MS / 1000}s`);
+        throw new ServiceUnavailableException(
+          `Gemini no respondió en ${TIMEOUT_GEMINI_MS / 1000}s`,
+        );
       }
       throw err;
     } finally {
