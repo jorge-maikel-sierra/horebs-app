@@ -77,11 +77,15 @@ sospechoso por defecto en cualquier código nuevo que compare o agrupe fechas.
   `<RequireRol roles={['admin', 'empleado']}>` — cualquier página nueva bajo
   `/admin` hereda ese guard sin hacer nada. Una página solo necesita su
   propio `<RequireRol roles={['admin']}>` cuando exige un nivel más
-  estricto que el del layout (ver `configuracion`, `blog`, `usuarios`,
-  `seguimiento`); páginas de acceso general (`pos`, `inventario`,
-  `pedidos`) correctamente NO llevan wrapper propio — no es un guard
-  faltante, es composición con el layout. El guard redirige solo si no hay
-  sesión — no duplicar esa lógica a mano.
+  estricto que el del layout (ver `configuracion`, `blog`, `usuarios`);
+  páginas de acceso general (`pos`, `inventario`, `pedidos`, `seguimiento`,
+  `nomina`) correctamente NO llevan wrapper propio — no es un guard
+  faltante, es composición con el layout. `seguimiento` es `admin`+`empleado`
+  a propósito desde la bandeja de chat de conversaciones derivadas
+  (varios pueden atender el WhatsApp, no solo el dueño) — confirmado contra
+  los `@Roles(...)` reales de `admin.controller.ts`, no contra este
+  documento. El guard redirige solo si no hay sesión — no duplicar esa
+  lógica a mano.
 - Loading state: `<CargandoSkeleton filas={N} />`, no spinners custom.
 - Estilos: clases de marca ya definidas (`brand-orange`, `brand-navy`,
   `btn-gradient`, `card-gradient`). Sin librería de componentes pesada (no

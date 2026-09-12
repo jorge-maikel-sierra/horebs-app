@@ -487,7 +487,17 @@ function MiNomina() {
 }
 
 export default function NominaPage() {
-  const { rol } = useRol();
-  if (rol === 'admin') return <TableroAdmin />;
-  return <MiNomina />;
+  const { rol, cargando } = useRol();
+  // Esperar a que se resuelva el rol antes de elegir qué montar — decidir
+  // con rol todavía en null (valor inicial de useRol) montaba MiNomina
+  // primero y después lo reemplazaba por TableroAdmin apenas resolvía,
+  // duplicando el fetch y el parpadeo de carga para cualquier admin.
+  if (cargando) {
+    return (
+      <div className="p-8">
+        <CargandoSkeleton filas={3} />
+      </div>
+    );
+  }
+  return rol === 'admin' ? <TableroAdmin /> : <MiNomina />;
 }

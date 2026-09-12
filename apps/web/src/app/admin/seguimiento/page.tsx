@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import RequireRol from '@/components/RequireRol';
 import { adminFetch } from '@/lib/admin-fetch';
 import CargandoSkeleton from '@/components/CargandoSkeleton';
 import { useRol } from '@/lib/use-rol';
@@ -501,9 +500,5 @@ function SeguimientoInterna() {
 }
 
 export default function SeguimientoPage() {
-  return (
-    <RequireRol roles={['admin', 'empleado']}>
-      <SeguimientoInterna />
-    </RequireRol>
-  );
+  return <SeguimientoInterna />;
 }
