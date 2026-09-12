@@ -99,7 +99,9 @@ Reglas estrictas:
 - Si te preguntan cuántas porciones trae un tamaño (personal, mediana, grande) o cuántos centímetros de diámetro mide, usá SIEMPRE obtener_tamanos_pizza — nunca respondas esos datos de memoria, es un error frecuente y grave. Si el cliente pregunta por el diámetro directamente (por ejemplo "la de 40 cm", "la de 30"), es el mismo dato en otra unidad — traducilo vos: 24cm=personal, 30cm=mediana, 40cm=grande.
 - Cuando alguien pregunte por un tamaño (en cm, en porciones, o diciendo "la grande"/"la mediana") sin haber elegido todavía un producto puntual, no te quedes en el dato de tamaño solo — recomendale un producto real de ese tamaño con su precio, usando consultar_producto o mostrar_productos, para ayudarlo a decidir y avanzar hacia el pedido en vez de dejarlo con una respuesta genérica.
 - Pizzería Horebs tiene UNA sola sede — nunca le preguntes al cliente en qué local, sucursal o negocio quiere hacer su pedido, ni le des a elegir entre sedes. La modalidad "local" significa comer ahí mismo, en la única dirección del negocio.
-- El costo de domicilio SIEMPRE es el que te devuelve calcular_pedido, literal — nunca digas "el domicilio es gratis" ni lo redondees a $0 salvo que la herramienta lo devuelva exactamente en $0. Es un error grave que ya pasó antes: perdés plata real de la pizzería si lo regalás por error.
+- El costo de domicilio SIEMPRE es el que te devuelve una herramienta (obtener_horario si preguntan antes de armar un pedido, calcular_pedido si ya lo están armando), literal — nunca digas "el domicilio es gratis" ni lo redondees a $0 salvo que la herramienta lo devuelva exactamente en $0. Es un error grave que ya pasó antes: perdés plata real de la pizzería si lo regalás por error.
+- Si te preguntan cuánto cuesta el domicilio sin estar todavía armando un pedido, usá obtener_horario — ahí también viene ese dato real.
+- Si te preguntan qué otros productos venden, o qué tienen aparte de pizza, usá obtener_categorias para responder con las categorías reales del catálogo — nunca digas "solo vendemos pizza" de memoria, hoy también hay panzerotti y bebidas.
 - Si el cliente pide el menú, pregunta qué tienen, o pide opciones de una categoría (por ejemplo "qué pizzas tienen", "algo para tomar", "qué me recomendás"), usá mostrar_productos — manda hasta 3 tarjetas con foto, precio y un botón para agregar al pedido. NO listes productos ni precios vos en el mensaje, eso ya lo manda la herramienta.
 - El objetivo de la conversación es cerrar la venta ahí mismo, sin que el cliente tenga que salir de WhatsApp — nunca uses enviar_link_catalogo como respuesta por defecto ni como forma de evitar recomendar algo vos mismo. Usala ÚNICA Y EXCLUSIVAMENTE cuando el cliente pida el link completo de forma explícita (por ejemplo "mandame el link", "quiero ver todo el menú"); en cualquier otro caso preferí mostrar_productos o consultar_producto y seguí guiándolo hacia terminar el pedido en el chat.
 - Si el cliente pregunta por un producto específico (por ejemplo "cuánto vale la pizza hawaiana", "tienen pizza margarita personal"), usá consultar_producto con el nombre de ese producto. Si la herramienta te dice que no lo encontró, decile simplemente que no tenemos ese producto en el menú y ofrecele el catálogo o mostrarle los productos disponibles — nunca le preguntes de qué local o pizzería está hablando, vos ya sabés que sos el asistente de Pizzería Horebs.
@@ -216,7 +218,15 @@ const HERRAMIENTAS = [
   {
     type: 'function',
     name: 'obtener_horario',
-    description: 'Devuelve el horario de atención y la dirección del local.',
+    description:
+      'Devuelve el horario de atención, la dirección del local, y el costo de domicilio. Usar también cuando pregunten cuánto cuesta el domicilio sin estar todavía armando un pedido.',
+    parameters: { type: 'object', properties: {} },
+  },
+  {
+    type: 'function',
+    name: 'obtener_categorias',
+    description:
+      'Devuelve las categorías de productos que vende el negocio (ej. Pizza, Panzerotti, Bebidas). Usar cuando pregunten qué otros productos venden, o qué tienen aparte de pizza.',
     parameters: { type: 'object', properties: {} },
   },
   {
@@ -519,7 +529,9 @@ export class GeminiService {
         case 'calcular_pedido':
           return await this.textoCalcularPedido(argumentos);
         case 'obtener_horario':
-          return `Horario: ${HORARIO}\nDirección: ${DIRECCION}`;
+          return `Horario: ${HORARIO}\nDirección: ${DIRECCION}\nCosto de domicilio: $${COSTO_DOMICILIO_DEFAULT.toLocaleString('es-CO')}`;
+        case 'obtener_categorias':
+          return await this.textoCategorias();
         case 'obtener_tamanos_pizza':
           return TAMANOS_PIZZA;
         case 'consultar_pedido':
@@ -653,6 +665,15 @@ export class GeminiService {
       tarjetas,
     );
     return tarjetas.map((t) => ({ nombre: t.nombre }));
+  }
+
+  private async textoCategorias(): Promise<string> {
+    const categorias = await this.catalog.getCategorias();
+    if (categorias.length === 0) {
+      return 'No se pudo obtener la lista de categorías en este momento.';
+    }
+    const nombres = categorias.map((c) => c.nombre).join(', ');
+    return `Vendemos: ${nombres}.`;
   }
 
   private async textoProducto(nombreBuscado: string): Promise<string> {
