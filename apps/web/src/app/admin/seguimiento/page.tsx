@@ -319,7 +319,7 @@ function ListaConversaciones() {
   return (
     <div className="mt-3 grid gap-4 lg:grid-cols-[320px_1fr]">
       {/* Columna izquierda: lista de conversaciones */}
-      <div className="max-h-[32rem] overflow-y-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
+      <div className="h-[calc(100vh-16rem)] min-h-[28rem] overflow-y-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
         {conversaciones.length === 0 ? (
           <p className="p-4 text-sm text-zinc-500 dark:text-zinc-400">
             Todavía no hay conversaciones con el bot.
@@ -355,7 +355,7 @@ function ListaConversaciones() {
       </div>
 
       {/* Columna derecha: hilo de la conversación seleccionada */}
-      <div className="flex h-[32rem] flex-col rounded-lg border border-zinc-200 dark:border-zinc-800">
+      <div className="flex h-[calc(100vh-16rem)] min-h-[28rem] flex-col rounded-lg border border-zinc-200 dark:border-zinc-800">
         {!seleccionado ? (
           <div className="flex flex-1 items-center justify-center p-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
             Elegí una conversación de la lista para ver el hilo de mensajes.
@@ -466,26 +466,59 @@ function ListaConversaciones() {
   );
 }
 
+function ModalConfiguracion({ onCerrar }: { onCerrar: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="animate-fade-in absolute inset-0" onClick={onCerrar} />
+      <div className="animate-fade-up relative w-full max-w-lg rounded-lg bg-white p-6 dark:bg-zinc-900">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+            Tiempos de seguimiento
+          </h2>
+          <button
+            type="button"
+            onClick={onCerrar}
+            aria-label="Cerrar"
+            className="text-xl leading-none text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+          >
+            ×
+          </button>
+        </div>
+        <div className="mt-4">
+          <ConfiguracionSeguimiento />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SeguimientoInterna() {
+  const [configAbierta, setConfigAbierta] = useState(false);
+
   return (
     <div className="p-8">
-      <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-        Seguimiento del bot
-      </h1>
-      <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-        Cuando un cliente habla con el bot y no llega a confirmar el pedido,
-        se le manda un recordatorio y, si sigue sin responder, una oferta —
-        ambos dentro de la ventana gratis de 24h de WhatsApp.
-      </p>
-
-      <div className="mt-6 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-          Tiempos
-        </h2>
-        <ConfiguracionSeguimiento />
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+            Seguimiento del bot
+          </h1>
+          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+            Cuando un cliente habla con el bot y no llega a confirmar el
+            pedido, se le manda un recordatorio y, si sigue sin responder,
+            una oferta — ambos dentro de la ventana gratis de 24h de
+            WhatsApp.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setConfigAbierta(true)}
+          className="shrink-0 rounded-lg border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+        >
+          Configurar tiempos
+        </button>
       </div>
 
-      <div className="mt-8">
+      <div className="mt-6">
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
           Conversaciones
         </h2>
@@ -495,6 +528,10 @@ function SeguimientoInterna() {
         </p>
         <ListaConversaciones />
       </div>
+
+      {configAbierta && (
+        <ModalConfiguracion onCerrar={() => setConfigAbierta(false)} />
+      )}
     </div>
   );
 }
