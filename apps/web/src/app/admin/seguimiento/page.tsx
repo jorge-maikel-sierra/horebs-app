@@ -355,7 +355,7 @@ function ListaConversaciones() {
       </div>
 
       {/* Columna derecha: hilo de la conversación seleccionada */}
-      <div className="flex min-h-[24rem] flex-col rounded-lg border border-zinc-200 dark:border-zinc-800">
+      <div className="flex h-[32rem] flex-col rounded-lg border border-zinc-200 dark:border-zinc-800">
         {!seleccionado ? (
           <div className="flex flex-1 items-center justify-center p-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
             Elegí una conversación de la lista para ver el hilo de mensajes.

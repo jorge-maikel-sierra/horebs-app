@@ -386,11 +386,11 @@ export default function AdminSidebar() {
       </div>
 
       <aside
-        className={`hidden shrink-0 transition-[width] duration-200 sm:block ${
+        className={`hidden shrink-0 border-r border-zinc-200 bg-white transition-[width] duration-200 sm:sticky sm:top-0 sm:block sm:h-screen dark:border-zinc-800 dark:bg-zinc-950 ${
           colapsado ? 'w-[4.5rem]' : 'w-64'
         }`}
       >
-        <div className="card-gradient relative sticky top-6 max-h-[calc(100vh-3rem)] rounded-2xl border border-zinc-200 p-4 shadow-sm dark:border-zinc-800">
+        <div className="relative flex h-full flex-col overflow-y-auto p-4">
           <button
             type="button"
             onClick={alternarColapsado}

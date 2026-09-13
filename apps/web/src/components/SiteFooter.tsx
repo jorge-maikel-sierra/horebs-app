@@ -1,4 +1,7 @@
+'use client';
+
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { NEGOCIO, whatsappUrl } from '@/lib/negocio';
 
 const ENLACES = [
@@ -43,7 +46,10 @@ function WhatsappIcon() {
 }
 
 export default function SiteFooter() {
+  const pathname = usePathname();
   const anio = new Date().getFullYear();
+
+  if (pathname?.startsWith('/admin')) return null;
 
   return (
     <footer className="border-t border-zinc-200 px-6 py-12 text-sm dark:border-zinc-800">
