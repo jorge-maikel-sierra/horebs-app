@@ -204,6 +204,18 @@ function ListaConversaciones() {
   const [guardandoEstado, setGuardandoEstado] = useState(false);
 
   const hiloRef = useRef<HTMLDivElement>(null);
+  // Si el empleado scrolleó hacia arriba para leer mensajes viejos, el
+  // refresco automático cada 5s (o uno nuevo del bot/cliente) no debe
+  // arrastrarlo de vuelta al final — solo seguimos pegados al final si ya
+  // estaba ahí antes de que llegara la actualización.
+  const cercaDelFinalRef = useRef(true);
+
+  function manejarScrollHilo() {
+    const el = hiloRef.current;
+    if (!el) return;
+    const distanciaAlFinal = el.scrollHeight - el.scrollTop - el.clientHeight;
+    cercaDelFinalRef.current = distanciaAlFinal < 80;
+  }
 
   async function cargarLista() {
     try {
@@ -251,6 +263,9 @@ function ListaConversaciones() {
   // el intervalo anterior y arranca uno nuevo para la conversación actual.
   useEffect(() => {
     if (!seleccionadoId) return;
+    // Conversación recién abierta — arranca pegada al final, como
+    // WhatsApp, sin importar dónde había quedado el scroll de la anterior.
+    cercaDelFinalRef.current = true;
     cargarMensajes(seleccionadoId, true);
     const id = setInterval(() => {
       if (!document.hidden) cargarMensajes(seleccionadoId, false);
@@ -259,6 +274,7 @@ function ListaConversaciones() {
   }, [seleccionadoId]);
 
   useEffect(() => {
+    if (!cercaDelFinalRef.current) return;
     hiloRef.current?.scrollTo({ top: hiloRef.current.scrollHeight });
   }, [mensajes]);
 
@@ -303,6 +319,7 @@ function ListaConversaciones() {
         throw new Error(body?.message ?? 'No se pudo enviar el mensaje.');
       }
       setTextoRespuesta('');
+      cercaDelFinalRef.current = true;
       await cargarMensajes(seleccionado.id, false);
     } catch (err) {
       setErrorEnvio(err instanceof Error ? err.message : 'No se pudo enviar.');
@@ -333,7 +350,7 @@ function ListaConversaciones() {
                   onClick={() => setSeleccionadoId(c.id)}
                   className={`block w-full px-3 py-3 text-left transition-colors ${
                     c.id === seleccionadoId
-                      ? 'bg-brand-orange/10 dark:bg-brand-orange/15'
+                      ? 'bg-brand-orange/10'
                       : 'hover:bg-zinc-50 dark:hover:bg-zinc-900'
                   }`}
                 >
@@ -385,7 +402,11 @@ function ListaConversaciones() {
               </select>
             </div>
 
-            <div ref={hiloRef} className="flex-1 space-y-2 overflow-y-auto p-3">
+            <div
+              ref={hiloRef}
+              onScroll={manejarScrollHilo}
+              className="flex-1 space-y-2 overflow-y-auto p-3"
+            >
               {cargandoMensajes ? (
                 <CargandoSkeleton filas={3} />
               ) : errorMensajes ? (
@@ -414,7 +435,7 @@ function ListaConversaciones() {
                         className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
                           esEntrante
                             ? 'bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-50'
-                            : 'bg-brand-orange/15 text-zinc-900 dark:bg-brand-orange/20 dark:text-zinc-50'
+                            : 'bg-brand-orange/15 text-zinc-900 dark:text-zinc-50'
                         }`}
                       >
                         <p className="mb-0.5 text-[10px] font-semibold tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
