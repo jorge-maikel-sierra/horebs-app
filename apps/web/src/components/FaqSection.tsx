@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { whatsappUrl } from '@/lib/negocio';
 import { FAQS } from '@/lib/faqs';
+import WhatsappCta from '@/components/WhatsappCta';
 
 export default function FaqSection() {
   const [abierta, setAbierta] = useState<number | null>(0);
@@ -66,14 +67,12 @@ export default function FaqSection() {
 
         <p className="mt-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
           ¿Tenés otra duda?{' '}
-          <a
+          <WhatsappCta
             href={whatsappUrl('¡Hola! Tengo una pregunta.')}
-            target="_blank"
-            rel="noopener noreferrer"
             className="font-semibold text-brand-orange transition-colors hover:text-brand-orange/80"
           >
             Escribinos por WhatsApp
-          </a>
+          </WhatsappCta>
           .
         </p>
       </div>

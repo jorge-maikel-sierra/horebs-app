@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { NEGOCIO, whatsappUrl } from '@/lib/negocio';
+import WhatsappCta from '@/components/WhatsappCta';
 
 const ENLACES = [
   { href: '/catalogo', label: 'Catálogo' },
@@ -81,15 +82,13 @@ export default function SiteFooter() {
             >
               <InstagramIcon />
             </a>
-            <a
+            <WhatsappCta
               href={whatsappUrl('¡Hola! Quiero hacer un pedido.')}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="WhatsApp"
+              ariaLabel="WhatsApp"
               className="btn-press flex h-9 w-9 items-center justify-center rounded-full border border-zinc-300 text-zinc-600 transition-colors hover:border-brand-orange hover:text-brand-orange dark:border-zinc-700 dark:text-zinc-400"
             >
               <WhatsappIcon />
-            </a>
+            </WhatsappCta>
           </div>
         </div>
 
@@ -119,14 +118,12 @@ export default function SiteFooter() {
             <li>{NEGOCIO.direccion}</li>
             <li>{NEGOCIO.horario}</li>
             <li>
-              <a
+              <WhatsappCta
                 href={whatsappUrl('¡Hola! Quiero hacer un pedido.')}
-                target="_blank"
-                rel="noopener noreferrer"
                 className="transition-colors hover:text-brand-orange"
               >
                 {NEGOCIO.whatsapp}
-              </a>
+              </WhatsappCta>
             </li>
           </ul>
         </div>

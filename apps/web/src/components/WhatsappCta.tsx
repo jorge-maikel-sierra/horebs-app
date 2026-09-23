@@ -6,10 +6,12 @@ import { trackContact } from '@/lib/analytics';
 export default function WhatsappCta({
   href,
   className,
+  ariaLabel,
   children,
 }: {
   href: string;
   className?: string;
+  ariaLabel?: string;
   children: ReactNode;
 }) {
   return (
@@ -18,6 +20,7 @@ export default function WhatsappCta({
       target="_blank"
       rel="noopener noreferrer"
       onClick={() => trackContact()}
+      aria-label={ariaLabel}
       className={className}
     >
       {children}

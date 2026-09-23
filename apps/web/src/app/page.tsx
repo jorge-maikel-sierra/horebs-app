@@ -5,6 +5,7 @@ import { formatPrecio } from '@/lib/formato';
 import PremiosSection from '@/components/PremiosSection';
 import ClientesFelicesSection from '@/components/ClientesFelicesSection';
 import FaqSection from '@/components/FaqSection';
+import WhatsappCta from '@/components/WhatsappCta';
 import ScrollReveal from '@/components/ScrollReveal';
 import HeroEffect from '@/components/HeroEffect';
 import { faqJsonLd, jsonLdScript } from '@/lib/json-ld';
@@ -58,14 +59,12 @@ export default async function Home() {
             >
               Ver catálogo
             </Link>
-            <a
+            <WhatsappCta
               href={whatsappUrl('¡Hola! Quiero hacer un pedido.')}
-              target="_blank"
-              rel="noopener noreferrer"
               className="btn-press rounded-lg border border-white px-6 py-3 font-semibold text-white transition hover:bg-white hover:text-brand-navy"
             >
               Pedir por WhatsApp
-            </a>
+            </WhatsappCta>
           </div>
         </div>
       </section>
