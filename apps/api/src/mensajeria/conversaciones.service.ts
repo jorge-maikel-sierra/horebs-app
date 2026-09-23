@@ -353,6 +353,46 @@ export class ConversacionesService {
   }
 
   /**
+   * Meta manda el `ctwa_clid` solo en el primer mensaje de una conversación
+   * que empezó con un clic en anuncio. Un clic nuevo trae un id nuevo, así
+   * que siempre se pisa el anterior — la atribución es al último anuncio.
+   */
+  async guardarCtwaClid(
+    canal: CanalMensajeria,
+    identificadorExterno: string,
+    ctwaClid: string,
+  ): Promise<void> {
+    const { error } = await this.supabase
+      .getClient()
+      .from('conversaciones_bot')
+      .update({
+        ctwa_clid: ctwaClid,
+        ctwa_capturado_en: new Date().toISOString(),
+      })
+      .eq('canal', canal)
+      .eq('identificador_externo', identificadorExterno);
+    if (error) throw error;
+  }
+
+  /** La conversación con su `ctwa_clid`, o null si nunca vino de un anuncio
+   * (o si no existe). Solo la usa la API de conversiones de Meta. */
+  async obtenerCtwa(
+    canal: CanalMensajeria,
+    identificadorExterno: string,
+  ): Promise<{ id: string; ctwaClid: string } | null> {
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('conversaciones_bot')
+      .select('id, ctwa_clid')
+      .eq('canal', canal)
+      .eq('identificador_externo', identificadorExterno)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data?.ctwa_clid) return null;
+    return { id: data.id, ctwaClid: data.ctwa_clid };
+  }
+
+  /**
    * Meta puede reenviar el mismo webhook (mismo id de mensaje) sin avisar
    * — se registra el id apenas se ve por primera vez; si el insert choca
    * con la clave primaria (canal, mensaje_id) es que ya se procesó antes.

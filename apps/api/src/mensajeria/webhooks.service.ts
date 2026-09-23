@@ -11,6 +11,8 @@ export interface ProcedenciaAnuncio {
   esAnuncio: boolean;
   anuncioId?: string;
   fuente?: string;
+  /** Id del clic (solo Click-to-WhatsApp) — lo necesita la API de conversiones. */
+  ctwaClid?: string;
 }
 
 export interface EventoEntrante {
@@ -167,6 +169,18 @@ export class WebhooksService {
       evento.canal,
       evento.identificadorExterno,
     );
+    const ctwaClid = evento.procedenciaAnuncio?.ctwaClid;
+    if (evento.canal === 'whatsapp' && ctwaClid) {
+      // Si falla (ej. la columna todavía no existe) no debe tumbar la
+      // respuesta al cliente: es un dato para medición, no para el bot.
+      await this.conversaciones
+        .guardarCtwaClid(evento.canal, evento.identificadorExterno, ctwaClid)
+        .catch((err: Error) =>
+          this.logger.error(
+            `No se pudo guardar el ctwa_clid de ${evento.identificadorExterno}: ${err.message}`,
+          ),
+        );
+    }
     // Se persiste el mensaje entrante ANTES del corte por `derivado` de
     // abajo — si no, el mensaje del cliente se perdía por completo una vez
     // que la conversación ya estaba en manos de una persona.
@@ -259,6 +273,7 @@ export class WebhooksService {
       esAnuncio: true,
       anuncioId: referral.source_id ?? referral.ctwa_clid,
       fuente: referral.source_type ?? 'ad',
+      ctwaClid: referral.ctwa_clid,
     };
   }
 

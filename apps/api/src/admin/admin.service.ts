@@ -9,6 +9,7 @@ import { MailService } from '../mail/mail.service';
 import { InventarioService } from '../inventario/inventario.service';
 import { ConversacionesService } from '../mensajeria/conversaciones.service';
 import { MetaGraphService } from '../mensajeria/meta-graph.service';
+import { ConversionesMetaService } from '../mensajeria/conversiones-meta.service';
 import { ImportarHistorialGeminiService } from '../mensajeria/importar-historial-gemini.service';
 import { FacturaService } from '../facturas/factura.service';
 import { PuntosService } from '../clientes/puntos.service';
@@ -157,6 +158,7 @@ export class AdminService {
     private readonly inventario: InventarioService,
     private readonly conversaciones: ConversacionesService,
     private readonly metaGraph: MetaGraphService,
+    private readonly conversionesMeta: ConversionesMetaService,
     private readonly factura: FacturaService,
     private readonly puntos: PuntosService,
     private readonly importarHistorial: ImportarHistorialGeminiService,
@@ -282,6 +284,14 @@ export class AdminService {
       })),
     );
     if (itemsError) throw itemsError;
+
+    // Si el cliente llegó por un anuncio Click-to-WhatsApp, Meta se entera
+    // de la venta (atribuida por teléfono). No espera ni puede fallar la venta.
+    void this.conversionesMeta.notificarCompra({
+      telefono: cliente.telefono,
+      pedidoId: pedido.id,
+      total: Number(pedido.total),
+    });
 
     await this.inventario.descontarPorVentaSeguro(
       itemsCalculados

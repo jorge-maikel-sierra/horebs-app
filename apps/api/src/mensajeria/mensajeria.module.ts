@@ -7,6 +7,7 @@ import { WebhooksService } from './webhooks.service';
 import { MetaGraphService } from './meta-graph.service';
 import { GeminiService } from './gemini.service';
 import { ConversacionesService } from './conversaciones.service';
+import { ConversionesMetaService } from './conversiones-meta.service';
 import { SeguimientoService } from './seguimiento.service';
 import { ImportarHistorialGeminiService } from './importar-historial-gemini.service';
 
@@ -18,9 +19,15 @@ import { ImportarHistorialGeminiService } from './importar-historial-gemini.serv
     MetaGraphService,
     GeminiService,
     ConversacionesService,
+    ConversionesMetaService,
     SeguimientoService,
     ImportarHistorialGeminiService,
   ],
-  exports: [ConversacionesService, MetaGraphService, ImportarHistorialGeminiService],
+  exports: [
+    ConversacionesService,
+    ConversionesMetaService,
+    MetaGraphService,
+    ImportarHistorialGeminiService,
+  ],
 })
 export class MensajeriaModule {}

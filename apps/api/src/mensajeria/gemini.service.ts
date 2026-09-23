@@ -7,6 +7,7 @@ import { ConfigService } from '@nestjs/config';
 import { CatalogService } from '../catalog/catalog.service';
 import { PedidosService } from '../pedidos/pedidos.service';
 import { MetaGraphService } from './meta-graph.service';
+import { ConversionesMetaService } from './conversiones-meta.service';
 import { COSTO_DOMICILIO_DEFAULT } from '../common/costos';
 import {
   ConversacionesService,
@@ -314,6 +315,7 @@ export class GeminiService {
     private readonly pedidos: PedidosService,
     private readonly conversaciones: ConversacionesService,
     private readonly metaGraph: MetaGraphService,
+    private readonly conversionesMeta: ConversionesMetaService,
   ) {
     this.apiKey = this.config.get<string>('GEMINI_API_KEY');
     this.modelo = this.config.get<string>('GEMINI_MODEL') || MODELO_DEFAULT;
@@ -547,6 +549,7 @@ export class GeminiService {
         case 'derivar_a_humano':
           await this.conversaciones.derivarAHumano(canal, identificadorExterno);
           this.notificarEquipoDerivacion(canal, identificadorExterno);
+          void this.conversionesMeta.notificarLead(canal, identificadorExterno);
           return `Conversación derivada. Respondé al cliente con este mensaje EXACTO, sin cambiarlo ni agregar nada de "confirmado" o tiempos de entrega: "${MENSAJE_DERIVACION}"`;
         default:
           return 'Herramienta desconocida.';

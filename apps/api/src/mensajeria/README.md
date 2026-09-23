@@ -77,6 +77,36 @@ un margen de ~10s entre mensajes la memoria se mantiene sin problema. Si
 en producción se ve que el bot "se olvida" de un mensaje anterior, esta es
 la primera hipótesis a revisar.
 
+## Conversions API para Click-to-WhatsApp (`conversiones-meta.service.ts`)
+
+Le avisa a Meta qué conversaciones que empezaron con un clic en anuncio
+terminaron en venta, para que la campaña optimice hacia compradores y no
+solo hacia conversaciones iniciadas.
+
+- **Captura**: el `referral.ctwa_clid` del primer mensaje se guarda en
+  `conversaciones_bot.ctwa_clid` (un clic nuevo pisa el anterior).
+- **`LeadSubmitted`**: cuando el bot deriva la conversación a una persona.
+- **`Purchase`**: cuando el equipo registra una venta en el POS
+  (`AdminService.crearVenta`); se liga a la conversación por teléfono
+  (`3157861208` ↔ wa_id `573157861208`). Si ese cliente no llegó por un
+  anuncio, no se envía nada. Lleva valor y moneda `COP`.
+- **Idempotencia**: Meta no deduplica eventos de mensajería, así que cada
+  envío reclama `(evento, referencia_id)` en `eventos_meta_enviados` antes
+  de llamar a Meta; si Meta rechaza el evento, la clave se libera.
+- **Nunca rompe el flujo**: errores se loguean, no se propagan. Sin las
+  variables de abajo el servicio queda apagado.
+- **Requisito de datos**: solo se atribuyen ventas a clientes cuyo teléfono
+  en el POS coincide con el de su chat de WhatsApp. Las conversaciones
+  anteriores a esta función no tienen `ctwa_clid` y no se pueden enviar.
+
+Migración: `apps/api/docs/sql/2026-09-23-meta-capi-mensajeria.sql`.
+
+| Variable | De dónde sale |
+|---|---|
+| `META_CAPI_ACCESS_TOKEN` | Token de usuario del sistema con permisos `whatsapp_business_management` y `whatsapp_business_manage_events` (si falta, se usa `WHATSAPP_ACCESS_TOKEN`) |
+| `META_DATASET_ID` | Administrador de eventos → el conjunto de datos (`296724564973046`) |
+| `WHATSAPP_BUSINESS_ACCOUNT_ID` | WhatsApp Manager → ID de la cuenta de WhatsApp Business (WABA) |
+
 ## Variables de entorno (Railway → Service → Variables)
 
 `apps/api/.env.example` no se pudo editar automáticamente por permisos del
