@@ -33,11 +33,6 @@ type InformeResumen = {
 
 type TableroFila = { empleado: { nombre: string }; semana: { neto_pagar: number; estado: 'en_curso' | 'liquidada' } };
 
-type PublicidadResumen = {
-  cuenta: { gasto_hoy: number; presupuesto_diario_total: number; roas_hoy: number | null };
-  comparacion_hoy: { gasto_meta: number; ventas_reales_hoy: number };
-};
-
 const ESTADO_PEDIDO_LABEL: Record<string, string> = {
   pendiente: 'pendiente',
   confirmado: 'confirmado',
@@ -172,34 +167,6 @@ function IconCheck() {
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="9" />
       <path d="m8 12 3 3 5-6" />
-    </svg>
-  );
-}
-
-function IconMegafono() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 11v2a2 2 0 0 0 2 2h1l3 5V4l-3 5H5a2 2 0 0 0-2 2Z" />
-      <path d="M14 7a5 5 0 0 1 0 10M18 4a9 9 0 0 1 0 16" />
-    </svg>
-  );
-}
-
-function IconObjetivo() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="9" />
-      <circle cx="12" cy="12" r="5" />
-      <circle cx="12" cy="12" r="1" />
-    </svg>
-  );
-}
-
-function IconTendencia() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 17l6-6 4 4 8-8" />
-      <path d="M15 7h6v6" />
     </svg>
   );
 }
@@ -364,10 +331,6 @@ export default function AdminPage() {
   const [nomina, setNomina] = useState<TableroFila[] | null>(null);
   const [cargandoNomina, setCargandoNomina] = useState(true);
 
-  const [publicidad, setPublicidad] = useState<PublicidadResumen | null>(null);
-  const [publicidadDisponible, setPublicidadDisponible] = useState(true);
-  const [cargandoPublicidad, setCargandoPublicidad] = useState(true);
-
   useEffect(() => {
     if (rol !== 'admin') return;
 
@@ -392,18 +355,6 @@ export default function AdminPage() {
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => setNomina(data))
       .finally(() => setCargandoNomina(false));
-
-    adminFetch('/publicidad/meta-ads')
-      .then(async (res) => {
-        if (res.status === 404) {
-          setPublicidadDisponible(false);
-          return;
-        }
-        if (!res.ok) throw new Error();
-        setPublicidad(await res.json());
-      })
-      .catch(() => setPublicidadDisponible(false))
-      .finally(() => setCargandoPublicidad(false));
   }, [rol]);
 
   // ---- Valores derivados para las tarjetas de alerta ----
@@ -578,8 +529,8 @@ export default function AdminPage() {
             </Panel>
           </div>
 
-          {/* Nómina + Publicidad */}
-          <div className="animate-fade-up delay-3 mt-6 grid gap-6 lg:grid-cols-2">
+          {/* Nómina */}
+          <div className="animate-fade-up delay-3 mt-6">
             <Panel titulo="Nómina de la semana">
               {cargandoNomina ? (
                 <CargandoSkeleton filas={2} />
@@ -598,39 +549,6 @@ export default function AdminPage() {
               )}
               <Link href="/admin/nomina" className="mt-4 inline-block text-sm font-semibold text-brand-orange hover:underline">
                 Ver nómina →
-              </Link>
-            </Panel>
-
-            <Panel titulo="Publicidad (Meta Ads) — hoy">
-              {cargandoPublicidad ? (
-                <CargandoSkeleton filas={2} />
-              ) : !publicidadDisponible ? (
-                <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                  Todavía no hay datos de Meta Ads capturados.
-                </p>
-              ) : publicidad ? (
-                <>
-                  <div className="grid grid-cols-3 gap-2">
-                    <TarjetaMetrica icon={IconMegafono} label="Gasto hoy" valor={formatPrecio(publicidad.cuenta.gasto_hoy)} />
-                    <TarjetaMetrica
-                      icon={IconObjetivo}
-                      label="Presupuesto"
-                      valor={formatPrecio(publicidad.cuenta.presupuesto_diario_total)}
-                    />
-                    <TarjetaMetrica
-                      icon={IconTendencia}
-                      label="ROAS"
-                      valor={publicidad.cuenta.roas_hoy != null ? `${publicidad.cuenta.roas_hoy.toFixed(2)}x` : '—'}
-                    />
-                  </div>
-                  <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
-                    Gasto {formatPrecio(publicidad.comparacion_hoy.gasto_meta)} vs. ventas reales{' '}
-                    {formatPrecio(publicidad.comparacion_hoy.ventas_reales_hoy)}
-                  </p>
-                </>
-              ) : null}
-              <Link href="/admin/informes" className="mt-4 inline-block text-sm font-semibold text-brand-orange hover:underline">
-                Ver publicidad completa →
               </Link>
             </Panel>
           </div>

@@ -16,7 +16,6 @@ import { InventarioModule } from './inventario/inventario.module';
 import { MensajeriaModule } from './mensajeria/mensajeria.module';
 import { ClientesModule } from './clientes/clientes.module';
 import { NominaModule } from './nomina/nomina.module';
-import { PublicidadModule } from './publicidad/publicidad.module';
 
 @Module({
   imports: [
@@ -36,7 +35,6 @@ import { PublicidadModule } from './publicidad/publicidad.module';
     MensajeriaModule,
     ClientesModule,
     NominaModule,
-    PublicidadModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
