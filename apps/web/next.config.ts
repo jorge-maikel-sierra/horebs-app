@@ -8,8 +8,18 @@ const SUPABASE_ORIGIN = 'https://afvwtoseszjpudelxywn.supabase.co';
 // (apps/web/src/lib/admin-fetch.ts) — así, si el backend se migra de host
 // (Railway, otra cuenta, etc.), alcanza con cambiar NEXT_PUBLIC_API_URL en
 // Vercel, sin tocar código ni re-hardcodear esta URL de nuevo.
-const API_ORIGIN =
-  process.env.NEXT_PUBLIC_API_URL ?? 'https://horebs-api-production.up.railway.app';
+//
+// A propósito SIN fallback: un valor por defecto silencioso fue la causa
+// raíz de que el CSP apuntara meses a un dominio de Railway ya muerto
+// (horebs-api-production.up.railway.app) sin que nadie lo notara hasta que
+// el panel de admin quedó bloqueado por CORS. Mejor que el build truene acá
+// a que un despliegue mal configurado llegue a producción en silencio.
+if (!process.env.NEXT_PUBLIC_API_URL) {
+  throw new Error(
+    'Falta NEXT_PUBLIC_API_URL — definila en apps/web/.env.local (ver .env.local.example) o en las variables de entorno de Vercel antes de compilar.',
+  );
+}
+const API_ORIGIN = process.env.NEXT_PUBLIC_API_URL;
 
 // Google Tag Manager y el Pixel de Facebook cargan su propio script desde
 // estos dominios. OJO: cualquier tag NUEVO que se agregue después desde la
@@ -46,11 +56,16 @@ const CSP = [
   "img-src 'self' data: https:",
   "font-src 'self' data:",
   CONNECT_SRC,
-  // El noscript de GTM usa un <iframe> a este dominio.
-  "frame-src https://www.googletagmanager.com",
+  // El noscript de GTM usa un <iframe> a este dominio. facebook.com se suma
+  // porque fbevents.js, cuando su beacon normal a facebook.com/tr falla,
+  // cae a un iframe/form-post de respaldo contra ese mismo dominio — los
+  // hosts de Cloud Run/ECS que prueba antes cambian en cada redeploy de
+  // Meta, así que esos sí se dejan bloquear a propósito (no hay forma
+  // sostenible de listarlos).
+  "frame-src https://www.googletagmanager.com https://www.facebook.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
-  "form-action 'self'",
+  "form-action 'self' https://www.facebook.com",
 ].join('; ');
 
 const SECURITY_HEADERS = [
