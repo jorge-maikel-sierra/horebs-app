@@ -1,0 +1,21 @@
+<svg viewBox="0 0 800 450" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bg" cx="25%" cy="15%" r="95%">
+      <stop offset="0%" stop-color="#2a4d6c"/>
+      <stop offset="60%" stop-color="#1a3a52"/>
+      <stop offset="100%" stop-color="#102838"/>
+    </radialGradient>
+  </defs>
+  <rect width="800" height="450" fill="url(#bg)"/>
+  <circle cx="690" cy="70" r="170" fill="#FF6B35" opacity="0.14"/>
+  <circle cx="70" cy="410" r="150" fill="#FFD93D" opacity="0.10"/>
+  <circle cx="400" cy="225" r="120" fill="#ffffff" opacity="0.07"/>
+  <circle cx="400" cy="225" r="96" fill="none" stroke="#FF6B35" stroke-width="3" opacity="0.5"/>
+  <g transform="translate(400 225)" stroke="#FFD93D" stroke-width="9" stroke-linecap="round" fill="none">
+    <path d="M-34 -65 V65"/>
+    <path d="M-48 -65 V-15 Q-48 -2 -34 -2 Q-20 -2 -20 -15 V-65"/>
+    <path d="M-34 -35 V-65"/>
+    <path d="M32 -65 C55 -65 55 -22 32 -14 V65"/>
+  </g>
+  <text x="400" y="345" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="30" fill="#ffffff" opacity="0.9">Riohacha</text>
+</svg>

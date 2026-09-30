@@ -13,6 +13,24 @@ type PostResumen = {
   publicado_en: string | null;
 };
 
+function IconFlechaDerecha() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M5 12h14" />
+      <path d="M13 6l6 6-6 6" />
+    </svg>
+  );
+}
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 
 async function getPosts(): Promise<PostResumen[]> {
@@ -42,37 +60,45 @@ export default async function BlogPage() {
       {posts.length === 0 ? (
         <EstadoVacio>Todavía no hay artículos publicados.</EstadoVacio>
       ) : (
-        <div className="mt-8 space-y-4">
+        <div className="mt-8 grid gap-5 sm:grid-cols-2">
           {posts.map((post, i) => (
             <Link
               key={post.slug}
               href={`/blog/${post.slug}`}
-              className="card-interactive card-gradient animate-fade-up group flex gap-4 rounded-2xl border border-zinc-200 p-4 dark:border-zinc-800"
+              className="card-interactive card-gradient animate-fade-up group block overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800"
               style={{ animationDelay: `${Math.min(i, 4) * 0.08}s` }}
             >
               {post.imagen_url && (
-                <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl">
+                <div className="relative h-44 w-full overflow-hidden">
                   <Image
                     src={post.imagen_url}
                     alt={post.titulo}
                     fill
-                    sizes="96px"
+                    sizes="(min-width: 640px) 380px, 100vw"
                     className="object-cover transition-transform duration-500 group-hover:scale-110"
                   />
                 </div>
               )}
-              <div className="min-w-0">
-                {post.publicado_en && (
-                  <p className="text-xs font-semibold tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
-                    {formatFecha(post.publicado_en)}
-                  </p>
-                )}
-                <h2 className="mt-0.5 font-semibold text-zinc-900 transition-colors group-hover:text-brand-orange dark:text-zinc-50">
+              <div className="p-5">
+                <h2 className="font-semibold text-zinc-900 transition-colors group-hover:text-brand-orange dark:text-zinc-50">
                   {post.titulo}
                 </h2>
-                <p className="mt-1 line-clamp-2 text-sm text-zinc-600 dark:text-zinc-400">
+                <p className="mt-1.5 line-clamp-2 text-sm text-zinc-600 dark:text-zinc-400">
                   {post.resumen}
                 </p>
+                <div className="mt-4 flex items-center justify-between gap-3 border-t border-zinc-100 pt-3 dark:border-zinc-800/60">
+                  {post.publicado_en ? (
+                    <p className="text-xs font-semibold tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
+                      {formatFecha(post.publicado_en)}
+                    </p>
+                  ) : (
+                    <span />
+                  )}
+                  <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-brand-orange">
+                    Leer más
+                    <IconFlechaDerecha />
+                  </span>
+                </div>
               </div>
             </Link>
           ))}

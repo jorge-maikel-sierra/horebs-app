@@ -85,6 +85,13 @@ const SECURITY_HEADERS = [
 
 const nextConfig: NextConfig = {
   images: {
+    // Habilita SVG en next/image solo para las portadas ilustradas del blog
+    // (apps/web/public/blog/*.svg) — son archivos propios del repo, no
+    // contenido subido por usuarios, así que el riesgo de SVG con script
+    // embebido no aplica. El sandbox de la CSP de abajo igual lo bloquea.
+    dangerouslyAllowSVG: true,
+    contentDispositionType: 'attachment',
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
     remotePatterns: [
       {
         protocol: 'https',
