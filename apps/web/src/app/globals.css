@@ -8,10 +8,69 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
-  /* Paleta de referencia de CLAUDE.md — pendiente de validar contra el logo real. */
-  --brand-orange: #ff6b35;
   --brand-navy: #1a3a52;
-  --brand-yellow: #ffd93d;
+  /* Alias planos al tono 500 — el resto de este archivo (gradientes con
+     color-mix(), hero-mesh, card-gradient) referencia var(--brand-orange)
+     y var(--brand-yellow) directo, no las variables -50..-900 de abajo ni
+     las --color-* de @theme (esas solo generan clases de Tailwind, no son
+     custom properties usables con var()). Sin este alias, var(--brand-orange)
+     queda indefinida y cualquier color-mix() que la use se invalida entera. */
+  --brand-orange: var(--brand-orange-500);
+  --brand-yellow: var(--brand-yellow-500);
+
+  /* Escala fija de 9 tonos por color (metodología Refactoring UI: elegir un
+     tono base, definir el límite claro y el oscuro, y rellenar el resto a
+     mano). Los tonos NO se generan al vuelo con color-mix()/opacity en el
+     resto del CSS — eso es lo que termina en "35 naranjas ligeramente
+     distintos que se ven todos iguales". Si falta un tono intermedio, se
+     agrega acá, con los ojos, no con una fórmula.
+     Base real (500) tomada de la paleta de marca de CLAUDE.md. */
+  --brand-orange-50: hsl(16 100% 96%);
+  --brand-orange-100: hsl(15 100% 92%);
+  --brand-orange-200: hsl(16 100% 84%);
+  --brand-orange-300: hsl(16 100% 74%);
+  --brand-orange-400: hsl(16 100% 67%);
+  --brand-orange-500: hsl(16 100% 60%); /* #ff6b35 */
+  --brand-orange-600: hsl(14 91% 52%);
+  --brand-orange-700: hsl(13 88% 43%);
+  --brand-orange-800: hsl(12 84% 35%);
+  --brand-orange-900: hsl(11 80% 27%);
+
+  --brand-yellow-50: hsl(48 100% 95%);
+  --brand-yellow-100: hsl(48 100% 90%);
+  --brand-yellow-200: hsl(47 100% 83%);
+  --brand-yellow-300: hsl(48 100% 75%);
+  --brand-yellow-400: hsl(45 100% 68%);
+  --brand-yellow-500: hsl(48 100% 62%); /* #ffd93d */
+  --brand-yellow-600: hsl(42 95% 54%);
+  --brand-yellow-700: hsl(42 90% 45%);
+  --brand-yellow-800: hsl(40 88% 37%);
+  --brand-yellow-900: hsl(38 85% 30%);
+
+  /* Acentos semánticos — nunca usar los rojos o verdes de Tailwind directo
+     en componentes. Estos son los únicos rojos/verdes válidos del sitio,
+     así "error" y "éxito" quedan consistentes en todas las pantallas. */
+  --danger-50: hsl(0 86% 97%);
+  --danger-100: hsl(0 93% 94%);
+  --danger-200: hsl(0 96% 89%);
+  --danger-300: hsl(0 94% 82%);
+  --danger-400: hsl(0 91% 71%);
+  --danger-500: hsl(0 84% 60%);
+  --danger-600: hsl(0 72% 51%);
+  --danger-700: hsl(0 74% 42%);
+  --danger-800: hsl(0 70% 35%);
+  --danger-900: hsl(0 70% 25%);
+
+  --success-50: hsl(142 76% 96%);
+  --success-100: hsl(141 79% 91%);
+  --success-200: hsl(141 78% 82%);
+  --success-300: hsl(142 69% 72%);
+  --success-400: hsl(142 69% 58%);
+  --success-500: hsl(142 71% 45%);
+  --success-600: hsl(142 72% 38%);
+  --success-700: hsl(142 72% 29%);
+  --success-800: hsl(143 64% 23%);
+  --success-900: hsl(144 61% 17%);
 }
 
 :root.dark {
@@ -22,9 +81,57 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-brand-orange: var(--brand-orange);
   --color-brand-navy: var(--brand-navy);
-  --color-brand-yellow: var(--brand-yellow);
+
+  /* Alias al tono 500: todo el código existente que usa bg-brand-orange /
+     text-brand-orange sigue funcionando sin tocarlo, apuntando al tono base
+     de la escala nueva. */
+  --color-brand-orange: var(--brand-orange-500);
+  --color-brand-orange-50: var(--brand-orange-50);
+  --color-brand-orange-100: var(--brand-orange-100);
+  --color-brand-orange-200: var(--brand-orange-200);
+  --color-brand-orange-300: var(--brand-orange-300);
+  --color-brand-orange-400: var(--brand-orange-400);
+  --color-brand-orange-500: var(--brand-orange-500);
+  --color-brand-orange-600: var(--brand-orange-600);
+  --color-brand-orange-700: var(--brand-orange-700);
+  --color-brand-orange-800: var(--brand-orange-800);
+  --color-brand-orange-900: var(--brand-orange-900);
+
+  --color-brand-yellow: var(--brand-yellow-500);
+  --color-brand-yellow-50: var(--brand-yellow-50);
+  --color-brand-yellow-100: var(--brand-yellow-100);
+  --color-brand-yellow-200: var(--brand-yellow-200);
+  --color-brand-yellow-300: var(--brand-yellow-300);
+  --color-brand-yellow-400: var(--brand-yellow-400);
+  --color-brand-yellow-500: var(--brand-yellow-500);
+  --color-brand-yellow-600: var(--brand-yellow-600);
+  --color-brand-yellow-700: var(--brand-yellow-700);
+  --color-brand-yellow-800: var(--brand-yellow-800);
+  --color-brand-yellow-900: var(--brand-yellow-900);
+
+  --color-danger-50: var(--danger-50);
+  --color-danger-100: var(--danger-100);
+  --color-danger-200: var(--danger-200);
+  --color-danger-300: var(--danger-300);
+  --color-danger-400: var(--danger-400);
+  --color-danger-500: var(--danger-500);
+  --color-danger-600: var(--danger-600);
+  --color-danger-700: var(--danger-700);
+  --color-danger-800: var(--danger-800);
+  --color-danger-900: var(--danger-900);
+
+  --color-success-50: var(--success-50);
+  --color-success-100: var(--success-100);
+  --color-success-200: var(--success-200);
+  --color-success-300: var(--success-300);
+  --color-success-400: var(--success-400);
+  --color-success-500: var(--success-500);
+  --color-success-600: var(--success-600);
+  --color-success-700: var(--success-700);
+  --color-success-800: var(--success-800);
+  --color-success-900: var(--success-900);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }

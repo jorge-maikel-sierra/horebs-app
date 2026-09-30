@@ -12,6 +12,14 @@ type Modo = 'login' | 'registro';
 const inputClass =
   'mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 outline-none transition-colors focus:border-brand-orange dark:border-zinc-700 dark:bg-zinc-950';
 
+// Chips de feedback: danger-* para error, success-* para confirmación — el
+// naranja de marca (brand-orange) queda reservado para acciones primarias,
+// nunca para mensajes de éxito.
+const errorClass =
+  'animate-fade-up rounded-lg border border-danger-200 bg-danger-50 px-3 py-2 text-sm text-danger-700 dark:border-danger-900 dark:bg-danger-900/40 dark:text-danger-300';
+const successClass =
+  'animate-fade-up rounded-lg border border-success-200 bg-success-50 px-3 py-2 text-sm text-success-700 dark:border-success-900 dark:bg-success-900/40 dark:text-success-300';
+
 function iniciales(nombre: string, apellido: string, email: string) {
   const n = nombre.trim();
   const a = apellido.trim();
@@ -372,11 +380,9 @@ export default function CuentaPage() {
                 </div>
               </div>
               {perfilError && (
-                <p className="animate-fade-up text-sm text-red-600 dark:text-red-400">{perfilError}</p>
+                <p className={errorClass}>{perfilError}</p>
               )}
-              {perfilMensaje && (
-                <p className="animate-fade-up text-sm text-brand-orange">{perfilMensaje}</p>
-              )}
+              {perfilMensaje && <p className={successClass}>{perfilMensaje}</p>}
               <button
                 type="submit"
                 disabled={perfilGuardando}
@@ -413,11 +419,9 @@ export default function CuentaPage() {
                 {emailGuardando ? 'Guardando…' : 'Actualizar correo'}
               </button>
             </form>
-            {emailError && (
-              <p className="animate-fade-up mt-2 text-sm text-red-600 dark:text-red-400">{emailError}</p>
-            )}
+            {emailError && <p className={`mt-2 ${errorClass}`}>{emailError}</p>}
             {emailMensaje && (
-              <p className="animate-fade-up mt-2 text-sm text-brand-orange">{emailMensaje}</p>
+              <p className={`mt-2 ${successClass}`}>{emailMensaje}</p>
             )}
           </section>
 
@@ -455,11 +459,9 @@ export default function CuentaPage() {
                 </div>
               </div>
               {passwordError && (
-                <p className="animate-fade-up text-sm text-red-600 dark:text-red-400">{passwordError}</p>
+                <p className={errorClass}>{passwordError}</p>
               )}
-              {passwordMensaje && (
-                <p className="animate-fade-up text-sm text-brand-orange">{passwordMensaje}</p>
-              )}
+              {passwordMensaje && <p className={successClass}>{passwordMensaje}</p>}
               <button
                 type="submit"
                 disabled={passwordGuardando}
@@ -584,18 +586,18 @@ export default function CuentaPage() {
                   : '¿Olvidaste tu contraseña?'}
               </button>
               {recuperarError && (
-                <p className="animate-fade-up mt-1 text-sm text-red-600 dark:text-red-400">{recuperarError}</p>
+                <p className={`mt-1 ${errorClass}`}>{recuperarError}</p>
               )}
               {recuperarMensaje && (
-                <p className="animate-fade-up mt-1 text-sm text-brand-orange">
+                <p className={`mt-1 ${successClass}`}>
                   {recuperarMensaje}
                 </p>
               )}
             </div>
           )}
 
-          {error && <p className="animate-fade-up text-sm text-red-600 dark:text-red-400">{error}</p>}
-          {mensaje && <p className="animate-fade-up text-sm text-brand-orange">{mensaje}</p>}
+          {error && <p className={errorClass}>{error}</p>}
+          {mensaje && <p className={successClass}>{mensaje}</p>}
 
           <button
             type="submit"
