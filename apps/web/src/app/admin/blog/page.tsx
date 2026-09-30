@@ -16,6 +16,7 @@ type BlogPost = {
   contenido: string;
   palabra_clave: string | null;
   imagen_url: string | null;
+  etiqueta: string | null;
   estado: Estado;
   publicado_en: string | null;
   created_at: string;
@@ -28,6 +29,7 @@ const VACIO = {
   contenido: '',
   palabra_clave: '',
   imagen_url: '',
+  etiqueta: '',
   estado: 'borrador' as Estado,
 };
 
@@ -76,6 +78,7 @@ function BlogAdminInterno() {
       contenido: post.contenido,
       palabra_clave: post.palabra_clave ?? '',
       imagen_url: post.imagen_url ?? '',
+      etiqueta: post.etiqueta ?? '',
       estado: post.estado,
     });
     setSlugTocado(true);
@@ -94,6 +97,7 @@ function BlogAdminInterno() {
         contenido: form.contenido,
         palabra_clave: form.palabra_clave || undefined,
         imagen_url: form.imagen_url || undefined,
+        etiqueta: form.etiqueta || undefined,
         estado: form.estado,
       };
 
@@ -221,6 +225,19 @@ function BlogAdminInterno() {
 
         <div>
           <label className="block text-sm font-medium">
+            Etiqueta (categoría corta, ej. Guías, Menú, Domicilio)
+          </label>
+          <input
+            value={form.etiqueta}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, etiqueta: e.target.value }))
+            }
+            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium">
             Contenido (Markdown)
           </label>
           <textarea
@@ -267,7 +284,7 @@ function BlogAdminInterno() {
             </button>
           </div>
         </div>
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
       </form>
 
       <div className="mt-8">
@@ -292,7 +309,7 @@ function BlogAdminInterno() {
                     <span
                       className={
                         post.estado === 'publicado'
-                          ? 'text-green-600'
+                          ? 'text-green-600 dark:text-green-500'
                           : 'text-zinc-500'
                       }
                     >
@@ -312,7 +329,7 @@ function BlogAdminInterno() {
                   <button
                     type="button"
                     onClick={() => eliminar(post.id)}
-                    className="text-red-600 hover:underline"
+                    className="text-red-600 hover:underline dark:text-red-400"
                   >
                     Eliminar
                   </button>

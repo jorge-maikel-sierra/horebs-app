@@ -14,6 +14,7 @@ export interface BlogPostDto {
   contenido: string;
   palabra_clave: string | null;
   imagen_url: string | null;
+  etiqueta: string | null;
   estado: 'borrador' | 'publicado';
   publicado_en: string | null;
   created_at: string;
@@ -38,11 +39,12 @@ export interface CrearBlogPostInput {
   contenido: string;
   palabra_clave?: string;
   imagen_url?: string;
+  etiqueta?: string;
   estado?: 'borrador' | 'publicado';
 }
 
 const BLOG_POST_SELECT =
-  'id, titulo, slug, resumen, contenido, palabra_clave, imagen_url, estado, publicado_en, created_at';
+  'id, titulo, slug, resumen, contenido, palabra_clave, imagen_url, etiqueta, estado, publicado_en, created_at';
 
 const COMENTARIO_SELECT = 'id, usuario_id, autor_nombre, contenido, created_at';
 
@@ -271,6 +273,7 @@ export class BlogService {
         contenido: input.contenido,
         palabra_clave: input.palabra_clave?.trim() || null,
         imagen_url: input.imagen_url?.trim() || null,
+        etiqueta: input.etiqueta?.trim() || null,
         estado,
         publicado_en: estado === 'publicado' ? new Date().toISOString() : null,
       })
@@ -306,6 +309,9 @@ export class BlogService {
     }
     if (input.imagen_url !== undefined) {
       payload.imagen_url = input.imagen_url?.trim() || null;
+    }
+    if (input.etiqueta !== undefined) {
+      payload.etiqueta = input.etiqueta?.trim() || null;
     }
     if (input.estado !== undefined) {
       payload.estado = input.estado;

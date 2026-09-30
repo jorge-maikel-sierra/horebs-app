@@ -35,6 +35,7 @@ type Post = {
   resumen: string;
   contenido: string;
   imagen_url: string | null;
+  etiqueta: string | null;
   publicado_en: string | null;
 };
 
@@ -153,6 +154,11 @@ export default async function BlogPostPage({
             className="object-cover"
             priority
           />
+          {post.etiqueta && (
+            <span className="absolute top-3 left-3 rounded-full bg-white/90 px-2.5 py-1 text-xs font-semibold text-zinc-700 shadow-sm backdrop-blur-sm dark:bg-zinc-900/80 dark:text-zinc-200">
+              {post.etiqueta}
+            </span>
+          )}
         </div>
       )}
 
