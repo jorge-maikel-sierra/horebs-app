@@ -9,6 +9,7 @@ import { formatPrecio } from '@/lib/formato';
 import { supabase } from '@/lib/supabase';
 import { trackBeginCheckout } from '@/lib/analytics';
 import { errorClass } from '@/lib/feedback-estilos';
+import ModalCargando from '@/components/ModalCargando';
 
 function IconPaquete() {
   return (
@@ -91,13 +92,6 @@ function IconGoogle() {
   );
 }
 
-async function iniciarConGoogle() {
-  await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: { redirectTo: `${window.location.origin}/checkout` },
-  });
-}
-
 function iniciales(nombre: string, correo: string) {
   const n = nombre.trim();
   if (n) return n.slice(0, 2).toUpperCase();
@@ -137,6 +131,19 @@ export default function CheckoutPage() {
   const router = useRouter();
 
   const [session, setSession] = useState<Session | null>(null);
+  const [cargandoGoogle, setCargandoGoogle] = useState(false);
+
+  async function iniciarConGoogle() {
+    setCargandoGoogle(true);
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/checkout` },
+    });
+    // Si signInWithOAuth falla no hay redirect, así que hay que apagar el
+    // modal a mano — si funciona, la navegación al proveedor lo hace
+    // irrelevante (la página ya no sigue montada).
+    if (oauthError) setCargandoGoogle(false);
+  }
   const [nombre, setNombre] = useState('');
   const [apellido, setApellido] = useState('');
   const [telefono, setTelefono] = useState('');
@@ -372,11 +379,13 @@ export default function CheckoutPage() {
           <button
             type="button"
             onClick={iniciarConGoogle}
-            className="btn-press flex w-full items-center justify-center gap-3 rounded-lg border border-zinc-300 py-3 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
+            disabled={cargandoGoogle}
+            className="btn-press flex w-full items-center justify-center gap-3 rounded-lg border border-zinc-300 py-3 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
           >
             <IconGoogle />
             Continuar con Google
           </button>
+          {cargandoGoogle && <ModalCargando mensaje="Conectando con Google…" />}
           <div className="mt-4 flex items-center gap-3">
             <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
             <span className="text-xs text-zinc-400 dark:text-zinc-500">o con tus datos</span>

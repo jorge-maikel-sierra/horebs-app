@@ -7,6 +7,7 @@ import type { Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { useRol } from '@/lib/use-rol';
 import { errorClass, successClass } from '@/lib/feedback-estilos';
+import ModalCargando from '@/components/ModalCargando';
 
 type Modo = 'login' | 'registro';
 
@@ -43,18 +44,24 @@ function IconGoogle() {
   );
 }
 
-async function iniciarConGoogle() {
-  await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: { redirectTo: `${window.location.origin}/cuenta` },
-  });
-}
-
 export default function CuentaPage() {
   const router = useRouter();
   const [session, setSession] = useState<Session | null>(null);
   const [cargandoSesion, setCargandoSesion] = useState(true);
+  const [cargandoGoogle, setCargandoGoogle] = useState(false);
   const { rol } = useRol();
+
+  async function iniciarConGoogle() {
+    setCargandoGoogle(true);
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/cuenta` },
+    });
+    // Si signInWithOAuth falla no hay redirect, así que hay que apagar el
+    // modal a mano — si funciona, la navegación al proveedor lo hace
+    // irrelevante (la página ya no sigue montada).
+    if (oauthError) setCargandoGoogle(false);
+  }
 
   const [modo, setModo] = useState<Modo>('login');
   const [nombre, setNombre] = useState('');
@@ -533,11 +540,14 @@ export default function CuentaPage() {
         <button
           type="button"
           onClick={iniciarConGoogle}
-          className="btn-press mt-6 flex w-full items-center justify-center gap-3 rounded-lg border border-zinc-300 py-3 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
+          disabled={cargandoGoogle}
+          className="btn-press mt-6 flex w-full items-center justify-center gap-3 rounded-lg border border-zinc-300 py-3 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
         >
           <IconGoogle />
           Continuar con Google
         </button>
+
+        {cargandoGoogle && <ModalCargando mensaje="Conectando con Google…" />}
 
         <div className="mt-6 flex items-center gap-3">
           <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />

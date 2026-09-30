@@ -408,6 +408,24 @@ body {
   border-radius: 0.375rem;
 }
 
+/* Barra indeterminada del ModalCargando — no representa un progreso real
+   (no hay forma de saber cuánto falta para que redirija el proveedor de
+   OAuth), así que se limita a barrer de lado a lado en loop. */
+@keyframes barra-cargando {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(150%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}
+.animate-barra-cargando {
+  animation: barra-cargando 1.2s ease-in-out infinite;
+}
+
 /* Carrusel de reseñas de Google — cinta horizontal continua. El contenido
    se duplica una vez en el marcado y se desliza -50%, así el loop es
    perfecto (la segunda mitad es idéntica a la primera). Se pausa al pasar
