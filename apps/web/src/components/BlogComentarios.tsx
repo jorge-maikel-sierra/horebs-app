@@ -6,6 +6,7 @@ import { useSession } from '@/lib/use-session';
 import { adminFetch } from '@/lib/admin-fetch';
 import { formatFecha, formatHora } from '@/lib/formato';
 import { errorClass } from '@/lib/feedback-estilos';
+import EstadoVacio from '@/components/EstadoVacio';
 
 type Comentario = {
   id: string;
@@ -134,9 +135,7 @@ export default function BlogComentarios({ slug }: { slug: string }) {
             ))}
           </div>
         ) : comentarios.length === 0 ? (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            Todavía no hay comentarios. ¡Sé el primero!
-          </p>
+          <EstadoVacio>Todavía no hay comentarios. ¡Sé el primero!</EstadoVacio>
         ) : (
           comentarios.map((c, i) => (
             <div

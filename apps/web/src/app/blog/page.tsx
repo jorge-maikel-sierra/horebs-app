@@ -3,6 +3,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { NEGOCIO } from '@/lib/negocio';
 import { formatFecha } from '@/lib/formato';
+import EstadoVacio from '@/components/EstadoVacio';
 
 type PostResumen = {
   titulo: string;
@@ -39,9 +40,7 @@ export default async function BlogPage() {
       </p>
 
       {posts.length === 0 ? (
-        <p className="mt-8 text-sm text-zinc-500 dark:text-zinc-400">
-          Todavía no hay artículos publicados.
-        </p>
+        <EstadoVacio>Todavía no hay artículos publicados.</EstadoVacio>
       ) : (
         <div className="mt-8 space-y-4">
           {posts.map((post, i) => (

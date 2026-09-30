@@ -106,7 +106,7 @@ export default async function BlogPostPage({
 
       <Link
         href="/blog"
-        className="text-sm text-brand-orange underline transition-colors hover:text-brand-orange/80"
+        className="text-sm text-zinc-500 transition-colors hover:text-brand-orange dark:text-zinc-400"
       >
         ← Volver al blog
       </Link>

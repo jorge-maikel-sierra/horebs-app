@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import AgregarAlCarritoBoton from '@/components/AgregarAlCarritoBoton';
+import EstadoVacio from '@/components/EstadoVacio';
 import ScrollReveal from '@/components/ScrollReveal';
 import { formatPrecio } from '@/lib/formato';
 import { breadcrumbJsonLd, jsonLdScript } from '@/lib/json-ld';
@@ -137,9 +138,7 @@ export default async function CatalogoPage() {
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Catálogo
         </h1>
-        <p className="mt-4 text-zinc-600 dark:text-zinc-400">
-          Todavía no hay productos cargados en el catálogo.
-        </p>
+        <EstadoVacio>Todavía no hay productos cargados en el catálogo.</EstadoVacio>
       </div>
     );
   }
