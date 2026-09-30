@@ -36,26 +36,9 @@ function WhatsappIcon() {
   );
 }
 
-function FacebookIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M22 12.06C22 6.5 17.52 2 12 2S2 6.5 2 12.06c0 5 3.66 9.15 8.44 9.94v-7.03H7.9v-2.91h2.54V9.85c0-2.51 1.49-3.9 3.77-3.9 1.09 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56v1.88h2.78l-.44 2.91h-2.34V22c4.78-.79 8.44-4.94 8.44-9.94Z" />
-    </svg>
-  );
-}
-
-function InstagramIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-      <rect x="3" y="3" width="18" height="18" rx="5" />
-      <circle cx="12" cy="12" r="4" />
-      <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
-
 export default function ContactoPage() {
   const mensajeWhatsapp = whatsappUrl('¡Hola! Quiero hacer un pedido.');
+  const urlMapa = `https://www.google.com/maps/search/?api=1&query=${NEGOCIO.latitud},${NEGOCIO.longitud}`;
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-12 sm:py-16">
@@ -67,15 +50,22 @@ export default function ContactoPage() {
       </p>
 
       <div className="animate-fade-up delay-2 mt-8 grid gap-4 sm:grid-cols-2">
-        <div className="card-gradient card-interactive rounded-2xl border border-zinc-200 p-5 dark:border-zinc-800">
+        <a
+          href={urlMapa}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="card-gradient card-interactive rounded-2xl border border-zinc-200 p-5 dark:border-zinc-800"
+        >
           <span className="btn-gradient flex h-10 w-10 items-center justify-center rounded-full text-white shadow-sm">
             <PinIcon />
           </span>
           <p className="mt-3 text-sm font-semibold text-zinc-500 dark:text-zinc-400">
             Dirección
           </p>
-          <p className="mt-0.5 text-zinc-900 dark:text-zinc-50">{NEGOCIO.direccion}</p>
-        </div>
+          <p className="mt-0.5 text-zinc-900 transition-colors hover:text-brand-orange dark:text-zinc-50">
+            {NEGOCIO.direccion}
+          </p>
+        </a>
 
         <div className="card-gradient card-interactive rounded-2xl border border-zinc-200 p-5 dark:border-zinc-800">
           <span className="btn-gradient flex h-10 w-10 items-center justify-center rounded-full text-white shadow-sm">
@@ -87,46 +77,20 @@ export default function ContactoPage() {
           <p className="mt-0.5 text-zinc-900 dark:text-zinc-50">{NEGOCIO.horario}</p>
         </div>
 
-        <div className="card-gradient card-interactive rounded-2xl border border-zinc-200 p-5 dark:border-zinc-800">
+        <WhatsappCta
+          href={mensajeWhatsapp}
+          className="card-gradient card-interactive rounded-2xl border border-zinc-200 p-5 dark:border-zinc-800"
+        >
           <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#25D366] text-white shadow-sm">
             <WhatsappIcon />
           </span>
           <p className="mt-3 text-sm font-semibold text-zinc-500 dark:text-zinc-400">
             WhatsApp
           </p>
-          <WhatsappCta
-            href={mensajeWhatsapp}
-            className="mt-0.5 block text-zinc-900 transition-colors hover:text-brand-orange dark:text-zinc-50"
-          >
+          <p className="mt-0.5 text-zinc-900 transition-colors hover:text-brand-orange dark:text-zinc-50">
             {NEGOCIO.whatsapp}
-          </WhatsappCta>
-        </div>
-
-        <div className="card-gradient card-interactive rounded-2xl border border-zinc-200 p-5 dark:border-zinc-800">
-          <p className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">
-            Redes sociales
           </p>
-          <div className="mt-3 flex gap-3">
-            <a
-              href={NEGOCIO.facebook}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Facebook"
-              className="btn-press flex h-10 w-10 items-center justify-center rounded-full border border-zinc-300 text-zinc-600 transition-colors hover:border-brand-orange hover:text-brand-orange dark:border-zinc-700 dark:text-zinc-400"
-            >
-              <FacebookIcon />
-            </a>
-            <a
-              href={NEGOCIO.instagram}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Instagram"
-              className="btn-press flex h-10 w-10 items-center justify-center rounded-full border border-zinc-300 text-zinc-600 transition-colors hover:border-brand-orange hover:text-brand-orange dark:border-zinc-700 dark:text-zinc-400"
-            >
-              <InstagramIcon />
-            </a>
-          </div>
-        </div>
+        </WhatsappCta>
       </div>
 
       <WhatsappCta

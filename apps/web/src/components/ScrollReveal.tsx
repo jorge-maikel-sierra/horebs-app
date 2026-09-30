@@ -23,7 +23,10 @@ export default function ScrollReveal({
           observer.disconnect();
         }
       },
-      { threshold: 0.15 },
+      // rootMargin dispara el reveal ~300px antes de que el elemento entre
+      // en pantalla, para que ya esté visible cuando el usuario llega a él
+      // scrolleando, en vez de "aparecer con demora".
+      { threshold: 0.01, rootMargin: '0px 0px 300px 0px' },
     );
     observer.observe(el);
     return () => observer.disconnect();

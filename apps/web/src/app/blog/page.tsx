@@ -74,6 +74,7 @@ export default async function BlogPage() {
                     src={post.imagen_url}
                     alt={post.titulo}
                     fill
+                    unoptimized={post.imagen_url.endsWith('.svg')}
                     sizes="(min-width: 640px) 380px, 100vw"
                     className="object-cover transition-transform duration-500 group-hover:scale-110"
                   />
@@ -94,7 +95,7 @@ export default async function BlogPage() {
                   ) : (
                     <span />
                   )}
-                  <span className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-brand-orange">
+                  <span className="btn-press inline-flex shrink-0 items-center gap-1.5 rounded-full border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-600 transition-colors group-hover:border-brand-orange group-hover:text-brand-orange dark:border-zinc-700 dark:text-zinc-300">
                     Leer más
                     <IconFlechaDerecha />
                   </span>

@@ -61,8 +61,9 @@ const CSP = [
   // cae a un iframe/form-post de respaldo contra ese mismo dominio — los
   // hosts de Cloud Run/ECS que prueba antes cambian en cada redeploy de
   // Meta, así que esos sí se dejan bloquear a propósito (no hay forma
-  // sostenible de listarlos).
-  "frame-src https://www.googletagmanager.com https://www.facebook.com",
+  // sostenible de listarlos). google.com es el iframe del mapa embebido de
+  // /contacto (NEGOCIO.mapaEmbedUrl).
+  "frame-src https://www.googletagmanager.com https://www.facebook.com https://www.google.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self' https://www.facebook.com",
@@ -85,10 +86,12 @@ const SECURITY_HEADERS = [
 
 const nextConfig: NextConfig = {
   images: {
-    // Habilita SVG en next/image solo para las portadas ilustradas del blog
-    // (apps/web/public/blog/*.svg) — son archivos propios del repo, no
-    // contenido subido por usuarios, así que el riesgo de SVG con script
-    // embebido no aplica. El sandbox de la CSP de abajo igual lo bloquea.
+    // Necesario para servir las portadas ilustradas del blog
+    // (apps/web/public/blog/*.svg) vía next/image — Next bloquea SVG por
+    // completo si no se habilita esto. El flag es global de `images`, así
+    // que también cubre SVG que llegaran de los remotePatterns de abajo,
+    // pero ninguno de esos orígenes hoy sirve SVG. Igual queda el sandbox
+    // de la CSP como mitigación real contra un SVG con script embebido.
     dangerouslyAllowSVG: true,
     contentDispositionType: 'attachment',
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",

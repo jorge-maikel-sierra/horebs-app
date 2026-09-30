@@ -129,6 +129,7 @@ export default async function BlogPostPage({
             src={post.imagen_url}
             alt={post.titulo}
             fill
+            unoptimized={post.imagen_url.endsWith('.svg')}
             sizes="(min-width: 768px) 720px, 100vw"
             className="object-cover"
             priority
