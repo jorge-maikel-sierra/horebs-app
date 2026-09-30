@@ -49,7 +49,7 @@ export default function ContactoPage() {
         Escribinos, pasá por el local o mirá cómo llegar.
       </p>
 
-      <div className="animate-fade-up delay-2 mt-8 grid gap-4 sm:grid-cols-2">
+      <div className="animate-fade-up delay-2 mt-8 grid gap-4 sm:grid-cols-3">
         <a
           href={urlMapa}
           target="_blank"
