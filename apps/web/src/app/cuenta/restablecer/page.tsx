@@ -7,6 +7,9 @@ import { errorClass, successClass } from '@/lib/feedback-estilos';
 
 type Estado = 'verificando' | 'listo' | 'invalido' | 'guardado';
 
+const inputClass =
+  'mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 outline-none transition-colors focus:border-brand-orange dark:border-zinc-700 dark:bg-zinc-950';
+
 export default function RestablecerPasswordPage() {
   const [estado, setEstado] = useState<Estado>('verificando');
   const [nuevaPassword, setNuevaPassword] = useState('');
@@ -64,7 +67,7 @@ export default function RestablecerPasswordPage() {
 
   return (
     <div className="mx-auto max-w-md px-4 py-10 sm:px-6">
-      <div className="rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="card-interactive card-gradient animate-fade-up rounded-2xl border border-zinc-200 p-8 shadow-sm dark:border-zinc-800">
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Restablecer contraseña
         </h1>
@@ -115,7 +118,7 @@ export default function RestablecerPasswordPage() {
                 type="password"
                 value={nuevaPassword}
                 onChange={(e) => setNuevaPassword(e.target.value)}
-                className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950"
+                className={inputClass}
               />
             </div>
             <div>
@@ -128,7 +131,7 @@ export default function RestablecerPasswordPage() {
                 type="password"
                 value={confirmarPassword}
                 onChange={(e) => setConfirmarPassword(e.target.value)}
-                className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950"
+                className={inputClass}
               />
             </div>
 
@@ -137,7 +140,7 @@ export default function RestablecerPasswordPage() {
             <button
               type="submit"
               disabled={enviando}
-              className="w-full rounded-lg btn-gradient py-3 font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+              className="btn-press w-full rounded-lg btn-gradient py-3 font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
             >
               {enviando ? 'Guardando…' : 'Guardar contraseña'}
             </button>
