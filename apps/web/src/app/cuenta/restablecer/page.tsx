@@ -104,7 +104,7 @@ export default function RestablecerPasswordPage() {
         )}
 
         {estado === 'listo' && (
-          <form onSubmit={guardar} className="mt-6 space-y-4">
+          <form onSubmit={guardar} noValidate className="mt-6 space-y-4">
             <div>
               <label className="block text-sm font-medium">
                 Nueva contraseña

@@ -125,10 +125,28 @@ export default function CuentaPage() {
     e.preventDefault();
     setError(null);
     setMensaje(null);
-    setEnviando(true);
 
     const emailLimpio = email.trim();
     const passwordLimpia = password.trim();
+
+    if (modo === 'registro' && !nombre.trim()) {
+      setError('Completá tu nombre.');
+      return;
+    }
+    if (modo === 'registro' && !apellido.trim()) {
+      setError('Completá tu apellido.');
+      return;
+    }
+    if (!emailLimpio) {
+      setError('Completá tu email.');
+      return;
+    }
+    if (passwordLimpia.length < 6) {
+      setError('La contraseña debe tener al menos 6 caracteres.');
+      return;
+    }
+
+    setEnviando(true);
 
     if (modo === 'registro') {
       const { data, error: signUpError } = await supabase.auth.signUp({
@@ -329,7 +347,7 @@ export default function CuentaPage() {
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
               Se usan para identificarte y agilizar tus pedidos.
             </p>
-            <form onSubmit={guardarPerfil} className="mt-4 space-y-4">
+            <form onSubmit={guardarPerfil} noValidate className="mt-4 space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="block text-sm font-medium">Nombre</label>
@@ -392,6 +410,7 @@ export default function CuentaPage() {
             </h2>
             <form
               onSubmit={guardarEmail}
+              noValidate
               className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end"
             >
               <div className="flex-1">
@@ -422,7 +441,7 @@ export default function CuentaPage() {
             <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
               Contraseña
             </h2>
-            <form onSubmit={guardarPassword} className="mt-4 space-y-4">
+            <form onSubmit={guardarPassword} noValidate className="mt-4 space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="block text-sm font-medium">
@@ -519,7 +538,7 @@ export default function CuentaPage() {
           <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
         </div>
 
-        <form onSubmit={enviar} className="mt-6 space-y-4">
+        <form onSubmit={enviar} noValidate className="mt-6 space-y-4">
           {modo === 'registro' && (
             <div className="animate-fade-up grid gap-4 sm:grid-cols-2">
               <div>

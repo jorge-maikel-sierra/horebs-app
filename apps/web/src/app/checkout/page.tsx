@@ -238,6 +238,22 @@ export default function CheckoutPage() {
     e.preventDefault();
     setError(null);
 
+    if (!session && !nombre.trim()) {
+      setError('Completá tu nombre.');
+      return;
+    }
+    if (!apellido.trim()) {
+      setError('Completá tu apellido.');
+      return;
+    }
+    if (!telefono.trim()) {
+      setError('Completá tu teléfono.');
+      return;
+    }
+    if (!session && !correo.trim()) {
+      setError('Completá tu correo.');
+      return;
+    }
     if (modalidad === 'domicilio' && !direccion.trim()) {
       setError('Falta la dirección de entrega.');
       return;
@@ -369,7 +385,7 @@ export default function CheckoutPage() {
         </div>
       )}
 
-      <form onSubmit={enviarPedido} className="animate-fade-up delay-2 mt-6 space-y-4">
+      <form onSubmit={enviarPedido} noValidate className="animate-fade-up delay-2 mt-6 space-y-4">
         {!session && (
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
