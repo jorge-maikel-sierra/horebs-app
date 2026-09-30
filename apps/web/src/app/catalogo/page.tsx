@@ -49,7 +49,13 @@ async function getProductos(): Promise<Producto[]> {
   return res.json();
 }
 
-function ProductoCard({ producto }: { producto: Producto }) {
+function ProductoCard({
+  producto,
+  categoriaNombre,
+}: {
+  producto: Producto;
+  categoriaNombre?: string;
+}) {
   return (
     <div
       className={`card-interactive group overflow-hidden rounded-2xl border p-4 ${
@@ -59,7 +65,7 @@ function ProductoCard({ producto }: { producto: Producto }) {
       }`}
     >
       {producto.imagen_url && (
-        <div className="relative -mx-4 -mt-4 mb-3 h-40 w-[calc(100%+2rem)] overflow-hidden rounded-t-2xl">
+        <div className="relative -mx-4 -mt-4 mb-3 h-44 w-[calc(100%+2rem)] overflow-hidden rounded-t-2xl">
           <Image
             src={producto.imagen_url}
             alt={`${producto.nombre} a domicilio en Riohacha`}
@@ -67,14 +73,19 @@ function ProductoCard({ producto }: { producto: Producto }) {
             sizes="(min-width: 640px) 420px, 100vw"
             className="object-cover transition-transform duration-500 group-hover:scale-110"
           />
+          {producto.destacado && (
+            <span className="btn-gradient absolute top-3 left-3 rounded-full px-2.5 py-1 text-xs font-semibold text-white shadow-sm">
+              Firma de la casa
+            </span>
+          )}
         </div>
       )}
-      {producto.destacado && (
-        <span className="btn-gradient mb-2 inline-block rounded-full px-2.5 py-1 text-xs font-semibold text-white shadow-sm">
-          Firma de la casa
-        </span>
+      {categoriaNombre && (
+        <p className="text-xs font-semibold tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
+          {categoriaNombre}
+        </p>
       )}
-      <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+      <h3 className="mt-0.5 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
         {producto.slug ? (
           <Link
             href={`/menu/${producto.slug}`}
@@ -92,31 +103,37 @@ function ProductoCard({ producto }: { producto: Producto }) {
         </p>
       )}
       {producto.variantes.length > 0 && (
-        <ul className="mt-3 divide-y divide-zinc-200/70 border-t border-zinc-200/70 text-sm dark:divide-zinc-800/70 dark:border-zinc-800/70">
+        <ul className="mt-3 space-y-1 text-sm">
           {producto.variantes.map((v) => (
-            <li key={v.id} className="flex items-center justify-between gap-2 py-2">
-              <span className="flex items-center gap-2">
+            <li
+              key={v.id}
+              className="-mx-2 flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-zinc-100/70 dark:hover:bg-zinc-800/40"
+            >
+              <span className="text-zinc-700 dark:text-zinc-300">
                 {v.nombre}
+              </span>
+              <span className="flex shrink-0 items-center gap-2">
+                <span className="font-medium">
+                  {v.precio_oferta ? (
+                    <>
+                      <span className="mr-1.5 text-zinc-500 line-through dark:text-zinc-400">
+                        {formatPrecio(v.precio)}
+                      </span>
+                      <span className="text-brand-orange">
+                        {formatPrecio(v.precio_oferta)}
+                      </span>
+                    </>
+                  ) : (
+                    formatPrecio(v.precio)
+                  )}
+                </span>
                 <AgregarAlCarritoBoton
                   varianteId={v.id}
                   productoNombre={producto.nombre}
                   varianteNombre={v.nombre}
                   precio={v.precio_oferta ?? v.precio}
+                  imagenUrl={producto.imagen_url ?? undefined}
                 />
-              </span>
-              <span className="shrink-0 font-medium">
-                {v.precio_oferta ? (
-                  <>
-                    <span className="mr-2 text-zinc-400 line-through">
-                      {formatPrecio(v.precio)}
-                    </span>
-                    <span className="text-brand-orange">
-                      {formatPrecio(v.precio_oferta)}
-                    </span>
-                  </>
-                ) : (
-                  formatPrecio(v.precio)
-                )}
               </span>
             </li>
           ))}
@@ -145,6 +162,7 @@ export default async function CatalogoPage() {
 
   const destacados = productos.filter((p) => p.destacado);
   const resto = productos.filter((p) => !p.destacado);
+  const categoriaPorId = new Map(categorias.map((c) => [c.id, c.nombre]));
 
   const breadcrumbLd = breadcrumbJsonLd([
     { nombre: 'Inicio', ruta: '/' },
@@ -186,7 +204,11 @@ export default async function CatalogoPage() {
           </h2>
           <div className="mt-3 grid gap-4 sm:grid-cols-2">
             {destacados.map((p) => (
-              <ProductoCard key={p.id} producto={p} />
+              <ProductoCard
+                key={p.id}
+                producto={p}
+                categoriaNombre={categoriaPorId.get(p.categoria_id)}
+              />
             ))}
           </div>
         </section>

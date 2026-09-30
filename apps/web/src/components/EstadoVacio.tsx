@@ -19,11 +19,17 @@ function IconCaja() {
   );
 }
 
-export default function EstadoVacio({ children }: { children: ReactNode }) {
+export default function EstadoVacio({
+  children,
+  icon,
+}: {
+  children: ReactNode;
+  icon?: ReactNode;
+}) {
   return (
     <div className="animate-fade-up mt-8 flex flex-col items-center gap-3 py-4 text-center">
       <span className="flex h-14 w-14 items-center justify-center rounded-full bg-zinc-100 text-zinc-400 dark:bg-zinc-900 dark:text-zinc-600">
-        <IconCaja />
+        {icon ?? <IconCaja />}
       </span>
       <p className="text-zinc-600 dark:text-zinc-400">{children}</p>
     </div>

@@ -1,9 +1,67 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useCart } from '@/lib/cart-context';
 import { formatPrecio } from '@/lib/formato';
 import EstadoVacio from '@/components/EstadoVacio';
+
+function IconFlechaIzquierda() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M19 12H5" />
+      <path d="M11 18l-6-6 6-6" />
+    </svg>
+  );
+}
+
+function IconCarritoVacio() {
+  return (
+    <svg
+      width="26"
+      height="26"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="9" cy="20" r="1" />
+      <circle cx="18" cy="20" r="1" />
+      <path d="M2.5 3h2l2.4 12.2a2 2 0 0 0 2 1.6h8.2a2 2 0 0 0 2-1.6L21 8H6" />
+    </svg>
+  );
+}
+
+function IconQuitar() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M4 7h16" />
+      <path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+      <path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12" />
+      <path d="M10 11v6M14 11v6" />
+    </svg>
+  );
+}
 
 export default function CarritoPage() {
   const { items, updateCantidad, removeItem, clear, total } = useCart();
@@ -14,7 +72,7 @@ export default function CarritoPage() {
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Carrito
         </h1>
-        <EstadoVacio>
+        <EstadoVacio icon={<IconCarritoVacio />}>
           Todavía no agregaste nada. Mirá el{' '}
           <Link href="/catalogo" className="text-brand-orange underline">
             catálogo
@@ -33,37 +91,44 @@ export default function CarritoPage() {
         </h1>
         <Link
           href="/catalogo"
-          className="text-sm text-brand-orange underline transition-colors hover:text-brand-orange/80"
+          className="btn-press inline-flex shrink-0 items-center gap-1.5 rounded-full border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-600 transition-colors hover:border-brand-orange hover:text-brand-orange dark:border-zinc-700 dark:text-zinc-300"
         >
+          <IconFlechaIzquierda />
           Seguir comprando
         </Link>
       </div>
 
-      <ul className="mt-6 space-y-4">
+      <ul className="mt-6 space-y-3">
         {items.map((item, i) => (
           <li
             key={item.varianteId}
-            className="animate-fade-up rounded-lg border border-zinc-200 p-4 dark:border-zinc-800"
+            className="card-interactive card-gradient animate-fade-up rounded-2xl border border-zinc-200 p-3 dark:border-zinc-800"
             style={{ animationDelay: `${Math.min(i, 6) * 0.06}s` }}
           >
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="font-semibold text-zinc-900 dark:text-zinc-50">
-                  {item.productoNombre}
-                </p>
-                <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                  {item.varianteNombre} — {formatPrecio(item.precio)} c/u
-                </p>
-                <button
-                  type="button"
-                  onClick={() => removeItem(item.varianteId)}
-                  className="mt-1 text-xs text-danger-600 transition-colors hover:underline dark:text-danger-400"
-                >
-                  Quitar
-                </button>
+              <div className="flex items-center gap-3">
+                {item.imagenUrl && (
+                  <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl">
+                    <Image
+                      src={item.imagenUrl}
+                      alt={item.productoNombre}
+                      fill
+                      sizes="64px"
+                      className="object-cover"
+                    />
+                  </div>
+                )}
+                <div>
+                  <p className="font-semibold text-zinc-900 dark:text-zinc-50">
+                    {item.productoNombre}
+                  </p>
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                    {item.varianteNombre} — {formatPrecio(item.precio)} c/u
+                  </p>
+                </div>
               </div>
 
-              <div className="flex items-center justify-between gap-4 sm:justify-end">
+              <div className="flex items-center justify-between gap-3 sm:justify-end">
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
@@ -90,9 +155,18 @@ export default function CarritoPage() {
                   </button>
                 </div>
 
-                <p className="font-semibold sm:w-24 sm:text-right">
+                <p className="w-20 shrink-0 text-right font-semibold sm:w-24">
                   {formatPrecio(item.precio * item.cantidad)}
                 </p>
+
+                <button
+                  type="button"
+                  onClick={() => removeItem(item.varianteId)}
+                  aria-label={`Quitar ${item.productoNombre} ${item.varianteNombre} del carrito`}
+                  className="btn-press flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-danger-50 hover:text-danger-600 dark:text-zinc-500 dark:hover:bg-danger-900/30 dark:hover:text-danger-400"
+                >
+                  <IconQuitar />
+                </button>
               </div>
             </div>
           </li>
@@ -102,8 +176,9 @@ export default function CarritoPage() {
       <button
         type="button"
         onClick={clear}
-        className="mt-3 text-sm text-zinc-500 transition-colors hover:text-danger-600 dark:text-zinc-400 dark:hover:text-danger-400"
+        className="btn-press mt-4 inline-flex items-center gap-1.5 rounded-full border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-600 transition-colors hover:border-danger-300 hover:bg-danger-50 hover:text-danger-600 dark:border-zinc-700 dark:text-zinc-300 dark:hover:border-danger-900 dark:hover:bg-danger-900/20 dark:hover:text-danger-400"
       >
+        <IconQuitar />
         Vaciar carrito
       </button>
 

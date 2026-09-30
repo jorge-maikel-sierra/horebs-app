@@ -162,34 +162,37 @@ export default async function ProductoPage({
       )}
 
       {producto.variantes.length > 0 && (
-        <ul className="animate-fade-up delay-3 mt-6 space-y-3 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+        <ul className="animate-fade-up delay-3 mt-6 space-y-1 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
           {producto.variantes.map((v) => (
             <li
               key={v.id}
-              className="-mx-2 flex items-center justify-between gap-3 rounded-md px-2 py-1 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-900"
+              className="-mx-2 flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-zinc-100/70 dark:hover:bg-zinc-800/40"
             >
-              <span className="flex items-center gap-2">
+              <span className="text-zinc-700 dark:text-zinc-300">
                 {v.nombre}
+              </span>
+              <span className="flex shrink-0 items-center gap-2">
+                <span className="font-medium">
+                  {v.precio_oferta ? (
+                    <>
+                      <span className="mr-1.5 text-zinc-500 line-through dark:text-zinc-400">
+                        {formatPrecio(v.precio)}
+                      </span>
+                      <span className="text-brand-orange">
+                        {formatPrecio(v.precio_oferta)}
+                      </span>
+                    </>
+                  ) : (
+                    formatPrecio(v.precio)
+                  )}
+                </span>
                 <AgregarAlCarritoBoton
                   varianteId={v.id}
                   productoNombre={producto.nombre}
                   varianteNombre={v.nombre}
                   precio={v.precio_oferta ?? v.precio}
+                  imagenUrl={producto.imagen_url ?? undefined}
                 />
-              </span>
-              <span className="shrink-0 font-medium">
-                {v.precio_oferta ? (
-                  <>
-                    <span className="mr-2 text-zinc-400 line-through">
-                      {formatPrecio(v.precio)}
-                    </span>
-                    <span className="text-brand-orange">
-                      {formatPrecio(v.precio_oferta)}
-                    </span>
-                  </>
-                ) : (
-                  formatPrecio(v.precio)
-                )}
               </span>
             </li>
           ))}

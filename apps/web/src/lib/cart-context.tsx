@@ -16,6 +16,7 @@ export type CartItem = {
   varianteNombre: string;
   precio: number;
   cantidad: number;
+  imagenUrl?: string;
 };
 
 type CartContextValue = {

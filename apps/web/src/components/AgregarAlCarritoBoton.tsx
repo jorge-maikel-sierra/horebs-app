@@ -8,6 +8,7 @@ type Props = {
   productoNombre: string;
   varianteNombre: string;
   precio: number;
+  imagenUrl?: string;
 };
 
 export default function AgregarAlCarritoBoton({
@@ -15,6 +16,7 @@ export default function AgregarAlCarritoBoton({
   productoNombre,
   varianteNombre,
   precio,
+  imagenUrl,
 }: Props) {
   const { addItem } = useCart();
   const [agregado, setAgregado] = useState(false);
@@ -23,7 +25,7 @@ export default function AgregarAlCarritoBoton({
     <button
       type="button"
       onClick={() => {
-        addItem({ varianteId, productoNombre, varianteNombre, precio });
+        addItem({ varianteId, productoNombre, varianteNombre, precio, imagenUrl });
         setAgregado(true);
         setTimeout(() => setAgregado(false), 1200);
       }}
@@ -32,7 +34,7 @@ export default function AgregarAlCarritoBoton({
       }`}
     >
       <span key={agregado ? 'on' : 'off'} className="animate-pop-in inline-block">
-        {agregado ? 'Agregado ✓' : 'Agregar'}
+        {agregado ? 'Agregado ✓' : '+ Agregar'}
       </span>
     </button>
   );
