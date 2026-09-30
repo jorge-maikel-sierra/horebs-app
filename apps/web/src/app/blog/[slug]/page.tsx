@@ -11,6 +11,24 @@ import BlogLikeButton from '@/components/BlogLikeButton';
 import BlogComentarios from '@/components/BlogComentarios';
 import ScrollReveal from '@/components/ScrollReveal';
 
+function IconFlechaIzquierda() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M19 12H5" />
+      <path d="M11 18l-6-6 6-6" />
+    </svg>
+  );
+}
+
 type Post = {
   titulo: string;
   slug: string;
@@ -106,9 +124,10 @@ export default async function BlogPostPage({
 
       <Link
         href="/blog"
-        className="text-sm text-zinc-500 transition-colors hover:text-brand-orange dark:text-zinc-400"
+        className="btn-press inline-flex items-center gap-1.5 rounded-full border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-600 transition-colors hover:border-brand-orange hover:text-brand-orange dark:border-zinc-700 dark:text-zinc-300"
       >
-        ← Volver al blog
+        <IconFlechaIzquierda />
+        Volver al blog
       </Link>
 
       <h1 className="animate-fade-up mt-4 text-3xl font-bold text-zinc-900 sm:text-4xl dark:text-zinc-50">
