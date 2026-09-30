@@ -66,8 +66,9 @@ export default function RestablecerPasswordPage() {
   }
 
   return (
-    <div className="mx-auto max-w-md px-4 py-10 sm:px-6">
-      <div className="card-interactive card-gradient animate-fade-up rounded-2xl border border-zinc-200 p-8 shadow-sm dark:border-zinc-800">
+    <div className="relative isolate mx-auto max-w-md px-4 py-10 sm:px-6">
+      <div className="cuenta-halo" aria-hidden="true" />
+      <div className="card-interactive card-glass animate-fade-up rounded-2xl border border-white/40 p-8 shadow-lg shadow-zinc-900/5 dark:border-white/10">
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Restablecer contraseña
         </h1>

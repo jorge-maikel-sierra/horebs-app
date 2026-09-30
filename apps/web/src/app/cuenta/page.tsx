@@ -300,7 +300,8 @@ export default function CuentaPage() {
       session.user.user_metadata?.avatar_url ?? session.user.user_metadata?.picture;
 
     return (
-      <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
+      <div className="relative isolate mx-auto max-w-2xl px-4 py-10 sm:px-6">
+        <div className="cuenta-halo" aria-hidden="true" />
         <div className="animate-fade-up flex flex-wrap items-center gap-4">
           {avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element -- URL externa de Google, no vale la pena optimizarla con next/image.
@@ -340,7 +341,7 @@ export default function CuentaPage() {
         </div>
 
         <div className="mt-8 space-y-6">
-          <section className="card-interactive card-gradient animate-fade-up delay-1 rounded-2xl border border-zinc-200 p-6 shadow-sm dark:border-zinc-800">
+          <section className="card-interactive card-glass animate-fade-up delay-1 rounded-2xl border border-white/40 p-6 shadow-sm dark:border-white/10">
             <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
               Datos personales
             </h2>
@@ -404,7 +405,7 @@ export default function CuentaPage() {
             </form>
           </section>
 
-          <section className="card-interactive card-gradient animate-fade-up delay-2 rounded-2xl border border-zinc-200 p-6 shadow-sm dark:border-zinc-800">
+          <section className="card-interactive card-glass animate-fade-up delay-2 rounded-2xl border border-white/40 p-6 shadow-sm dark:border-white/10">
             <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
               Correo electrónico
             </h2>
@@ -437,7 +438,7 @@ export default function CuentaPage() {
             )}
           </section>
 
-          <section className="card-interactive card-gradient animate-fade-up delay-3 rounded-2xl border border-zinc-200 p-6 shadow-sm dark:border-zinc-800">
+          <section className="card-interactive card-glass animate-fade-up delay-3 rounded-2xl border border-white/40 p-6 shadow-sm dark:border-white/10">
             <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
               Contraseña
             </h2>
@@ -489,8 +490,9 @@ export default function CuentaPage() {
   }
 
   return (
-    <div className="mx-auto max-w-md px-4 py-10 sm:px-6">
-      <div className="card-interactive card-gradient animate-fade-up rounded-2xl border border-zinc-200 p-8 shadow-sm dark:border-zinc-800">
+    <div className="relative isolate mx-auto max-w-md px-4 py-10 sm:px-6">
+      <div className="cuenta-halo" aria-hidden="true" />
+      <div className="card-interactive card-glass animate-fade-up rounded-2xl border border-white/40 p-8 shadow-lg shadow-zinc-900/5 dark:border-white/10">
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
           Mi cuenta
         </h1>
@@ -498,14 +500,14 @@ export default function CuentaPage() {
           Iniciá sesión o creá una cuenta para gestionar tus datos.
         </p>
 
-        <div className="mt-6 flex gap-4 border-b border-zinc-200 dark:border-zinc-800">
+        <div className="mt-6 grid grid-cols-2 gap-1 rounded-full bg-zinc-100 p-1 dark:bg-zinc-800/60">
           <button
             type="button"
             onClick={() => setModo('login')}
-            className={`pb-2 text-sm font-semibold transition-colors ${
+            className={`btn-press rounded-full py-2 text-sm font-semibold transition-colors ${
               modo === 'login'
-                ? 'border-b-2 border-brand-orange text-brand-orange'
-                : 'text-zinc-500 dark:text-zinc-400'
+                ? 'btn-gradient text-white shadow-sm'
+                : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'
             }`}
           >
             Iniciar sesión
@@ -513,10 +515,10 @@ export default function CuentaPage() {
           <button
             type="button"
             onClick={() => setModo('registro')}
-            className={`pb-2 text-sm font-semibold transition-colors ${
+            className={`btn-press rounded-full py-2 text-sm font-semibold transition-colors ${
               modo === 'registro'
-                ? 'border-b-2 border-brand-orange text-brand-orange'
-                : 'text-zinc-500 dark:text-zinc-400'
+                ? 'btn-gradient text-white shadow-sm'
+                : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'
             }`}
           >
             Crear cuenta
