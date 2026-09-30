@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useRol } from '@/lib/use-rol';
 import { supabase } from '@/lib/supabase';
+import { useAlertasAdmin, type AlertasAdmin } from '@/lib/use-alertas-admin';
 import ThemeToggle from '@/components/ThemeToggle';
 
 const CLAVE_COLAPSADO = 'horebs-admin-sidebar-colapsado';
@@ -158,21 +159,58 @@ function IconChevron() {
   );
 }
 
+function IconCampana() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+      <path d="M13.7 21a2 2 0 0 1-3.4 0" />
+    </svg>
+  );
+}
+
+function CampanaAlertas({ total }: { total: number }) {
+  return (
+    <Link
+      href="/admin"
+      aria-label={
+        total > 0
+          ? `${total} alertas pendientes — ver panel`
+          : 'Sin alertas pendientes'
+      }
+      title={total > 0 ? `${total} alertas pendientes` : 'Sin alertas pendientes'}
+      className="btn-press relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-zinc-300 text-zinc-700 transition-colors hover:border-brand-orange hover:text-brand-orange dark:border-zinc-700 dark:text-zinc-300"
+    >
+      <IconCampana />
+      {total > 0 && (
+        <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">
+          {total > 9 ? '9+' : total}
+        </span>
+      )}
+    </Link>
+  );
+}
+
 type NavItem = {
   href: string;
   label: string;
   icon: () => ReactElement;
   exacto?: boolean;
+  badgeKey?: keyof AlertasAdmin;
 };
 
 const NAV_GENERAL: NavItem[] = [
   { href: '/admin', label: 'Panel', icon: IconPanel, exacto: true },
   { href: '/admin/pos', label: 'Punto de venta', icon: IconPos },
-  { href: '/admin/pedidos', label: 'Pedidos', icon: IconPedidos },
+  { href: '/admin/pedidos', label: 'Pedidos', icon: IconPedidos, badgeKey: 'pedidosActivos' },
   { href: '/admin/clientes', label: 'Clientes', icon: IconClientes },
-  { href: '/admin/inventario', label: 'Inventario', icon: IconInventario },
+  { href: '/admin/inventario', label: 'Inventario', icon: IconInventario, badgeKey: 'stockBajo' },
   { href: '/admin/nomina', label: 'Nómina', icon: IconNomina },
-  { href: '/admin/seguimiento', label: 'Seguimiento del bot', icon: IconSeguimiento },
+  {
+    href: '/admin/seguimiento',
+    label: 'Seguimiento del bot',
+    icon: IconSeguimiento,
+    badgeKey: 'whatsappEsperando',
+  },
 ];
 
 const NAV_ADMIN: NavItem[] = [
@@ -186,11 +224,13 @@ function NavLink({
   item,
   activo,
   colapsado,
+  badge,
   onClick,
 }: {
   item: NavItem;
   activo: boolean;
   colapsado: boolean;
+  badge?: number;
   onClick: () => void;
 }) {
   const Icon = item.icon;
@@ -200,7 +240,7 @@ function NavLink({
       onClick={onClick}
       title={colapsado ? item.label : undefined}
       aria-label={item.label}
-      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 hover:translate-x-1 ${
+      className={`relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 hover:translate-x-1 ${
         colapsado ? 'justify-center' : ''
       } ${
         activo
@@ -208,10 +248,24 @@ function NavLink({
           : 'text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-900'
       }`}
     >
-      <span className="shrink-0">
+      <span className="relative shrink-0">
         <Icon />
+        {!!badge && colapsado && (
+          <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-brand-orange text-[10px] font-bold text-white">
+            {badge > 9 ? '9+' : badge}
+          </span>
+        )}
       </span>
       {!colapsado && <span className="truncate">{item.label}</span>}
+      {!!badge && !colapsado && (
+        <span
+          className={`ml-auto flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1 text-xs font-bold ${
+            activo ? 'bg-white/25 text-white' : 'bg-brand-orange text-white'
+          }`}
+        >
+          {badge > 99 ? '99+' : badge}
+        </span>
+      )}
     </Link>
   );
 }
@@ -220,6 +274,7 @@ function SidebarContenido({
   pathname,
   rol,
   email,
+  alertas,
   colapsado = false,
   onNavigate,
   onCerrarSesion,
@@ -227,6 +282,7 @@ function SidebarContenido({
   pathname: string;
   rol: string | null;
   email: string | null;
+  alertas: AlertasAdmin;
   colapsado?: boolean;
   onNavigate: () => void;
   onCerrarSesion: () => void;
@@ -259,7 +315,10 @@ function SidebarContenido({
             </div>
           )}
         </div>
-        <ThemeToggle />
+        <div className={`flex shrink-0 items-center gap-1.5 ${colapsado ? 'flex-col' : ''}`}>
+          <CampanaAlertas total={alertas.pedidosActivos + alertas.stockBajo + alertas.whatsappEsperando} />
+          <ThemeToggle />
+        </div>
       </div>
 
       <nav className="mt-6 flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-1">
@@ -276,6 +335,7 @@ function SidebarContenido({
                 item={item}
                 activo={esActivo(item)}
                 colapsado={colapsado}
+                badge={item.badgeKey ? alertas[item.badgeKey] : undefined}
                 onClick={onNavigate}
               />
             ))}
@@ -296,6 +356,7 @@ function SidebarContenido({
                   item={item}
                   activo={esActivo(item)}
                   colapsado={colapsado}
+                  badge={item.badgeKey ? alertas[item.badgeKey] : undefined}
                   onClick={onNavigate}
                 />
               ))}
@@ -355,6 +416,7 @@ export default function AdminSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { session, rol } = useRol();
+  const alertas = useAlertasAdmin();
   const [abierto, setAbierto] = useState(false);
   const [confirmandoSalir, setConfirmandoSalir] = useState(false);
   const [colapsado, setColapsado] = useState(false);
@@ -383,6 +445,7 @@ export default function AdminSidebar() {
           Panel
         </span>
         <div className="flex items-center gap-1">
+          <CampanaAlertas total={alertas.pedidosActivos + alertas.stockBajo + alertas.whatsappEsperando} />
           <ThemeToggle />
           <button
             type="button"
@@ -417,6 +480,7 @@ export default function AdminSidebar() {
             pathname={pathname}
             rol={rol}
             email={session?.user.email ?? null}
+            alertas={alertas}
             colapsado={colapsado}
             onNavigate={() => {}}
             onCerrarSesion={() => setConfirmandoSalir(true)}
@@ -445,6 +509,7 @@ export default function AdminSidebar() {
               pathname={pathname}
               rol={rol}
               email={session?.user.email ?? null}
+              alertas={alertas}
               onNavigate={() => setAbierto(false)}
               onCerrarSesion={() => setConfirmandoSalir(true)}
             />
