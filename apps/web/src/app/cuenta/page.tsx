@@ -6,19 +6,12 @@ import { useRouter } from 'next/navigation';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { useRol } from '@/lib/use-rol';
+import { errorClass, successClass } from '@/lib/feedback-estilos';
 
 type Modo = 'login' | 'registro';
 
 const inputClass =
   'mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 outline-none transition-colors focus:border-brand-orange dark:border-zinc-700 dark:bg-zinc-950';
-
-// Chips de feedback: danger-* para error, success-* para confirmación — el
-// naranja de marca (brand-orange) queda reservado para acciones primarias,
-// nunca para mensajes de éxito.
-const errorClass =
-  'animate-fade-up rounded-lg border border-danger-200 bg-danger-50 px-3 py-2 text-sm text-danger-700 dark:border-danger-900 dark:bg-danger-900/40 dark:text-danger-300';
-const successClass =
-  'animate-fade-up rounded-lg border border-success-200 bg-success-50 px-3 py-2 text-sm text-success-700 dark:border-success-900 dark:bg-success-900/40 dark:text-success-300';
 
 function iniciales(nombre: string, apellido: string, email: string) {
   const n = nombre.trim();

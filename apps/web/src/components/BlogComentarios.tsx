@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSession } from '@/lib/use-session';
 import { adminFetch } from '@/lib/admin-fetch';
 import { formatFecha, formatHora } from '@/lib/formato';
+import { errorClass } from '@/lib/feedback-estilos';
 
 type Comentario = {
   id: string;
@@ -104,9 +105,7 @@ export default function BlogComentarios({ slug }: { slug: string }) {
               placeholder="Escribí tu comentario…"
               className="w-full rounded-md border border-zinc-300 px-3 py-2 outline-none transition-colors focus:border-brand-orange dark:border-zinc-700 dark:bg-zinc-950"
             />
-            {error && (
-              <p className="animate-fade-up text-sm text-red-600">{error}</p>
-            )}
+            {error && <p className={errorClass}>{error}</p>}
             <button
               type="submit"
               disabled={enviando || !texto.trim()}
@@ -162,7 +161,7 @@ export default function BlogComentarios({ slug }: { slug: string }) {
                     <button
                       type="button"
                       onClick={() => borrar(c.id)}
-                      className="shrink-0 text-xs text-zinc-400 transition-colors hover:text-red-600"
+                      className="shrink-0 text-xs text-zinc-400 transition-colors hover:text-danger-600 dark:hover:text-danger-400"
                     >
                       Borrar
                     </button>

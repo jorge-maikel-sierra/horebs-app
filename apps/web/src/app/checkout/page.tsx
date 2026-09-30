@@ -8,6 +8,7 @@ import { useCart } from '@/lib/cart-context';
 import { formatPrecio } from '@/lib/formato';
 import { supabase } from '@/lib/supabase';
 import { trackBeginCheckout } from '@/lib/analytics';
+import { errorClass } from '@/lib/feedback-estilos';
 
 function IconPaquete() {
   return (
@@ -311,7 +312,7 @@ export default function CheckoutPage() {
           </div>
         ))}
         {descuentoPuntos > 0 && (
-          <div className="flex justify-between gap-3 border-t border-zinc-100 py-1.5 pt-2 text-green-700 dark:border-zinc-800/60 dark:text-green-500">
+          <div className="flex justify-between gap-3 border-t border-zinc-100 py-1.5 pt-2 text-success-700 dark:border-zinc-800/60 dark:text-success-400">
             <span>Descuento · {canjePuntos} puntos</span>
             <span className="shrink-0">-{formatPrecio(descuentoPuntos)}</span>
           </div>
@@ -527,9 +528,7 @@ export default function CheckoutPage() {
           />
         </div>
 
-        {error && (
-          <p className="animate-fade-up text-sm text-red-600 dark:text-red-400">{error}</p>
-        )}
+        {error && <p className={errorClass}>{error}</p>}
 
         <button
           type="submit"

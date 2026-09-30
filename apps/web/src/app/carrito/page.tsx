@@ -56,7 +56,7 @@ export default function CarritoPage() {
                 <button
                   type="button"
                   onClick={() => removeItem(item.varianteId)}
-                  className="mt-1 text-xs text-red-600 transition-colors hover:underline"
+                  className="mt-1 text-xs text-danger-600 transition-colors hover:underline dark:text-danger-400"
                 >
                   Quitar
                 </button>
@@ -101,7 +101,7 @@ export default function CarritoPage() {
       <button
         type="button"
         onClick={clear}
-        className="mt-3 text-sm text-zinc-500 transition-colors hover:text-red-600 dark:text-zinc-400"
+        className="mt-3 text-sm text-zinc-500 transition-colors hover:text-danger-600 dark:text-zinc-400 dark:hover:text-danger-400"
       >
         Vaciar carrito
       </button>

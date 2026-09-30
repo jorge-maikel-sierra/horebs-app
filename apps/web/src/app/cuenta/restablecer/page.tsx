@@ -3,6 +3,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { errorClass, successClass } from '@/lib/feedback-estilos';
 
 type Estado = 'verificando' | 'listo' | 'invalido' | 'guardado';
 
@@ -76,7 +77,7 @@ export default function RestablecerPasswordPage() {
 
         {estado === 'invalido' && (
           <div className="mt-4 space-y-3">
-            <p className="text-sm text-red-600">
+            <p className={errorClass}>
               Este enlace no es válido o ya expiró.
             </p>
             <Link
@@ -90,7 +91,7 @@ export default function RestablecerPasswordPage() {
 
         {estado === 'guardado' && (
           <div className="mt-4 space-y-3">
-            <p className="text-sm text-brand-orange">
+            <p className={successClass}>
               Contraseña actualizada. Ya podés iniciar sesión con la nueva.
             </p>
             <Link
@@ -131,7 +132,7 @@ export default function RestablecerPasswordPage() {
               />
             </div>
 
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && <p className={errorClass}>{error}</p>}
 
             <button
               type="submit"

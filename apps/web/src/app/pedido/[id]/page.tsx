@@ -102,7 +102,7 @@ export default async function PedidoConfirmacionPage({
       />
       <div className="relative mx-auto flex h-20 w-20 items-center justify-center">
         <span
-          className="absolute inset-0 rounded-full bg-green-500/25"
+          className="absolute inset-0 rounded-full bg-success-500/25"
           style={{ animation: 'ring-pop 0.7s ease-out 0.15s both' }}
         />
         <svg width="72" height="72" viewBox="0 0 72 72" className="relative">
@@ -111,7 +111,7 @@ export default async function PedidoConfirmacionPage({
             cy="36"
             r="33"
             fill="none"
-            stroke="#1F9D55"
+            stroke="var(--success-600)"
             strokeWidth="4"
             pathLength="1"
             style={{
@@ -123,7 +123,7 @@ export default async function PedidoConfirmacionPage({
           <path
             d="M21 37 L31.5 47.5 L51 26"
             fill="none"
-            stroke="#1F9D55"
+            stroke="var(--success-600)"
             strokeWidth="4.5"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -161,7 +161,7 @@ export default async function PedidoConfirmacionPage({
           </div>
         )}
         {pedido.descuento_puntos > 0 && (
-          <div className="flex justify-between gap-3 border-t border-zinc-100 py-1.5 pt-2 text-green-700 dark:border-zinc-800/60 dark:text-green-500">
+          <div className="flex justify-between gap-3 border-t border-zinc-100 py-1.5 pt-2 text-success-700 dark:border-zinc-800/60 dark:text-success-400">
             <span>Descuento · {pedido.puntos_canjeados} puntos</span>
             <span className="shrink-0">-{formatPrecio(pedido.descuento_puntos)}</span>
           </div>
@@ -252,7 +252,7 @@ export default async function PedidoConfirmacionPage({
         href={urlWhatsapp}
         target="_blank"
         rel="noopener noreferrer"
-        className="btn-press animate-fade-up delay-4 mt-6 block w-full rounded-lg bg-green-600 py-3 text-center font-semibold text-white transition-opacity hover:opacity-90"
+        className="btn-press animate-fade-up delay-4 mt-6 block w-full rounded-lg bg-success-600 py-3 text-center font-semibold text-white transition-opacity hover:opacity-90"
       >
         Confirmar por WhatsApp
       </a>
