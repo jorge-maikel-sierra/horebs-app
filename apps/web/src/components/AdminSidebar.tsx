@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, type ReactElement } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useRol } from '@/lib/use-rol';
@@ -300,21 +301,16 @@ function SidebarContenido({
           colapsado ? 'flex-col justify-center gap-3 px-0' : 'justify-between'
         }`}
       >
-        <div className={`flex min-w-0 items-center gap-2 ${colapsado ? 'flex-col' : ''}`}>
-          <span className="btn-gradient flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white shadow-sm">
-            PH
-          </span>
-          {!colapsado && (
-            <div className="min-w-0">
-              <p className="truncate text-sm font-bold text-zinc-900 dark:text-zinc-50">
-                Pizzería Horebs
-              </p>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                Panel de gestión
-              </p>
-            </div>
-          )}
-        </div>
+        <Link href="/admin" className="shrink-0" aria-label="Pizzería Horebs — Panel de gestión">
+          <Image
+            src="/logo-horebs.png"
+            alt="Pizzería Horebs"
+            width={40}
+            height={40}
+            className="h-9 w-9"
+            priority
+          />
+        </Link>
         <div className={`flex shrink-0 items-center gap-1.5 ${colapsado ? 'flex-col' : ''}`}>
           <CampanaAlertas total={alertas.pedidosActivos + alertas.stockBajo + alertas.whatsappEsperando} />
           <ThemeToggle />

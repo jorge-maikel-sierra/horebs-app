@@ -70,6 +70,14 @@ const MODALIDAD_LABEL: Record<string, string> = {
 
 const METODO_PAGO_OPCIONES = ['efectivo', 'transferencia', 'tarjeta'] as const;
 
+function IconCerrar() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 6l12 12M18 6L6 18" />
+    </svg>
+  );
+}
+
 function IconChevron({ abierto }: { abierto: boolean }) {
   return (
     <svg
@@ -182,6 +190,7 @@ function PedidosInterno() {
     { id: string; texto: string; error: boolean } | null
   >(null);
   const [expandidoId, setExpandidoId] = useState<string | null>(null);
+  const [pedidoAEliminar, setPedidoAEliminar] = useState<PedidoAdmin | null>(null);
 
   useEffect(() => {
     adminFetch('/admin/pedidos')
@@ -205,7 +214,6 @@ function PedidosInterno() {
   }, []);
 
   function empezarEdicion(p: PedidoAdmin) {
-    setExpandidoId(p.id);
     setEditandoClienteId(p.cliente.id);
     setNombreEdit(p.cliente.nombre);
     setApellidoEdit(p.cliente.apellido ?? '');
@@ -262,7 +270,6 @@ function PedidosInterno() {
   }
 
   function empezarEdicionPedido(p: PedidoAdmin) {
-    setExpandidoId(p.id);
     setEditandoPedidoId(p.id);
     setItemsEdit(
       p.items.map((i) => ({ ...i, id: i.variante_id ?? crypto.randomUUID() })),
@@ -388,17 +395,10 @@ function PedidosInterno() {
     }
   }
 
-  async function eliminarPedido(p: PedidoAdmin) {
-    const nombre = p.cliente.nombre
-      ? `${p.cliente.nombre} ${p.cliente.apellido ?? ''}`.trim()
-      : 'este pedido';
-    if (
-      !window.confirm(
-        `¿Eliminar el pedido de ${nombre} por ${formatPrecio(p.total)}? Esta acción no se puede deshacer.`,
-      )
-    ) {
-      return;
-    }
+  async function confirmarEliminarPedido() {
+    const p = pedidoAEliminar;
+    if (!p) return;
+    setPedidoAEliminar(null);
     setEliminandoId(p.id);
     setMensajeFactura(null);
     try {
@@ -493,6 +493,8 @@ function PedidosInterno() {
     ? productosCatalogo.filter((p) => p.categoria_id === categoriaPickerId)
     : [];
 
+  const pedidoDetalle = pedidos.find((p) => p.id === expandidoId) ?? null;
+
   const pedidosFiltrados = pedidos.filter((p) => {
     const q = filtro.trim().toLowerCase();
     if (!q) return true;
@@ -539,9 +541,7 @@ function PedidosInterno() {
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {pedidosFiltrados.map((p) => {
           const abierto =
-            expandidoId === p.id ||
-            editandoClienteId === p.cliente.id ||
-            editandoPedidoId === p.id;
+            editandoClienteId === p.cliente.id || editandoPedidoId === p.id;
           const nombreCompleto = p.cliente.nombre
             ? `${p.cliente.nombre} ${p.cliente.apellido ?? ''}`.trim()
             : 'Cliente sin nombre';
@@ -576,11 +576,11 @@ function PedidosInterno() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setExpandidoId(abierto ? null : p.id)}
-                  aria-label={abierto ? 'Contraer pedido' : 'Ver detalle del pedido'}
+                  onClick={() => setExpandidoId(p.id)}
+                  aria-label="Ver detalle del pedido"
                   className="btn-press shrink-0 rounded-md p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
                 >
-                  <IconChevron abierto={abierto} />
+                  <IconChevron abierto={expandidoId === p.id} />
                 </button>
               </div>
 
@@ -684,7 +684,7 @@ function PedidosInterno() {
                   <button
                     type="button"
                     disabled={eliminandoId === p.id}
-                    onClick={() => eliminarPedido(p)}
+                    onClick={() => setPedidoAEliminar(p)}
                     title="Eliminar pedido"
                     className="btn-press ml-auto rounded-md p-1.5 text-red-600 hover:bg-red-50 disabled:opacity-40 dark:text-red-400 dark:hover:bg-red-950/30"
                   >
@@ -959,39 +959,108 @@ function PedidosInterno() {
                   </button>
                 </div>
               </div>
-            ) : (
-              abierto && (
-                <div className="mt-3 rounded-md border border-zinc-200 p-3 dark:border-zinc-700">
-                  <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                    Productos
-                  </span>
-                  <ul className="mt-1 space-y-0.5 text-sm text-zinc-600 dark:text-zinc-400">
-                    {p.items.map((i, idx) => (
-                      <li key={i.variante_id ?? idx} className="flex justify-between gap-3">
-                        <span>
-                          {i.cantidad}×{' '}
-                          {i.variante_nombre
-                            ? `${i.producto_nombre} (${i.variante_nombre})`
-                            : i.producto_nombre}
-                        </span>
-                        <span className="shrink-0 text-zinc-500 dark:text-zinc-400">
-                          {formatPrecio(i.precio_unitario * i.cantidad)}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                  {p.direccion_entrega && (
-                    <p className="mt-2 border-t border-zinc-100 pt-2 text-xs text-zinc-500 dark:border-zinc-800/60 dark:text-zinc-400">
-                      Entrega: {p.direccion_entrega}
-                    </p>
-                  )}
-                </div>
-              )
-            )}
+            ) : null}
             </div>
           );
         })}
       </div>
+
+      {pedidoDetalle && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4">
+          <div
+            className="absolute inset-0"
+            onClick={() => setExpandidoId(null)}
+          />
+          <div className="animate-fade-up relative w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-5 shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="truncate font-semibold text-zinc-900 dark:text-zinc-50">
+                  {pedidoDetalle.cliente.nombre
+                    ? `${pedidoDetalle.cliente.nombre} ${pedidoDetalle.cliente.apellido ?? ''}`.trim()
+                    : 'Cliente sin nombre'}
+                </p>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  #{pedidoDetalle.id.slice(0, 8)} · {formatFecha(pedidoDetalle.created_at)}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setExpandidoId(null)}
+                aria-label="Cerrar detalle del pedido"
+                className="btn-press shrink-0 rounded-md p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+              >
+                <IconCerrar />
+              </button>
+            </div>
+
+            <span className="mt-4 block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+              Productos
+            </span>
+            <ul className="mt-1 space-y-0.5 text-sm text-zinc-600 dark:text-zinc-400">
+              {pedidoDetalle.items.map((i, idx) => (
+                <li key={i.variante_id ?? idx} className="flex justify-between gap-3">
+                  <span>
+                    {i.cantidad}×{' '}
+                    {i.variante_nombre
+                      ? `${i.producto_nombre} (${i.variante_nombre})`
+                      : i.producto_nombre}
+                  </span>
+                  <span className="shrink-0 text-zinc-500 dark:text-zinc-400">
+                    {formatPrecio(i.precio_unitario * i.cantidad)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            {pedidoDetalle.direccion_entrega && (
+              <p className="mt-2 border-t border-zinc-100 pt-2 text-xs text-zinc-500 dark:border-zinc-800/60 dark:text-zinc-400">
+                Entrega: {pedidoDetalle.direccion_entrega}
+              </p>
+            )}
+            <p className="mt-3 border-t border-zinc-100 pt-2 text-right font-bold text-brand-orange dark:border-zinc-800/60">
+              {formatPrecio(pedidoDetalle.total)}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {pedidoAEliminar && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4">
+          <div
+            className="absolute inset-0"
+            onClick={() => setPedidoAEliminar(null)}
+          />
+          <div className="animate-fade-up relative w-full max-w-sm rounded-2xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
+            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+              ¿Eliminar este pedido?
+            </h2>
+            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+              Pedido de{' '}
+              <span className="font-medium text-zinc-700 dark:text-zinc-300">
+                {pedidoAEliminar.cliente.nombre
+                  ? `${pedidoAEliminar.cliente.nombre} ${pedidoAEliminar.cliente.apellido ?? ''}`.trim()
+                  : 'cliente sin nombre'}
+              </span>{' '}
+              por {formatPrecio(pedidoAEliminar.total)}. Esta acción no se puede deshacer.
+            </p>
+            <div className="mt-5 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setPedidoAEliminar(null)}
+                className="flex-1 rounded-lg border border-zinc-300 py-2 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={confirmarEliminarPedido}
+                className="flex-1 rounded-lg bg-red-600 py-2 text-sm font-semibold text-white transition hover:bg-red-700"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
