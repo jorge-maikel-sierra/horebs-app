@@ -183,7 +183,7 @@ export default async function ProductoPage({
                     <span className="mr-2 text-zinc-400 line-through">
                       {formatPrecio(v.precio)}
                     </span>
-                    <span className="text-orange-600">
+                    <span className="text-brand-orange">
                       {formatPrecio(v.precio_oferta)}
                     </span>
                   </>

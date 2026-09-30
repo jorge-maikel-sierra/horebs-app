@@ -170,22 +170,22 @@ export default async function PedidoConfirmacionPage({
           <span>Total</span>
           <span className="text-brand-orange">{formatPrecio(pedido.total)}</span>
         </div>
-        <dl className="mt-3 space-y-2 text-zinc-600 dark:text-zinc-400">
+        <dl className="mt-3 space-y-2">
           <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:gap-4">
-            <dt className="shrink-0">Modalidad</dt>
-            <dd className="sm:text-right">
+            <dt className="shrink-0 text-[11px] tracking-wide text-zinc-500 uppercase dark:text-zinc-400">Modalidad</dt>
+            <dd className="font-medium text-zinc-900 sm:text-right dark:text-zinc-50">
               {pedido.modalidad === 'domicilio' ? 'Domicilio' : 'Retiro en local'}
             </dd>
           </div>
           {pedido.modalidad === 'domicilio' && pedido.direccion_entrega && (
             <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:gap-4">
-              <dt className="shrink-0">Dirección</dt>
-              <dd className="sm:text-right">{pedido.direccion_entrega}</dd>
+              <dt className="shrink-0 text-[11px] tracking-wide text-zinc-500 uppercase dark:text-zinc-400">Dirección</dt>
+              <dd className="font-medium text-zinc-900 sm:text-right dark:text-zinc-50">{pedido.direccion_entrega}</dd>
             </div>
           )}
-          <div className="flex flex-col gap-0.5 capitalize sm:flex-row sm:justify-between sm:gap-4">
-            <dt className="shrink-0">Método de pago</dt>
-            <dd className="sm:text-right">{pedido.metodo_pago}</dd>
+          <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:gap-4">
+            <dt className="shrink-0 text-[11px] tracking-wide text-zinc-500 uppercase dark:text-zinc-400">Método de pago</dt>
+            <dd className="font-medium text-zinc-900 capitalize sm:text-right dark:text-zinc-50">{pedido.metodo_pago}</dd>
           </div>
         </dl>
       </div>

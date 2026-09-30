@@ -109,7 +109,7 @@ function ProductoCard({ producto }: { producto: Producto }) {
                     <span className="mr-2 text-zinc-400 line-through">
                       {formatPrecio(v.precio)}
                     </span>
-                    <span className="text-orange-600">
+                    <span className="text-brand-orange">
                       {formatPrecio(v.precio_oferta)}
                     </span>
                   </>
@@ -182,7 +182,7 @@ export default async function CatalogoPage() {
 
       {destacados.length > 0 && (
         <section className="animate-fade-up delay-1 mt-6">
-          <h2 className="text-xl font-semibold text-orange-600">
+          <h2 className="text-xl font-semibold text-brand-orange">
             Nuestras firmas de la casa
           </h2>
           <div className="mt-3 grid gap-4 sm:grid-cols-2">
