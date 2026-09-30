@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useRol } from '@/lib/use-rol';
 import { supabase } from '@/lib/supabase';
+import ThemeToggle from '@/components/ThemeToggle';
 
 const CLAVE_COLAPSADO = 'horebs-admin-sidebar-colapsado';
 
@@ -199,7 +200,7 @@ function NavLink({
       onClick={onClick}
       title={colapsado ? item.label : undefined}
       aria-label={item.label}
-      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 hover:translate-x-1 ${
         colapsado ? 'justify-center' : ''
       } ${
         activo
@@ -238,20 +239,27 @@ function SidebarContenido({
 
   return (
     <div className="flex h-full flex-col">
-      <div className={`flex items-center gap-2 px-2 ${colapsado ? 'justify-center px-0' : ''}`}>
-        <span className="btn-gradient flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white shadow-sm">
-          PH
-        </span>
-        {!colapsado && (
-          <div className="min-w-0">
-            <p className="truncate text-sm font-bold text-zinc-900 dark:text-zinc-50">
-              Pizzería Horebs
-            </p>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Panel de gestión
-            </p>
-          </div>
-        )}
+      <div
+        className={`flex items-center gap-2 px-2 ${
+          colapsado ? 'flex-col justify-center gap-3 px-0' : 'justify-between'
+        }`}
+      >
+        <div className={`flex min-w-0 items-center gap-2 ${colapsado ? 'flex-col' : ''}`}>
+          <span className="btn-gradient flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white shadow-sm">
+            PH
+          </span>
+          {!colapsado && (
+            <div className="min-w-0">
+              <p className="truncate text-sm font-bold text-zinc-900 dark:text-zinc-50">
+                Pizzería Horebs
+              </p>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                Panel de gestión
+              </p>
+            </div>
+          )}
+        </div>
+        <ThemeToggle />
       </div>
 
       <nav className="mt-6 flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-1">
@@ -374,34 +382,37 @@ export default function AdminSidebar() {
         <span className="text-sm font-bold text-zinc-900 dark:text-zinc-50">
           Panel
         </span>
-        <button
-          type="button"
-          onClick={() => setAbierto(true)}
-          aria-label="Abrir menú del panel"
-          aria-expanded={abierto}
-          className="btn-press flex h-9 w-9 items-center justify-center text-zinc-700 dark:text-zinc-300"
-        >
-          <IconMenu />
-        </button>
+        <div className="flex items-center gap-1">
+          <ThemeToggle />
+          <button
+            type="button"
+            onClick={() => setAbierto(true)}
+            aria-label="Abrir menú del panel"
+            aria-expanded={abierto}
+            className="btn-press flex h-9 w-9 items-center justify-center text-zinc-700 dark:text-zinc-300"
+          >
+            <IconMenu />
+          </button>
+        </div>
       </div>
 
       <aside
-        className={`hidden shrink-0 border-r border-zinc-200 bg-white transition-[width] duration-200 sm:sticky sm:top-0 sm:block sm:h-screen dark:border-zinc-800 dark:bg-zinc-950 ${
+        className={`relative hidden shrink-0 border-r border-zinc-200 bg-white transition-[width] duration-200 sm:sticky sm:top-0 sm:block sm:h-screen dark:border-zinc-800 dark:bg-zinc-950 ${
           colapsado ? 'w-[4.5rem]' : 'w-64'
         }`}
       >
-        <div className="relative flex h-full flex-col overflow-y-auto p-4">
-          <button
-            type="button"
-            onClick={alternarColapsado}
-            aria-label={colapsado ? 'Expandir panel' : 'Colapsar panel'}
-            title={colapsado ? 'Expandir panel' : 'Colapsar panel'}
-            className="btn-press absolute top-6 -right-3 flex h-6 w-6 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-500 shadow-sm hover:text-brand-orange dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400"
-          >
-            <span className={`transition-transform duration-200 ${colapsado ? '' : 'rotate-180'}`}>
-              <IconChevron />
-            </span>
-          </button>
+        <button
+          type="button"
+          onClick={alternarColapsado}
+          aria-label={colapsado ? 'Expandir panel' : 'Colapsar panel'}
+          title={colapsado ? 'Expandir panel' : 'Colapsar panel'}
+          className="btn-press absolute top-6 -right-3 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-500 shadow-sm hover:text-brand-orange dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400"
+        >
+          <span className={`transition-transform duration-200 ${colapsado ? '' : 'rotate-180'}`}>
+            <IconChevron />
+          </span>
+        </button>
+        <div className="flex h-full flex-col overflow-y-auto p-4">
           <SidebarContenido
             pathname={pathname}
             rol={rol}
@@ -425,7 +436,7 @@ export default function AdminSidebar() {
                 type="button"
                 onClick={() => setAbierto(false)}
                 aria-label="Cerrar menú del panel"
-                className="btn-press p-1 text-zinc-500"
+                className="btn-press p-1 text-zinc-500 dark:text-zinc-400"
               >
                 <IconCerrar />
               </button>
