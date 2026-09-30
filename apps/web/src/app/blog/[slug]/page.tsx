@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { NEGOCIO } from '@/lib/negocio';
+import { AUTOR } from '@/lib/autor';
 import { formatFecha } from '@/lib/formato';
 import { breadcrumbJsonLd, jsonLdScript } from '@/lib/json-ld';
 import BlogLikeButton from '@/components/BlogLikeButton';
@@ -134,12 +135,25 @@ export default async function BlogPostPage({
       <h1 className="animate-fade-up mt-4 text-3xl font-bold text-zinc-900 sm:text-4xl dark:text-zinc-50">
         {post.titulo}
       </h1>
-      <div className="animate-fade-up delay-1 mt-2 flex flex-wrap items-center gap-4">
-        {post.publicado_en && (
-          <p className="text-sm font-semibold tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
-            {formatFecha(post.publicado_en)}
-          </p>
-        )}
+      <div className="animate-fade-up delay-1 mt-3 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-2.5">
+          {/* eslint-disable-next-line @next/next/no-img-element -- URL externa de Google, no vale la pena optimizarla con next/image. */}
+          <img
+            src={AUTOR.fotoUrl}
+            alt={AUTOR.nombre}
+            className="h-9 w-9 shrink-0 rounded-full object-cover"
+          />
+          <div>
+            <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+              {AUTOR.nombre}
+            </p>
+            {post.publicado_en && (
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                {formatFecha(post.publicado_en)}
+              </p>
+            )}
+          </div>
+        </div>
         <BlogLikeButton slug={slug} />
       </div>
 

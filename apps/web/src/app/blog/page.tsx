@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import { NEGOCIO } from '@/lib/negocio';
+import { AUTOR } from '@/lib/autor';
 import { formatFecha } from '@/lib/formato';
 import EstadoVacio from '@/components/EstadoVacio';
 
@@ -94,13 +95,24 @@ export default async function BlogPage() {
                   {post.resumen}
                 </p>
                 <div className="mt-auto flex items-center justify-between gap-3 border-t border-zinc-100 pt-3 dark:border-zinc-800/60">
-                  {post.publicado_en ? (
-                    <p className="text-xs font-semibold tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
-                      {formatFecha(post.publicado_en)}
-                    </p>
-                  ) : (
-                    <span />
-                  )}
+                  <div className="flex min-w-0 items-center gap-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- URL externa de Google, no vale la pena optimizarla con next/image. */}
+                    <img
+                      src={AUTOR.fotoUrl}
+                      alt={AUTOR.nombre}
+                      className="h-7 w-7 shrink-0 rounded-full object-cover"
+                    />
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                        {AUTOR.nombre}
+                      </p>
+                      {post.publicado_en && (
+                        <p className="truncate text-[11px] text-zinc-500 dark:text-zinc-400">
+                          {formatFecha(post.publicado_en)}
+                        </p>
+                      )}
+                    </div>
+                  </div>
                   <span className="btn-press inline-flex shrink-0 items-center gap-1.5 rounded-full border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-600 transition-colors group-hover:border-brand-orange group-hover:text-brand-orange dark:border-zinc-700 dark:text-zinc-300">
                     Leer más
                     <IconFlechaDerecha />
