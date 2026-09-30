@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import Link from 'next/link';
 import type { Session } from '@supabase/supabase-js';
 import { useCart } from '@/lib/cart-context';
@@ -325,11 +326,24 @@ export default function CheckoutPage() {
         Checkout
       </h1>
 
-      <div className="animate-fade-up delay-1 mt-4 rounded-lg border border-zinc-200 p-4 text-sm dark:border-zinc-800">
+      <div className="card-interactive card-gradient animate-fade-up delay-1 mt-4 rounded-2xl border border-zinc-200 p-4 text-sm dark:border-zinc-800">
         {items.map((i) => (
-          <div key={i.varianteId} className="flex justify-between gap-3 py-0.5">
-            <span>
-              {i.cantidad}× {i.productoNombre} ({i.varianteNombre})
+          <div key={i.varianteId} className="flex items-center justify-between gap-3 py-1.5">
+            <span className="flex min-w-0 items-center gap-3">
+              {i.imagenUrl ? (
+                <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-lg">
+                  <Image
+                    src={i.imagenUrl}
+                    alt={i.productoNombre}
+                    fill
+                    sizes="44px"
+                    className="object-cover"
+                  />
+                </div>
+              ) : null}
+              <span className="min-w-0 truncate">
+                {i.cantidad}× {i.productoNombre} ({i.varianteNombre})
+              </span>
             </span>
             <span className="shrink-0">{formatPrecio(i.precio * i.cantidad)}</span>
           </div>
