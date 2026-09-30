@@ -323,34 +323,19 @@ body {
   -webkit-backdrop-filter: blur(20px) saturate(1.4);
 }
 
-/* Manchas de color de fondo para las páginas de cuenta — mismo recurso que
-   .hero-mesh pero estático y mucho más sutil, pensado para asomar detrás
-   de un panel de vidrio, no para ser el protagonista. */
+/* Fondo ambiental de las páginas de cuenta — mismo recurso que el
+   degradado sutil del body (radial-gradient con los colores de marca),
+   pero más marcado y fijo a la ventana, para que lea como fondo de
+   página y no como una mancha pegada a la tarjeta. Se activa solo
+   agregando esta clase donde hace falta; nunca es global. */
 .cuenta-halo {
-  position: absolute;
-  inset: -10%;
+  position: fixed;
+  inset: 0;
   z-index: -10;
-  overflow: hidden;
   pointer-events: none;
-}
-.cuenta-halo::before,
-.cuenta-halo::after {
-  content: '';
-  position: absolute;
-  width: 22rem;
-  height: 22rem;
-  border-radius: 9999px;
-  filter: blur(70px);
-}
-.cuenta-halo::before {
-  top: -6rem;
-  left: -6rem;
-  background: color-mix(in srgb, var(--brand-orange) 35%, transparent);
-}
-.cuenta-halo::after {
-  bottom: -6rem;
-  right: -6rem;
-  background: color-mix(in srgb, var(--brand-yellow) 30%, transparent);
+  background:
+    radial-gradient(circle at 12% 8%, color-mix(in srgb, var(--brand-orange) 18%, transparent), transparent 45%),
+    radial-gradient(circle at 88% 92%, color-mix(in srgb, var(--brand-yellow) 16%, transparent), transparent 45%);
 }
 
 /* Feedback táctil en botones/CTAs */

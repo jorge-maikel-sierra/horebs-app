@@ -500,13 +500,18 @@ export default function CuentaPage() {
           Iniciá sesión o creá una cuenta para gestionar tus datos.
         </p>
 
-        <div className="mt-6 grid grid-cols-2 gap-1 rounded-full bg-zinc-100 p-1 dark:bg-zinc-800/60">
+        <div className="relative mt-6 grid grid-cols-2 rounded-full bg-zinc-100 p-1 dark:bg-zinc-800/60">
+          <span
+            aria-hidden="true"
+            className="btn-gradient absolute inset-y-1 left-1 w-[calc(50%_-_0.25rem)] rounded-full shadow-sm transition-transform duration-300 ease-out"
+            style={{ transform: modo === 'registro' ? 'translateX(100%)' : 'translateX(0)' }}
+          />
           <button
             type="button"
             onClick={() => setModo('login')}
-            className={`btn-press rounded-full py-2 text-sm font-semibold transition-colors ${
+            className={`btn-press relative z-10 rounded-full py-2 text-sm font-semibold transition-colors ${
               modo === 'login'
-                ? 'btn-gradient text-white shadow-sm'
+                ? 'text-white'
                 : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'
             }`}
           >
@@ -515,9 +520,9 @@ export default function CuentaPage() {
           <button
             type="button"
             onClick={() => setModo('registro')}
-            className={`btn-press rounded-full py-2 text-sm font-semibold transition-colors ${
+            className={`btn-press relative z-10 rounded-full py-2 text-sm font-semibold transition-colors ${
               modo === 'registro'
-                ? 'btn-gradient text-white shadow-sm'
+                ? 'text-white'
                 : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'
             }`}
           >
