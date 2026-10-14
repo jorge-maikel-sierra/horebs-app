@@ -7,6 +7,7 @@ import { formatPrecio } from '@/lib/formato';
 import { sumarDias } from '@/lib/semana';
 import CargandoSkeleton from '@/components/CargandoSkeleton';
 import FiltroPeriodo, { type PresetOpcion } from '@/components/informes/FiltroPeriodo';
+import GraficoColumnas, { COLOR_MARCA } from '@/components/informes/GraficoColumnas';
 import {
   HeroVentas,
   TarjetaKpi,
@@ -15,7 +16,10 @@ import {
 import {
   calcularDelta,
   diasEntre,
+  etiquetaCorta,
+  etiquetaLarga,
   etiquetaRango,
+  formatoEjePesos,
   rangoAnterior,
 } from '@/lib/informes-rango';
 
@@ -203,71 +207,41 @@ function IconClienteRecurrente() {
   );
 }
 
-const ALTURA_GRAFICO = 170;
-
 function GraficoVentasDiarias({ datos }: { datos: InformeDia[] }) {
-  const max = Math.max(1, ...datos.map((d) => d.total));
-  const paso = Math.max(1, Math.ceil(datos.length / 15));
   return (
-    <div
-      className="flex items-end gap-1 overflow-x-auto pt-8 pb-1"
-      style={{ minHeight: ALTURA_GRAFICO + 28 }}
-    >
-      {datos.map((d, idx) => (
-        <div
-          key={d.fecha}
-          className="group relative flex min-w-[22px] flex-1 flex-col items-center justify-end"
-        >
-          <div className="pointer-events-none absolute -top-7 z-10 hidden rotate-0 rounded-md bg-zinc-900 px-2 py-1 text-[11px] font-semibold whitespace-nowrap text-white group-hover:block dark:bg-zinc-100 dark:text-zinc-900">
-            {formatPrecio(d.total)}
-          </div>
-          <div
-            className="w-full max-w-8 rounded-t-md"
-            style={{
-              height: Math.max((d.total / max) * ALTURA_GRAFICO, 3),
-              backgroundImage:
-                'linear-gradient(180deg, var(--brand-orange), color-mix(in srgb, var(--brand-orange) 55%, var(--brand-yellow)))',
-            }}
-          />
-          <span className="mt-1.5 text-[10px] whitespace-nowrap text-zinc-500 dark:text-zinc-400">
-            {idx % paso === 0 ? formatDiaCorto(d.fecha) : ''}
-          </span>
-        </div>
-      ))}
-    </div>
+    <GraficoColumnas
+      tono="naranja"
+      nombreValor="Ventas"
+      nombreDetalle="Pedidos"
+      puntos={datos.map((d) => ({
+        clave: d.fecha,
+        etiqueta: etiquetaCorta(d.fecha),
+        etiquetaLarga: etiquetaLarga(d.fecha),
+        valor: d.total,
+        detalle: `${d.pedidos} pedido${d.pedidos === 1 ? '' : 's'}`,
+        valorDetalle: String(d.pedidos),
+      }))}
+      formatoValor={formatPrecio}
+      formatoEje={formatoEjePesos}
+    />
   );
 }
 
 function GraficoClientesNuevos({ datos }: { datos: InformeClienteDia[] }) {
-  const max = Math.max(1, ...datos.map((d) => d.nuevos));
-  const paso = Math.max(1, Math.ceil(datos.length / 15));
   return (
-    <div
-      className="flex items-end gap-1 overflow-x-auto pt-8 pb-1"
-      style={{ minHeight: ALTURA_GRAFICO + 28 }}
-    >
-      {datos.map((d, idx) => (
-        <div
-          key={d.fecha}
-          className="group relative flex min-w-[22px] flex-1 flex-col items-center justify-end"
-        >
-          <div className="pointer-events-none absolute -top-7 z-10 hidden rounded-md bg-zinc-900 px-2 py-1 text-[11px] font-semibold whitespace-nowrap text-white group-hover:block dark:bg-zinc-100 dark:text-zinc-900">
-            {d.nuevos} nuevo{d.nuevos === 1 ? '' : 's'}
-          </div>
-          <div
-            className="w-full max-w-8 rounded-t-md"
-            style={{
-              height: Math.max((d.nuevos / max) * ALTURA_GRAFICO, 3),
-              backgroundImage:
-                'linear-gradient(180deg, var(--brand-navy), color-mix(in srgb, var(--brand-navy) 55%, white))',
-            }}
-          />
-          <span className="mt-1.5 text-[10px] whitespace-nowrap text-zinc-500 dark:text-zinc-400">
-            {idx % paso === 0 ? formatDiaCorto(d.fecha) : ''}
-          </span>
-        </div>
-      ))}
-    </div>
+    <GraficoColumnas
+      tono="azul"
+      nombreValor="Clientes nuevos"
+      enteros
+      puntos={datos.map((d) => ({
+        clave: d.fecha,
+        etiqueta: etiquetaCorta(d.fecha),
+        etiquetaLarga: etiquetaLarga(d.fecha),
+        valor: d.nuevos,
+      }))}
+      formatoValor={(n) => `${n} nuevo${n === 1 ? '' : 's'}`}
+      formatoEje={(n) => String(n)}
+    />
   );
 }
 
@@ -301,9 +275,9 @@ function ListaTopClientes({ clientes }: { clientes: InformeClienteTop[] }) {
                 {formatPrecio(c.total)}
               </span>
             </div>
-            <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+            <div className="mt-1 h-1.5 w-full overflow-hidden rounded-r-[4px] bg-zinc-100 dark:bg-zinc-800">
               <div
-                className="h-full rounded-full bg-brand-navy dark:bg-blue-400"
+                className={`h-full rounded-r-[4px] ${COLOR_MARCA.azul}`}
                 style={{ width: `${(c.total / max) * 100}%` }}
               />
             </div>
@@ -345,9 +319,9 @@ function ListaDesglose({
               {formatPrecio(i.total)}
             </span>
           </div>
-          <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+          <div className="mt-1 h-2 w-full overflow-hidden rounded-r-[4px] bg-zinc-100 dark:bg-zinc-800">
             <div
-              className="btn-gradient h-full rounded-full"
+              className={`h-full rounded-r-[4px] ${COLOR_MARCA.naranja}`}
               style={{ width: `${(i.total / max) * 100}%` }}
             />
           </div>
@@ -386,9 +360,9 @@ function ListaTopProductos({ productos }: { productos: InformeProducto[] }) {
                 {formatPrecio(p.total)}
               </span>
             </div>
-            <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+            <div className="mt-1 h-1.5 w-full overflow-hidden rounded-r-[4px] bg-zinc-100 dark:bg-zinc-800">
               <div
-                className="h-full rounded-full bg-brand-navy dark:bg-blue-400"
+                className={`h-full rounded-r-[4px] ${COLOR_MARCA.azul}`}
                 style={{ width: `${(p.total / max) * 100}%` }}
               />
             </div>
@@ -424,13 +398,10 @@ function ListaCategorias({ categorias }: { categorias: InformeCategoria[] }) {
               {formatPrecio(c.total)}
             </span>
           </div>
-          <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+          <div className="mt-1 h-2 w-full overflow-hidden rounded-r-[4px] bg-zinc-100 dark:bg-zinc-800">
             <div
-              className="h-full rounded-full"
-              style={{
-                width: `${(c.total / max) * 100}%`,
-                backgroundColor: 'var(--brand-navy)',
-              }}
+              className={`h-full rounded-r-[4px] ${COLOR_MARCA.azul}`}
+              style={{ width: `${(c.total / max) * 100}%` }}
             />
           </div>
           <span className="text-xs text-zinc-500 dark:text-zinc-400">
