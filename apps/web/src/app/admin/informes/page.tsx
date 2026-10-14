@@ -8,6 +8,10 @@ import { sumarDias } from '@/lib/semana';
 import CargandoSkeleton from '@/components/CargandoSkeleton';
 import FiltroPeriodo, { type PresetOpcion } from '@/components/informes/FiltroPeriodo';
 import GraficoColumnas, { COLOR_MARCA } from '@/components/informes/GraficoColumnas';
+import ModalClientes, {
+  type ClienteLista,
+  type ModoClientes,
+} from '@/components/informes/ModalClientes';
 import {
   HeroVentas,
   TarjetaKpi,
@@ -59,6 +63,8 @@ type InformeDto = {
     ticket_promedio: number;
     serie_diaria_nuevos: InformeClienteDia[];
     top_clientes: InformeClienteTop[];
+    lista_nuevos?: ClienteLista[];
+    lista_recurrentes?: ClienteLista[];
   };
 };
 
@@ -445,6 +451,8 @@ function InformesPageInterno() {
   const [anterior, setAnterior] = useState<InformeDto | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [modalClientes, setModalClientes] = useState<ModoClientes | null>(null);
+  const cerrarModalClientes = useCallback(() => setModalClientes(null), []);
 
   const cargar = useCallback((d: string, h: string) => {
     setCargando(true);
@@ -655,6 +663,8 @@ function InformesPageInterno() {
               label="Clientes nuevos"
               valor={String(informe.clientes.nuevos)}
               detalle="Primera compra en este período"
+              accion="Ver clientes"
+              onClick={() => setModalClientes('nuevos')}
               delta={calcularDelta(informe.clientes.nuevos, anterior?.clientes.nuevos)}
               vs={vs}
               serie={informe.clientes.serie_diaria_nuevos.map((d) => d.nuevos)}
@@ -665,6 +675,8 @@ function InformesPageInterno() {
               label="Clientes recurrentes"
               valor={String(informe.clientes.recurrentes)}
               detalle="Ya habían comprado antes"
+              accion="Ver clientes"
+              onClick={() => setModalClientes('recurrentes')}
               delta={calcularDelta(informe.clientes.recurrentes, anterior?.clientes.recurrentes)}
               vs={vs}
             />
@@ -694,6 +706,24 @@ function InformesPageInterno() {
               <ListaTopClientes clientes={informe.clientes.top_clientes} />
             </Panel>
           </div>
+
+          {modalClientes && (
+            <ModalClientes
+              modo={modalClientes}
+              clientes={
+                (modalClientes === 'nuevos'
+                  ? informe.clientes.lista_nuevos
+                  : informe.clientes.lista_recurrentes) ?? []
+              }
+              total={
+                modalClientes === 'nuevos'
+                  ? informe.clientes.nuevos
+                  : informe.clientes.recurrentes
+              }
+              periodo={etiqueta}
+              onCerrar={cerrarModalClientes}
+            />
+          )}
         </>
       )}
     </div>

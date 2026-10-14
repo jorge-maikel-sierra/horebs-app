@@ -128,6 +128,8 @@ export function TarjetaKpi({
   vs,
   serie,
   tono = 'naranja',
+  onClick,
+  accion,
 }: {
   icono: ReactNode;
   label: string;
@@ -137,9 +139,13 @@ export function TarjetaKpi({
   vs?: string;
   serie?: number[];
   tono?: TonoKpi;
+  /** Si se pasa, la tarjeta es un botón que abre un detalle (modal). */
+  onClick?: () => void;
+  /** Pista visible del botón, ej. "Ver clientes". */
+  accion?: string;
 }) {
   const t = TONOS[tono];
-  return (
+  const tarjeta = (
     <div className="card-gradient card-interactive relative flex h-full min-w-0 flex-col justify-between overflow-hidden rounded-2xl border border-zinc-200 p-4 sm:p-5 dark:border-zinc-800">
       <div>
         <div className="flex items-start justify-between gap-2">
@@ -161,11 +167,29 @@ export function TarjetaKpi({
             {detalle}
           </p>
         )}
+        {onClick && accion && (
+          <p className="mt-2 text-xs font-semibold text-brand-orange">
+            {accion} →
+          </p>
+        )}
       </div>
       {serie && serie.length > 1 && (
         <Sparkline datos={serie} className={`mt-3 h-8 w-full ${t.spark}`} />
       )}
     </div>
+  );
+
+  if (!onClick) return tarjeta;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-haspopup="dialog"
+      aria-label={`${label}: ${valor}. ${accion ?? 'Ver detalle'}`}
+      className="block h-full w-full rounded-2xl text-left outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/60"
+    >
+      {tarjeta}
+    </button>
   );
 }
 
