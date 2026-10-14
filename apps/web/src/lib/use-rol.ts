@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 
@@ -23,11 +23,13 @@ export function useRol(): EstadoRol {
     session: null,
     rol: null,
   });
+  const usuarioIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     let activo = true;
 
     async function cargar(session: Session | null) {
+      usuarioIdRef.current = session?.user.id ?? null;
       if (!session) {
         if (activo) setEstado({ cargando: false, session: null, rol: null });
         return;
@@ -54,6 +56,19 @@ export function useRol(): EstadoRol {
         // vez que la pestaña recupera el foco (comportamiento del SDK) — no
         // debe forzar un remount de todo lo que usa RequireRol.
         if (event === 'TOKEN_REFRESHED') {
+          setEstado((prev) => ({ ...prev, session }));
+          return;
+        }
+        // Igual con SIGNED_IN: el SDK lo vuelve a emitir al recuperar la
+        // sesión cuando la pestaña pasa de oculta a visible. Si es el mismo
+        // usuario no cambió nada (rol incluido); marcar cargando desmontaría
+        // todo el panel y se perdería el estado de la pantalla (carrito del
+        // POS, ediciones a medias, modales abiertos).
+        if (
+          event === 'SIGNED_IN' &&
+          session &&
+          session.user.id === usuarioIdRef.current
+        ) {
           setEstado((prev) => ({ ...prev, session }));
           return;
         }
