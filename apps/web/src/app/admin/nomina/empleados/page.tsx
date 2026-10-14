@@ -434,7 +434,7 @@ function EmpleadosInterno() {
   const inactivos = empleados.filter((e) => !e.activo);
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <div className="flex items-center justify-between gap-3">
         <div>
           <Link href="/admin/nomina" className="text-sm text-brand-orange hover:underline">

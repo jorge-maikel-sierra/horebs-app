@@ -606,14 +606,14 @@ function PosInterno() {
 
   if (cargandoTurno) {
     return (
-      <div className="p-8">
+      <div className="p-4 sm:p-6 lg:p-8">
         <CargandoSkeleton filas={10} />
       </div>
     );
   }
 
   return (
-    <div className="p-4 sm:p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">

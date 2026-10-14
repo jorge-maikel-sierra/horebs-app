@@ -436,7 +436,7 @@ export default function AdminSidebar() {
 
   return (
     <>
-      <div className="sticky top-0 z-20 -mx-4 mb-4 flex items-center justify-between border-b border-zinc-200 bg-white/90 px-4 py-3 backdrop-blur-md sm:hidden dark:border-zinc-800 dark:bg-black/90">
+      <div className="sticky top-0 z-20 flex items-center justify-between border-b border-zinc-200 bg-white/90 px-4 py-3 backdrop-blur-md lg:hidden dark:border-zinc-800 dark:bg-black/90">
         <span className="text-sm font-bold text-zinc-900 dark:text-zinc-50">
           Panel
         </span>
@@ -456,7 +456,7 @@ export default function AdminSidebar() {
       </div>
 
       <aside
-        className={`relative hidden shrink-0 border-r border-zinc-200 bg-white transition-[width] duration-200 sm:sticky sm:top-0 sm:block sm:h-screen dark:border-zinc-800 dark:bg-zinc-950 ${
+        className={`relative hidden shrink-0 border-r border-zinc-200 bg-white transition-[width] duration-200 lg:sticky lg:top-0 lg:block lg:h-screen dark:border-zinc-800 dark:bg-zinc-950 ${
           colapsado ? 'w-[4.5rem]' : 'w-64'
         }`}
       >
@@ -485,12 +485,12 @@ export default function AdminSidebar() {
       </aside>
 
       {abierto && (
-        <div className="fixed inset-0 z-30 sm:hidden">
+        <div className="fixed inset-0 z-30 lg:hidden">
           <div
             className="animate-fade-in absolute inset-0 bg-black/40"
             onClick={() => setAbierto(false)}
           />
-          <div className="animate-fade-up absolute inset-y-0 left-0 w-72 bg-white p-4 shadow-xl dark:bg-zinc-950">
+          <div className="animate-fade-up absolute inset-y-0 left-0 w-72 max-w-[85vw] bg-white p-4 shadow-xl dark:bg-zinc-950">
             <div className="mb-2 flex justify-end">
               <button
                 type="button"

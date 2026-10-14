@@ -477,7 +477,7 @@ function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-zinc-200 p-5 dark:border-zinc-800">
+    <div className="min-w-0 rounded-2xl border border-zinc-200 p-5 dark:border-zinc-800">
       <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-50">
         {titulo}
       </h2>
@@ -541,7 +541,7 @@ function InformesPageInterno() {
   const r = informe?.resumen;
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
         Informes
       </h1>

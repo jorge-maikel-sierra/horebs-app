@@ -59,6 +59,7 @@ function formatFecha(iso: string) {
   return new Intl.DateTimeFormat('es-CO', {
     dateStyle: 'short',
     timeStyle: 'short',
+    timeZone: 'America/Bogota',
   }).format(new Date(iso));
 }
 
@@ -506,7 +507,7 @@ function PedidosInterno() {
   });
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
           Pedidos

@@ -48,7 +48,7 @@ function ConfiguracionInterna() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
         Configuración
       </h1>
@@ -74,7 +74,7 @@ function ConfiguracionInterna() {
             />
           </div>
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
           {mensaje && <p className="text-sm text-brand-orange">{mensaje}</p>}
 
           <button

@@ -348,7 +348,7 @@ function TableroAdmin() {
       : '';
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">Nómina</h1>
@@ -422,7 +422,7 @@ function MiNomina() {
 
   if (cargando) {
     return (
-      <div className="p-8">
+      <div className="p-4 sm:p-6 lg:p-8">
         <CargandoSkeleton filas={3} />
       </div>
     );
@@ -430,7 +430,7 @@ function MiNomina() {
 
   if (semanaActual === null) {
     return (
-      <div className="p-8">
+      <div className="p-4 sm:p-6 lg:p-8">
         <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">Mi nómina</h1>
         <p className="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
           Todavía no tenés una nómina registrada. Hablá con administración.
@@ -440,7 +440,7 @@ function MiNomina() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">Mi nómina</h1>
 
       {semanaActual && (
@@ -494,7 +494,7 @@ export default function NominaPage() {
   // duplicando el fetch y el parpadeo de carga para cualquier admin.
   if (cargando) {
     return (
-      <div className="p-8">
+      <div className="p-4 sm:p-6 lg:p-8">
         <CargandoSkeleton filas={3} />
       </div>
     );

@@ -386,7 +386,7 @@ export default function AdminPage() {
   const nominaLiquidadas = nomina?.filter((f) => f.semana.estado === 'liquidada').length ?? 0;
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <h1 className="animate-fade-up text-2xl font-bold text-zinc-900 sm:text-3xl dark:text-zinc-50">
         Hola 👋
       </h1>

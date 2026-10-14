@@ -233,7 +233,7 @@ export default function InventarioComprasPage() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">Inventario</h1>
       <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
         Materia prima, compras y recetas.
