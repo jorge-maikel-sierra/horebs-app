@@ -64,7 +64,7 @@ export function HeroVentas({
   mejorDia?: string;
 }) {
   return (
-    <div className="btn-gradient relative flex h-full min-h-56 flex-col justify-between overflow-hidden rounded-3xl p-5 text-white shadow-lg shadow-brand-orange/25 sm:p-6">
+    <div className="btn-gradient relative flex h-full min-h-56 flex-col justify-between overflow-hidden rounded-3xl p-5 pb-20 text-white shadow-lg shadow-brand-orange/25 sm:p-6 sm:pb-20">
       <span className="pointer-events-none absolute -top-16 -right-12 h-48 w-48 rounded-full bg-white/10" />
       <span className="pointer-events-none absolute top-24 -left-10 h-32 w-32 rounded-full bg-white/5" />
 
