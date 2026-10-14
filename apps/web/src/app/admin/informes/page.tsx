@@ -4,7 +4,20 @@ import { useCallback, useEffect, useState } from 'react';
 import RequireRol from '@/components/RequireRol';
 import { adminFetch } from '@/lib/admin-fetch';
 import { formatPrecio } from '@/lib/formato';
+import { sumarDias } from '@/lib/semana';
 import CargandoSkeleton from '@/components/CargandoSkeleton';
+import FiltroPeriodo, { type PresetOpcion } from '@/components/informes/FiltroPeriodo';
+import {
+  HeroVentas,
+  TarjetaKpi,
+  TiraDomicilio,
+} from '@/components/informes/TarjetasResumen';
+import {
+  calcularDelta,
+  diasEntre,
+  etiquetaRango,
+  rangoAnterior,
+} from '@/lib/informes-rango';
 
 type InformeDia = { fecha: string; total: number; pedidos: number };
 type InformeDesglose = { clave: string; total: number; pedidos: number };
@@ -47,12 +60,12 @@ type InformeDto = {
 
 type RangoPreset = 'hoy' | '7dias' | 'mes' | 'mes_pasado' | 'anio' | 'personalizado';
 
-const PRESETS: { key: RangoPreset; label: string }[] = [
-  { key: 'hoy', label: 'Hoy' },
-  { key: '7dias', label: 'Últimos 7 días' },
-  { key: 'mes', label: 'Este mes' },
-  { key: 'mes_pasado', label: 'Mes pasado' },
-  { key: 'anio', label: 'Año' },
+const PRESETS: PresetOpcion<RangoPreset>[] = [
+  { key: 'hoy', corto: 'Hoy', largo: 'Hoy' },
+  { key: '7dias', corto: '7 días', largo: 'Últimos 7 días' },
+  { key: 'mes', corto: 'Este mes', largo: 'Este mes' },
+  { key: 'mes_pasado', corto: 'Mes pasado', largo: 'Mes pasado' },
+  { key: 'anio', corto: 'Año', largo: 'Este año' },
 ];
 
 const METODO_PAGO_LABEL: Record<string, string> = {
@@ -78,31 +91,26 @@ function iso(d: Date) {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(d);
 }
 
+// Todo el cálculo parte de la fecha de Bogotá como texto (YYYY-MM-DD) y usa
+// aritmética de calendario pura: getFullYear()/getMonth() del navegador
+// correrían el mes un día para quien mire el panel desde otra zona horaria.
 function calcularRango(preset: RangoPreset): { desde: string; hasta: string } {
-  const hoy = new Date();
+  const hoy = iso(new Date());
+  const [anio, mes] = hoy.split('-').map(Number);
+  const primeroDeMes = `${anio}-${String(mes).padStart(2, '0')}-01`;
   switch (preset) {
-    case 'hoy':
-      return { desde: iso(hoy), hasta: iso(hoy) };
-    case '7dias': {
-      const desde = new Date(hoy);
-      desde.setDate(desde.getDate() - 6);
-      return { desde: iso(desde), hasta: iso(hoy) };
-    }
-    case 'mes': {
-      const desde = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-      return { desde: iso(desde), hasta: iso(hoy) };
-    }
+    case '7dias':
+      return { desde: sumarDias(hoy, -6), hasta: hoy };
+    case 'mes':
+      return { desde: primeroDeMes, hasta: hoy };
     case 'mes_pasado': {
-      const desde = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
-      const hasta = new Date(hoy.getFullYear(), hoy.getMonth(), 0);
-      return { desde: iso(desde), hasta: iso(hasta) };
+      const ultimoMesPasado = sumarDias(primeroDeMes, -1);
+      return { desde: `${ultimoMesPasado.slice(0, 8)}01`, hasta: ultimoMesPasado };
     }
-    case 'anio': {
-      const desde = new Date(hoy.getFullYear(), 0, 1);
-      return { desde: iso(desde), hasta: iso(hoy) };
-    }
+    case 'anio':
+      return { desde: `${anio}-01-01`, hasta: hoy };
     default:
-      return { desde: iso(hoy), hasta: iso(hoy) };
+      return { desde: hoy, hasta: hoy };
   }
 }
 
@@ -192,39 +200,6 @@ function IconClienteRecurrente() {
       <path d="M17 8a3 3 0 1 1-1 5.8" />
       <path d="M20 8v3h-3" />
     </svg>
-  );
-}
-
-function TarjetaMetrica({
-  icon: Icon,
-  label,
-  valor,
-  detalle,
-}: {
-  icon: () => React.ReactElement;
-  label: string;
-  valor: string;
-  detalle?: string;
-}) {
-  return (
-    <div className="card-gradient card-interactive min-w-0 rounded-2xl border border-zinc-200 p-5 dark:border-zinc-800">
-      <div className="flex min-w-0 items-center gap-2 text-brand-orange">
-        <span className="shrink-0">
-          <Icon />
-        </span>
-        <span className="truncate text-xs font-semibold tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
-          {label}
-        </span>
-      </div>
-      <p className="mt-2 min-w-0 [overflow-wrap:anywhere] text-xl font-bold tabular-nums text-zinc-900 sm:text-2xl xl:text-[1.7rem] dark:text-zinc-50">
-        {valor}
-      </p>
-      {detalle && (
-        <p className="mt-0.5 truncate text-xs text-zinc-500 dark:text-zinc-400">
-          {detalle}
-        </p>
-      )}
-    </div>
   );
 }
 
@@ -496,19 +471,30 @@ function InformesPageInterno() {
   const [desde, setDesde] = useState('');
   const [hasta, setHasta] = useState('');
   const [informe, setInforme] = useState<InformeDto | null>(null);
+  const [anterior, setAnterior] = useState<InformeDto | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const cargar = useCallback((d: string, h: string) => {
     setCargando(true);
     setError(null);
-    adminFetch(`/informes?desde=${d}&hasta=${h}`)
-      .then(async (res) => {
-        if (!res.ok) {
-          const body = await res.json().catch(() => null);
-          throw new Error(body?.message ?? 'No se pudo cargar el informe.');
-        }
-        setInforme(await res.json());
+
+    async function pedir(desde: string, hasta: string): Promise<InformeDto> {
+      const res = await adminFetch(`/informes?desde=${desde}&hasta=${hasta}`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.message ?? 'No se pudo cargar el informe.');
+      }
+      return res.json();
+    }
+
+    // El período anterior solo alimenta las comparaciones (▲/▼): si falla,
+    // el informe principal se muestra igual, sin porcentajes.
+    const previo = rangoAnterior(d, h);
+    Promise.all([pedir(d, h), pedir(previo.desde, previo.hasta).catch(() => null)])
+      .then(([actual, ant]) => {
+        setInforme(actual);
+        setAnterior(ant);
       })
       .catch((err) =>
         setError(err instanceof Error ? err.message : 'Error desconocido.'),
@@ -532,61 +518,52 @@ function InformesPageInterno() {
     cargar(rango.desde, rango.hasta);
   }
 
-  function aplicarPersonalizado() {
-    if (!desde || !hasta) return;
+  function aplicarPersonalizado(d: string, h: string) {
+    setDesde(d);
+    setHasta(h);
     setPreset('personalizado');
-    cargar(desde, hasta);
+    cargar(d, h);
   }
 
   const r = informe?.resumen;
+  const ra = anterior?.resumen;
+  const dias = desde && hasta ? diasEntre(desde, hasta) : 0;
+  const vs = `los ${dias} ${dias === 1 ? 'día' : 'días'} anteriores`;
+  const mejorDia = informe?.serie_diaria.reduce<InformeDia | null>(
+    (mejor, d) => (!mejor || d.total > mejor.total ? d : mejor),
+    null,
+  );
+  const etiqueta = etiquetaRango(desde, hasta);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
-      <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-        Informes
-      </h1>
-      <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-        Métricas de ventas del negocio — web y mostrador.
-      </p>
+      <header className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+        <div>
+          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+            Informes
+          </h1>
+          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+            Métricas de ventas del negocio — web y mostrador.
+          </p>
+        </div>
+        {etiqueta && (
+          <p className="rounded-full border border-zinc-200 bg-white/70 px-3 py-1 text-xs font-semibold text-zinc-600 tabular-nums dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-300">
+            {etiqueta}
+            {dias > 1 && ` · ${dias} días`}
+          </p>
+        )}
+      </header>
 
-      <div className="mt-5 flex flex-wrap items-center gap-2">
-        {PRESETS.map((p) => (
-          <button
-            key={p.key}
-            type="button"
-            onClick={() => aplicarPreset(p.key)}
-            className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
-              preset === p.key
-                ? 'btn-gradient text-white shadow-sm'
-                : 'border border-zinc-300 text-zinc-600 hover:border-brand-orange dark:border-zinc-700 dark:text-zinc-300'
-            }`}
-          >
-            {p.label}
-          </button>
-        ))}
-
-        <span className="mx-1 h-5 w-px bg-zinc-300 dark:bg-zinc-700" />
-
-        <input
-          type="date"
-          value={desde}
-          onChange={(e) => setDesde(e.target.value)}
-          className="[color-scheme:light] dark:[color-scheme:dark] rounded-xl border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-700 shadow-sm transition-colors outline-none hover:border-brand-orange focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
+      <div className="sticky top-[61px] z-10 -mx-4 mt-4 border-b border-zinc-200/70 bg-white/80 px-4 py-2.5 backdrop-blur-md sm:-mx-6 sm:px-6 lg:top-0 lg:-mx-8 lg:px-8 dark:border-zinc-800/70 dark:bg-zinc-950/80">
+        <FiltroPeriodo
+          presets={PRESETS}
+          activo={preset}
+          personalizadoKey="personalizado"
+          desde={desde}
+          hasta={hasta}
+          onPreset={aplicarPreset}
+          onRangoPersonalizado={aplicarPersonalizado}
         />
-        <span className="text-sm text-zinc-400">–</span>
-        <input
-          type="date"
-          value={hasta}
-          onChange={(e) => setHasta(e.target.value)}
-          className="[color-scheme:light] dark:[color-scheme:dark] rounded-xl border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-700 shadow-sm transition-colors outline-none hover:border-brand-orange focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
-        />
-        <button
-          type="button"
-          onClick={aplicarPersonalizado}
-          className="btn-press rounded-xl border border-zinc-300 px-3.5 py-1.5 text-sm font-semibold text-zinc-600 shadow-sm transition-colors hover:border-brand-orange hover:text-brand-orange dark:border-zinc-700 dark:text-zinc-300"
-        >
-          Aplicar
-        </button>
       </div>
 
       {cargando && <CargandoSkeleton filas={8} />}
@@ -594,43 +571,73 @@ function InformesPageInterno() {
 
       {!cargando && !error && informe && r && (
         <>
-          <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <TarjetaMetrica
-              icon={IconMoneda}
-              label="Ventas brutas"
-              valor={formatPrecio(r.ventas_brutas)}
-            />
-            <TarjetaMetrica
-              icon={IconTendencia}
-              label="Promedio diario"
-              valor={formatPrecio(r.promedio_diario)}
-            />
-            <TarjetaMetrica
-              icon={IconPedidosIcon}
+          <div className="animate-fade-up mt-5 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+            <div className="col-span-2 lg:row-span-2">
+              <HeroVentas
+                icono={<IconMoneda />}
+                valor={formatPrecio(r.ventas_brutas)}
+                periodo={etiqueta}
+                delta={calcularDelta(r.ventas_brutas, ra?.ventas_brutas)}
+                vs={vs}
+                serie={informe.serie_diaria.map((d) => d.total)}
+                mejorDia={
+                  mejorDia && informe.serie_diaria.length > 1
+                    ? `${formatDiaCorto(mejorDia.fecha)} · ${formatPrecio(mejorDia.total)}`
+                    : undefined
+                }
+              />
+            </div>
+            <TarjetaKpi
+              tono="azul"
+              icono={<IconPedidosIcon />}
               label="Pedidos"
               valor={String(r.pedidos)}
+              delta={calcularDelta(r.pedidos, ra?.pedidos)}
+              vs={vs}
+              serie={informe.serie_diaria.map((d) => d.pedidos)}
             />
-            <TarjetaMetrica
-              icon={IconArticulos}
-              label="Artículos vendidos"
-              valor={String(r.articulos_vendidos)}
-            />
-            <TarjetaMetrica
-              icon={IconTicket}
+            <TarjetaKpi
+              tono="amarillo"
+              icono={<IconTicket />}
               label="Ticket promedio"
               valor={formatPrecio(r.ticket_promedio)}
+              delta={calcularDelta(r.ticket_promedio, ra?.ticket_promedio)}
+              vs={vs}
+              serie={informe.serie_diaria.map((d) => (d.pedidos ? d.total / d.pedidos : 0))}
             />
-            <TarjetaMetrica
-              icon={IconMoto}
-              label="Domicilio cobrado"
-              valor={formatPrecio(r.costo_domicilio_total)}
+            <TarjetaKpi
+              tono="verde"
+              icono={<IconArticulos />}
+              label="Artículos vendidos"
+              valor={String(r.articulos_vendidos)}
+              delta={calcularDelta(r.articulos_vendidos, ra?.articulos_vendidos)}
+              vs={vs}
             />
+            <TarjetaKpi
+              tono="naranja"
+              icono={<IconTendencia />}
+              label="Promedio diario"
+              valor={formatPrecio(r.promedio_diario)}
+              delta={calcularDelta(r.promedio_diario, ra?.promedio_diario)}
+              vs={vs}
+            />
+            <div className="col-span-2 lg:col-span-4">
+              <TiraDomicilio
+                icono={<IconMoto />}
+                valor={formatPrecio(r.costo_domicilio_total)}
+                porcentaje={
+                  r.ventas_brutas > 0
+                    ? (r.costo_domicilio_total / r.ventas_brutas) * 100
+                    : 0
+                }
+              />
+            </div>
           </div>
 
           <div className="mt-4">
             <Panel
               titulo="Ventas por día"
-              subtitulo={`${informe.desde} a ${informe.hasta}`}
+              subtitulo={etiquetaRango(informe.desde, informe.hasta)}
             >
               <GraficoVentasDiarias datos={informe.serie_diaria} />
             </Panel>
@@ -670,24 +677,36 @@ function InformesPageInterno() {
             Clientes
           </h2>
 
-          <div className="mt-3 grid gap-4 sm:grid-cols-3">
-            <TarjetaMetrica
-              icon={IconClienteNuevo}
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
+            <TarjetaKpi
+              tono="verde"
+              icono={<IconClienteNuevo />}
               label="Clientes nuevos"
               valor={String(informe.clientes.nuevos)}
               detalle="Primera compra en este período"
+              delta={calcularDelta(informe.clientes.nuevos, anterior?.clientes.nuevos)}
+              vs={vs}
+              serie={informe.clientes.serie_diaria_nuevos.map((d) => d.nuevos)}
             />
-            <TarjetaMetrica
-              icon={IconClienteRecurrente}
+            <TarjetaKpi
+              tono="azul"
+              icono={<IconClienteRecurrente />}
               label="Clientes recurrentes"
               valor={String(informe.clientes.recurrentes)}
               detalle="Ya habían comprado antes"
+              delta={calcularDelta(informe.clientes.recurrentes, anterior?.clientes.recurrentes)}
+              vs={vs}
             />
-            <TarjetaMetrica
-              icon={IconTicket}
-              label="Ticket promedio por cliente"
-              valor={formatPrecio(informe.clientes.ticket_promedio)}
-            />
+            <div className="col-span-2 lg:col-span-1">
+              <TarjetaKpi
+                tono="amarillo"
+                icono={<IconTicket />}
+                label="Ticket promedio por cliente"
+                valor={formatPrecio(informe.clientes.ticket_promedio)}
+                delta={calcularDelta(informe.clientes.ticket_promedio, anterior?.clientes.ticket_promedio)}
+                vs={vs}
+              />
+            </div>
           </div>
 
           <div className="mt-4 grid gap-4 lg:grid-cols-2">
