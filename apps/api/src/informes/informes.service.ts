@@ -51,13 +51,23 @@ export interface InformeClienteTopDto {
   total: number;
 }
 
+export interface InformeClienteListaDto extends InformeClienteTopDto {
+  primera_compra: string;
+}
+
 export interface InformeClientesDto {
   nuevos: number;
   recurrentes: number;
   ticket_promedio: number;
   serie_diaria_nuevos: InformeClienteDiaDto[];
   top_clientes: InformeClienteTopDto[];
+  /** Los más recientes primero; recortada a MAX_LISTA_CLIENTES. */
+  lista_nuevos: InformeClienteListaDto[];
+  /** Los de mayor gasto primero; recortada a MAX_LISTA_CLIENTES. */
+  lista_recurrentes: InformeClienteListaDto[];
 }
+
+const MAX_LISTA_CLIENTES = 100;
 
 export interface InformeDto {
   desde: string;
@@ -268,6 +278,8 @@ export class InformesService {
           granularidad,
         ),
         top_clientes: [],
+        lista_nuevos: [],
+        lista_recurrentes: [],
       };
     }
 
@@ -311,19 +323,39 @@ export class InformesService {
     let nuevos = 0;
     let recurrentes = 0;
     const porBucketAltas = new Map<string, number>();
+    const listaNuevos: InformeClienteListaDto[] = [];
+    const listaRecurrentes: InformeClienteListaDto[] = [];
 
     for (const telefono of telefonos) {
       const info = primeraCompra.get(telefono);
       if (!info) continue;
+      const stats = porClienteActivo.get(telefono) ?? { pedidos: 0, total: 0 };
+      const cliente: InformeClienteListaDto = {
+        id: telefono,
+        nombre: info.nombre || 'Cliente',
+        telefono,
+        pedidos: stats.pedidos,
+        total: stats.total,
+        primera_compra: info.fecha,
+      };
       const esNuevo = new Date(info.fecha).getTime() >= desdeMs;
       if (esNuevo) {
         nuevos += 1;
+        listaNuevos.push(cliente);
         const bucket = this.claveBucket(info.fecha, granularidad);
         porBucketAltas.set(bucket, (porBucketAltas.get(bucket) ?? 0) + 1);
       } else {
         recurrentes += 1;
+        listaRecurrentes.push(cliente);
       }
     }
+
+    listaNuevos.sort(
+      (a, b) =>
+        new Date(b.primera_compra).getTime() -
+        new Date(a.primera_compra).getTime(),
+    );
+    listaRecurrentes.sort((a, b) => b.total - a.total);
 
     const ventasActivos = [...porClienteActivo.values()].reduce(
       (s, v) => s + v.total,
@@ -357,6 +389,8 @@ export class InformesService {
         granularidad,
       ),
       top_clientes: topClientes,
+      lista_nuevos: listaNuevos.slice(0, MAX_LISTA_CLIENTES),
+      lista_recurrentes: listaRecurrentes.slice(0, MAX_LISTA_CLIENTES),
     };
   }
 
