@@ -1,11 +1,23 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import Link from 'next/link';
 import { adminFetch } from '@/lib/admin-fetch';
 import { formatPrecio } from '@/lib/formato';
 import { useRol } from '@/lib/use-rol';
 import CargandoSkeleton from '@/components/CargandoSkeleton';
+import BuscadorPedidos from '@/components/pedidos/BuscadorPedidos';
+import Resaltado from '@/components/pedidos/Resaltado';
+import { useDebounced } from '@/lib/use-debounced';
+import { hoyBogota } from '@/lib/semana';
+import {
+  FILTROS_INICIALES,
+  MODALIDAD_LABEL,
+  buscarPedidos,
+  coincidenciasOcultas,
+  terminosParaResaltar,
+  type FiltrosPedidos,
+} from '@/lib/pedidos-busqueda';
 
 type ItemPedido = {
   variante_id: string | null;
@@ -62,12 +74,6 @@ function formatFecha(iso: string) {
     timeZone: 'America/Bogota',
   }).format(new Date(iso));
 }
-
-const MODALIDAD_LABEL: Record<string, string> = {
-  domicilio: 'Domicilio',
-  retiro: 'Para llevar',
-  local: 'Comer en el local',
-};
 
 const METODO_PAGO_OPCIONES = ['efectivo', 'transferencia', 'tarjeta'] as const;
 
@@ -155,7 +161,8 @@ function PedidosInterno() {
   const [pedidos, setPedidos] = useState<PedidoAdmin[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filtro, setFiltro] = useState('');
+  const [filtros, setFiltros] = useState<FiltrosPedidos>(FILTROS_INICIALES);
+  const [hoy] = useState(hoyBogota);
   const [eliminandoId, setEliminandoId] = useState<string | null>(null);
 
   const [editandoClienteId, setEditandoClienteId] = useState<string | null>(
@@ -496,15 +503,15 @@ function PedidosInterno() {
 
   const pedidoDetalle = pedidos.find((p) => p.id === expandidoId) ?? null;
 
-  const pedidosFiltrados = pedidos.filter((p) => {
-    const q = filtro.trim().toLowerCase();
-    if (!q) return true;
-    return (
-      p.cliente.nombre.toLowerCase().includes(q) ||
-      (p.cliente.apellido ?? '').toLowerCase().includes(q) ||
-      (p.cliente.telefono ?? '').includes(q)
-    );
-  });
+  // El texto se aplica con un pequeño debounce: la lista no se recalcula ni se
+  // vuelve a animar en cada tecla.
+  const aplicados = useDebounced(filtros, 180);
+  const { resultados: pedidosFiltrados, terminos } = useMemo(
+    () => buscarPedidos(pedidos, aplicados, hoy),
+    [pedidos, aplicados, hoy],
+  );
+  const resaltar = terminosParaResaltar(terminos);
+  const firmaBusqueda = JSON.stringify(aplicados);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
@@ -523,12 +530,16 @@ function PedidosInterno() {
         Últimos {pedidos.length} pedidos, web y del local.
       </p>
 
-      <input
-        value={filtro}
-        onChange={(e) => setFiltro(e.target.value)}
-        placeholder="Buscar por nombre o teléfono del cliente…"
-        className="mt-4 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
-      />
+      {!cargando && pedidos.length > 0 && (
+        <BuscadorPedidos
+          pedidos={pedidos}
+          filtros={filtros}
+          hoy={hoy}
+          mostrados={pedidosFiltrados.length}
+          onCambiar={(parcial) => setFiltros((f) => ({ ...f, ...parcial }))}
+          onLimpiar={() => setFiltros(FILTROS_INICIALES)}
+        />
+      )}
 
       {cargando && <CargandoSkeleton filas={5} />}
       {error && <p className="mt-6 text-sm text-red-600 dark:text-red-400">{error}</p>}
@@ -539,8 +550,38 @@ function PedidosInterno() {
         </p>
       )}
 
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {pedidosFiltrados.map((p) => {
+      {!cargando && !error && pedidos.length > 0 && pedidosFiltrados.length === 0 && (
+        <div className="animate-fade-up card-gradient mt-6 flex flex-col items-center rounded-3xl border border-dashed border-zinc-300 px-6 py-14 text-center dark:border-zinc-700">
+          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-orange/15 text-brand-orange-700 dark:text-brand-orange">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.5-3.5M8.5 11h5" />
+            </svg>
+          </span>
+          <p className="mt-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+            Ningún pedido coincide
+          </p>
+          <p className="mt-1 max-w-sm text-sm text-zinc-500 dark:text-zinc-400">
+            {filtros.texto.trim()
+              ? `No encontramos pedidos para “${filtros.texto.trim()}” con los filtros actuales.`
+              : 'No hay pedidos con los filtros actuales.'}{' '}
+            Revisa la ortografía o prueba con menos palabras.
+          </p>
+          <button
+            type="button"
+            onClick={() => setFiltros(FILTROS_INICIALES)}
+            className="btn-gradient btn-press mt-5 h-11 rounded-xl px-5 text-sm font-semibold text-white shadow-md shadow-brand-orange/25 outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/60"
+          >
+            Limpiar filtros
+          </button>
+        </div>
+      )}
+
+      <div
+        key={firmaBusqueda}
+        className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
+      >
+        {pedidosFiltrados.map((p, indice) => {
           const abierto =
             editandoClienteId === p.cliente.id || editandoPedidoId === p.id;
           const nombreCompleto = p.cliente.nombre
@@ -550,7 +591,8 @@ function PedidosInterno() {
           return (
             <div
               key={p.id}
-              className={`flex flex-col rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 ${
+              style={{ '--i': Math.min(indice, 8) } as CSSProperties}
+              className={`resultado-item flex flex-col rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 ${
                 abierto ? 'sm:col-span-2 xl:col-span-3' : ''
               }`}
             >
@@ -564,7 +606,7 @@ function PedidosInterno() {
                     {p.canal === 'pos' ? 'Local' : 'Web'}
                   </span>
                   <span className="rounded-md bg-zinc-100 px-1.5 py-0.5 font-mono text-[11px] font-medium text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
-                    #{p.id.slice(0, 8)}
+                    #<Resaltado texto={p.id.slice(0, 8)} terminos={resaltar} />
                   </span>
                   {p.stock_status === 'pendiente' && (
                     <span
@@ -587,11 +629,16 @@ function PedidosInterno() {
 
               <div className="mt-2.5">
                 <p className="truncate font-semibold text-zinc-900 dark:text-zinc-50">
-                  {nombreCompleto}
+                  <Resaltado texto={nombreCompleto} terminos={resaltar} />
                 </p>
                 <div className="flex items-center justify-between gap-2">
                   <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">
-                    {p.cliente.telefono ?? 'Sin teléfono'} · {formatFecha(p.created_at)}
+                    {p.cliente.telefono ? (
+                      <Resaltado texto={p.cliente.telefono} terminos={resaltar} />
+                    ) : (
+                      'Sin teléfono'
+                    )}{' '}
+                    · {formatFecha(p.created_at)}
                   </p>
                 </div>
               </div>
@@ -601,9 +648,14 @@ function PedidosInterno() {
                   {p.items.slice(0, 3).map((i, idx) => (
                     <li key={i.variante_id ?? idx} className="truncate">
                       {i.cantidad}×{' '}
-                      {i.variante_nombre
-                        ? `${i.producto_nombre} (${i.variante_nombre})`
-                        : i.producto_nombre}
+                      <Resaltado
+                        texto={
+                          i.variante_nombre
+                            ? `${i.producto_nombre} (${i.variante_nombre})`
+                            : i.producto_nombre
+                        }
+                        terminos={resaltar}
+                      />
                     </li>
                   ))}
                   {p.items.length > 3 && (
@@ -613,6 +665,19 @@ function PedidosInterno() {
                   )}
                 </ul>
               )}
+
+              {!abierto &&
+                coincidenciasOcultas(p, terminos).map((c) => (
+                  <p
+                    key={`${c.campo}-${c.texto}`}
+                    className="mt-2 flex items-start gap-1 rounded-lg bg-brand-orange/10 px-2 py-1 text-[11px] text-zinc-700 dark:text-zinc-300"
+                  >
+                    <span className="shrink-0 font-semibold">{c.campo}:</span>
+                    <span className="min-w-0 [overflow-wrap:anywhere]">
+                      <Resaltado texto={c.texto} terminos={resaltar} />
+                    </span>
+                  </p>
+                ))}
 
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-zinc-100 pt-2.5 text-xs dark:border-zinc-800/60">
                 <div className="flex flex-wrap items-center gap-1.5 text-zinc-500 dark:text-zinc-400">

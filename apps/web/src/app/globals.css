@@ -450,11 +450,54 @@ body {
   -webkit-mask-image: linear-gradient(to right, transparent, black 6%, black 94%, transparent);
 }
 
+/* Buscador de pedidos: entrada escalonada de resultados, menú desplegable y
+   resaltado de coincidencias. El retraso sale de --i (índice de la tarjeta),
+   acotado en el componente para que listas largas no tarden en aparecer. */
+@keyframes resultado-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.resultado-item {
+  animation: resultado-in 0.42s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+
+@keyframes desplegar {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.animate-desplegar {
+  transform-origin: top;
+  animation: desplegar 0.18s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.marca-busqueda {
+  border-radius: 0.25rem;
+  background-color: color-mix(in srgb, var(--brand-orange) 30%, transparent);
+  color: inherit;
+  padding: 0 0.1em;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--brand-orange) 20%, transparent);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-up,
   .animate-fade-in,
   .animate-pop-in,
   .animate-badge-bump,
+  .resultado-item,
+  .animate-desplegar,
   .skeleton {
     animation: none !important;
   }

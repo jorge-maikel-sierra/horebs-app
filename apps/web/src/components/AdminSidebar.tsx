@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type ReactElement } from 'react';
+import { useState, type ReactElement } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -425,11 +425,16 @@ export default function AdminSidebar() {
   const alertas = useAlertasAdmin();
   const [abierto, setAbierto] = useState(false);
   const [confirmandoSalir, setConfirmandoSalir] = useState(false);
-  const [colapsado, setColapsado] = useState(false);
-
-  useEffect(() => {
-    setColapsado(localStorage.getItem(CLAVE_COLAPSADO) === '1');
-  }, []);
+  // El sidebar solo se monta ya en cliente (RequireRol no pinta hijos hasta
+  // resolver la sesión), así que leer localStorage al inicializar no desfasa
+  // la hidratación ni obliga a un setState dentro de un efecto.
+  const [colapsado, setColapsado] = useState(() => {
+    try {
+      return localStorage.getItem(CLAVE_COLAPSADO) === '1';
+    } catch {
+      return false;
+    }
+  });
 
   function alternarColapsado() {
     setColapsado((prev) => {
