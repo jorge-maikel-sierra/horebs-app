@@ -12,8 +12,10 @@ import {
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { UsuarioActual } from '../auth/usuario.decorator';
+import { ClientesDirectorioService } from './clientes-directorio.service';
 import { ClientesService } from './clientes.service';
 import { PuntosService } from './puntos.service';
+import type { ConsultaDirectorio } from './clientes-directorio.service';
 import type { EditarClienteInput } from './clientes.service';
 import type { UsuarioAutenticado } from '../auth/roles.guard';
 
@@ -22,6 +24,7 @@ import type { UsuarioAutenticado } from '../auth/roles.guard';
 export class ClientesController {
   constructor(
     private readonly clientes: ClientesService,
+    private readonly directorio: ClientesDirectorioService,
     private readonly puntos: PuntosService,
   ) {}
 
@@ -29,6 +32,13 @@ export class ClientesController {
   @Roles('admin', 'empleado')
   listarOBuscar(@Query('q') q?: string) {
     return q?.trim() ? this.clientes.buscar(q) : this.clientes.listar();
+  }
+
+  // Declarada antes de ':id' para que "directorio" no se tome como un id.
+  @Get('directorio')
+  @Roles('admin', 'empleado')
+  consultarDirectorio(@Query() query: ConsultaDirectorio) {
+    return this.directorio.consultar(query);
   }
 
   @Get(':id')

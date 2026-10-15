@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import { ClientesDirectorioService } from './clientes-directorio.service';
 
 export interface ClienteDto {
   id: string;
@@ -42,7 +43,10 @@ const SELECT_CLIENTE =
  */
 @Injectable()
 export class ClientesService {
-  constructor(private readonly supabase: SupabaseService) {}
+  constructor(
+    private readonly supabase: SupabaseService,
+    private readonly directorio: ClientesDirectorioService,
+  ) {}
 
   async buscar(query: string): Promise<ClienteDto[]> {
     const q = query.trim().replace(/[,()%]/g, '');
@@ -142,6 +146,7 @@ export class ClientesService {
       }
       throw error;
     }
+    this.directorio.invalidar();
     return data;
   }
 
@@ -162,5 +167,6 @@ export class ClientesService {
 
     if (error) throw error;
     if (!count) throw new NotFoundException('Cliente no encontrado.');
+    this.directorio.invalidar();
   }
 }
