@@ -16,6 +16,7 @@ import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { UsuarioActual } from '../auth/usuario.decorator';
 import { AdminService } from './admin.service';
+import { ModulosService } from './modulos.service';
 import { BlogService } from '../blog/blog.service';
 import type { UsuarioAutenticado } from '../auth/roles.guard';
 import type { CrearVentaInput, ItemVentaInput } from './admin.service';
@@ -28,6 +29,7 @@ export class AdminController {
   constructor(
     private readonly admin: AdminService,
     private readonly blog: BlogService,
+    private readonly modulos: ModulosService,
   ) {}
 
   @Get('perfil')
@@ -111,6 +113,20 @@ export class AdminController {
   @Roles('admin')
   actualizarConfiguracion(@Body() body: { correo_domiciliario: string }) {
     return this.admin.actualizarConfiguracion(body.correo_domiciliario);
+  }
+
+  // Lectura para todo el staff (el menú y las pantallas la necesitan);
+  // solo el admin puede encender o apagar un módulo.
+  @Get('modulos')
+  @Roles('admin', 'empleado')
+  listarModulos() {
+    return this.modulos.listar();
+  }
+
+  @Patch('modulos/:id')
+  @Roles('admin')
+  cambiarModulo(@Param('id') id: string, @Body() body: { activo?: unknown }) {
+    return this.modulos.cambiar(id, body?.activo);
   }
 
   @Get('usuarios')
