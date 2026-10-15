@@ -54,6 +54,7 @@ export function HeroVentas({
   vs,
   serie,
   mejorDia,
+  etiquetaNota = 'Mejor día',
 }: {
   icono: ReactNode;
   valor: string;
@@ -62,6 +63,8 @@ export function HeroVentas({
   vs: string;
   serie: number[];
   mejorDia?: string;
+  /** Prefijo de la nota al pie del hero (por defecto "Mejor día"). */
+  etiquetaNota?: string;
 }) {
   return (
     <div className="btn-gradient relative flex h-full min-h-56 flex-col justify-between overflow-hidden rounded-3xl p-5 pb-20 text-white shadow-lg shadow-brand-orange/25 sm:p-6 sm:pb-20">
@@ -86,7 +89,9 @@ export function HeroVentas({
         </p>
         <p className="mt-2 text-sm font-medium text-white/90">{periodo}</p>
         {mejorDia && (
-          <p className="mt-0.5 text-xs text-white/85">Mejor día: {mejorDia}</p>
+          <p className="mt-0.5 text-xs text-white/85">
+            {etiquetaNota}: {mejorDia}
+          </p>
         )}
       </div>
 

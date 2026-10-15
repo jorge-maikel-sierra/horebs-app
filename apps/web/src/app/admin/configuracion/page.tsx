@@ -1,16 +1,22 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
-import RequireRol from '@/components/RequireRol';
-import { adminFetch } from '@/lib/admin-fetch';
+import { useEffect, useId, useState, type FormEvent } from 'react';
+import AvisoFlotante from '@/components/AvisoFlotante';
 import CargandoSkeleton from '@/components/CargandoSkeleton';
+import RequireRol from '@/components/RequireRol';
+import SeccionModulos from '@/components/configuracion/SeccionModulos';
+import Campo from '@/components/formulario/Campo';
+import { TARJETA, claseCampo } from '@/components/formulario/estilos';
+import { adminFetch } from '@/lib/admin-fetch';
+import { useAviso } from '@/lib/use-aviso';
 
 function ConfiguracionInterna() {
+  const idCorreo = useId();
+  const { aviso, mostrar } = useAviso();
   const [correoDomiciliario, setCorreoDomiciliario] = useState('');
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [mensaje, setMensaje] = useState<string | null>(null);
 
   useEffect(() => {
     adminFetch('/admin/configuracion')
@@ -28,7 +34,6 @@ function ConfiguracionInterna() {
   async function guardar(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    setMensaje(null);
     setGuardando(true);
     try {
       const res = await adminFetch('/admin/configuracion', {
@@ -37,9 +42,13 @@ function ConfiguracionInterna() {
       });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
-        throw new Error(body?.message ?? 'No se pudo guardar.');
+        throw new Error(
+          typeof body?.message === 'string'
+            ? body.message
+            : 'No se pudo guardar.',
+        );
       }
-      setMensaje('Guardado.');
+      mostrar('Configuración guardada');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo guardar.');
     } finally {
@@ -53,39 +62,57 @@ function ConfiguracionInterna() {
         Configuración
       </h1>
       <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-        Cada vez que se cree un pedido con envío a domicilio (web o punto de
-        venta), se le avisa por correo a esta dirección.
+        Ajustes generales del negocio y del panel.
       </p>
 
-      {cargando ? (
-        <CargandoSkeleton filas={2} />
-      ) : (
-        <form onSubmit={guardar} className="mt-6 space-y-4">
-          <div>
-            <label className="block text-sm font-medium">
-              Correo del domiciliario
-            </label>
-            <input
-              required
-              type="email"
-              value={correoDomiciliario}
-              onChange={(e) => setCorreoDomiciliario(e.target.value)}
-              className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
-            />
-          </div>
+      <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_24rem] xl:items-start">
+        <SeccionModulos onAviso={mostrar} />
 
-          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-          {mensaje && <p className="text-sm text-brand-orange">{mensaje}</p>}
+        <section className={TARJETA}>
+          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+            Avisos de domicilio
+          </h2>
+          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+            Cada vez que se cree un pedido con envío a domicilio (web o punto de
+            venta), se le avisa por correo a esta dirección.
+          </p>
 
-          <button
-            type="submit"
-            disabled={guardando}
-            className="rounded-lg bg-brand-orange px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
-          >
-            {guardando ? 'Guardando…' : 'Guardar'}
-          </button>
-        </form>
-      )}
+          {cargando ? (
+            <CargandoSkeleton filas={1} />
+          ) : (
+            <form onSubmit={guardar} className="mt-4 space-y-4">
+              <Campo
+                id={idCorreo}
+                etiqueta="Correo del domiciliario"
+                error={error ?? undefined}
+              >
+                <input
+                  id={idCorreo}
+                  required
+                  type="email"
+                  inputMode="email"
+                  autoComplete="off"
+                  value={correoDomiciliario}
+                  aria-invalid={Boolean(error)}
+                  aria-describedby={error ? `${idCorreo}-error` : undefined}
+                  onChange={(e) => setCorreoDomiciliario(e.target.value)}
+                  className={claseCampo(Boolean(error))}
+                />
+              </Campo>
+
+              <button
+                type="submit"
+                disabled={guardando}
+                className="btn-gradient btn-press h-11 rounded-xl px-5 text-sm font-semibold text-white shadow-md shadow-brand-orange/25 outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/60 disabled:opacity-60"
+              >
+                {guardando ? 'Guardando…' : 'Guardar'}
+              </button>
+            </form>
+          )}
+        </section>
+      </div>
+
+      <AvisoFlotante aviso={aviso} />
     </div>
   );
 }

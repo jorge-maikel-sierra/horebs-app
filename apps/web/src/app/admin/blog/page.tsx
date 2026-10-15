@@ -2,14 +2,15 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import RequireRol from '@/components/RequireRol';
+import AvisoFlotante from '@/components/AvisoFlotante';
 import ModalConfirmar from '@/components/ModalConfirmar';
 import EditorArticulo from '@/components/blog-admin/EditorArticulo';
 import ListaArticulos from '@/components/blog-admin/ListaArticulos';
 import type { BlogPost } from '@/components/blog-admin/tipos';
 import { adminFetch } from '@/lib/admin-fetch';
+import { useAviso } from '@/lib/use-aviso';
 
 type Editor = { post: BlogPost | null; clave: number };
-type Aviso = { texto: string; error: boolean };
 
 function BlogAdminInterno() {
   const [posts, setPosts] = useState<BlogPost[]>([]);
@@ -18,7 +19,7 @@ function BlogAdminInterno() {
   const [editor, setEditor] = useState<Editor | null>(null);
   const [aEliminar, setAEliminar] = useState<BlogPost | null>(null);
   const [eliminando, setEliminando] = useState(false);
-  const [aviso, setAviso] = useState<Aviso | null>(null);
+  const { aviso, mostrar } = useAviso();
 
   const cargarPosts = useCallback(async () => {
     setCargando(true);
@@ -38,13 +39,6 @@ function BlogAdminInterno() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- carga inicial de datos remotos.
     void cargarPosts();
   }, [cargarPosts]);
-
-  // El aviso se oculta solo; cada aviso nuevo reinicia el temporizador.
-  useEffect(() => {
-    if (!aviso) return;
-    const t = setTimeout(() => setAviso(null), 3500);
-    return () => clearTimeout(t);
-  }, [aviso]);
 
   // Al cambiar entre lista y editor se vuelve al inicio de la pantalla.
   const hayEditor = editor !== null;
@@ -75,9 +69,9 @@ function BlogAdminInterno() {
       if (!res.ok) throw new Error('eliminar');
       setPosts((previos) => previos.filter((p) => p.id !== post.id));
       setEditor((actual) => (actual?.post?.id === post.id ? null : actual));
-      setAviso({ texto: 'Artículo eliminado', error: false });
+      mostrar('Artículo eliminado');
     } catch {
-      setAviso({ texto: 'No se pudo eliminar el artículo', error: true });
+      mostrar('No se pudo eliminar el artículo', true);
     } finally {
       setEliminando(false);
       setAEliminar(null);
@@ -93,7 +87,7 @@ function BlogAdminInterno() {
           onVolver={() => setEditor(null)}
           onGuardado={alGuardar}
           onEliminar={setAEliminar}
-          onAviso={(texto) => setAviso({ texto, error: false })}
+          onAviso={mostrar}
         />
       ) : (
         <ListaArticulos
@@ -128,19 +122,7 @@ function BlogAdminInterno() {
         />
       )}
 
-      <div role="status" aria-live="polite" className="contents">
-        {aviso && (
-          <p
-            className={`animate-fade-up fixed bottom-4 left-1/2 z-40 -translate-x-1/2 rounded-full px-5 py-2.5 text-sm font-semibold shadow-lg ${
-              aviso.error
-                ? 'bg-red-600 text-white'
-                : 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
-            }`}
-          >
-            {aviso.texto}
-          </p>
-        )}
-      </div>
+      <AvisoFlotante aviso={aviso} />
     </div>
   );
 }

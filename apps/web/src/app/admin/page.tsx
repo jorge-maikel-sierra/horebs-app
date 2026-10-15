@@ -1,37 +1,77 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { useRol } from '@/lib/use-rol';
-import { adminFetch } from '@/lib/admin-fetch';
-import { formatPrecio, formatHora, formatCantidad, type UnidadMedida } from '@/lib/formato';
-import { hoyBogota, sumarDias, formatearFechaCorta } from '@/lib/semana';
+import { useState } from 'react';
+import { IconPedidos } from '@/components/admin-iconos';
 import CargandoSkeleton from '@/components/CargandoSkeleton';
+import GraficoColumnas from '@/components/informes/GraficoColumnas';
+import { HeroVentas, TarjetaKpi } from '@/components/informes/TarjetasResumen';
+import AccesosModulos from '@/components/panel/AccesosModulos';
+import CajaTurno from '@/components/panel/CajaTurno';
+import EncabezadoPanel from '@/components/panel/EncabezadoPanel';
+import {
+  IconAlerta,
+  IconArticulos,
+  IconCheck,
+  IconMoneda,
+  IconTicket,
+  IconWhatsapp,
+} from '@/components/panel/iconos';
+import SeccionPanel from '@/components/panel/SeccionPanel';
+import TarjetaAtencion from '@/components/panel/TarjetaAtencion';
+import TarjetaTurno from '@/components/panel/TarjetaTurno';
+import { formatPrecio, type UnidadMedida } from '@/lib/formato';
+import {
+  etiquetaCorta,
+  etiquetaLarga,
+  formatoEjePesos,
+} from '@/lib/informes-rango';
+import type { ModuloId } from '@/lib/modulos';
+import { hoyBogota, sumarDias } from '@/lib/semana';
+import { useCarga } from '@/lib/use-carga';
+import { useModulos } from '@/lib/use-modulos';
+import { useRol } from '@/lib/use-rol';
 
 // ---- Tipos (subconjuntos de los DTOs reales del backend) ----
 
-type TurnoDto = { id: string; abierto_en: string; estado: 'abierto' | 'cerrado' };
-type ResumenVentasDto = {
-  total_efectivo: number;
-  total_transferencia: number;
-  total_tarjeta: number;
-  total_ventas: number;
-  cantidad_ventas: number;
+type TurnoActualDto = {
+  turno: {
+    id: string;
+    abierto_en: string;
+    estado: 'abierto' | 'cerrado';
+  } | null;
+  resumen: {
+    total_efectivo: number;
+    total_transferencia: number;
+    total_tarjeta: number;
+    total_ventas: number;
+    cantidad_ventas: number;
+  } | null;
 };
-type TurnoActualDto = { turno: TurnoDto | null; resumen: ResumenVentasDto | null };
 
 type PedidoActivo = { id: string; estado: string };
-
-type InsumoBajo = { id: string; nombre: string; unidad_medida: UnidadMedida; stock_actual_g: number; stock_minimo_g: number };
-
+type InsumoBajo = {
+  id: string;
+  nombre: string;
+  unidad_medida: UnidadMedida;
+  stock_actual_g: number;
+  stock_minimo_g: number;
+};
 type ConversacionBot = { id: string; estado: 'bot' | 'derivado' };
 
 type InformeResumen = {
-  resumen: { ventas_brutas: number; pedidos: number; articulos_vendidos: number; ticket_promedio: number };
-  serie_diaria: { fecha: string; total: number }[];
+  resumen: {
+    ventas_brutas: number;
+    pedidos: number;
+    articulos_vendidos: number;
+    ticket_promedio: number;
+  };
+  serie_diaria: { fecha: string; total: number; pedidos: number }[];
 };
 
-type TableroFila = { empleado: { nombre: string }; semana: { neto_pagar: number; estado: 'en_curso' | 'liquidada' } };
+type TableroFila = {
+  empleado: { nombre: string };
+  semana: { neto_pagar: number; estado: 'en_curso' | 'liquidada' };
+};
 
 const ESTADO_PEDIDO_LABEL: Record<string, string> = {
   pendiente: 'pendiente',
@@ -39,593 +79,403 @@ const ESTADO_PEDIDO_LABEL: Record<string, string> = {
   en_preparacion: 'en preparación',
 };
 
-// ---- Íconos (24x24, mismo estilo que el resto del panel) ----
+const COLUMNAS_ATENCION: Record<number, string> = {
+  1: 'sm:grid-cols-1',
+  2: 'sm:grid-cols-2',
+  3: 'sm:grid-cols-3',
+};
 
-function IconPos() {
+function Etiqueta({ children }: { children: React.ReactNode }) {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M6 8V6a3 3 0 0 1 6 0v2" />
-      <path d="M4 8h10l1 12H3L4 8Z" />
-    </svg>
-  );
-}
-
-function IconPedidos() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M7 3h10a1 1 0 0 1 1 1v16l-3-2-3 2-3-2-3 2V4a1 1 0 0 1 1-1Z" />
-      <path d="M9 8h6M9 12h6" />
-    </svg>
-  );
-}
-
-function IconPedidosGrande() {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M7 3h10a1 1 0 0 1 1 1v16l-3-2-3 2-3-2-3 2V4a1 1 0 0 1 1-1Z" />
-      <path d="M9 8h6M9 12h6" />
-    </svg>
-  );
-}
-
-function IconUsuarios() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="9" cy="8" r="3.2" />
-      <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" />
-      <path d="M16 8.5a3 3 0 1 1 3.2 3M21 20c0-2.8-1.9-5.1-4.5-5.8" />
-    </svg>
-  );
-}
-
-function IconBlog() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 19.5V5a2 2 0 0 1 2-2h9l5 5v11.5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z" />
-      <path d="M14 3v5h5" />
-      <path d="M8 13h8M8 17h5" />
-    </svg>
-  );
-}
-
-function IconConfig() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="3" />
-      <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.6V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.6 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.6 1Z" />
-    </svg>
-  );
-}
-
-function IconAlerta() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 3 2 20h20L12 3Z" />
-      <path d="M12 10v4" />
-      <circle cx="12" cy="17" r="0.5" fill="currentColor" />
-    </svg>
-  );
-}
-
-function IconWhatsapp() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.6L3 20l1-5.4A8.5 8.5 0 1 1 21 11.5Z" />
-      <path d="M8.5 10.5c.3 2.2 2.3 4.2 4.5 4.5" />
-    </svg>
-  );
-}
-
-function IconReloj() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 7v5l3.5 2" />
-    </svg>
-  );
-}
-
-function IconMoneda() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 7v10M9.5 9.5c0-1.4 1.2-2.2 2.7-2.2 1.6 0 2.8.9 2.8 2 0 3-5.5 1.5-5.5 4.4 0 1.2 1.2 2.1 2.8 2.1 1.5 0 2.7-.8 2.7-2.2" />
-    </svg>
-  );
-}
-
-function IconTicket() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4V8Z" />
-      <path d="M9 6v12" strokeDasharray="2 2" />
-    </svg>
-  );
-}
-
-function IconArticulos() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 8 12 3 3 8l9 5 9-5Z" />
-      <path d="M3 8v8l9 5 9-5V8" />
-      <path d="M12 13v8" />
-    </svg>
-  );
-}
-
-function IconNomina() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="4" y="3" width="16" height="18" rx="1.5" />
-      <path d="M8 8h8M8 12h8M8 16h5" />
-    </svg>
-  );
-}
-
-function IconCheck() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="9" />
-      <path d="m8 12 3 3 5-6" />
-    </svg>
-  );
-}
-
-// ---- Componentes de UI (mismo look que apps/web/src/app/admin/informes/page.tsx) ----
-
-function TarjetaMetrica({
-  icon: Icon,
-  label,
-  valor,
-  detalle,
-}: {
-  icon: () => React.ReactElement;
-  label: string;
-  valor: string;
-  detalle?: string;
-}) {
-  return (
-    <div className="card-gradient min-w-0 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
-      <div className="flex min-w-0 items-center gap-2 text-brand-orange">
-        <span className="shrink-0">
-          <Icon />
-        </span>
-        <span className="truncate text-xs font-semibold tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
-          {label}
-        </span>
-      </div>
-      <p className="mt-1.5 min-w-0 truncate text-lg font-bold tabular-nums text-zinc-900 dark:text-zinc-50">
-        {valor}
-      </p>
-      {detalle && (
-        <p className="mt-0.5 truncate text-xs text-zinc-500 dark:text-zinc-400">{detalle}</p>
-      )}
-    </div>
-  );
-}
-
-function TarjetaAlerta({
-  icon: Icon,
-  label,
-  valor,
-  detalle,
-  href,
-  nivel,
-}: {
-  icon: () => React.ReactElement;
-  label: string;
-  valor: string;
-  detalle?: string;
-  href: string;
-  nivel: 'alerta' | 'ok';
-}) {
-  return (
-    <Link
-      href={href}
-      className="card-gradient card-interactive block rounded-2xl border border-zinc-200 p-5 dark:border-zinc-800"
-    >
-      <div
-        className={`flex items-center gap-2 ${
-          nivel === 'alerta'
-            ? 'text-amber-600 dark:text-amber-400'
-            : 'text-green-600 dark:text-green-400'
-        }`}
-      >
-        <Icon />
-        <span className="text-xs font-semibold tracking-wide uppercase">{label}</span>
-      </div>
-      <p className="mt-2 text-2xl font-bold tabular-nums text-zinc-900 dark:text-zinc-50">{valor}</p>
-      {detalle && (
-        <p className="mt-0.5 truncate text-xs text-zinc-500 dark:text-zinc-400">{detalle}</p>
-      )}
-    </Link>
-  );
-}
-
-function Panel({
-  titulo,
-  children,
-}: {
-  titulo: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-2xl border border-zinc-200 p-5 dark:border-zinc-800">
-      <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-50">{titulo}</h2>
-      <div className="mt-4">{children}</div>
-    </div>
-  );
-}
-
-const ALTURA_GRAFICO_COMPACTO = 60;
-
-function GraficoCompacto({ datos }: { datos: { fecha: string; total: number }[] }) {
-  const max = Math.max(1, ...datos.map((d) => d.total));
-  return (
-    <div className="mt-3 flex items-end gap-1" style={{ height: ALTURA_GRAFICO_COMPACTO }}>
-      {datos.map((d) => (
-        <div key={d.fecha} className="group relative flex-1">
-          <div
-            className="w-full rounded-t-sm"
-            style={{
-              height: Math.max((d.total / max) * ALTURA_GRAFICO_COMPACTO, 3),
-              backgroundImage:
-                'linear-gradient(180deg, var(--brand-orange), color-mix(in srgb, var(--brand-orange) 55%, var(--brand-yellow)))',
-            }}
-            title={`${formatearFechaCorta(d.fecha)}: ${formatPrecio(d.total)}`}
-          />
-        </div>
-      ))}
-    </div>
+    <h2 className="text-xs font-bold tracking-wider text-zinc-500 uppercase dark:text-zinc-400">
+      {children}
+    </h2>
   );
 }
 
 export default function AdminPage() {
   const { rol } = useRol();
+  const { cargando: cargandoModulos, activo } = useModulos();
+  const esAdmin = rol === 'admin';
+  const [hoy] = useState(hoyBogota);
+  const ver = (id: ModuloId) => !cargandoModulos && activo(id);
 
-  // ---- Fetches universales (admin y empleado) ----
-  const [turno, setTurno] = useState<TurnoActualDto | null>(null);
-  const [cargandoTurno, setCargandoTurno] = useState(true);
-  const [errorTurno, setErrorTurno] = useState(false);
+  const verInformes = esAdmin && ver('informes');
+  const verNomina = esAdmin && ver('nomina');
+  const verCaja = ver('pos');
 
-  const [pedidosActivos, setPedidosActivos] = useState<PedidoActivo[] | null>(null);
-  const [cargandoPedidos, setCargandoPedidos] = useState(true);
+  // Un módulo apagado (o un rol sin permiso) pasa `null` y no consulta nada.
+  const turno = useCarga<TurnoActualDto>(verCaja ? '/turnos/actual' : null);
+  const pedidos = useCarga<PedidoActivo[]>(
+    ver('pedidos') ? '/admin/pedidos' : null,
+  );
+  const insumos = useCarga<InsumoBajo[]>(
+    ver('inventario') ? '/inventario/insumos?stockBajo=true' : null,
+  );
+  const conversaciones = useCarga<ConversacionBot[]>(
+    ver('seguimiento') ? '/admin/seguimiento/conversaciones' : null,
+  );
+  const ventasHoy = useCarga<InformeResumen>(
+    verInformes ? `/informes?desde=${hoy}&hasta=${hoy}` : null,
+  );
+  const ventasAyer = useCarga<InformeResumen>(
+    verInformes
+      ? `/informes?desde=${sumarDias(hoy, -1)}&hasta=${sumarDias(hoy, -1)}`
+      : null,
+  );
+  const ventas7 = useCarga<InformeResumen>(
+    verInformes ? `/informes?desde=${sumarDias(hoy, -6)}&hasta=${hoy}` : null,
+  );
+  const nomina = useCarga<TableroFila[]>(verNomina ? '/nomina/tablero' : null);
 
-  const [insumosBajos, setInsumosBajos] = useState<InsumoBajo[] | null>(null);
-  const [cargandoInsumos, setCargandoInsumos] = useState(true);
-
-  useEffect(() => {
-    adminFetch('/turnos/actual')
-      .then(async (res) => {
-        if (!res.ok) throw new Error();
-        setTurno(await res.json());
-      })
-      .catch(() => setErrorTurno(true))
-      .finally(() => setCargandoTurno(false));
-  }, []);
-
-  useEffect(() => {
-    adminFetch('/admin/pedidos')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => setPedidosActivos(data))
-      .finally(() => setCargandoPedidos(false));
-  }, []);
-
-  useEffect(() => {
-    adminFetch('/inventario/insumos?stockBajo=true')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => setInsumosBajos(data))
-      .finally(() => setCargandoInsumos(false));
-  }, []);
-
-  // ---- Fetches solo-admin (los endpoints devolverían 403 para empleado) ----
-  const [conversaciones, setConversaciones] = useState<ConversacionBot[] | null>(null);
-  const [cargandoConversaciones, setCargandoConversaciones] = useState(true);
-
-  const [ventasHoy, setVentasHoy] = useState<InformeResumen | null>(null);
-  const [cargandoVentasHoy, setCargandoVentasHoy] = useState(true);
-
-  const [ventas7dias, setVentas7dias] = useState<InformeResumen | null>(null);
-  const [cargandoVentas7dias, setCargandoVentas7dias] = useState(true);
-
-  const [nomina, setNomina] = useState<TableroFila[] | null>(null);
-  const [cargandoNomina, setCargandoNomina] = useState(true);
-
-  useEffect(() => {
-    if (rol !== 'admin') return;
-
-    adminFetch('/admin/seguimiento/conversaciones')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => setConversaciones(data))
-      .finally(() => setCargandoConversaciones(false));
-
-    const hoy = hoyBogota();
-    adminFetch(`/informes?desde=${hoy}&hasta=${hoy}`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => setVentasHoy(data))
-      .finally(() => setCargandoVentasHoy(false));
-
-    const desde7 = sumarDias(hoy, -6);
-    adminFetch(`/informes?desde=${desde7}&hasta=${hoy}`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => setVentas7dias(data))
-      .finally(() => setCargandoVentas7dias(false));
-
-    adminFetch('/nomina/tablero')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => setNomina(data))
-      .finally(() => setCargandoNomina(false));
-  }, [rol]);
-
-  // ---- Valores derivados para las tarjetas de alerta ----
-  const activos = pedidosActivos?.filter(
+  // ---- Atención requerida ----
+  const activos = pedidos.datos?.filter(
     (p) => p.estado !== 'entregado' && p.estado !== 'cancelado',
   );
-  const conversacionesEsperando = conversaciones?.filter((c) => c.estado === 'derivado');
+  const detallePedidos = pedidos.fallo
+    ? 'No se pudo cargar'
+    : activos && activos.length > 0
+      ? Object.entries(
+          activos.reduce<Record<string, number>>((acc, p) => {
+            acc[p.estado] = (acc[p.estado] ?? 0) + 1;
+            return acc;
+          }, {}),
+        )
+          .map(([estado, n]) => `${n} ${ESTADO_PEDIDO_LABEL[estado] ?? estado}`)
+          .join(' · ')
+      : 'Sin pedidos activos';
 
-  const detallePedidos = activos && activos.length > 0
-    ? Object.entries(
-        activos.reduce<Record<string, number>>((acc, p) => {
-          acc[p.estado] = (acc[p.estado] ?? 0) + 1;
-          return acc;
-        }, {}),
-      )
-        .map(([estado, n]) => `${n} ${ESTADO_PEDIDO_LABEL[estado] ?? estado}`)
-        .join(' · ')
-    : 'Sin pedidos activos';
+  const bajos = insumos.datos;
+  const detalleStock = insumos.fallo
+    ? 'No se pudo cargar'
+    : bajos && bajos.length > 0
+      ? bajos
+          .slice(0, 2)
+          .map((i) => i.nombre)
+          .join(', ') + (bajos.length > 2 ? ` +${bajos.length - 2} más` : '')
+      : 'Todo en orden';
 
-  const detalleStock = insumosBajos && insumosBajos.length > 0
-    ? insumosBajos
-        .slice(0, 2)
-        .map((i) => i.nombre)
-        .join(', ') + (insumosBajos.length > 2 ? ` +${insumosBajos.length - 2} más` : '')
-    : 'Todo en orden';
+  const esperando = conversaciones.datos?.filter(
+    (c) => c.estado === 'derivado',
+  );
+  const tarjetasAtencion = [
+    ver('pedidos') && (
+      <TarjetaAtencion
+        key="pedidos"
+        icono={<IconPedidos tamano={22} />}
+        etiqueta="Pedidos activos"
+        valor={activos?.length ?? null}
+        detalle={detallePedidos}
+        href="/admin/pedidos"
+        urgente={(activos?.length ?? 0) > 0}
+        cargando={pedidos.cargando}
+      />
+    ),
+    ver('inventario') && (
+      <TarjetaAtencion
+        key="stock"
+        icono={<IconAlerta />}
+        etiqueta="Stock bajo"
+        valor={bajos?.length ?? null}
+        detalle={detalleStock}
+        href="/admin/inventario"
+        urgente={(bajos?.length ?? 0) > 0}
+        cargando={insumos.cargando}
+      />
+    ),
+    ver('seguimiento') && (
+      <TarjetaAtencion
+        key="whatsapp"
+        icono={<IconWhatsapp />}
+        etiqueta="WhatsApp esperando"
+        valor={esperando?.length ?? null}
+        detalle={
+          conversaciones.fallo
+            ? 'No se pudo cargar'
+            : 'Conversaciones derivadas a una persona'
+        }
+        href="/admin/seguimiento"
+        urgente={(esperando?.length ?? 0) > 0}
+        cargando={conversaciones.cargando}
+      />
+    ),
+  ].filter(Boolean);
 
-  const nominaEnCurso = nomina?.filter((f) => f.semana.estado === 'en_curso') ?? [];
-  const nominaPendiente = nominaEnCurso.reduce((s, f) => s + f.semana.neto_pagar, 0);
-  const nominaLiquidadas = nomina?.filter((f) => f.semana.estado === 'liquidada').length ?? 0;
+  // ---- Hoy ----
+  const informeHoy = ventasHoy.datos;
+  const informeAyer = ventasAyer.datos;
+  const serie7 = ventas7.datos?.serie_diaria ?? [];
+  const turnoAbierto = turno.datos?.turno ?? null;
+  const resumenTurno = turno.datos?.resumen;
+
+  // ---- Nómina ----
+  const enCurso =
+    nomina.datos?.filter((f) => f.semana.estado === 'en_curso') ?? [];
+  const pendiente = enCurso.reduce((s, f) => s + f.semana.neto_pagar, 0);
+  const liquidadas =
+    nomina.datos?.filter((f) => f.semana.estado === 'liquidada').length ?? 0;
+
+  const hayVentas = verInformes;
+  const hayDerecha = verCaja || verNomina;
+
+  const panelCaja = verCaja && (
+    <SeccionPanel
+      titulo="Caja del turno"
+      subtitulo="Reparto por método de pago"
+      enlace={{ href: '/admin/pos', texto: 'Punto de venta' }}
+    >
+      {turno.cargando ? (
+        <CargandoSkeleton filas={2} />
+      ) : turno.fallo ? (
+        <p className="text-sm text-red-600 dark:text-red-400">
+          No se pudo cargar el turno.
+        </p>
+      ) : !turnoAbierto ? (
+        <p className="rounded-xl bg-zinc-100 px-3 py-3 text-sm text-zinc-600 dark:bg-zinc-800/70 dark:text-zinc-300">
+          No hay un turno abierto. Al abrirlo desde el punto de venta verás aquí
+          cómo se reparte lo cobrado.
+        </p>
+      ) : (
+        <CajaTurno
+          montos={{
+            efectivo: resumenTurno?.total_efectivo ?? 0,
+            transferencia: resumenTurno?.total_transferencia ?? 0,
+            tarjeta: resumenTurno?.total_tarjeta ?? 0,
+          }}
+        />
+      )}
+    </SeccionPanel>
+  );
+
+  const panelNomina = verNomina && (
+    <SeccionPanel
+      titulo="Nómina de la semana"
+      enlace={{ href: '/admin/nomina', texto: 'Ver nómina' }}
+    >
+      {nomina.cargando ? (
+        <CargandoSkeleton filas={1} />
+      ) : !nomina.datos || nomina.datos.length === 0 ? (
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+          {nomina.fallo
+            ? 'No se pudo cargar la nómina.'
+            : 'No hay trabajadores activos registrados.'}
+        </p>
+      ) : (
+        <div className="grid grid-cols-2 gap-3">
+          <div className="min-w-0 rounded-xl bg-zinc-100 p-3 dark:bg-zinc-800/70">
+            <p className="text-[11px] font-semibold tracking-wider text-zinc-500 uppercase dark:text-zinc-400">
+              Por pagar
+            </p>
+            <p className="mt-1 [overflow-wrap:anywhere] text-lg font-extrabold tabular-nums text-zinc-900 dark:text-zinc-50">
+              {formatPrecio(pendiente)}
+            </p>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              {enCurso.length} en curso
+            </p>
+          </div>
+          <div className="min-w-0 rounded-xl bg-zinc-100 p-3 dark:bg-zinc-800/70">
+            <p className="flex items-center gap-1 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase dark:text-zinc-400">
+              <IconCheck /> Liquidadas
+            </p>
+            <p className="mt-1 text-lg font-extrabold tabular-nums text-zinc-900 dark:text-zinc-50">
+              {liquidadas}
+            </p>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              esta semana
+            </p>
+          </div>
+        </div>
+      )}
+    </SeccionPanel>
+  );
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
-      <h1 className="animate-fade-up text-2xl font-bold text-zinc-900 sm:text-3xl dark:text-zinc-50">
-        Hola 👋
-      </h1>
-      <p className="animate-fade-up delay-1 mt-1 text-zinc-600 dark:text-zinc-400">
-        Resumen del negocio — sesión de <span className="capitalize">{rol ?? '…'}</span>.
-      </p>
+      <EncabezadoPanel rol={rol} />
 
-      {/* Atención requerida */}
-      <div className="animate-fade-up delay-2 mt-6">
-        <p className="text-xs font-semibold tracking-wide text-zinc-400 uppercase dark:text-zinc-500">
-          Atención requerida
-        </p>
-        <div className="mt-3 grid gap-4 sm:grid-cols-3">
-          <TarjetaAlerta
-            icon={IconPedidosGrande}
-            label="Pedidos activos"
-            valor={cargandoPedidos ? '…' : String(activos?.length ?? '—')}
-            detalle={cargandoPedidos ? undefined : detallePedidos}
-            href="/admin/pedidos"
-            nivel={activos && activos.length > 0 ? 'alerta' : 'ok'}
-          />
-          <TarjetaAlerta
-            icon={IconAlerta}
-            label="Stock bajo"
-            valor={cargandoInsumos ? '…' : String(insumosBajos?.length ?? '—')}
-            detalle={cargandoInsumos ? undefined : detalleStock}
-            href="/admin/inventario"
-            nivel={insumosBajos && insumosBajos.length > 0 ? 'alerta' : 'ok'}
-          />
-          {rol === 'admin' && (
-            <TarjetaAlerta
-              icon={IconWhatsapp}
-              label="WhatsApp esperando"
-              valor={cargandoConversaciones ? '…' : String(conversacionesEsperando?.length ?? '—')}
-              detalle="Conversaciones derivadas a una persona"
-              href="/admin/seguimiento"
-              nivel={conversacionesEsperando && conversacionesEsperando.length > 0 ? 'alerta' : 'ok'}
-            />
-          )}
-        </div>
-      </div>
-
-      {/* Turno actual */}
-      <div className="animate-fade-up delay-2 mt-6">
-        <Panel titulo="Turno actual">
-          {cargandoTurno ? (
-            <CargandoSkeleton filas={1} />
-          ) : errorTurno ? (
-            <p className="text-sm text-red-600 dark:text-red-400">No se pudo cargar el turno.</p>
-          ) : !turno?.turno ? (
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
-                <IconReloj /> No hay un turno abierto ahora mismo.
-              </p>
-              <Link href="/admin/pos" className="text-sm font-semibold text-brand-orange hover:underline">
-                Abrir turno →
-              </Link>
-            </div>
-          ) : (
-            <div>
-              <p className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
-                <IconReloj /> Abierto desde {formatHora(turno.turno.abierto_en)}
-              </p>
-              <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-3 sm:grid-cols-4">
-                <div className="min-w-0">
-                  <p className="text-xs text-zinc-400 dark:text-zinc-500">Ventas</p>
-                  <p className="truncate font-bold text-zinc-900 dark:text-zinc-50">
-                    {formatPrecio(turno.resumen?.total_ventas ?? 0)}
-                  </p>
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs text-zinc-400 dark:text-zinc-500">Efectivo</p>
-                  <p className="truncate font-semibold text-zinc-700 dark:text-zinc-300">
-                    {formatPrecio(turno.resumen?.total_efectivo ?? 0)}
-                  </p>
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs text-zinc-400 dark:text-zinc-500">Transferencia</p>
-                  <p className="truncate font-semibold text-zinc-700 dark:text-zinc-300">
-                    {formatPrecio(turno.resumen?.total_transferencia ?? 0)}
-                  </p>
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs text-zinc-400 dark:text-zinc-500">Tarjeta</p>
-                  <p className="truncate font-semibold text-zinc-700 dark:text-zinc-300">
-                    {formatPrecio(turno.resumen?.total_tarjeta ?? 0)}
-                  </p>
-                </div>
+      {cargandoModulos ? (
+        <CargandoSkeleton filas={4} />
+      ) : (
+        <div className="mt-8 space-y-8">
+          {tarjetasAtencion.length > 0 && (
+            <section className="animate-fade-up delay-1">
+              <Etiqueta>Atención requerida</Etiqueta>
+              <div
+                className={`mt-3 grid gap-4 ${COLUMNAS_ATENCION[tarjetasAtencion.length]}`}
+              >
+                {tarjetasAtencion}
               </div>
-            </div>
+            </section>
           )}
-        </Panel>
-      </div>
 
-      {rol === 'admin' && (
-        <>
-          {/* Ventas */}
-          <div className="animate-fade-up delay-3 mt-6">
-            <Panel titulo="Ventas">
-              <div className="grid gap-6 lg:grid-cols-2">
-                <div>
-                  <p className="text-xs font-semibold tracking-wide text-zinc-400 uppercase dark:text-zinc-500">
-                    Hoy
-                  </p>
-                  {cargandoVentasHoy ? (
-                    <CargandoSkeleton filas={2} />
-                  ) : ventasHoy ? (
-                    <div className="mt-2 grid grid-cols-2 gap-2">
-                      <TarjetaMetrica icon={IconMoneda} label="Ventas" valor={formatPrecio(ventasHoy.resumen.ventas_brutas)} />
-                      <TarjetaMetrica icon={IconPedidos} label="Pedidos" valor={String(ventasHoy.resumen.pedidos)} />
-                      <TarjetaMetrica icon={IconTicket} label="Ticket prom." valor={formatPrecio(ventasHoy.resumen.ticket_promedio)} />
-                      <TarjetaMetrica icon={IconArticulos} label="Artículos" valor={String(ventasHoy.resumen.articulos_vendidos)} />
-                    </div>
-                  ) : (
-                    <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Sin datos.</p>
-                  )}
-                </div>
-                <div>
-                  <p className="text-xs font-semibold tracking-wide text-zinc-400 uppercase dark:text-zinc-500">
-                    Últimos 7 días
-                  </p>
-                  {cargandoVentas7dias ? (
-                    <CargandoSkeleton filas={2} />
-                  ) : ventas7dias ? (
-                    <>
-                      <p className="mt-2 text-2xl font-bold tabular-nums text-zinc-900 dark:text-zinc-50">
-                        {formatPrecio(ventas7dias.resumen.ventas_brutas)}
+          {(verInformes || verCaja) && (
+            <section className="animate-fade-up delay-2">
+              <Etiqueta>Hoy</Etiqueta>
+              {verInformes ? (
+                <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+                  <div className="col-span-2 lg:row-span-2">
+                    {ventasHoy.cargando ? (
+                      <div className="skeleton h-full min-h-56 w-full rounded-3xl" />
+                    ) : informeHoy ? (
+                      <HeroVentas
+                        icono={<IconMoneda />}
+                        valor={formatPrecio(informeHoy.resumen.ventas_brutas)}
+                        periodo="Ventas brutas de hoy"
+                        delta={null}
+                        vs=""
+                        serie={serie7.map((d) => d.total)}
+                        etiquetaNota="Ayer"
+                        mejorDia={
+                          informeAyer
+                            ? formatPrecio(informeAyer.resumen.ventas_brutas)
+                            : undefined
+                        }
+                      />
+                    ) : (
+                      <p className="rounded-3xl border border-zinc-200 p-6 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+                        No se pudieron cargar las ventas de hoy.
                       </p>
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400">{ventas7dias.resumen.pedidos} pedidos</p>
-                      <GraficoCompacto datos={ventas7dias.serie_diaria} />
+                    )}
+                  </div>
+
+                  {informeHoy && (
+                    <>
+                      <TarjetaKpi
+                        icono={<IconPedidos tamano={20} />}
+                        label="Pedidos"
+                        valor={String(informeHoy.resumen.pedidos)}
+                        detalle={
+                          informeAyer
+                            ? `Ayer: ${informeAyer.resumen.pedidos}`
+                            : undefined
+                        }
+                        tono="azul"
+                        serie={serie7.map((d) => d.pedidos)}
+                      />
+                      <TarjetaKpi
+                        icono={<IconTicket />}
+                        label="Ticket promedio"
+                        valor={formatPrecio(informeHoy.resumen.ticket_promedio)}
+                        detalle={
+                          informeAyer
+                            ? `Ayer: ${formatPrecio(informeAyer.resumen.ticket_promedio)}`
+                            : undefined
+                        }
+                        tono="amarillo"
+                        serie={serie7.map((d) =>
+                          d.pedidos ? d.total / d.pedidos : 0,
+                        )}
+                      />
+                      <TarjetaKpi
+                        icono={<IconArticulos />}
+                        label="Artículos vendidos"
+                        valor={String(informeHoy.resumen.articulos_vendidos)}
+                        detalle={
+                          informeAyer
+                            ? `Ayer: ${informeAyer.resumen.articulos_vendidos}`
+                            : undefined
+                        }
+                        tono="verde"
+                      />
                     </>
+                  )}
+                  {verCaja ? (
+                    <TarjetaTurno
+                      cargando={turno.cargando}
+                      fallo={turno.fallo}
+                      abiertoEn={turnoAbierto?.abierto_en ?? null}
+                      totalVentas={resumenTurno?.total_ventas ?? 0}
+                    />
                   ) : (
-                    <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Sin datos.</p>
+                    informeHoy && (
+                      <TarjetaKpi
+                        icono={<IconMoneda />}
+                        label="Ventas 7 días"
+                        valor={formatPrecio(
+                          ventas7.datos?.resumen.ventas_brutas ?? 0,
+                        )}
+                        detalle={`${ventas7.datos?.resumen.pedidos ?? 0} pedidos`}
+                      />
+                    )
                   )}
                 </div>
-              </div>
-              <Link href="/admin/informes" className="mt-4 inline-block text-sm font-semibold text-brand-orange hover:underline">
-                Ver informes completos →
-              </Link>
-            </Panel>
-          </div>
-
-          {/* Nómina */}
-          <div className="animate-fade-up delay-3 mt-6">
-            <Panel titulo="Nómina de la semana">
-              {cargandoNomina ? (
-                <CargandoSkeleton filas={2} />
-              ) : !nomina || nomina.length === 0 ? (
-                <p className="text-sm text-zinc-500 dark:text-zinc-400">No hay trabajadores activos registrados.</p>
               ) : (
-                <div className="grid grid-cols-2 gap-2">
-                  <TarjetaMetrica
-                    icon={IconNomina}
-                    label="Pendiente"
-                    valor={formatPrecio(nominaPendiente)}
-                    detalle={`${nominaEnCurso.length} en curso`}
+                <div className="mt-3 max-w-sm">
+                  <TarjetaTurno
+                    cargando={turno.cargando}
+                    fallo={turno.fallo}
+                    abiertoEn={turnoAbierto?.abierto_en ?? null}
+                    totalVentas={resumenTurno?.total_ventas ?? 0}
                   />
-                  <TarjetaMetrica icon={IconCheck} label="Liquidadas" valor={String(nominaLiquidadas)} />
                 </div>
               )}
-              <Link href="/admin/nomina" className="mt-4 inline-block text-sm font-semibold text-brand-orange hover:underline">
-                Ver nómina →
-              </Link>
-            </Panel>
-          </div>
-        </>
-      )}
+            </section>
+          )}
 
-      {/* Accesos rápidos */}
-      <h2 className="animate-fade-up delay-3 mt-8 text-lg font-bold text-zinc-900 dark:text-zinc-50">
-        Accesos rápidos
-      </h2>
-      <div className="animate-fade-up delay-3 mt-3 grid gap-4 sm:grid-cols-2">
-        <Link
-          href="/admin/pos"
-          className="card-interactive btn-gradient flex flex-col gap-3 rounded-2xl p-6 text-white shadow-sm"
-        >
-          <IconPos />
-          <div>
-            <p className="text-lg font-bold">Punto de venta</p>
-            <p className="mt-0.5 text-sm text-white/85">
-              Registrar una venta directo del local
-            </p>
-          </div>
-        </Link>
-        <Link
-          href="/admin/pedidos"
-          className="card-interactive flex flex-col gap-3 rounded-2xl border border-zinc-200 p-6 text-zinc-900 shadow-sm dark:border-zinc-800 dark:text-zinc-50"
-          style={{
-            backgroundImage:
-              'linear-gradient(165deg, color-mix(in srgb, var(--brand-navy) 14%, var(--background)) 0%, var(--background) 55%, color-mix(in srgb, var(--brand-navy) 8%, var(--background)) 100%)',
-          }}
-        >
-          <span className="text-brand-navy dark:text-blue-300">
-            <IconPedidosGrande />
-          </span>
-          <div>
-            <p className="text-lg font-bold">Pedidos</p>
-            <p className="mt-0.5 text-sm text-zinc-600 dark:text-zinc-400">
-              Ver y gestionar los pedidos que van llegando
-            </p>
-          </div>
-        </Link>
-      </div>
+          {(hayVentas || hayDerecha) && (
+            <section
+              className={`animate-fade-up delay-3 grid gap-4 ${
+                hayVentas && hayDerecha ? 'lg:grid-cols-3' : ''
+              }`}
+            >
+              {hayVentas && (
+                <SeccionPanel
+                  titulo="Ventas de los últimos 7 días"
+                  subtitulo={
+                    ventas7.datos
+                      ? `${formatPrecio(ventas7.datos.resumen.ventas_brutas)} · ${ventas7.datos.resumen.pedidos} pedidos`
+                      : undefined
+                  }
+                  enlace={{
+                    href: '/admin/informes',
+                    texto: 'Informes completos',
+                  }}
+                  className={hayDerecha ? 'lg:col-span-2' : ''}
+                >
+                  {ventas7.cargando ? (
+                    <CargandoSkeleton filas={3} />
+                  ) : !ventas7.datos ? (
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                      Sin datos.
+                    </p>
+                  ) : (
+                    <GraficoColumnas
+                      tono="naranja"
+                      nombreValor="Ventas"
+                      nombreDetalle="Pedidos"
+                      puntos={serie7.map((d) => ({
+                        clave: d.fecha,
+                        etiqueta: etiquetaCorta(d.fecha),
+                        etiquetaLarga: etiquetaLarga(d.fecha),
+                        valor: d.total,
+                        detalle: `${d.pedidos} pedido${d.pedidos === 1 ? '' : 's'}`,
+                        valorDetalle: String(d.pedidos),
+                      }))}
+                      formatoValor={formatPrecio}
+                      formatoEje={formatoEjePesos}
+                    />
+                  )}
+                </SeccionPanel>
+              )}
+              {hayDerecha && (
+                <div
+                  className={
+                    hayVentas ? 'space-y-4' : 'grid gap-4 md:grid-cols-2'
+                  }
+                >
+                  {panelCaja}
+                  {panelNomina}
+                </div>
+              )}
+            </section>
+          )}
 
-      {rol === 'admin' && (
-        <div className="animate-fade-up delay-3 mt-6">
-          <p className="text-xs font-semibold tracking-wide text-zinc-400 uppercase dark:text-zinc-500">
-            Administración
-          </p>
-          <div className="mt-3 grid gap-3 sm:grid-cols-3">
-            <Link
-              href="/admin/usuarios"
-              className="card-interactive card-gradient flex items-center gap-3 rounded-xl border border-zinc-200 p-4 text-zinc-900 dark:border-zinc-800 dark:text-zinc-50"
-            >
-              <span className="text-brand-orange">
-                <IconUsuarios />
-              </span>
-              <span className="text-sm font-semibold">Usuarios</span>
-            </Link>
-            <Link
-              href="/admin/blog"
-              className="card-interactive card-gradient flex items-center gap-3 rounded-xl border border-zinc-200 p-4 text-zinc-900 dark:border-zinc-800 dark:text-zinc-50"
-            >
-              <span className="text-brand-orange">
-                <IconBlog />
-              </span>
-              <span className="text-sm font-semibold">Blog</span>
-            </Link>
-            <Link
-              href="/admin/configuracion"
-              className="card-interactive card-gradient flex items-center gap-3 rounded-xl border border-zinc-200 p-4 text-zinc-900 dark:border-zinc-800 dark:text-zinc-50"
-            >
-              <span className="text-brand-orange">
-                <IconConfig />
-              </span>
-              <span className="text-sm font-semibold">Configuración</span>
-            </Link>
-          </div>
+          <section className="animate-fade-up delay-4">
+            <Etiqueta>Ir a</Etiqueta>
+            <div className="mt-3">
+              <AccesosModulos rol={rol} />
+            </div>
+          </section>
         </div>
       )}
     </div>

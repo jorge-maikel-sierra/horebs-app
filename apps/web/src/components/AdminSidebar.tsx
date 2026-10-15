@@ -7,119 +7,37 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useRol } from '@/lib/use-rol';
 import { supabase } from '@/lib/supabase';
 import { useAlertasAdmin, type AlertasAdmin } from '@/lib/use-alertas-admin';
+import { useModulos } from '@/lib/use-modulos';
+import type { ModuloId } from '@/lib/modulos';
 import ThemeToggle from '@/components/ThemeToggle';
+import {
+  IconBlog,
+  IconClientes,
+  IconConfig,
+  IconInformes,
+  IconInventario,
+  IconNomina,
+  IconPanel,
+  IconPedidos,
+  IconPos,
+  IconSeguimiento,
+  IconUsuarios,
+} from '@/components/admin-iconos';
 
 const CLAVE_COLAPSADO = 'horebs-admin-sidebar-colapsado';
 
-function IconPanel() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="7" height="9" rx="1.5" />
-      <rect x="14" y="3" width="7" height="5" rx="1.5" />
-      <rect x="14" y="12" width="7" height="9" rx="1.5" />
-      <rect x="3" y="16" width="7" height="5" rx="1.5" />
-    </svg>
-  );
-}
-
-function IconPos() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M6 8V6a3 3 0 0 1 6 0v2" />
-      <path d="M4 8h10l1 12H3L4 8Z" />
-    </svg>
-  );
-}
-
-function IconPedidos() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M7 3h10a1 1 0 0 1 1 1v16l-3-2-3 2-3-2-3 2V4a1 1 0 0 1 1-1Z" />
-      <path d="M9 8h6M9 12h6" />
-    </svg>
-  );
-}
-
-function IconClientes() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="8" r="3.5" />
-      <path d="M5 20c0-3.9 3.1-7 7-7s7 3.1 7 7" />
-      <path d="M16.5 4.5a3 3 0 0 1 0 5.9" />
-    </svg>
-  );
-}
-
-function IconNomina() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="4" y="3" width="16" height="18" rx="1.5" />
-      <path d="M8 8h8M8 12h8M8 16h5" />
-    </svg>
-  );
-}
-
-function IconUsuarios() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="9" cy="8" r="3.2" />
-      <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" />
-      <path d="M16 8.5a3 3 0 1 1 3.2 3M21 20c0-2.8-1.9-5.1-4.5-5.8" />
-    </svg>
-  );
-}
-
-function IconBlog() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 19.5V5a2 2 0 0 1 2-2h9l5 5v11.5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z" />
-      <path d="M14 3v5h5" />
-      <path d="M8 13h8M8 17h5" />
-    </svg>
-  );
-}
-
-function IconConfig() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="3" />
-      <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.6V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.6 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.6 1Z" />
-    </svg>
-  );
-}
-
-function IconInventario() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 7l9-4 9 4-9 4-9-4Z" />
-      <path d="M3 7v10l9 4 9-4V7" />
-      <path d="M12 11v10" />
-    </svg>
-  );
-}
-
-function IconInformes() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 20V4M4 20h16" />
-      <path d="M8 16v-4M13 16V8M18 16v-7" />
-    </svg>
-  );
-}
-
-function IconSeguimiento() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 11.5a8.5 8.5 0 1 1-4.4-7.4" />
-      <path d="M21 3v6h-6" />
-      <path d="M12 8v4l3 2" />
-    </svg>
-  );
-}
-
 function IconVolver() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M9 21V12h6v9" />
       <path d="M3 10.5 12 3l9 7.5" />
     </svg>
@@ -128,7 +46,16 @@ function IconVolver() {
 
 function IconSalir() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
       <path d="M16 17l5-5-5-5" />
       <path d="M21 12H9" />
@@ -138,7 +65,16 @@ function IconSalir() {
 
 function IconMenu() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M3 6h18M3 12h18M3 18h18" />
     </svg>
   );
@@ -146,7 +82,16 @@ function IconMenu() {
 
 function IconCerrar() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M6 6l12 12M18 6L6 18" />
     </svg>
   );
@@ -154,7 +99,16 @@ function IconCerrar() {
 
 function IconChevron() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="m9 6 6 6-6 6" />
     </svg>
   );
@@ -162,7 +116,16 @@ function IconChevron() {
 
 function IconCampana() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
       <path d="M13.7 21a2 2 0 0 1-3.4 0" />
     </svg>
@@ -178,7 +141,9 @@ function CampanaAlertas({ total }: { total: number }) {
           ? `${total} alertas pendientes — ver panel`
           : 'Sin alertas pendientes'
       }
-      title={total > 0 ? `${total} alertas pendientes` : 'Sin alertas pendientes'}
+      title={
+        total > 0 ? `${total} alertas pendientes` : 'Sin alertas pendientes'
+      }
       className="btn-press relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-zinc-300 text-zinc-700 transition-colors hover:border-brand-orange hover:text-brand-orange dark:border-zinc-700 dark:text-zinc-300"
     >
       <IconCampana />
@@ -197,27 +162,57 @@ type NavItem = {
   icon: () => ReactElement;
   exacto?: boolean;
   badgeKey?: keyof AlertasAdmin;
+  /** Si el módulo se apaga en Configuración, el ítem desaparece del menú. */
+  modulo?: ModuloId;
 };
 
 const NAV_GENERAL: NavItem[] = [
   { href: '/admin', label: 'Panel', icon: IconPanel, exacto: true },
-  { href: '/admin/pos', label: 'Punto de venta', icon: IconPos },
-  { href: '/admin/pedidos', label: 'Pedidos', icon: IconPedidos, badgeKey: 'pedidosActivos' },
-  { href: '/admin/clientes', label: 'Clientes', icon: IconClientes },
-  { href: '/admin/inventario', label: 'Inventario', icon: IconInventario, badgeKey: 'stockBajo' },
-  { href: '/admin/nomina', label: 'Nómina', icon: IconNomina },
+  { href: '/admin/pos', label: 'Punto de venta', icon: IconPos, modulo: 'pos' },
+  {
+    href: '/admin/pedidos',
+    label: 'Pedidos',
+    icon: IconPedidos,
+    badgeKey: 'pedidosActivos',
+    modulo: 'pedidos',
+  },
+  {
+    href: '/admin/clientes',
+    label: 'Clientes',
+    icon: IconClientes,
+    modulo: 'clientes',
+  },
+  {
+    href: '/admin/inventario',
+    label: 'Inventario',
+    icon: IconInventario,
+    badgeKey: 'stockBajo',
+    modulo: 'inventario',
+  },
+  {
+    href: '/admin/nomina',
+    label: 'Nómina',
+    icon: IconNomina,
+    modulo: 'nomina',
+  },
   {
     href: '/admin/seguimiento',
     label: 'Seguimiento del bot',
     icon: IconSeguimiento,
     badgeKey: 'whatsappEsperando',
+    modulo: 'seguimiento',
   },
 ];
 
 const NAV_ADMIN: NavItem[] = [
-  { href: '/admin/informes', label: 'Informes', icon: IconInformes },
+  {
+    href: '/admin/informes',
+    label: 'Informes',
+    icon: IconInformes,
+    modulo: 'informes',
+  },
   { href: '/admin/usuarios', label: 'Usuarios', icon: IconUsuarios },
-  { href: '/admin/blog', label: 'Blog', icon: IconBlog },
+  { href: '/admin/blog', label: 'Blog', icon: IconBlog, modulo: 'blog' },
   { href: '/admin/configuracion', label: 'Configuración', icon: IconConfig },
 ];
 
@@ -288,6 +283,9 @@ function SidebarContenido({
   onNavigate: () => void;
   onCerrarSesion: () => void;
 }) {
+  const { activo: moduloActivo } = useModulos();
+  const visible = (item: NavItem) => !item.modulo || moduloActivo(item.modulo);
+
   function esActivo(item: NavItem) {
     return item.exacto
       ? pathname === item.href
@@ -301,7 +299,11 @@ function SidebarContenido({
           colapsado ? 'flex-col justify-center gap-3 px-0' : 'justify-between'
         }`}
       >
-        <Link href="/admin" className="shrink-0" aria-label="Pizzería Horebs — Panel de gestión">
+        <Link
+          href="/admin"
+          className="shrink-0"
+          aria-label="Pizzería Horebs — Panel de gestión"
+        >
           <Image
             src="/logo-horebs.png"
             alt="Pizzería Horebs"
@@ -311,8 +313,16 @@ function SidebarContenido({
             priority
           />
         </Link>
-        <div className={`flex shrink-0 items-center gap-1.5 ${colapsado ? 'flex-col' : ''}`}>
-          <CampanaAlertas total={alertas.pedidosActivos + alertas.stockBajo + alertas.whatsappEsperando} />
+        <div
+          className={`flex shrink-0 items-center gap-1.5 ${colapsado ? 'flex-col' : ''}`}
+        >
+          <CampanaAlertas
+            total={
+              alertas.pedidosActivos +
+              alertas.stockBajo +
+              alertas.whatsappEsperando
+            }
+          />
           <ThemeToggle />
         </div>
       </div>
@@ -325,7 +335,7 @@ function SidebarContenido({
             </p>
           )}
           <div className={`space-y-1 ${colapsado ? '' : 'mt-2'}`}>
-            {NAV_GENERAL.map((item) => (
+            {NAV_GENERAL.filter(visible).map((item) => (
               <NavLink
                 key={item.href}
                 item={item}
@@ -346,7 +356,7 @@ function SidebarContenido({
               </p>
             )}
             <div className={`space-y-1 ${colapsado ? '' : 'mt-2'}`}>
-              {NAV_ADMIN.map((item) => (
+              {NAV_ADMIN.filter(visible).map((item) => (
                 <NavLink
                   key={item.href}
                   item={item}
@@ -441,7 +451,13 @@ export default function AdminSidebar() {
           Panel
         </span>
         <div className="flex items-center gap-1">
-          <CampanaAlertas total={alertas.pedidosActivos + alertas.stockBajo + alertas.whatsappEsperando} />
+          <CampanaAlertas
+            total={
+              alertas.pedidosActivos +
+              alertas.stockBajo +
+              alertas.whatsappEsperando
+            }
+          />
           <ThemeToggle />
           <button
             type="button"
@@ -467,7 +483,9 @@ export default function AdminSidebar() {
           title={colapsado ? 'Expandir panel' : 'Colapsar panel'}
           className="btn-press absolute top-6 -right-3 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-500 shadow-sm hover:text-brand-orange dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400"
         >
-          <span className={`transition-transform duration-200 ${colapsado ? '' : 'rotate-180'}`}>
+          <span
+            className={`transition-transform duration-200 ${colapsado ? '' : 'rotate-180'}`}
+          >
             <IconChevron />
           </span>
         </button>
@@ -515,14 +533,17 @@ export default function AdminSidebar() {
 
       {confirmandoSalir && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="animate-fade-in absolute inset-0" onClick={() => setConfirmandoSalir(false)} />
+          <div
+            className="animate-fade-in absolute inset-0"
+            onClick={() => setConfirmandoSalir(false)}
+          />
           <div className="animate-fade-up relative w-full max-w-sm rounded-lg bg-white p-6 dark:bg-zinc-900">
             <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
               ¿Cerrar sesión?
             </h2>
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-              Vas a salir del panel de gestión. Vas a tener que volver a
-              iniciar sesión para entrar de nuevo.
+              Vas a salir del panel de gestión. Vas a tener que volver a iniciar
+              sesión para entrar de nuevo.
             </p>
             <div className="mt-5 flex gap-2">
               <button

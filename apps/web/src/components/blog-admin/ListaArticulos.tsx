@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import CargandoSkeleton from '@/components/CargandoSkeleton';
 import EstadoChip from './EstadoChip';
-import { FOCO } from './estilos';
+import { FOCO } from '@/components/formulario/estilos';
 import {
   IconoDocumento,
   IconoEditar,

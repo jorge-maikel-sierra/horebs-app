@@ -12,9 +12,9 @@ import {
 } from 'react';
 import { adminFetch } from '@/lib/admin-fetch';
 import ModalConfirmar from '@/components/ModalConfirmar';
-import Campo, { Contador, describedBy } from './Campo';
+import Campo, { Contador, describedBy } from '@/components/formulario/Campo';
 import EstadoChip from './EstadoChip';
-import { FOCO, TARJETA, claseCampo } from './estilos';
+import { FOCO, TARJETA, claseCampo } from '@/components/formulario/estilos';
 import {
   IconoCita,
   IconoEnlace,
