@@ -91,18 +91,6 @@ export class AdminController {
     return new StreamableFile(buffer);
   }
 
-  @Post('pedidos/:id/factura/correo')
-  @Roles('admin', 'empleado')
-  enviarFacturaPorCorreo(@Param('id') id: string) {
-    return this.admin.enviarFacturaPorCorreo(id);
-  }
-
-  @Post('pedidos/:id/factura/whatsapp')
-  @Roles('admin', 'empleado')
-  enviarFacturaPorWhatsapp(@Param('id') id: string) {
-    return this.admin.enviarFacturaPorWhatsapp(id);
-  }
-
   @Get('configuracion')
   @Roles('admin')
   obtenerConfiguracion() {

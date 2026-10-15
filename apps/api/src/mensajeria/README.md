@@ -36,12 +36,13 @@ para conversaciones que nunca llegaron a `derivar_a_humano` (siguen en
 - sin mensajes nuevos del cliente durante **N minutos** (default 180 = 3h),
   manda un recordatorio fijo;
 - sin respuesta durante **M minutos** más (default 360 = 6h más, o sea 9h
-  en total), manda una oferta fija (10% en pizza personal, ajustable en el
-  archivo).
+  en total), manda una oferta fija (el porcentaje y el texto exacto viven
+  en `seguimiento.service.ts`: `DESCUENTO_OFERTA_PORCENTAJE` y el mensaje de
+  oferta; esa es la fuente de verdad).
 
 Ambos son mensajes de sesión fijos, no generados por Gemini — así no hay
 riesgo de que el modelo invente un descuento o un dato. Los plazos son
-editables desde **`/admin/seguimiento`** (solo rol admin) — se guardan en la
+editables desde **`/admin/seguimiento`** (roles admin y empleado) — se guardan en la
 tabla `configuracion` (`seguimiento_recordatorio_minutos` /
 `seguimiento_oferta_minutos`) y el cron los relee en cada corrida, sin
 necesidad de redeploy. Queda bajo responsabilidad de quien los configure
@@ -55,14 +56,6 @@ Esa misma página también lista todas las conversaciones con su estado
 vuelva a responder un hilo que quedó derivado, o al revés. Cambiar el
 estado desde ahí resetea la memoria de Gemini y el seguimiento pendiente de
 esa conversación, igual que cuando lo hace el bot solo.
-
-**Envío de comprobantes por WhatsApp** (`meta-graph.service.ts::enviarDocumentoWhatsapp`):
-usado desde `/admin/pedidos` para mandar el PDF del comprobante de un
-pedido. Sube el archivo a la Media API de Meta y después lo manda como
-mensaje `document`. Es un mensaje de sesión más — misma ventana de 24h que
-todo lo demás en este módulo; si pasó más de un día desde el último
-mensaje del cliente, la Graph API lo rechaza (se le devuelve el motivo al
-admin, no falla en silencio).
 
 **Límite conocido — mensajes muy seguidos**: el webhook procesa cada
 mensaje entrante de forma fire-and-forget (responde 200 a Meta al toque y

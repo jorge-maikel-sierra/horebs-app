@@ -131,20 +131,6 @@ const ESTADOS_PEDIDO = [
   'cancelado',
 ];
 const MODALIDADES_VENTA = ['local', 'retiro', 'domicilio'];
-/**
- * `clientes.telefono` normalmente se guarda en formato local colombiano
- * (3157861208, sin indicativo), pero la Graph API de WhatsApp necesita el
- * ID completo con indicativo de país sin el "+" (573157861208). Espejo de
- * `normalizarTelefonoCO` en pedidos.service.ts, que hace lo inverso.
- */
-function telefonoAWhatsappId(telefono: string): string {
-  const digitos = telefono.replace(/\D/g, '');
-  if (digitos.length === 10 && digitos.startsWith('3')) {
-    return `57${digitos}`;
-  }
-  return digitos;
-}
-
 const PEDIDO_ADMIN_SELECT =
   'id, canal, modalidad, direccion_entrega, costo_domicilio, metodo_pago, estado, stock_status, total, created_at, clientes(id, nombre, apellido, telefono, direccion, correo), items_pedido(variante_id, nombre_personalizado, cantidad, precio_unitario, variantes_producto(nombre, productos(nombre)))';
 
@@ -389,62 +375,6 @@ export class AdminService {
     const pedido = await this.obtenerPedido(id);
     const buffer = await this.factura.generarPdf(pedido);
     return { buffer, nombreArchivo: this.factura.nombreArchivo(pedido) };
-  }
-
-  async enviarFacturaPorCorreo(
-    id: string,
-  ): Promise<{ enviado: true; destino: string }> {
-    const pedido = await this.obtenerPedido(id);
-    if (!pedido.cliente.correo) {
-      throw new BadRequestException(
-        'El cliente no tiene un correo registrado.',
-      );
-    }
-    const buffer = await this.factura.generarPdf(pedido);
-    const { asunto, texto, html } = this.factura.datosCorreo(pedido);
-    try {
-      await this.mail.enviarConAdjunto({
-        destino: pedido.cliente.correo,
-        asunto,
-        texto,
-        html,
-        adjuntoNombre: this.factura.nombreArchivo(pedido),
-        adjuntoPdf: buffer,
-      });
-    } catch (err) {
-      throw new BadRequestException(
-        `No se pudo enviar el correo: ${(err as Error).message}`,
-      );
-    }
-    return { enviado: true, destino: pedido.cliente.correo };
-  }
-
-  async enviarFacturaPorWhatsapp(
-    id: string,
-  ): Promise<{ enviado: true; destino: string }> {
-    const pedido = await this.obtenerPedido(id);
-    if (!pedido.cliente.telefono) {
-      throw new BadRequestException(
-        'El cliente no tiene un teléfono registrado.',
-      );
-    }
-    const destinatarioId = telefonoAWhatsappId(pedido.cliente.telefono);
-    const buffer = await this.factura.generarPdf(pedido);
-    try {
-      await this.metaGraph.enviarDocumentoWhatsapp(
-        destinatarioId,
-        buffer,
-        this.factura.nombreArchivo(pedido),
-        `Comprobante de tu pedido #${pedido.id.slice(0, 8).toUpperCase()}`,
-      );
-    } catch (err) {
-      throw new BadRequestException(
-        `No se pudo enviar por WhatsApp: ${(err as Error).message}. Puede ser porque ` +
-          'pasaron más de 24h desde el último mensaje del cliente — WhatsApp solo deja ' +
-          'mandar mensajes gratis dentro de esa ventana.',
-      );
-    }
-    return { enviado: true, destino: destinatarioId };
   }
 
   async listarPedidos(): Promise<PedidoAdminDto[]> {
@@ -876,11 +806,23 @@ export class AdminService {
       throw new NotFoundException('Conversación no encontrada.');
     }
 
-    await this.metaGraph.enviarMensajeSesion(
-      conversacion.canal,
-      conversacion.identificador_externo,
-      textoLimpio,
-    );
+    try {
+      await this.metaGraph.enviarMensajeSesion(
+        conversacion.canal,
+        conversacion.identificador_externo,
+        textoLimpio,
+      );
+    } catch (err) {
+      // Graph API puede fallar (token vencido, ventana de 24 h cerrada, 5xx):
+      // se traduce a un error de Nest con el motivo en vez de un 500 genérico.
+      const motivo = err instanceof Error ? err.message : String(err);
+      this.logger.warn(
+        `No se pudo enviar el mensaje humano a ${conversacion.canal}: ${motivo}`,
+      );
+      throw new BadRequestException(
+        `No se pudo enviar el mensaje por ${conversacion.canal}: ${motivo}`,
+      );
+    }
     return this.conversaciones.registrarMensaje(
       id,
       'saliente_humano',
