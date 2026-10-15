@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -280,8 +281,19 @@ export class BlogService {
       .select(BLOG_POST_SELECT)
       .single();
 
-    if (error) throw error;
+    if (error) throw this.traducirErrorEscritura(error);
     return data;
+  }
+
+  /**
+   * `slug` tiene restricción UNIQUE: un duplicado llegaba al cliente como un
+   * 500 genérico. Se traduce a 409 con un mensaje que el admin puede accionar.
+   */
+  private traducirErrorEscritura(error: { code?: string }): unknown {
+    if (error.code === '23505') {
+      return new ConflictException('Ya existe un artículo con ese slug.');
+    }
+    return error;
   }
 
   async actualizarBlogPost(
@@ -327,7 +339,7 @@ export class BlogService {
       .select(BLOG_POST_SELECT)
       .single();
 
-    if (error) throw error;
+    if (error) throw this.traducirErrorEscritura(error);
     return data;
   }
 

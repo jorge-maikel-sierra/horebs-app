@@ -182,12 +182,20 @@ export default function EditorArticulo({
       );
       if (!res.ok) {
         const body = await res.json().catch(() => null);
+        if (res.status === 409) {
+          // Slug repetido: el error va en el campo y el foco se queda ahí.
+          setErrores({
+            slug: 'Ya existe otro artículo con este slug. Cambia la dirección.',
+          });
+          requestAnimationFrame(() =>
+            document.getElementById(idCampo('slug'))?.focus(),
+          );
+          return;
+        }
         setErrorGeneral(
-          res.status >= 500
-            ? 'No se pudo guardar. Revisa que el slug no esté repetido en otro artículo e inténtalo de nuevo.'
-            : typeof body?.message === 'string'
-              ? body.message
-              : 'No se pudo guardar el artículo.',
+          typeof body?.message === 'string' && res.status < 500
+            ? body.message
+            : 'No se pudo guardar el artículo. Inténtalo de nuevo.',
         );
         return;
       }
