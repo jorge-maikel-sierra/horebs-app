@@ -37,16 +37,16 @@ const NEGOCIO = {
   whatsapp: '+57 315 786 1208',
 };
 
-// Datos reales del RUT (Formulario DIAN 14725108989, NIT y régimen) — la
-// dirección la corrigió el usuario a la dirección actual del negocio (la
-// del RUT quedó desactualizada). Solo se muestra el nombre comercial, no
+// Datos reales del RUT (Formulario DIAN 14725108989, NIT y régimen). La
+// dirección es la actual del negocio (NEGOCIO.direccion), no la del RUT,
+// que quedó desactualizada. Solo se muestra el nombre comercial, no
 // el nombre personal del titular (persona natural). Esto NO convierte el
 // comprobante en una factura electrónica DIAN — sigue siendo un recibo
 // interno, solo que con los datos del emisor completos.
 const EMISOR_FISCAL = {
   nombreComercial: 'Pizzería Horebs',
   nit: '1.118.843.420-7',
-  direccion: 'Carrera 7 # 17-B66, Riohacha, La Guajira',
+  direccion: NEGOCIO.direccion,
   regimen: 'No responsable de IVA',
 };
 
@@ -79,42 +79,8 @@ function formatoFecha(iso: string): string {
   });
 }
 
-export interface DatosCorreoFactura {
-  asunto: string;
-  texto: string;
-  html: string;
-}
-
 function construirNombreArchivo(pedido: PedidoParaFactura): string {
   return `comprobante-${pedido.id.slice(0, 8)}.pdf`;
-}
-
-function construirDatosCorreo(pedido: PedidoParaFactura): DatosCorreoFactura {
-  const nombreCliente = pedido.cliente.nombre || 'cliente';
-  const idCorto = pedido.id.slice(0, 8).toUpperCase();
-  const texto = `¡Hola ${nombreCliente}! Te adjuntamos el comprobante de tu pedido #${idCorto} en ${NEGOCIO.nombre}. Total: ${formatoPrecio(pedido.total)}. ¡Gracias por tu compra!`;
-  const html = `
-<!doctype html>
-<html lang="es">
-  <body style="margin:0;padding:0;background-color:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f5;padding:24px 0;">
-      <tr><td align="center">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-          <tr><td style="background-color:${AZUL};padding:24px 28px;">
-            <p style="margin:0;color:#FFD93D;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">${NEGOCIO.nombre}</p>
-            <h1 style="margin:6px 0 0;color:#ffffff;font-size:19px;font-weight:700;">Tu comprobante de pedido</h1>
-          </td></tr>
-          <tr><td style="padding:24px 28px;">
-            <p style="margin:0 0 12px;font-size:14px;color:#27272a;">¡Hola ${nombreCliente}! Te dejamos adjunto el comprobante del pedido <strong>#${idCorto}</strong>.</p>
-            <p style="margin:0;font-size:14px;color:#27272a;">Total: <strong style="color:${NARANJA};">${formatoPrecio(pedido.total)}</strong></p>
-            <p style="margin:20px 0 0;font-size:12px;color:#a1a1aa;">Gracias por tu compra — ${NEGOCIO.direccion} · WhatsApp ${NEGOCIO.whatsapp}</p>
-          </td></tr>
-        </table>
-      </td></tr>
-    </table>
-  </body>
-</html>`;
-  return { asunto: `Tu comprobante de pedido #${idCorto} — ${NEGOCIO.nombre}`, texto, html };
 }
 
 /**
@@ -335,9 +301,5 @@ export class FacturaService {
 
   nombreArchivo(pedido: PedidoParaFactura): string {
     return construirNombreArchivo(pedido);
-  }
-
-  datosCorreo(pedido: PedidoParaFactura): DatosCorreoFactura {
-    return construirDatosCorreo(pedido);
   }
 }

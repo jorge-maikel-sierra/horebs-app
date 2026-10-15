@@ -29,7 +29,12 @@ carrito y checkout en línea.
 - La migración del histórico de WooCommerce (18,723 pedidos, 5,393 clientes)
   se decide DESPUÉS de tener el sitio nuevo funcionando — no es prioridad hoy
 - Horario del negocio: lunes a domingo, 4:00pm–11:00pm
-- Dirección oficial: Carrera 7 # 17B - 66, Riohacha, La Guajira
+- Dirección oficial: Carrera 7 # 17B - 66, Riohacha, La Guajira (confirmada
+  por el dueño; es la que va en el PDF del comprobante, en lugar de la del RUT)
+- Datos fiscales del emisor (RUT, persona natural — se imprimen en el PDF del
+  comprobante, que NO es factura electrónica DIAN): NIT `1.118.843.420-7`,
+  régimen "No responsable de IVA"; solo se muestra el nombre comercial
+  "Pizzería Horebs", no el nombre personal del titular
 - WhatsApp: +57 315 786 1208 (canal de confirmación de pedidos)
 - Dominio activo: pizzeriahorebs.shop — NUNCA usar ni enlazar
   pizzeriahorebs.com (expiró, ya no es del negocio)
