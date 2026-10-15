@@ -47,6 +47,12 @@ export class ClientesController {
     return this.clientes.obtenerDetalle(id);
   }
 
+  @Get(':id/pedidos')
+  @Roles('admin', 'empleado')
+  listarPedidos(@Param('id') id: string) {
+    return this.clientes.listarPedidos(id);
+  }
+
   @Patch(':id')
   @Roles('admin', 'empleado')
   editar(@Param('id') id: string, @Body() body: EditarClienteInput) {

@@ -17,12 +17,50 @@ export interface ClienteDto {
 }
 
 export interface ClienteDetalleDto extends ClienteDto {
+  created_at: string;
   puntos_actuales: number;
   puntos_ultima_actividad: string | null;
   total_pedidos: number;
   total_gastado: number;
   ultimo_pedido: string | null;
 }
+
+export interface PedidoClienteDto {
+  id: string;
+  canal: string;
+  modalidad: string;
+  metodo_pago: string;
+  estado: string;
+  total: number;
+  costo_domicilio: number;
+  created_at: string;
+  /** Una línea por producto: "Pizza Hawaiana (Grande)" × cantidad. */
+  items: { nombre: string; cantidad: number }[];
+}
+
+interface FilaPedidoCliente {
+  id: string;
+  canal: string;
+  modalidad: string;
+  metodo_pago: string;
+  estado: string;
+  total: number;
+  costo_domicilio: number;
+  created_at: string;
+  items_pedido:
+    | {
+        nombre_personalizado: string | null;
+        cantidad: number;
+        variantes_producto: {
+          nombre: string;
+          productos: { nombre: string } | null;
+        } | null;
+      }[]
+    | null;
+}
+
+// Tope de seguridad: el total real sale de obtenerDetalle, esto es solo el historial.
+const MAX_PEDIDOS_CLIENTE = 200;
 
 export interface EditarClienteInput {
   nombre?: string;
@@ -85,7 +123,9 @@ export class ClientesService {
     const { data: cliente, error } = await this.supabase
       .getClient()
       .from('clientes')
-      .select(`${SELECT_CLIENTE}, puntos_actuales, puntos_ultima_actividad`)
+      .select(
+        `${SELECT_CLIENTE}, created_at, puntos_actuales, puntos_ultima_actividad`,
+      )
       .eq('id', id)
       .single();
     if (error) throw error;
@@ -105,6 +145,40 @@ export class ClientesService {
       total_gastado: lista.reduce((acc, p) => acc + p.total, 0),
       ultimo_pedido: lista[0]?.created_at ?? null,
     };
+  }
+
+  async listarPedidos(id: string): Promise<PedidoClienteDto[]> {
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('pedidos')
+      .select(
+        'id, canal, modalidad, metodo_pago, estado, total, costo_domicilio, created_at, items_pedido(nombre_personalizado, cantidad, variantes_producto(nombre, productos(nombre)))',
+      )
+      .eq('cliente_id', id)
+      .order('created_at', { ascending: false })
+      .limit(MAX_PEDIDOS_CLIENTE);
+    if (error) throw error;
+
+    return ((data ?? []) as unknown as FilaPedidoCliente[]).map((p) => ({
+      id: p.id,
+      canal: p.canal,
+      modalidad: p.modalidad,
+      metodo_pago: p.metodo_pago,
+      estado: p.estado,
+      total: p.total,
+      costo_domicilio: p.costo_domicilio,
+      created_at: p.created_at,
+      items: (p.items_pedido ?? []).map((i) => {
+        const producto = i.variantes_producto?.productos?.nombre;
+        const variante = i.variantes_producto?.nombre;
+        const nombre = producto
+          ? variante
+            ? `${producto} (${variante})`
+            : producto
+          : (i.nombre_personalizado ?? 'Producto');
+        return { nombre, cantidad: i.cantidad };
+      }),
+    }));
   }
 
   async editar(id: string, cambios: EditarClienteInput): Promise<ClienteDto> {
