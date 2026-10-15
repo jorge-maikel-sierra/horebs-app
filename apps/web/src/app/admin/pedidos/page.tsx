@@ -5,9 +5,23 @@ import Link from 'next/link';
 import { adminFetch } from '@/lib/admin-fetch';
 import { formatPrecio } from '@/lib/formato';
 import { useRol } from '@/lib/use-rol';
+import { useAviso } from '@/lib/use-aviso';
+import AvisoFlotante from '@/components/AvisoFlotante';
 import CargandoSkeleton from '@/components/CargandoSkeleton';
+import ModalBase from '@/components/ModalBase';
+import ModalConfirmar from '@/components/ModalConfirmar';
 import BuscadorPedidos from '@/components/pedidos/BuscadorPedidos';
+import ModalEditarCliente from '@/components/pedidos/ModalEditarCliente';
+import ModalEditarPedido from '@/components/pedidos/ModalEditarPedido';
 import Resaltado from '@/components/pedidos/Resaltado';
+import {
+  etiquetaItem,
+  nombreDelCliente,
+  type Categoria,
+  type ClientePedido,
+  type PedidoAdmin,
+  type Producto,
+} from '@/components/pedidos/tipos';
 import { useDebounced } from '@/lib/use-debounced';
 import { hoyBogota } from '@/lib/semana';
 import {
@@ -19,70 +33,12 @@ import {
   type FiltrosPedidos,
 } from '@/lib/pedidos-busqueda';
 
-type ItemPedido = {
-  variante_id: string | null;
-  producto_nombre: string;
-  variante_nombre: string;
-  cantidad: number;
-  precio_unitario: number;
-};
-
-type ItemEdit = ItemPedido & { id: string };
-
-type PedidoAdmin = {
-  id: string;
-  canal: 'web' | 'pos';
-  cliente: {
-    id: string;
-    nombre: string;
-    apellido: string | null;
-    telefono: string | null;
-    direccion: string | null;
-    correo: string | null;
-  };
-  modalidad: string;
-  direccion_entrega: string | null;
-  costo_domicilio: number;
-  metodo_pago: string;
-  estado: string;
-  stock_status: string;
-  total: number;
-  created_at: string;
-  items: ItemPedido[];
-};
-
-type Variante = {
-  id: string;
-  nombre: string;
-  precio: number;
-  precio_oferta: number | null;
-};
-
-type Producto = {
-  id: string;
-  nombre: string;
-  categoria_id: string;
-  variantes: Variante[];
-};
-
-type Categoria = { id: string; nombre: string; orden: number };
-
 function formatFecha(iso: string) {
   return new Intl.DateTimeFormat('es-CO', {
     dateStyle: 'short',
     timeStyle: 'short',
     timeZone: 'America/Bogota',
   }).format(new Date(iso));
-}
-
-const METODO_PAGO_OPCIONES = ['efectivo', 'transferencia', 'tarjeta'] as const;
-
-function IconCerrar() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M6 6l12 12M18 6L6 18" />
-    </svg>
-  );
 }
 
 function IconChevron({ abierto }: { abierto: boolean }) {
@@ -96,6 +52,7 @@ function IconChevron({ abierto }: { abierto: boolean }) {
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
+      aria-hidden="true"
       className={`shrink-0 transition-transform duration-200 ${abierto ? 'rotate-180' : ''}`}
     >
       <path d="m6 9 6 6 6-6" />
@@ -103,102 +60,75 @@ function IconChevron({ abierto }: { abierto: boolean }) {
   );
 }
 
-function IconLapiz() {
+function Icono({ children }: { children: React.ReactNode }) {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {children}
     </svg>
   );
 }
 
-function IconPedido() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9 11H4l1.5-4.5A2 2 0 0 1 7.4 5h9.2a2 2 0 0 1 1.9 1.5L20 11h-5" />
-      <path d="M4 11v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7" />
-      <path d="M9 11v3a3 3 0 0 0 6 0v-3" />
-    </svg>
-  );
-}
+const IconLapiz = () => (
+  <Icono>
+    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+  </Icono>
+);
+const IconPedido = () => (
+  <Icono>
+    <path d="M9 11H4l1.5-4.5A2 2 0 0 1 7.4 5h9.2a2 2 0 0 1 1.9 1.5L20 11h-5" />
+    <path d="M4 11v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7" />
+    <path d="M9 11v3a3 3 0 0 0 6 0v-3" />
+  </Icono>
+);
+const IconBasura = () => (
+  <Icono>
+    <path d="M3 6h18" />
+    <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6" />
+  </Icono>
+);
+const IconDescargar = () => (
+  <Icono>
+    <path d="M12 3v12m0 0-4-4m4 4 4-4" />
+    <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+  </Icono>
+);
 
-function IconBasura() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 6h18" />
-      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6" />
-    </svg>
-  );
-}
-
-function IconDescargar() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 3v12m0 0-4-4m4 4 4-4" />
-      <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
-    </svg>
-  );
-}
-
-function IconCorreo() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="5" width="18" height="14" rx="2" />
-      <path d="m3 7 9 6 9-6" />
-    </svg>
-  );
-}
-
-function IconWhatsapp() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M12.04 2c-5.52 0-10 4.48-10 10 0 1.76.46 3.48 1.34 5L2 22l5.14-1.35a10 10 0 0 0 4.9 1.25h.01c5.52 0 10-4.48 10-10s-4.48-10-10.01-10Zm0 18.2h-.01a8.2 8.2 0 0 1-4.18-1.14l-.3-.18-3.1.81.83-3.02-.2-.31a8.2 8.2 0 0 1-1.25-4.36c0-4.54 3.7-8.24 8.25-8.24 2.2 0 4.27.86 5.83 2.42a8.19 8.19 0 0 1 2.41 5.83c0 4.55-3.7 8.24-8.28 8.24Zm4.52-6.17c-.25-.12-1.47-.72-1.7-.81-.23-.08-.4-.12-.56.13-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.12-1.05-.39-1.99-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.02-.38.11-.51.11-.11.25-.29.37-.43.12-.14.16-.25.25-.41.08-.17.04-.31-.02-.44-.06-.12-.56-1.36-.77-1.86-.2-.49-.41-.42-.56-.43h-.48c-.17 0-.44.06-.67.31-.23.25-.87.86-.87 2.09s.9 2.42 1.02 2.59c.12.17 1.77 2.7 4.28 3.78.6.26 1.06.41 1.43.53.6.19 1.15.16 1.58.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.08.14-1.18-.06-.11-.23-.17-.48-.29Z" />
-    </svg>
-  );
-}
+const ACCION =
+  'btn-press flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 outline-none transition-colors hover:bg-zinc-100 hover:text-brand-orange-700 focus-visible:ring-2 focus-visible:ring-brand-orange/60 disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-brand-orange';
 
 function PedidosInterno() {
   const { rol } = useRol();
+  const { aviso, mostrar } = useAviso();
   const [pedidos, setPedidos] = useState<PedidoAdmin[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filtros, setFiltros] = useState<FiltrosPedidos>(FILTROS_INICIALES);
   const [hoy] = useState(hoyBogota);
-  const [eliminandoId, setEliminandoId] = useState<string | null>(null);
-
-  const [editandoClienteId, setEditandoClienteId] = useState<string | null>(
-    null,
-  );
-  const [nombreEdit, setNombreEdit] = useState('');
-  const [apellidoEdit, setApellidoEdit] = useState('');
-  const [telefonoEdit, setTelefonoEdit] = useState('');
-  const [direccionEdit, setDireccionEdit] = useState('');
-  const [guardandoCliente, setGuardandoCliente] = useState(false);
-  const [errorEdit, setErrorEdit] = useState<string | null>(null);
 
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [productosCatalogo, setProductosCatalogo] = useState<Producto[]>([]);
-  const [editandoPedidoId, setEditandoPedidoId] = useState<string | null>(
-    null,
-  );
-  const [itemsEdit, setItemsEdit] = useState<ItemEdit[]>([]);
-  const [metodoPagoEdit, setMetodoPagoEdit] = useState<string>('efectivo');
-  const [categoriaPickerId, setCategoriaPickerId] = useState<string | null>(
-    null,
-  );
-  const [nombrePersonalizadoEdit, setNombrePersonalizadoEdit] = useState('');
-  const [precioPersonalizadoEdit, setPrecioPersonalizadoEdit] = useState('');
-  const [editandoPrecioEditId, setEditandoPrecioEditId] = useState<
-    string | null
-  >(null);
-  const [guardandoPedido, setGuardandoPedido] = useState(false);
-  const [errorPedido, setErrorPedido] = useState<string | null>(null);
 
-  const [accionFacturaId, setAccionFacturaId] = useState<string | null>(null);
-  const [mensajeFactura, setMensajeFactura] = useState<
-    { id: string; texto: string; error: boolean } | null
-  >(null);
-  const [expandidoId, setExpandidoId] = useState<string | null>(null);
-  const [pedidoAEliminar, setPedidoAEliminar] = useState<PedidoAdmin | null>(null);
+  const [clienteEnEdicion, setClienteEnEdicion] =
+    useState<ClientePedido | null>(null);
+  const [pedidoEnEdicion, setPedidoEnEdicion] = useState<PedidoAdmin | null>(
+    null,
+  );
+  const [detalleId, setDetalleId] = useState<string | null>(null);
+  const [pedidoAEliminar, setPedidoAEliminar] = useState<PedidoAdmin | null>(
+    null,
+  );
+  const [eliminando, setEliminando] = useState(false);
+  const [descargandoId, setDescargandoId] = useState<string | null>(null);
 
   useEffect(() => {
     adminFetch('/admin/pedidos')
@@ -215,223 +145,66 @@ function PedidosInterno() {
     Promise.all([
       fetch(`${apiUrl}/catalogo/categorias`).then((r) => r.json()),
       fetch(`${apiUrl}/catalogo/productos`).then((r) => r.json()),
-    ]).then(([cats, prods]) => {
-      setCategorias(cats);
-      setProductosCatalogo(prods);
-    });
+    ])
+      .then(([cats, prods]) => {
+        setCategorias(cats);
+        setProductosCatalogo(prods);
+      })
+      .catch(() => undefined);
   }, []);
 
-  function empezarEdicion(p: PedidoAdmin) {
-    setEditandoClienteId(p.cliente.id);
-    setNombreEdit(p.cliente.nombre);
-    setApellidoEdit(p.cliente.apellido ?? '');
-    setTelefonoEdit(p.cliente.telefono ?? '');
-    setDireccionEdit(p.cliente.direccion ?? '');
-    setErrorEdit(null);
-  }
-
-  async function guardarCliente(clienteId: string) {
-    setGuardandoCliente(true);
-    setErrorEdit(null);
-    try {
-      const res = await adminFetch(`/admin/clientes/${clienteId}`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          nombre: nombreEdit,
-          apellido: apellidoEdit,
-          telefono: telefonoEdit,
-          direccion: direccionEdit,
-        }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.message ?? 'No se pudo guardar el cliente.');
-      }
-      const clienteActualizado = await res.json();
-      // El cliente es un registro compartido — reflejar el cambio en
-      // todos los pedidos de la lista que le pertenecen, no solo el que
-      // se estaba editando.
-      setPedidos((prev) =>
-        prev.map((p) =>
-          p.cliente.id === clienteId
-            ? {
-                ...p,
-                cliente: {
-                  ...p.cliente,
-                  nombre: clienteActualizado.nombre,
-                  apellido: clienteActualizado.apellido,
-                  telefono: clienteActualizado.telefono,
-                  direccion: clienteActualizado.direccion,
-                },
-              }
-            : p,
-        ),
-      );
-      setEditandoClienteId(null);
-    } catch (err) {
-      setErrorEdit(
-        err instanceof Error ? err.message : 'No se pudo guardar el cliente.',
-      );
-    } finally {
-      setGuardandoCliente(false);
-    }
-  }
-
-  function empezarEdicionPedido(p: PedidoAdmin) {
-    setEditandoPedidoId(p.id);
-    setItemsEdit(
-      p.items.map((i) => ({ ...i, id: i.variante_id ?? crypto.randomUUID() })),
+  function clienteGuardado(actualizado: ClientePedido) {
+    // El cliente es un registro compartido: se refleja en todos sus pedidos de la lista.
+    setPedidos((prev) =>
+      prev.map((p) =>
+        p.cliente.id === actualizado.id
+          ? { ...p, cliente: { ...p.cliente, ...actualizado } }
+          : p,
+      ),
     );
-    setMetodoPagoEdit(p.metodo_pago);
-    setCategoriaPickerId(null);
-    setNombrePersonalizadoEdit('');
-    setPrecioPersonalizadoEdit('');
-    setEditandoPrecioEditId(null);
-    setErrorPedido(null);
+    setClienteEnEdicion(null);
+    mostrar('Cliente actualizado');
   }
 
-  function actualizarCantidadEdit(id: string, cantidad: number) {
-    if (cantidad <= 0) {
-      setItemsEdit((prev) => prev.filter((i) => i.id !== id));
-      return;
-    }
-    setItemsEdit((prev) =>
-      prev.map((i) => (i.id === id ? { ...i, cantidad } : i)),
+  function pedidoGuardado(actualizado: PedidoAdmin) {
+    setPedidos((prev) =>
+      prev.map((p) => (p.id === actualizado.id ? actualizado : p)),
     );
-  }
-
-  function agregarProductoEdit(producto: Producto, variante: Variante) {
-    setItemsEdit((prev) => {
-      const existente = prev.find((i) => i.variante_id === variante.id);
-      if (existente) {
-        return prev.map((i) =>
-          i.variante_id === variante.id
-            ? { ...i, cantidad: i.cantidad + 1 }
-            : i,
-        );
-      }
-      return [
-        ...prev,
-        {
-          id: variante.id,
-          variante_id: variante.id,
-          producto_nombre: producto.nombre,
-          variante_nombre: variante.nombre,
-          cantidad: 1,
-          precio_unitario: variante.precio_oferta ?? variante.precio,
-        },
-      ];
-    });
-  }
-
-  function agregarPersonalizadoEdit() {
-    const nombre = nombrePersonalizadoEdit.trim();
-    const precio = Number(precioPersonalizadoEdit);
-    if (!nombre) {
-      setErrorPedido('Escribí el nombre del producto personalizado.');
-      return;
-    }
-    if (!Number.isFinite(precio) || precio < 0) {
-      setErrorPedido('El precio del producto personalizado no es válido.');
-      return;
-    }
-    setErrorPedido(null);
-    setItemsEdit((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
-        variante_id: null,
-        producto_nombre: nombre,
-        variante_nombre: '',
-        cantidad: 1,
-        precio_unitario: precio,
-      },
-    ]);
-    setNombrePersonalizadoEdit('');
-    setPrecioPersonalizadoEdit('');
-  }
-
-  function editarPrecioEdit(id: string, precio: number) {
-    if (!Number.isFinite(precio) || precio < 0) return;
-    setItemsEdit((prev) =>
-      prev.map((i) => (i.id === id ? { ...i, precio_unitario: precio } : i)),
-    );
-  }
-
-  async function guardarPedido(pedidoId: string) {
-    setErrorPedido(null);
-    if (itemsEdit.length === 0) {
-      setErrorPedido('El pedido no puede quedar sin productos.');
-      return;
-    }
-    setGuardandoPedido(true);
-    try {
-      const res = await adminFetch(`/admin/pedidos/${pedidoId}`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          metodo_pago: metodoPagoEdit,
-          items: itemsEdit.map((i) =>
-            i.variante_id
-              ? {
-                  variante_id: i.variante_id,
-                  cantidad: i.cantidad,
-                  precio_unitario: i.precio_unitario,
-                }
-              : {
-                  nombre_personalizado: i.producto_nombre,
-                  cantidad: i.cantidad,
-                  precio_unitario: i.precio_unitario,
-                },
-          ),
-        }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.message ?? 'No se pudo guardar el pedido.');
-      }
-      const actualizado: PedidoAdmin = await res.json();
-      setPedidos((prev) =>
-        prev.map((p) => (p.id === pedidoId ? actualizado : p)),
-      );
-      setEditandoPedidoId(null);
-    } catch (err) {
-      setErrorPedido(
-        err instanceof Error ? err.message : 'No se pudo guardar el pedido.',
-      );
-    } finally {
-      setGuardandoPedido(false);
-    }
+    setPedidoEnEdicion(null);
+    mostrar('Pedido actualizado');
   }
 
   async function confirmarEliminarPedido() {
     const p = pedidoAEliminar;
     if (!p) return;
-    setPedidoAEliminar(null);
-    setEliminandoId(p.id);
-    setMensajeFactura(null);
+    setEliminando(true);
     try {
       const res = await adminFetch(`/admin/pedidos/${p.id}`, {
         method: 'DELETE',
       });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
-        throw new Error(body?.message ?? 'No se pudo eliminar el pedido.');
+        throw new Error(
+          typeof body?.message === 'string'
+            ? body.message
+            : 'No se pudo eliminar el pedido.',
+        );
       }
       setPedidos((prev) => prev.filter((x) => x.id !== p.id));
+      mostrar('Pedido eliminado');
     } catch (err) {
-      setMensajeFactura({
-        id: p.id,
-        texto: err instanceof Error ? err.message : 'No se pudo eliminar el pedido.',
-        error: true,
-      });
+      mostrar(
+        err instanceof Error ? err.message : 'No se pudo eliminar el pedido.',
+        true,
+      );
     } finally {
-      setEliminandoId(null);
+      setEliminando(false);
+      setPedidoAEliminar(null);
     }
   }
 
   async function descargarFactura(p: PedidoAdmin) {
-    setAccionFacturaId(`${p.id}-descargar`);
-    setMensajeFactura(null);
+    setDescargandoId(p.id);
     try {
       const res = await adminFetch(`/admin/pedidos/${p.id}/factura`);
       if (!res.ok) throw new Error('No se pudo generar el comprobante.');
@@ -445,63 +218,18 @@ function PedidosInterno() {
       a.remove();
       URL.revokeObjectURL(url);
     } catch (err) {
-      setMensajeFactura({
-        id: p.id,
-        texto: err instanceof Error ? err.message : 'No se pudo descargar.',
-        error: true,
-      });
+      mostrar(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo descargar el comprobante.',
+        true,
+      );
     } finally {
-      setAccionFacturaId(null);
+      setDescargandoId(null);
     }
   }
 
-  async function enviarFacturaPorCorreo(p: PedidoAdmin) {
-    setAccionFacturaId(`${p.id}-correo`);
-    setMensajeFactura(null);
-    try {
-      const res = await adminFetch(`/admin/pedidos/${p.id}/factura/correo`, {
-        method: 'POST',
-      });
-      const body = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(body?.message ?? 'No se pudo enviar el correo.');
-      setMensajeFactura({ id: p.id, texto: `Enviado a ${body.destino}.`, error: false });
-    } catch (err) {
-      setMensajeFactura({
-        id: p.id,
-        texto: err instanceof Error ? err.message : 'No se pudo enviar el correo.',
-        error: true,
-      });
-    } finally {
-      setAccionFacturaId(null);
-    }
-  }
-
-  async function enviarFacturaPorWhatsapp(p: PedidoAdmin) {
-    setAccionFacturaId(`${p.id}-whatsapp`);
-    setMensajeFactura(null);
-    try {
-      const res = await adminFetch(`/admin/pedidos/${p.id}/factura/whatsapp`, {
-        method: 'POST',
-      });
-      const body = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(body?.message ?? 'No se pudo enviar por WhatsApp.');
-      setMensajeFactura({ id: p.id, texto: 'Enviado por WhatsApp.', error: false });
-    } catch (err) {
-      setMensajeFactura({
-        id: p.id,
-        texto: err instanceof Error ? err.message : 'No se pudo enviar por WhatsApp.',
-        error: true,
-      });
-    } finally {
-      setAccionFacturaId(null);
-    }
-  }
-
-  const productosDeCategoria = categoriaPickerId
-    ? productosCatalogo.filter((p) => p.categoria_id === categoriaPickerId)
-    : [];
-
-  const pedidoDetalle = pedidos.find((p) => p.id === expandidoId) ?? null;
+  const pedidoDetalle = pedidos.find((p) => p.id === detalleId) ?? null;
 
   // El texto se aplica con un pequeño debounce: la lista no se recalcula ni se
   // vuelve a animar en cada tecla.
@@ -542,7 +270,9 @@ function PedidosInterno() {
       )}
 
       {cargando && <CargandoSkeleton filas={5} />}
-      {error && <p className="mt-6 text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && (
+        <p className="mt-6 text-sm text-red-600 dark:text-red-400">{error}</p>
+      )}
 
       {!cargando && !error && pedidos.length === 0 && (
         <p className="mt-6 text-sm text-zinc-500 dark:text-zinc-400">
@@ -550,51 +280,57 @@ function PedidosInterno() {
         </p>
       )}
 
-      {!cargando && !error && pedidos.length > 0 && pedidosFiltrados.length === 0 && (
-        <div className="animate-fade-up card-gradient mt-6 flex flex-col items-center rounded-3xl border border-dashed border-zinc-300 px-6 py-14 text-center dark:border-zinc-700">
-          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-orange/15 text-brand-orange-700 dark:text-brand-orange">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <circle cx="11" cy="11" r="7" />
-              <path d="m20 20-3.5-3.5M8.5 11h5" />
-            </svg>
-          </span>
-          <p className="mt-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-            Ningún pedido coincide
-          </p>
-          <p className="mt-1 max-w-sm text-sm text-zinc-500 dark:text-zinc-400">
-            {filtros.texto.trim()
-              ? `No encontramos pedidos para “${filtros.texto.trim()}” con los filtros actuales.`
-              : 'No hay pedidos con los filtros actuales.'}{' '}
-            Revisa la ortografía o prueba con menos palabras.
-          </p>
-          <button
-            type="button"
-            onClick={() => setFiltros(FILTROS_INICIALES)}
-            className="btn-gradient btn-press mt-5 h-11 rounded-xl px-5 text-sm font-semibold text-white shadow-md shadow-brand-orange/25 outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/60"
-          >
-            Limpiar filtros
-          </button>
-        </div>
-      )}
+      {!cargando &&
+        !error &&
+        pedidos.length > 0 &&
+        pedidosFiltrados.length === 0 && (
+          <div className="animate-fade-up card-gradient mt-6 flex flex-col items-center rounded-3xl border border-dashed border-zinc-300 px-6 py-14 text-center dark:border-zinc-700">
+            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-orange/15 text-brand-orange-700 dark:text-brand-orange">
+              <svg
+                width="26"
+                height="26"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <circle cx="11" cy="11" r="7" />
+                <path d="m20 20-3.5-3.5M8.5 11h5" />
+              </svg>
+            </span>
+            <p className="mt-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+              Ningún pedido coincide
+            </p>
+            <p className="mt-1 max-w-sm text-sm text-zinc-500 dark:text-zinc-400">
+              {filtros.texto.trim()
+                ? `No encontramos pedidos para “${filtros.texto.trim()}” con los filtros actuales.`
+                : 'No hay pedidos con los filtros actuales.'}{' '}
+              Revisa la ortografía o prueba con menos palabras.
+            </p>
+            <button
+              type="button"
+              onClick={() => setFiltros(FILTROS_INICIALES)}
+              className="btn-gradient btn-press mt-5 h-11 rounded-xl px-5 text-sm font-semibold text-white shadow-md shadow-brand-orange/25 outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/60"
+            >
+              Limpiar filtros
+            </button>
+          </div>
+        )}
 
       <div
         key={firmaBusqueda}
         className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
       >
         {pedidosFiltrados.map((p, indice) => {
-          const abierto =
-            editandoClienteId === p.cliente.id || editandoPedidoId === p.id;
-          const nombreCompleto = p.cliente.nombre
-            ? `${p.cliente.nombre} ${p.cliente.apellido ?? ''}`.trim()
-            : 'Cliente sin nombre';
-
+          const nombreCompleto = nombreDelCliente(p.cliente);
           return (
             <div
               key={p.id}
               style={{ '--i': Math.min(indice, 8) } as CSSProperties}
-              className={`resultado-item flex flex-col rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 ${
-                abierto ? 'sm:col-span-2 xl:col-span-3' : ''
-              }`}
+              className="resultado-item flex flex-col rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex min-w-0 flex-wrap items-center gap-1.5">
@@ -619,11 +355,11 @@ function PedidosInterno() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setExpandidoId(p.id)}
+                  onClick={() => setDetalleId(p.id)}
                   aria-label="Ver detalle del pedido"
-                  className="btn-press shrink-0 rounded-md p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                  className="btn-press -mt-1 -mr-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-zinc-400 outline-none hover:bg-zinc-100 hover:text-zinc-700 focus-visible:ring-2 focus-visible:ring-brand-orange/60 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
                 >
-                  <IconChevron abierto={expandidoId === p.id} />
+                  <IconChevron abierto={detalleId === p.id} />
                 </button>
               </div>
 
@@ -631,53 +367,41 @@ function PedidosInterno() {
                 <p className="truncate font-semibold text-zinc-900 dark:text-zinc-50">
                   <Resaltado texto={nombreCompleto} terminos={resaltar} />
                 </p>
-                <div className="flex items-center justify-between gap-2">
-                  <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">
-                    {p.cliente.telefono ? (
-                      <Resaltado texto={p.cliente.telefono} terminos={resaltar} />
-                    ) : (
-                      'Sin teléfono'
-                    )}{' '}
-                    · {formatFecha(p.created_at)}
-                  </p>
-                </div>
+                <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">
+                  {p.cliente.telefono ? (
+                    <Resaltado texto={p.cliente.telefono} terminos={resaltar} />
+                  ) : (
+                    'Sin teléfono'
+                  )}{' '}
+                  · {formatFecha(p.created_at)}
+                </p>
               </div>
 
-              {!abierto && (
-                <ul className="mt-2.5 flex-1 space-y-0.5 text-xs text-zinc-600 dark:text-zinc-400">
-                  {p.items.slice(0, 3).map((i, idx) => (
-                    <li key={i.variante_id ?? idx} className="truncate">
-                      {i.cantidad}×{' '}
-                      <Resaltado
-                        texto={
-                          i.variante_nombre
-                            ? `${i.producto_nombre} (${i.variante_nombre})`
-                            : i.producto_nombre
-                        }
-                        terminos={resaltar}
-                      />
-                    </li>
-                  ))}
-                  {p.items.length > 3 && (
-                    <li className="text-zinc-400 dark:text-zinc-500">
-                      +{p.items.length - 3} más
-                    </li>
-                  )}
-                </ul>
-              )}
-
-              {!abierto &&
-                coincidenciasOcultas(p, terminos).map((c) => (
-                  <p
-                    key={`${c.campo}-${c.texto}`}
-                    className="mt-2 flex items-start gap-1 rounded-lg bg-brand-orange/10 px-2 py-1 text-[11px] text-zinc-700 dark:text-zinc-300"
-                  >
-                    <span className="shrink-0 font-semibold">{c.campo}:</span>
-                    <span className="min-w-0 [overflow-wrap:anywhere]">
-                      <Resaltado texto={c.texto} terminos={resaltar} />
-                    </span>
-                  </p>
+              <ul className="mt-2.5 flex-1 space-y-0.5 text-xs text-zinc-600 dark:text-zinc-400">
+                {p.items.slice(0, 3).map((i, idx) => (
+                  <li key={i.variante_id ?? idx} className="truncate">
+                    {i.cantidad}×{' '}
+                    <Resaltado texto={etiquetaItem(i)} terminos={resaltar} />
+                  </li>
                 ))}
+                {p.items.length > 3 && (
+                  <li className="text-zinc-400 dark:text-zinc-500">
+                    +{p.items.length - 3} más
+                  </li>
+                )}
+              </ul>
+
+              {coincidenciasOcultas(p, terminos).map((c) => (
+                <p
+                  key={`${c.campo}-${c.texto}`}
+                  className="mt-2 flex items-start gap-1 rounded-lg bg-brand-orange/10 px-2 py-1 text-[11px] text-zinc-700 dark:text-zinc-300"
+                >
+                  <span className="shrink-0 font-semibold">{c.campo}:</span>
+                  <span className="min-w-0 [overflow-wrap:anywhere]">
+                    <Resaltado texto={c.texto} terminos={resaltar} />
+                  </span>
+                </p>
+              ))}
 
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-zinc-100 pt-2.5 text-xs dark:border-zinc-800/60">
                 <div className="flex flex-wrap items-center gap-1.5 text-zinc-500 dark:text-zinc-400">
@@ -692,441 +416,159 @@ function PedidosInterno() {
                   </span>
                 </div>
                 <div className="text-right">
-                  <p className="font-bold text-brand-orange">{formatPrecio(p.total)}</p>
+                  <p className="font-bold text-brand-orange-700 dark:text-brand-orange">
+                    {formatPrecio(p.total)}
+                  </p>
                   {p.costo_domicilio > 0 && (
-                    <p className="text-[10px] text-zinc-400 dark:text-zinc-500">
+                    <p className="text-[10px] text-zinc-500 dark:text-zinc-400">
                       incl. {formatPrecio(p.costo_domicilio)} domicilio
                     </p>
                   )}
                 </div>
               </div>
 
-              <div className="mt-2.5 flex flex-wrap items-center gap-1 border-t border-zinc-100 pt-2.5 dark:border-zinc-800/60">
+              <div className="mt-2.5 flex items-center gap-0.5 border-t border-zinc-100 pt-2 dark:border-zinc-800/60">
                 <button
                   type="button"
                   disabled={!p.cliente.id}
-                  onClick={() => empezarEdicion(p)}
-                  title={!p.cliente.id ? 'El cliente de este pedido fue eliminado' : 'Editar cliente'}
-                  className="btn-press rounded-md p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-brand-orange disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                  onClick={() => setClienteEnEdicion(p.cliente)}
+                  title={
+                    !p.cliente.id
+                      ? 'El cliente de este pedido fue eliminado'
+                      : 'Editar cliente'
+                  }
+                  className={ACCION}
                 >
                   <IconLapiz />
+                  <span className="sr-only">
+                    Editar cliente de {nombreCompleto}
+                  </span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => empezarEdicionPedido(p)}
+                  onClick={() => setPedidoEnEdicion(p)}
                   title="Editar pedido"
-                  className="btn-press rounded-md p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-brand-orange dark:text-zinc-400 dark:hover:bg-zinc-800"
+                  className={ACCION}
                 >
                   <IconPedido />
+                  <span className="sr-only">
+                    Editar pedido #{p.id.slice(0, 8)}
+                  </span>
                 </button>
                 <button
                   type="button"
-                  disabled={accionFacturaId === `${p.id}-descargar`}
+                  disabled={descargandoId === p.id}
                   onClick={() => descargarFactura(p)}
                   title="Descargar comprobante"
-                  className="btn-press rounded-md p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-brand-orange disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                  className={ACCION}
                 >
                   <IconDescargar />
-                </button>
-                <button
-                  type="button"
-                  disabled={accionFacturaId === `${p.id}-correo` || !p.cliente.correo}
-                  title={!p.cliente.correo ? 'El cliente no tiene correo registrado' : 'Enviar a correo'}
-                  onClick={() => enviarFacturaPorCorreo(p)}
-                  className="btn-press rounded-md p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-brand-orange disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800"
-                >
-                  <IconCorreo />
-                </button>
-                <button
-                  type="button"
-                  disabled={accionFacturaId === `${p.id}-whatsapp` || !p.cliente.telefono}
-                  title={!p.cliente.telefono ? 'El cliente no tiene teléfono registrado' : 'Enviar por WhatsApp'}
-                  onClick={() => enviarFacturaPorWhatsapp(p)}
-                  className="btn-press rounded-md p-1.5 text-green-700 hover:bg-green-50 disabled:opacity-40 dark:text-green-500 dark:hover:bg-green-950/30"
-                >
-                  <IconWhatsapp />
+                  <span className="sr-only">
+                    Descargar comprobante del pedido #{p.id.slice(0, 8)}
+                  </span>
                 </button>
                 {rol === 'admin' && (
                   <button
                     type="button"
-                    disabled={eliminandoId === p.id}
                     onClick={() => setPedidoAEliminar(p)}
                     title="Eliminar pedido"
-                    className="btn-press ml-auto rounded-md p-1.5 text-red-600 hover:bg-red-50 disabled:opacity-40 dark:text-red-400 dark:hover:bg-red-950/30"
+                    className={`${ACCION} ml-auto text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/30 dark:hover:text-red-300`}
                   >
                     <IconBasura />
+                    <span className="sr-only">
+                      Eliminar pedido #{p.id.slice(0, 8)}
+                    </span>
                   </button>
-                )}
-                {mensajeFactura?.id === p.id && (
-                  <span
-                    className={`w-full text-[11px] ${mensajeFactura.error ? 'text-red-600 dark:text-red-400' : 'text-brand-orange'}`}
-                  >
-                    {mensajeFactura.texto}
-                  </span>
                 )}
               </div>
-
-            {editandoClienteId === p.cliente.id && (
-              <div className="mt-3 space-y-2 rounded-md border border-zinc-200 p-3 dark:border-zinc-700">
-                <div className="grid gap-2 sm:grid-cols-4">
-                  <input
-                    value={nombreEdit}
-                    onChange={(e) => setNombreEdit(e.target.value)}
-                    placeholder="Nombre"
-                    className="rounded-md border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-                  />
-                  <input
-                    value={apellidoEdit}
-                    onChange={(e) => setApellidoEdit(e.target.value)}
-                    placeholder="Apellido"
-                    className="rounded-md border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-                  />
-                  <input
-                    value={telefonoEdit}
-                    onChange={(e) => setTelefonoEdit(e.target.value)}
-                    placeholder="Teléfono"
-                    className="rounded-md border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-                  />
-                  <input
-                    value={direccionEdit}
-                    onChange={(e) => setDireccionEdit(e.target.value)}
-                    placeholder="Dirección guardada del cliente"
-                    className="rounded-md border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-                  />
-                </div>
-                {errorEdit && (
-                  <p className="text-xs text-red-600 dark:text-red-400">{errorEdit}</p>
-                )}
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    disabled={guardandoCliente}
-                    onClick={() => guardarCliente(p.cliente.id)}
-                    className="rounded-md bg-brand-orange px-3 py-1 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50"
-                  >
-                    {guardandoCliente ? 'Guardando…' : 'Guardar'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEditandoClienteId(null)}
-                    className="rounded-md border border-zinc-300 px-3 py-1 text-xs dark:border-zinc-700"
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {editandoPedidoId === p.id ? (
-              <div className="mt-3 space-y-3 rounded-md border border-zinc-200 p-3 dark:border-zinc-700">
-                <div>
-                  <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                    Productos
-                  </span>
-                  {itemsEdit.length === 0 ? (
-                    <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                      Sin productos — agregá al menos uno.
-                    </p>
-                  ) : (
-                    <ul className="mt-1 space-y-1">
-                      {itemsEdit.map((i) => (
-                        <li
-                          key={i.id}
-                          className="flex items-center justify-between gap-2 text-sm"
-                        >
-                          <span className="min-w-0 truncate">
-                            {i.variante_nombre
-                              ? `${i.producto_nombre} (${i.variante_nombre})`
-                              : i.producto_nombre}
-                          </span>
-                          <span className="flex shrink-0 items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                actualizarCantidadEdit(i.id, i.cantidad - 1)
-                              }
-                              className="h-6 w-6 rounded-full border border-zinc-300 text-xs dark:border-zinc-700"
-                            >
-                              −
-                            </button>
-                            {i.cantidad}
-                            <button
-                              type="button"
-                              onClick={() =>
-                                actualizarCantidadEdit(i.id, i.cantidad + 1)
-                              }
-                              className="h-6 w-6 rounded-full border border-zinc-300 text-xs dark:border-zinc-700"
-                            >
-                              +
-                            </button>
-                            {editandoPrecioEditId === i.id ? (
-                              <input
-                                type="number"
-                                min={0}
-                                autoFocus
-                                defaultValue={i.precio_unitario}
-                                onBlur={(e) => {
-                                  editarPrecioEdit(i.id, Number(e.target.value));
-                                  setEditandoPrecioEditId(null);
-                                }}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') e.currentTarget.blur();
-                                }}
-                                className="w-20 rounded-md border border-zinc-300 px-1.5 py-0.5 text-right text-sm dark:border-zinc-700 dark:bg-zinc-900"
-                              />
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => setEditandoPrecioEditId(i.id)}
-                                title="Editar precio unitario"
-                                className="w-20 text-right underline decoration-dotted"
-                              >
-                                {formatPrecio(i.precio_unitario * i.cantidad)}
-                              </button>
-                            )}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-
-                <div>
-                  <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                    Producto personalizado
-                  </span>
-                  <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                    Para bordes, adicionales o algo que no esté en el
-                    catálogo.
-                  </p>
-                  <div className="mt-1 flex flex-wrap gap-2">
-                    <input
-                      value={nombrePersonalizadoEdit}
-                      onChange={(e) =>
-                        setNombrePersonalizadoEdit(e.target.value)
-                      }
-                      placeholder="Ej: Borde de queso"
-                      className="min-w-0 flex-1 rounded-md border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-                    />
-                    <input
-                      type="number"
-                      min={0}
-                      step={500}
-                      value={precioPersonalizadoEdit}
-                      onChange={(e) =>
-                        setPrecioPersonalizadoEdit(e.target.value)
-                      }
-                      placeholder="Precio"
-                      className="w-24 rounded-md border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-                    />
-                    <button
-                      type="button"
-                      onClick={agregarPersonalizadoEdit}
-                      className="shrink-0 rounded-md bg-brand-orange px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
-                    >
-                      Agregar
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                    Agregar producto
-                  </span>
-                  {!categoriaPickerId ? (
-                    <div className="mt-1 flex flex-wrap gap-2">
-                      {categorias.map((cat) => (
-                        <button
-                          key={cat.id}
-                          type="button"
-                          onClick={() => setCategoriaPickerId(cat.id)}
-                          className="rounded-md border border-zinc-300 px-2.5 py-1 text-xs font-medium dark:border-zinc-700"
-                        >
-                          {cat.nombre}
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="mt-1">
-                      <button
-                        type="button"
-                        onClick={() => setCategoriaPickerId(null)}
-                        className="text-xs text-brand-orange underline"
-                      >
-                        ← Volver a categorías
-                      </button>
-                      <div className="mt-2 max-h-48 space-y-2 overflow-y-auto pr-1">
-                        {productosDeCategoria.map((producto) => (
-                          <div key={producto.id}>
-                            <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-50">
-                              {producto.nombre}
-                            </p>
-                            <div className="mt-1 flex flex-wrap gap-1.5">
-                              {producto.variantes.map((v) => (
-                                <button
-                                  key={v.id}
-                                  type="button"
-                                  onClick={() =>
-                                    agregarProductoEdit(producto, v)
-                                  }
-                                  className="rounded-full bg-brand-orange px-2.5 py-0.5 text-xs font-semibold text-white hover:opacity-90"
-                                >
-                                  + {v.nombre}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                    Método de pago
-                  </span>
-                  <div className="mt-1 flex flex-wrap gap-3">
-                    {METODO_PAGO_OPCIONES.map((m) => (
-                      <label
-                        key={m}
-                        className="flex items-center gap-1.5 text-sm capitalize"
-                      >
-                        <input
-                          type="radio"
-                          name={`metodoPago-${p.id}`}
-                          checked={metodoPagoEdit === m}
-                          onChange={() => setMetodoPagoEdit(m)}
-                        />
-                        {m}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                {errorPedido && (
-                  <p className="text-xs text-red-600 dark:text-red-400">{errorPedido}</p>
-                )}
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    disabled={guardandoPedido}
-                    onClick={() => guardarPedido(p.id)}
-                    className="rounded-md bg-brand-orange px-3 py-1 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50"
-                  >
-                    {guardandoPedido ? 'Guardando…' : 'Guardar pedido'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEditandoPedidoId(null)}
-                    className="rounded-md border border-zinc-300 px-3 py-1 text-xs dark:border-zinc-700"
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              </div>
-            ) : null}
             </div>
           );
         })}
       </div>
 
       {pedidoDetalle && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4">
-          <div
-            className="absolute inset-0"
-            onClick={() => setExpandidoId(null)}
-          />
-          <div className="animate-fade-up relative w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-5 shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="truncate font-semibold text-zinc-900 dark:text-zinc-50">
-                  {pedidoDetalle.cliente.nombre
-                    ? `${pedidoDetalle.cliente.nombre} ${pedidoDetalle.cliente.apellido ?? ''}`.trim()
-                    : 'Cliente sin nombre'}
-                </p>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  #{pedidoDetalle.id.slice(0, 8)} · {formatFecha(pedidoDetalle.created_at)}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setExpandidoId(null)}
-                aria-label="Cerrar detalle del pedido"
-                className="btn-press shrink-0 rounded-md p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+        <ModalBase
+          titulo={nombreDelCliente(pedidoDetalle.cliente)}
+          subtitulo={`#${pedidoDetalle.id.slice(0, 8)} · ${formatFecha(pedidoDetalle.created_at)}`}
+          ancho="sm"
+          onCerrar={() => setDetalleId(null)}
+        >
+          <span className="block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+            Productos
+          </span>
+          <ul className="mt-1 space-y-0.5 text-sm text-zinc-600 dark:text-zinc-400">
+            {pedidoDetalle.items.map((i, idx) => (
+              <li
+                key={i.variante_id ?? idx}
+                className="flex justify-between gap-3"
               >
-                <IconCerrar />
-              </button>
-            </div>
-
-            <span className="mt-4 block text-xs font-medium text-zinc-500 dark:text-zinc-400">
-              Productos
-            </span>
-            <ul className="mt-1 space-y-0.5 text-sm text-zinc-600 dark:text-zinc-400">
-              {pedidoDetalle.items.map((i, idx) => (
-                <li key={i.variante_id ?? idx} className="flex justify-between gap-3">
-                  <span>
-                    {i.cantidad}×{' '}
-                    {i.variante_nombre
-                      ? `${i.producto_nombre} (${i.variante_nombre})`
-                      : i.producto_nombre}
-                  </span>
-                  <span className="shrink-0 text-zinc-500 dark:text-zinc-400">
-                    {formatPrecio(i.precio_unitario * i.cantidad)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            {pedidoDetalle.direccion_entrega && (
-              <p className="mt-2 border-t border-zinc-100 pt-2 text-xs text-zinc-500 dark:border-zinc-800/60 dark:text-zinc-400">
-                Entrega: {pedidoDetalle.direccion_entrega}
-              </p>
-            )}
-            <p className="mt-3 border-t border-zinc-100 pt-2 text-right font-bold text-brand-orange dark:border-zinc-800/60">
-              {formatPrecio(pedidoDetalle.total)}
+                <span>
+                  {i.cantidad}× {etiquetaItem(i)}
+                </span>
+                <span className="shrink-0 tabular-nums text-zinc-500 dark:text-zinc-400">
+                  {formatPrecio(i.precio_unitario * i.cantidad)}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {pedidoDetalle.direccion_entrega && (
+            <p className="mt-3 border-t border-zinc-100 pt-2 text-xs text-zinc-500 dark:border-zinc-800/60 dark:text-zinc-400">
+              Entrega: {pedidoDetalle.direccion_entrega}
             </p>
-          </div>
-        </div>
+          )}
+          <p className="mt-3 border-t border-zinc-100 pt-2 text-right text-lg font-bold tabular-nums text-brand-orange-700 dark:border-zinc-800/60 dark:text-brand-orange">
+            {formatPrecio(pedidoDetalle.total)}
+          </p>
+        </ModalBase>
+      )}
+
+      {clienteEnEdicion && (
+        <ModalEditarCliente
+          key={clienteEnEdicion.id}
+          cliente={clienteEnEdicion}
+          otrosPedidos={
+            pedidos.filter((p) => p.cliente.id === clienteEnEdicion.id).length
+          }
+          onCerrar={() => setClienteEnEdicion(null)}
+          onGuardado={clienteGuardado}
+        />
+      )}
+
+      {pedidoEnEdicion && (
+        <ModalEditarPedido
+          key={pedidoEnEdicion.id}
+          pedido={pedidoEnEdicion}
+          categorias={categorias}
+          productos={productosCatalogo}
+          onCerrar={() => setPedidoEnEdicion(null)}
+          onGuardado={pedidoGuardado}
+        />
       )}
 
       {pedidoAEliminar && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4">
-          <div
-            className="absolute inset-0"
-            onClick={() => setPedidoAEliminar(null)}
-          />
-          <div className="animate-fade-up relative w-full max-w-sm rounded-2xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
-            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-              ¿Eliminar este pedido?
-            </h2>
-            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+        <ModalConfirmar
+          titulo="¿Eliminar este pedido?"
+          descripcion={
+            <>
               Pedido de{' '}
               <span className="font-medium text-zinc-700 dark:text-zinc-300">
                 {pedidoAEliminar.cliente.nombre
-                  ? `${pedidoAEliminar.cliente.nombre} ${pedidoAEliminar.cliente.apellido ?? ''}`.trim()
+                  ? nombreDelCliente(pedidoAEliminar.cliente)
                   : 'cliente sin nombre'}
               </span>{' '}
-              por {formatPrecio(pedidoAEliminar.total)}. Esta acción no se puede deshacer.
-            </p>
-            <div className="mt-5 flex gap-2">
-              <button
-                type="button"
-                onClick={() => setPedidoAEliminar(null)}
-                className="flex-1 rounded-lg border border-zinc-300 py-2 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={confirmarEliminarPedido}
-                className="flex-1 rounded-lg bg-red-600 py-2 text-sm font-semibold text-white transition hover:bg-red-700"
-              >
-                Eliminar
-              </button>
-            </div>
-          </div>
-        </div>
+              por {formatPrecio(pedidoAEliminar.total)}. Esta acción no se puede
+              deshacer.
+            </>
+          }
+          textoConfirmar="Eliminar"
+          peligro
+          cargando={eliminando}
+          onConfirmar={confirmarEliminarPedido}
+          onCancelar={() => setPedidoAEliminar(null)}
+        />
       )}
+
+      <AvisoFlotante aviso={aviso} />
     </div>
   );
 }

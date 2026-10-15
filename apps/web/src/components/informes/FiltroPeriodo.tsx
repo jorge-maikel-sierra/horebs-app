@@ -135,7 +135,7 @@ export default function FiltroPeriodo<K extends string>({
 
       {abierto &&
         createPortal(
-          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/20 sm:items-center sm:p-4">
+          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/20 backdrop-blur-xs sm:items-center sm:p-4">
             <div
               className="absolute inset-0"
               onClick={() => setAbierto(false)}

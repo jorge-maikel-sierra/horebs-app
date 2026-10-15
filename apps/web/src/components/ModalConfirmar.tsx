@@ -71,7 +71,7 @@ export default function ModalConfirmar({
   }, []);
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-4 backdrop-blur-xs">
       <div
         className="absolute inset-0"
         onClick={() => {
