@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { ScheduleModule } from '@nestjs/schedule';
 import { SupabaseModule } from '../supabase/supabase.module';
 import { MailModule } from '../mail/mail.module';
 import { ClientesController } from './clientes.controller';
@@ -10,7 +9,7 @@ import { PuntosPublicoController } from './puntos-publico.controller';
 import { PuntosService } from './puntos.service';
 
 @Module({
-  imports: [SupabaseModule, MailModule, ScheduleModule.forRoot()],
+  imports: [SupabaseModule, MailModule],
   controllers: [ClientesController, PuntosController, PuntosPublicoController],
   providers: [ClientesService, ClientesDirectorioService, PuntosService],
   exports: [ClientesService, PuntosService],

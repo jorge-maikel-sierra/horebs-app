@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -23,6 +24,9 @@ import { NominaModule } from './nomina/nomina.module';
     // Límite generoso por IP — pensado para frenar abuso/scraping, no
     // para restringir el uso normal del POS o el checkout.
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 120 }]),
+    // Una sola vez acá: importarlo también en otros módulos registra cada
+    // @Cron dos veces y cada tick se ejecuta doble.
+    ScheduleModule.forRoot(),
     SupabaseModule,
     HealthModule,
     CatalogModule,
