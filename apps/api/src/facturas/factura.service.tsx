@@ -37,7 +37,7 @@ const NEGOCIO = {
   whatsapp: '+57 315 786 1208',
 };
 
-// Datos reales del RUT (Formulario DIAN 14725108989, NIT y régimen). La
+// Datos reales del RUT (NIT y régimen, confirmados en CLAUDE.md). La
 // dirección es la actual del negocio (NEGOCIO.direccion), no la del RUT,
 // que quedó desactualizada. Solo se muestra el nombre comercial, no
 // el nombre personal del titular (persona natural). Esto NO convierte el
@@ -113,13 +113,17 @@ export class FacturaService {
   }
 
   async generarPdf(pedido: PedidoParaFactura): Promise<Buffer> {
-    const { Document, Page, Text, View, Image, StyleSheet, renderToBuffer } = await import(
-      '@react-pdf/renderer'
-    );
+    const { Document, Page, Text, View, Image, StyleSheet, renderToBuffer } =
+      await import('@react-pdf/renderer');
     const logo = this.cargarLogo();
 
     const styles = StyleSheet.create({
-      page: { padding: 36, fontSize: 10, fontFamily: 'Helvetica', color: '#27272a' },
+      page: {
+        padding: 36,
+        fontSize: 10,
+        fontFamily: 'Helvetica',
+        color: '#27272a',
+      },
       header: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -139,7 +143,12 @@ export class FacturaService {
         fontWeight: 700,
         textTransform: 'uppercase',
       },
-      comprobanteId: { color: '#ffffff', fontSize: 13, fontWeight: 700, marginTop: 2 },
+      comprobanteId: {
+        color: '#ffffff',
+        fontSize: 13,
+        fontWeight: 700,
+        marginTop: 2,
+      },
       seccion: { marginBottom: 16 },
       seccionTitulo: {
         fontSize: 8,
@@ -149,7 +158,11 @@ export class FacturaService {
         marginBottom: 4,
         letterSpacing: 0.5,
       },
-      filaDato: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 },
+      filaDato: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 2,
+      },
       etiqueta: { color: '#71717a' },
       valor: { color: '#27272a', fontWeight: 700 },
       tabla: { marginTop: 8, borderTopWidth: 1, borderTopColor: '#e4e4e7' },
@@ -180,7 +193,10 @@ export class FacturaService {
     const nombreCompleto = [pedido.cliente.nombre, pedido.cliente.apellido]
       .filter(Boolean)
       .join(' ');
-    const subtotal = pedido.items.reduce((acc, i) => acc + i.precio_unitario * i.cantidad, 0);
+    const subtotal = pedido.items.reduce(
+      (acc, i) => acc + i.precio_unitario * i.cantidad,
+      0,
+    );
 
     const documento = (
       <Document>
@@ -191,13 +207,21 @@ export class FacturaService {
               <View>
                 <Text style={styles.negocioNombre}>{NEGOCIO.nombre}</Text>
                 <Text style={styles.negocioDato}>{NEGOCIO.direccion}</Text>
-                <Text style={styles.negocioDato}>WhatsApp: {NEGOCIO.whatsapp}</Text>
+                <Text style={styles.negocioDato}>
+                  WhatsApp: {NEGOCIO.whatsapp}
+                </Text>
               </View>
             </View>
             <View style={{ alignItems: 'flex-end' }}>
-              <Text style={styles.comprobanteEtiqueta}>Comprobante de pedido</Text>
-              <Text style={styles.comprobanteId}>#{pedido.id.slice(0, 8).toUpperCase()}</Text>
-              <Text style={styles.negocioDato}>{formatoFecha(pedido.created_at)}</Text>
+              <Text style={styles.comprobanteEtiqueta}>
+                Comprobante de pedido
+              </Text>
+              <Text style={styles.comprobanteId}>
+                #{pedido.id.slice(0, 8).toUpperCase()}
+              </Text>
+              <Text style={styles.negocioDato}>
+                {formatoFecha(pedido.created_at)}
+              </Text>
             </View>
           </View>
 
@@ -263,7 +287,9 @@ export class FacturaService {
                     {item.variante_nombre ? ` (${item.variante_nombre})` : ''}
                   </Text>
                   <Text style={styles.celdaCantidad}>{item.cantidad}×</Text>
-                  <Text style={styles.celdaPrecio}>{formatoPrecio(item.precio_unitario)}</Text>
+                  <Text style={styles.celdaPrecio}>
+                    {formatoPrecio(item.precio_unitario)}
+                  </Text>
                   <Text style={styles.celdaSubtotal}>
                     {formatoPrecio(item.precio_unitario * item.cantidad)}
                   </Text>
@@ -279,12 +305,18 @@ export class FacturaService {
               {pedido.costo_domicilio > 0 && (
                 <View style={styles.filaTotal}>
                   <Text style={styles.etiqueta}>Domicilio</Text>
-                  <Text style={styles.valor}>{formatoPrecio(pedido.costo_domicilio)}</Text>
+                  <Text style={styles.valor}>
+                    {formatoPrecio(pedido.costo_domicilio)}
+                  </Text>
                 </View>
               )}
               <View style={styles.filaTotal}>
-                <Text style={{ ...styles.etiqueta, fontWeight: 700 }}>Total</Text>
-                <Text style={styles.totalGrande}>{formatoPrecio(pedido.total)}</Text>
+                <Text style={{ ...styles.etiqueta, fontWeight: 700 }}>
+                  Total
+                </Text>
+                <Text style={styles.totalGrande}>
+                  {formatoPrecio(pedido.total)}
+                </Text>
               </View>
             </View>
           </View>
