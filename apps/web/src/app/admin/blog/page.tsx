@@ -1,342 +1,144 @@
 'use client';
 
-import Link from 'next/link';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import RequireRol from '@/components/RequireRol';
+import ModalConfirmar from '@/components/ModalConfirmar';
+import EditorArticulo from '@/components/blog-admin/EditorArticulo';
+import ListaArticulos from '@/components/blog-admin/ListaArticulos';
+import type { BlogPost } from '@/components/blog-admin/tipos';
 import { adminFetch } from '@/lib/admin-fetch';
-import CargandoSkeleton from '@/components/CargandoSkeleton';
 
-type Estado = 'borrador' | 'publicado';
-
-type BlogPost = {
-  id: string;
-  titulo: string;
-  slug: string;
-  resumen: string;
-  contenido: string;
-  palabra_clave: string | null;
-  imagen_url: string | null;
-  etiqueta: string | null;
-  estado: Estado;
-  publicado_en: string | null;
-  created_at: string;
-};
-
-const VACIO = {
-  titulo: '',
-  slug: '',
-  resumen: '',
-  contenido: '',
-  palabra_clave: '',
-  imagen_url: '',
-  etiqueta: '',
-  estado: 'borrador' as Estado,
-};
-
-function slugify(texto: string) {
-  return texto
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
+type Editor = { post: BlogPost | null; clave: number };
+type Aviso = { texto: string; error: boolean };
 
 function BlogAdminInterno() {
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [cargando, setCargando] = useState(true);
-  const [editandoId, setEditandoId] = useState<string | null>(null);
-  const [form, setForm] = useState(VACIO);
-  const [slugTocado, setSlugTocado] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [enviando, setEnviando] = useState(false);
+  const [errorCarga, setErrorCarga] = useState(false);
+  const [editor, setEditor] = useState<Editor | null>(null);
+  const [aEliminar, setAEliminar] = useState<BlogPost | null>(null);
+  const [eliminando, setEliminando] = useState(false);
+  const [aviso, setAviso] = useState<Aviso | null>(null);
 
-  async function cargarPosts() {
+  const cargarPosts = useCallback(async () => {
     setCargando(true);
-    const res = await adminFetch('/admin/blog');
-    if (res.ok) setPosts(await res.json());
-    setCargando(false);
-  }
-
-  useEffect(() => {
-    cargarPosts();
+    setErrorCarga(false);
+    try {
+      const res = await adminFetch('/admin/blog');
+      if (!res.ok) throw new Error('carga');
+      setPosts(await res.json());
+    } catch {
+      setErrorCarga(true);
+    } finally {
+      setCargando(false);
+    }
   }, []);
 
-  function nuevo() {
-    setEditandoId(null);
-    setForm(VACIO);
-    setSlugTocado(false);
-    setError(null);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- carga inicial de datos remotos.
+    void cargarPosts();
+  }, [cargarPosts]);
+
+  // El aviso se oculta solo; cada aviso nuevo reinicia el temporizador.
+  useEffect(() => {
+    if (!aviso) return;
+    const t = setTimeout(() => setAviso(null), 3500);
+    return () => clearTimeout(t);
+  }, [aviso]);
+
+  // Al cambiar entre lista y editor se vuelve al inicio de la pantalla.
+  const hayEditor = editor !== null;
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [hayEditor]);
+
+  function abrirEditor(post: BlogPost | null) {
+    setEditor((previo) => ({ post, clave: (previo?.clave ?? 0) + 1 }));
   }
 
-  function editar(post: BlogPost) {
-    setEditandoId(post.id);
-    setForm({
-      titulo: post.titulo,
-      slug: post.slug,
-      resumen: post.resumen,
-      contenido: post.contenido,
-      palabra_clave: post.palabra_clave ?? '',
-      imagen_url: post.imagen_url ?? '',
-      etiqueta: post.etiqueta ?? '',
-      estado: post.estado,
-    });
-    setSlugTocado(true);
-    setError(null);
+  function alGuardar(guardado: BlogPost) {
+    setPosts((previos) =>
+      previos.some((p) => p.id === guardado.id)
+        ? previos.map((p) => (p.id === guardado.id ? guardado : p))
+        : [guardado, ...previos],
+    );
   }
 
-  async function guardar(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setEnviando(true);
+  async function confirmarEliminar() {
+    const post = aEliminar;
+    if (!post) return;
+    setEliminando(true);
     try {
-      const payload = {
-        titulo: form.titulo,
-        slug: form.slug,
-        resumen: form.resumen,
-        contenido: form.contenido,
-        palabra_clave: form.palabra_clave || undefined,
-        imagen_url: form.imagen_url || undefined,
-        etiqueta: form.etiqueta || undefined,
-        estado: form.estado,
-      };
-
-      const res = await adminFetch(
-        editandoId ? `/admin/blog/${editandoId}` : '/admin/blog',
-        {
-          method: editandoId ? 'PATCH' : 'POST',
-          body: JSON.stringify(payload),
-        },
-      );
-      if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.message ?? 'No se pudo guardar el artículo.');
-      }
-      nuevo();
-      await cargarPosts();
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'No se pudo guardar el artículo.',
-      );
+      const res = await adminFetch(`/admin/blog/${post.id}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) throw new Error('eliminar');
+      setPosts((previos) => previos.filter((p) => p.id !== post.id));
+      setEditor((actual) => (actual?.post?.id === post.id ? null : actual));
+      setAviso({ texto: 'Artículo eliminado', error: false });
+    } catch {
+      setAviso({ texto: 'No se pudo eliminar el artículo', error: true });
     } finally {
-      setEnviando(false);
+      setEliminando(false);
+      setAEliminar(null);
     }
-  }
-
-  async function eliminar(id: string) {
-    if (!window.confirm('¿Eliminar este artículo? No se puede deshacer.')) {
-      return;
-    }
-    await adminFetch(`/admin/blog/${id}`, { method: 'DELETE' });
-    if (editandoId === id) nuevo();
-    await cargarPosts();
   }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-          Blog
-        </h1>
-        <Link href="/admin" className="text-sm text-brand-orange underline">
-          Volver al panel
-        </Link>
-      </div>
+      {editor ? (
+        <EditorArticulo
+          key={editor.clave}
+          post={editor.post}
+          onVolver={() => setEditor(null)}
+          onGuardado={alGuardar}
+          onEliminar={setAEliminar}
+          onAviso={(texto) => setAviso({ texto, error: false })}
+        />
+      ) : (
+        <ListaArticulos
+          posts={posts}
+          cargando={cargando}
+          errorCarga={errorCarga}
+          onNuevo={() => abrirEditor(null)}
+          onEditar={abrirEditor}
+          onEliminar={setAEliminar}
+          onReintentar={cargarPosts}
+        />
+      )}
 
-      <form
-        onSubmit={guardar}
-        className="mt-6 space-y-4 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800"
-      >
-        <h2 className="font-semibold text-zinc-900 dark:text-zinc-50">
-          {editandoId ? 'Editar artículo' : 'Nuevo artículo'}
-        </h2>
+      {aEliminar && (
+        <ModalConfirmar
+          titulo="¿Eliminar este artículo?"
+          descripcion={
+            <>
+              <span className="font-medium text-zinc-700 dark:text-zinc-300">
+                {aEliminar.titulo}
+              </span>{' '}
+              dejará de existir
+              {aEliminar.estado === 'publicado' ? ' y también en el sitio' : ''}
+              . Esta acción no se puede deshacer.
+            </>
+          }
+          textoConfirmar="Eliminar"
+          peligro
+          cargando={eliminando}
+          onConfirmar={confirmarEliminar}
+          onCancelar={() => setAEliminar(null)}
+        />
+      )}
 
-        <div>
-          <label className="block text-sm font-medium">Título</label>
-          <input
-            required
-            value={form.titulo}
-            onChange={(e) => {
-              const titulo = e.target.value;
-              setForm((f) => ({
-                ...f,
-                titulo,
-                slug: slugTocado ? f.slug : slugify(titulo),
-              }));
-            }}
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium">Slug (URL)</label>
-          <input
-            required
-            value={form.slug}
-            onChange={(e) => {
-              setSlugTocado(true);
-              setForm((f) => ({ ...f, slug: slugify(e.target.value) }));
-            }}
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 font-mono text-sm dark:border-zinc-700 dark:bg-zinc-900"
-          />
-          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-            /blog/{form.slug || 'ejemplo-de-slug'}
+      <div role="status" aria-live="polite" className="contents">
+        {aviso && (
+          <p
+            className={`animate-fade-up fixed bottom-4 left-1/2 z-40 -translate-x-1/2 rounded-full px-5 py-2.5 text-sm font-semibold shadow-lg ${
+              aviso.error
+                ? 'bg-red-600 text-white'
+                : 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
+            }`}
+          >
+            {aviso.texto}
           </p>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium">
-            Resumen (para Google y el listado)
-          </label>
-          <textarea
-            required
-            rows={2}
-            value={form.resumen}
-            onChange={(e) => setForm((f) => ({ ...f, resumen: e.target.value }))}
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium">
-            Palabra clave principal
-          </label>
-          <input
-            value={form.palabra_clave}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, palabra_clave: e.target.value }))
-            }
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium">
-            URL de imagen (opcional)
-          </label>
-          <input
-            value={form.imagen_url}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, imagen_url: e.target.value }))
-            }
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium">
-            Etiqueta (categoría corta, ej. Guías, Menú, Domicilio)
-          </label>
-          <input
-            value={form.etiqueta}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, etiqueta: e.target.value }))
-            }
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium">
-            Contenido (Markdown)
-          </label>
-          <textarea
-            required
-            rows={14}
-            value={form.contenido}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, contenido: e.target.value }))
-            }
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 font-mono text-sm dark:border-zinc-700 dark:bg-zinc-900"
-          />
-        </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <label className="block text-sm font-medium">Estado</label>
-            <select
-              value={form.estado}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, estado: e.target.value as Estado }))
-              }
-              className="mt-1 rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
-            >
-              <option value="borrador">Borrador</option>
-              <option value="publicado">Publicado</option>
-            </select>
-          </div>
-          <div className="flex gap-2">
-            {editandoId && (
-              <button
-                type="button"
-                onClick={nuevo}
-                className="rounded-lg border border-zinc-300 px-4 py-2 font-semibold dark:border-zinc-700"
-              >
-                Cancelar
-              </button>
-            )}
-            <button
-              type="submit"
-              disabled={enviando}
-              className="rounded-lg bg-brand-orange px-4 py-2 font-semibold text-white hover:opacity-90 disabled:opacity-50"
-            >
-              {editandoId ? 'Guardar cambios' : 'Crear artículo'}
-            </button>
-          </div>
-        </div>
-        {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-      </form>
-
-      <div className="mt-8">
-        {cargando ? (
-          <CargandoSkeleton filas={5} />
-        ) : posts.length === 0 ? (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            Todavía no hay artículos.
-          </p>
-        ) : (
-          <ul className="space-y-2">
-            {posts.map((post) => (
-              <li
-                key={post.id}
-                className="flex items-center justify-between gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800"
-              >
-                <div>
-                  <p className="font-medium text-zinc-900 dark:text-zinc-50">
-                    {post.titulo}
-                  </p>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                    <span
-                      className={
-                        post.estado === 'publicado'
-                          ? 'text-green-600 dark:text-green-500'
-                          : 'text-zinc-500'
-                      }
-                    >
-                      {post.estado}
-                    </span>
-                    {' · '}/blog/{post.slug}
-                  </p>
-                </div>
-                <div className="flex shrink-0 gap-3 text-sm">
-                  <button
-                    type="button"
-                    onClick={() => editar(post)}
-                    className="text-brand-orange hover:underline"
-                  >
-                    Editar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => eliminar(post.id)}
-                    className="text-red-600 hover:underline dark:text-red-400"
-                  >
-                    Eliminar
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
         )}
       </div>
     </div>
