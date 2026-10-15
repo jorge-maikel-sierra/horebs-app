@@ -81,20 +81,39 @@ export const IconFlechaDer = () => (
     <path d="m9 6 6 6-6 6" />
   </Svg>
 );
-export const IconTelefono = () => (
-  <Svg tamano={13}>
+export const IconTelefono = ({ tamano = 13 }: { tamano?: number }) => (
+  <Svg tamano={tamano}>
     <path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a1 1 0 0 1-1 1A16 16 0 0 1 4 5a1 1 0 0 1 1-1Z" />
   </Svg>
 );
-export const IconPin = () => (
-  <Svg tamano={13}>
+export const IconPin = ({ tamano = 13 }: { tamano?: number }) => (
+  <Svg tamano={tamano}>
     <path d="M12 21s-6-5.6-6-10.5a6 6 0 1 1 12 0C18 15.4 12 21 12 21Z" />
     <circle cx="12" cy="10.5" r="2" />
   </Svg>
 );
-export const IconCorreo = () => (
-  <Svg tamano={13}>
+export const IconCorreo = ({ tamano = 13 }: { tamano?: number }) => (
+  <Svg tamano={tamano}>
     <rect x="3" y="5" width="18" height="14" rx="2" />
     <path d="m3 7 9 6 9-6" />
+  </Svg>
+);
+
+export const IconLapiz = () => (
+  <Svg tamano={16}>
+    <path d="M4 20h4L19 9l-4-4L4 16v4z" />
+    <path d="m13.5 6.5 4 4" />
+  </Svg>
+);
+export const IconId = ({ tamano = 16 }: { tamano?: number }) => (
+  <Svg tamano={tamano}>
+    <rect x="3" y="5" width="18" height="14" rx="2" />
+    <circle cx="9" cy="11" r="2" />
+    <path d="M6.5 16c.4-1.3 1.4-2 2.5-2s2.1.7 2.5 2M14 10h4M14 14h3" />
+  </Svg>
+);
+export const IconVolver = () => (
+  <Svg>
+    <path d="M15 6l-6 6 6 6" />
   </Svg>
 );

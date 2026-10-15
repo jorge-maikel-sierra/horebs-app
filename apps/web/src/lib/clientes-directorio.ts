@@ -69,7 +69,8 @@ export function claseAvatar(id: string) {
   return AVATARES[h % AVATARES.length];
 }
 
-function dias(desdeIso: string, hoy: string) {
+/** Días calendario (Bogotá) entre una fecha ISO y hoy; 0 = hoy. */
+export function diasDesde(desdeIso: string, hoy: string) {
   const [a, m, d] = hoy.split('-').map(Number);
   const [a2, m2, d2] = diaBogota(desdeIso).split('-').map(Number);
   return Math.round(
@@ -79,7 +80,7 @@ function dias(desdeIso: string, hoy: string) {
 
 /** "Hoy", "Ayer", "Hace 5 días", "Hace 3 meses"… contando días calendario de Bogotá. */
 export function tiempoRelativo(iso: string, hoy: string): string {
-  const n = dias(iso, hoy);
+  const n = diasDesde(iso, hoy);
   if (n <= 0) return 'Hoy';
   if (n === 1) return 'Ayer';
   if (n < 30) return `Hace ${n} días`;
@@ -120,4 +121,79 @@ export function terminosBusqueda(q: string): string[] {
         : t,
     )
     .filter(Boolean);
+}
+
+// ---- Detalle de un cliente ----
+
+// Espejo de ClienteDetalleDto, MovimientoPuntosDto y PedidoClienteDto del API.
+export type ClienteDetalle = {
+  id: string;
+  nombre: string;
+  apellido: string | null;
+  telefono: string | null;
+  direccion: string | null;
+  correo: string | null;
+  cedula: string | null;
+  created_at?: string;
+  puntos_actuales: number;
+  puntos_ultima_actividad: string | null;
+  total_pedidos: number;
+  total_gastado: number;
+  ultimo_pedido: string | null;
+};
+
+export type MovimientoPuntos = {
+  id: string;
+  tipo: 'ganado' | 'canjeado' | 'vencido' | 'ajuste';
+  puntos: number;
+  referencia_tipo: string | null;
+  referencia_id: string | null;
+  motivo: string | null;
+  created_at: string;
+};
+
+export type PedidoCliente = {
+  id: string;
+  canal: string;
+  modalidad: string;
+  metodo_pago: string;
+  estado: string;
+  total: number;
+  costo_domicilio: number;
+  created_at: string;
+  items: { nombre: string; cantidad: number }[];
+};
+
+/** Productos que más pidió (unidades), sin contar pedidos cancelados. */
+export function productosFavoritos(
+  pedidos: PedidoCliente[],
+  max = 3,
+): { nombre: string; cantidad: number }[] {
+  const suma = new Map<string, number>();
+  for (const p of pedidos) {
+    if (p.estado === 'cancelado') continue;
+    for (const i of p.items)
+      suma.set(i.nombre, (suma.get(i.nombre) ?? 0) + i.cantidad);
+  }
+  return [...suma.entries()]
+    .map(([nombre, cantidad]) => ({ nombre, cantidad }))
+    .sort(
+      (a, b) =>
+        b.cantidad - a.cantidad || a.nombre.localeCompare(b.nombre, 'es'),
+    )
+    .slice(0, max);
+}
+
+/** Valor más repetido de un campo de los pedidos (método de pago, modalidad…) con su porcentaje. */
+export function valorFrecuente(
+  pedidos: PedidoCliente[],
+  campo: 'metodo_pago' | 'modalidad',
+): { valor: string; pct: number } | null {
+  const validos = pedidos.filter((p) => p.estado !== 'cancelado');
+  if (validos.length === 0) return null;
+  const cuenta = new Map<string, number>();
+  for (const p of validos)
+    cuenta.set(p[campo], (cuenta.get(p[campo]) ?? 0) + 1);
+  const [valor, n] = [...cuenta.entries()].sort((a, b) => b[1] - a[1])[0];
+  return { valor, pct: Math.round((n / validos.length) * 100) };
 }
