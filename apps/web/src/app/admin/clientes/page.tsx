@@ -1,294 +1,319 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
+import AvisoFlotante from '@/components/AvisoFlotante';
+import ModalConfirmar from '@/components/ModalConfirmar';
+import FiltrosClientes from '@/components/clientes/FiltrosClientes';
+import Paginacion from '@/components/clientes/Paginacion';
+import ProgramaFidelidad from '@/components/clientes/ProgramaFidelidad';
+import ResumenClientes from '@/components/clientes/ResumenClientes';
+import TarjetaCliente from '@/components/clientes/TarjetaCliente';
+import { IconLupa } from '@/components/clientes/iconos';
 import { adminFetch } from '@/lib/admin-fetch';
+import {
+  POR_PAGINA,
+  nombreCompleto,
+  terminosBusqueda,
+  type ClienteDirectorio,
+  type Directorio,
+  type OrdenClientes,
+  type Segmento,
+} from '@/lib/clientes-directorio';
+import { hoyBogota } from '@/lib/semana';
+import { useAviso } from '@/lib/use-aviso';
+import { useDebounced } from '@/lib/use-debounced';
 import { useRol } from '@/lib/use-rol';
-import CargandoSkeleton from '@/components/CargandoSkeleton';
 
-type Cliente = {
-  id: string;
-  nombre: string;
-  apellido: string | null;
-  telefono: string | null;
-  direccion: string | null;
-  correo: string | null;
-};
-
-type ConfiguracionPuntos = {
-  puntosPor1000Pesos: number;
-  valorPuntoPesos: number;
-  puntosMinimoCanje: number;
-  puntosVencimientoMeses: number;
-};
-
-function IconPapelera() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 7h16" />
-      <path d="M9 7V4h6v3" />
-      <path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13" />
-      <path d="M10 11v6M14 11v6" />
-    </svg>
-  );
-}
-
-function IconConfig() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="3" />
-      <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.6V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.6 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.6 1Z" />
-    </svg>
-  );
-}
-
-function PanelConfiguracion() {
-  const [config, setConfig] = useState<ConfiguracionPuntos | null>(null);
-  const [abierto, setAbierto] = useState(false);
-  const [guardando, setGuardando] = useState(false);
-  const [mensaje, setMensaje] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!abierto || config) return;
-    adminFetch('/admin/puntos/configuracion')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => data && setConfig(data));
-  }, [abierto, config]);
-
-  async function guardar(e: React.FormEvent) {
-    e.preventDefault();
-    if (!config) return;
-    setGuardando(true);
-    setMensaje(null);
-    try {
-      const res = await adminFetch('/admin/puntos/configuracion', {
-        method: 'PATCH',
-        body: JSON.stringify(config),
-      });
-      if (!res.ok) throw new Error('No se pudo guardar.');
-      setMensaje('Configuración guardada.');
-    } catch {
-      setMensaje('No se pudo guardar la configuración.');
-    } finally {
-      setGuardando(false);
-    }
-  }
-
-  return (
-    <div className="mt-4 rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-      <button
-        type="button"
-        onClick={() => setAbierto((v) => !v)}
-        className="btn-press flex w-full items-center justify-between gap-2 px-4 py-3 text-left"
-      >
-        <span className="flex items-center gap-2 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-          <IconConfig />
-          Programa de fidelidad
-        </span>
-        <span className="text-xs text-zinc-500 dark:text-zinc-400">
-          {abierto ? 'Ocultar' : 'Configurar'}
-        </span>
-      </button>
-
-      {abierto && (
-        <div className="border-t border-zinc-100 px-4 py-4 dark:border-zinc-800">
-          {!config ? (
-            <CargandoSkeleton filas={1} />
-          ) : (
-            <form onSubmit={guardar} className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className="block text-sm font-medium">
-                  Puntos por cada $1.000 gastados
-                </label>
-                <input
-                  type="number"
-                  min={0}
-                  value={config.puntosPor1000Pesos}
-                  onChange={(e) =>
-                    setConfig({ ...config, puntosPor1000Pesos: Number(e.target.value) })
-                  }
-                  className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium">
-                  Valor de cada punto (pesos)
-                </label>
-                <input
-                  type="number"
-                  min={0}
-                  value={config.valorPuntoPesos}
-                  onChange={(e) =>
-                    setConfig({ ...config, valorPuntoPesos: Number(e.target.value) })
-                  }
-                  className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium">
-                  Mínimo de puntos para canjear
-                </label>
-                <input
-                  type="number"
-                  min={0}
-                  value={config.puntosMinimoCanje}
-                  onChange={(e) =>
-                    setConfig({ ...config, puntosMinimoCanje: Number(e.target.value) })
-                  }
-                  className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium">
-                  Vencimiento por inactividad (meses)
-                </label>
-                <input
-                  type="number"
-                  min={0}
-                  value={config.puntosVencimientoMeses}
-                  onChange={(e) =>
-                    setConfig({ ...config, puntosVencimientoMeses: Number(e.target.value) })
-                  }
-                  className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
-                />
-              </div>
-              <div className="flex items-center gap-3 sm:col-span-2">
-                <button
-                  type="submit"
-                  disabled={guardando}
-                  className="btn-press rounded-lg btn-gradient px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
-                >
-                  {guardando ? 'Guardando…' : 'Guardar'}
-                </button>
-                {mensaje && (
-                  <span className="text-sm text-zinc-500 dark:text-zinc-400">{mensaje}</span>
-                )}
-              </div>
-            </form>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
+const NUMERO = new Intl.NumberFormat('es-CO');
 
 export default function AdminClientesPage() {
   const { rol } = useRol();
-  const router = useRouter();
-  const [clientes, setClientes] = useState<Cliente[]>([]);
-  const [cargando, setCargando] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [busqueda, setBusqueda] = useState('');
-  const [eliminandoId, setEliminandoId] = useState<string | null>(null);
-  const [errorEliminar, setErrorEliminar] = useState<string | null>(null);
+  const esAdmin = rol === 'admin';
+  const { aviso, mostrar } = useAviso();
+  const [hoy] = useState(hoyBogota);
+
+  const [q, setQ] = useState('');
+  const [segmento, setSegmento] = useState<Segmento>('todos');
+  const [orden, setOrden] = useState<OrdenClientes>('auto');
+  const [pagina, setPagina] = useState(1);
+  const [version, setVersion] = useState(0);
+  const [valorPunto, setValorPunto] = useState<number | null>(null);
+  const [aEliminar, setAEliminar] = useState<ClienteDirectorio | null>(null);
+  const [eliminando, setEliminando] = useState(false);
+  const listaRef = useRef<HTMLDivElement>(null);
+
+  // La búsqueda se envía al servidor con un pequeño debounce (también la
+  // página, para no disparar una consulta por cada tecla).
+  const aplicados = useDebounced(
+    { q: q.trim(), segmento, orden, pagina, version },
+    250,
+  );
+  const ruta = `/admin/clientes/directorio?${new URLSearchParams({
+    q: aplicados.q,
+    segmento: aplicados.segmento,
+    orden: aplicados.orden,
+    pagina: String(aplicados.pagina),
+    por_pagina: String(POR_PAGINA),
+  })}`;
+
+  // `version` sube al eliminar un cliente o reintentar: no viaja en la URL, pero
+  // sí debe volver a disparar la consulta.
+  const clave = `${ruta}|${aplicados.version}`;
+
+  // Se conserva el resultado anterior mientras llega el nuevo: la lista no parpadea.
+  const [resultado, setResultado] = useState<{
+    ruta: string;
+    datos: Directorio | null;
+    fallo: boolean;
+  } | null>(null);
 
   useEffect(() => {
-    setCargando(true);
-    const query = busqueda.trim() ? `?q=${encodeURIComponent(busqueda.trim())}` : '';
-    const timeout = setTimeout(() => {
-      adminFetch(`/admin/clientes${query}`)
-        .then(async (res) => {
-          if (!res.ok) throw new Error('No se pudo cargar la lista de clientes.');
-          setClientes(await res.json());
-        })
-        .catch((err) => setError(err instanceof Error ? err.message : 'Error desconocido.'))
-        .finally(() => setCargando(false));
-    }, 300);
-    return () => clearTimeout(timeout);
-  }, [busqueda]);
+    let vigente = true;
+    adminFetch(ruta)
+      .then((res) => (res.ok ? (res.json() as Promise<Directorio>) : null))
+      .catch(() => null)
+      .then((datos) => {
+        if (!vigente) return;
+        setResultado((previo) => ({
+          ruta: clave,
+          datos: datos ?? previo?.datos ?? null,
+          fallo: datos === null,
+        }));
+      });
+    return () => {
+      vigente = false;
+    };
+    // `ruta` ya está contenida en `clave`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clave]);
 
-  async function eliminarCliente(c: Cliente) {
-    const nombreCompleto = `${c.nombre} ${c.apellido ?? ''}`.trim();
-    if (
-      !window.confirm(
-        `¿Eliminar a "${nombreCompleto}"? Esto solo funciona si el cliente no tiene pedidos registrados.`,
-      )
-    ) {
-      return;
-    }
-    setErrorEliminar(null);
-    setEliminandoId(c.id);
+  const datos = resultado?.datos ?? null;
+  const actualizando = resultado?.ruta !== clave;
+  const primeraCarga = resultado === null;
+  const fallo = resultado?.fallo === true && !actualizando;
+  const terminos = terminosBusqueda(aplicados.q);
+
+  function cambiarQ(valor: string) {
+    setQ(valor);
+    setPagina(1);
+  }
+  function cambiarSegmento(valor: Segmento) {
+    setSegmento(valor);
+    setPagina(1);
+  }
+  function cambiarOrden(valor: OrdenClientes) {
+    setOrden(valor);
+    setPagina(1);
+  }
+  function irAPagina(valor: number) {
+    setPagina(valor);
+    listaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  function limpiar() {
+    setQ('');
+    setSegmento('todos');
+    setPagina(1);
+  }
+
+  async function confirmarEliminar() {
+    const cliente = aEliminar;
+    if (!cliente) return;
+    setEliminando(true);
     try {
-      const res = await adminFetch(`/admin/clientes/${c.id}`, { method: 'DELETE' });
+      const res = await adminFetch(`/admin/clientes/${cliente.id}`, {
+        method: 'DELETE',
+      });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
-        throw new Error(body?.message ?? 'No se pudo eliminar el cliente.');
+        throw new Error(
+          typeof body?.message === 'string'
+            ? body.message
+            : 'No se pudo eliminar el cliente.',
+        );
       }
-      setClientes((prev) => prev.filter((x) => x.id !== c.id));
+      mostrar(`${nombreCompleto(cliente)} eliminado`);
+      setVersion((v) => v + 1);
     } catch (err) {
-      setErrorEliminar(err instanceof Error ? err.message : 'No se pudo eliminar el cliente.');
+      mostrar(
+        err instanceof Error ? err.message : 'No se pudo eliminar el cliente.',
+        true,
+      );
     } finally {
-      setEliminandoId(null);
+      setEliminando(false);
+      setAEliminar(null);
     }
   }
 
+  const hayFiltros = q.trim() !== '' || segmento !== 'todos';
+
   return (
     <div className="p-4 sm:p-6 lg:p-8">
-      <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">Clientes</h1>
-      <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-        Historial de compras y saldo de puntos de fidelidad.
-      </p>
-
-      {rol === 'admin' && <PanelConfiguracion />}
-
-      <input
-        value={busqueda}
-        onChange={(e) => setBusqueda(e.target.value)}
-        placeholder="Buscar por nombre, apellido o teléfono…"
-        className="mt-4 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
-      />
-
-      {cargando && <CargandoSkeleton filas={5} />}
-      {error && <p className="mt-6 text-sm text-red-600 dark:text-red-400">{error}</p>}
-      {errorEliminar && (
-        <p className="mt-6 text-sm text-red-600 dark:text-red-400">{errorEliminar}</p>
-      )}
-      {!cargando && !error && clientes.length === 0 && (
-        <p className="mt-6 text-sm text-zinc-500 dark:text-zinc-400">
-          {busqueda ? 'No se encontraron clientes.' : 'Todavía no hay clientes registrados.'}
+      <header className="animate-fade-up">
+        <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+          Clientes
+        </h1>
+        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+          Historial de compras y saldo de puntos de fidelidad.
         </p>
+      </header>
+
+      <div className="mt-6">
+        <ResumenClientes
+          resumen={datos?.resumen ?? null}
+          valorPunto={valorPunto}
+        />
+      </div>
+
+      {esAdmin && (
+        <div className="mt-4">
+          <ProgramaFidelidad
+            onConfig={(c) => setValorPunto(c.valorPuntoPesos)}
+            onAviso={mostrar}
+          />
+        </div>
       )}
 
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {clientes.map((c) => (
+      <div className="mt-6">
+        <FiltrosClientes
+          q={q}
+          onQ={cambiarQ}
+          segmento={segmento}
+          onSegmento={cambiarSegmento}
+          orden={orden}
+          onOrden={cambiarOrden}
+          conteos={datos?.conteos ?? null}
+        />
+      </div>
+
+      <div ref={listaRef} className="scroll-mt-20" aria-busy={actualizando}>
+        <p
+          role="status"
+          aria-live="polite"
+          className="mt-5 min-h-5 text-sm text-zinc-500 tabular-nums dark:text-zinc-400"
+        >
+          {datos && (
+            <>
+              <span className="font-bold text-zinc-900 dark:text-zinc-50">
+                {NUMERO.format(datos.total)}
+              </span>{' '}
+              cliente{datos.total === 1 ? '' : 's'}
+              {aplicados.q && <> para “{aplicados.q}”</>}
+            </>
+          )}
+        </p>
+
+        {primeraCarga && (
           <div
-            key={c.id}
-            role="link"
-            tabIndex={0}
-            onClick={() => router.push(`/admin/clientes/${c.id}`)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') router.push(`/admin/clientes/${c.id}`);
-            }}
-            className="card-interactive relative flex cursor-pointer flex-col rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
+            className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
+            aria-hidden="true"
           >
-            {rol === 'admin' && (
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="skeleton h-40 rounded-2xl" />
+            ))}
+          </div>
+        )}
+
+        {fallo && !datos && (
+          <div className="mt-3 rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
+            <p className="font-semibold">
+              No se pudo cargar la lista de clientes.
+            </p>
+            <button
+              type="button"
+              onClick={() => setVersion((v) => v + 1)}
+              className="btn-press mt-3 h-10 rounded-xl border border-red-300 px-4 font-semibold outline-none hover:bg-red-100 focus-visible:ring-2 focus-visible:ring-red-500/60 dark:border-red-800 dark:hover:bg-red-950"
+            >
+              Reintentar
+            </button>
+          </div>
+        )}
+
+        {datos && datos.items.length === 0 && (
+          <div className="animate-fade-up card-gradient mt-3 flex flex-col items-center rounded-3xl border border-dashed border-zinc-300 px-6 py-14 text-center dark:border-zinc-700">
+            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-orange/15 text-brand-orange-700 dark:text-brand-orange">
+              <IconLupa />
+            </span>
+            <p className="mt-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+              {hayFiltros
+                ? 'Ningún cliente coincide'
+                : 'Todavía no hay clientes'}
+            </p>
+            <p className="mt-1 max-w-sm text-sm text-zinc-500 dark:text-zinc-400">
+              {hayFiltros
+                ? 'Revisa la ortografía, prueba con menos palabras o cambia el tipo de cliente.'
+                : 'Los clientes aparecen aquí cuando hacen su primer pedido.'}
+            </p>
+            {hayFiltros && (
               <button
                 type="button"
-                disabled={eliminandoId === c.id}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  eliminarCliente(c);
-                }}
-                title="Eliminar cliente (solo si no tiene pedidos)"
-                className="btn-press absolute top-3 right-3 rounded-md p-1.5 text-zinc-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+                onClick={limpiar}
+                className="btn-gradient btn-press mt-5 h-11 rounded-xl px-5 text-sm font-semibold text-white shadow-md shadow-brand-orange/25 outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/60"
               >
-                <IconPapelera />
+                Limpiar filtros
               </button>
             )}
-            <p className="truncate pr-8 font-semibold text-zinc-900 dark:text-zinc-50">
-              {c.nombre} {c.apellido ?? ''}
-            </p>
-            <p className="mt-0.5 truncate text-xs text-zinc-500 dark:text-zinc-400">
-              {c.telefono ?? 'Sin teléfono'}
-            </p>
-            {c.correo && (
-              <p className="mt-0.5 truncate text-xs text-zinc-500 dark:text-zinc-400">
-                {c.correo}
-              </p>
-            )}
           </div>
-        ))}
+        )}
+
+        {datos && datos.items.length > 0 && (
+          <div
+            key={resultado?.ruta}
+            className={`mt-3 grid grid-cols-1 gap-4 transition-opacity sm:grid-cols-2 xl:grid-cols-3 ${
+              actualizando ? 'opacity-60' : ''
+            }`}
+          >
+            {datos.items.map((c, i) => (
+              <TarjetaCliente
+                key={c.id}
+                cliente={c}
+                hoy={hoy}
+                terminos={terminos}
+                indice={i}
+                puedeEliminar={esAdmin}
+                onEliminar={setAEliminar}
+              />
+            ))}
+          </div>
+        )}
       </div>
+
+      {datos && (
+        <Paginacion
+          pagina={datos.pagina}
+          paginas={datos.paginas}
+          total={datos.total}
+          porPagina={datos.por_pagina}
+          onCambiar={irAPagina}
+        />
+      )}
+
+      {aEliminar && (
+        <ModalConfirmar
+          titulo="¿Eliminar este cliente?"
+          descripcion={
+            <>
+              <span className="font-medium text-zinc-700 dark:text-zinc-300">
+                {nombreCompleto(aEliminar)}
+              </span>{' '}
+              saldrá de la lista de clientes.
+              {aEliminar.total_pedidos > 0 &&
+                (aEliminar.total_pedidos === 1
+                  ? ' Su pedido se conserva en los informes, pero sin vínculo al cliente.'
+                  : ` Sus ${aEliminar.total_pedidos} pedidos se conservan en los informes, pero sin vínculo al cliente.`)}
+              {aEliminar.puntos_actuales > 0 &&
+                ` Perderá sus ${NUMERO.format(aEliminar.puntos_actuales)} puntos.`}{' '}
+              Esta acción no se puede deshacer.
+            </>
+          }
+          textoConfirmar="Eliminar"
+          peligro
+          cargando={eliminando}
+          onConfirmar={confirmarEliminar}
+          onCancelar={() => setAEliminar(null)}
+        />
+      )}
+
+      <AvisoFlotante aviso={aviso} />
     </div>
   );
 }
