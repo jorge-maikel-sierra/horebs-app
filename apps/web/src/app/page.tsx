@@ -10,7 +10,7 @@ import ScrollReveal from '@/components/ScrollReveal';
 import BrasasHorno from '@/components/hero/BrasasHorno';
 import EstadoAbierto from '@/components/hero/EstadoAbierto';
 import PalabraRotativa from '@/components/hero/PalabraRotativa';
-import PizzaGiratoria from '@/components/hero/PizzaGiratoria';
+import ConjuroPizza from '@/components/hero/ConjuroPizza';
 import TituloLetras from '@/components/hero/TituloLetras';
 import { faqJsonLd, jsonLdScript } from '@/lib/json-ld';
 import { FAQS } from '@/lib/faqs';
@@ -42,15 +42,18 @@ function precioDesde(producto: Producto): number | null {
 
 export default async function Home() {
   const destacados = await getDestacados();
+  // La foto del hero es la Especial: la etiqueta la enlaza a su ficha.
+  const especial = destacados.find((p) => /especial/i.test(p.nombre));
+  const precioEspecial = especial ? precioDesde(especial) : null;
 
   return (
     <div>
       <section className="relative flex min-h-[100svh] items-center overflow-hidden bg-brand-navy px-6 py-8 text-white sm:py-20">
         <div className="hero-mesh" />
         <div aria-hidden="true" className="hero-horno" />
-        <BrasasHorno />
+        <BrasasHorno retrasoMs={3200} />
         <div className="relative mx-auto grid w-full max-w-6xl items-center gap-6 sm:gap-10 lg:grid-cols-[1.05fr_1fr] lg:gap-6">
-          <div className="order-2 text-center lg:order-1 lg:text-left">
+          <div className="relative z-10 order-2 text-center lg:order-1 lg:text-left">
             <div className="animate-fade-up">
               <EstadoAbierto />
             </div>
@@ -89,7 +92,28 @@ export default async function Home() {
             </div>
           </div>
           <div className="order-1 lg:order-2">
-            <PizzaGiratoria />
+            <ConjuroPizza
+              insignia={
+                especial && (
+                  <Link
+                    href={especial.slug ? `/menu/${especial.slug}` : '/catalogo'}
+                    className="btn-press block rounded-2xl border border-white/20 bg-brand-navy/80 px-3.5 py-1.5 text-left whitespace-nowrap shadow-xl backdrop-blur-md transition hover:border-brand-yellow/60 sm:px-4 sm:py-2.5"
+                  >
+                    <span className="block text-[0.65rem] font-bold tracking-widest text-brand-yellow uppercase sm:text-xs">
+                      Firma de la casa
+                    </span>
+                    <span className="block text-sm font-bold text-white sm:text-base">
+                      {especial.nombre}
+                    </span>
+                    {precioEspecial !== null && (
+                      <span className="hidden text-sm font-semibold text-brand-orange sm:block">
+                        Desde {formatPrecio(precioEspecial)}
+                      </span>
+                    )}
+                  </Link>
+                )
+              }
+            />
           </div>
         </div>
       </section>

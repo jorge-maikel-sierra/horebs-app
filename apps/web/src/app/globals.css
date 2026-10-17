@@ -632,24 +632,6 @@ body {
   animation-delay: 0.95s;
 }
 
-/* Pizza (hero/PizzaGiratoria.tsx): aterriza girando desde arriba. */
-.pizza-aterriza {
-  animation: pizza-aterriza 1.3s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-@keyframes pizza-aterriza {
-  from {
-    opacity: 0;
-    transform: scale(1.35) rotate(-60deg);
-    filter: blur(14px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-    filter: none;
-  }
-}
-
 .pizza-brillo {
   background: radial-gradient(
     circle,
@@ -675,8 +657,124 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .hero-horno,
   .hero-letra,
-  .pizza-aterriza,
   .pizza-brillo {
     animation: none;
+  }
+}
+
+/* ── Conjuro de la pizza (hero/ConjuroPizza.tsx) ────────────────────────
+   Fases en data-fase de la escena, que pone el JS: sin atributo = espera
+   (SSR), "animando" = espiral en curso, "listo" = foto real visible.
+   Si el JS no llega, el failsafe (6 s) muestra todo igual. */
+.conjuro-arco {
+  border-radius: 50% 50% 5% 5% / 40% 40% 4% 4%;
+  /* Sin sombra mientras el arco está vacío: dibujaría una silueta gris. */
+  transition: box-shadow 0.6s ease-out;
+}
+.conjuro-escena[data-fase='listo'] .conjuro-arco {
+  box-shadow: 0 40px 80px -30px rgba(0, 0, 0, 0.75);
+}
+
+.conjuro-foto {
+  opacity: 0;
+  animation: conjuro-aparece 0.5s ease 6s forwards;
+}
+.conjuro-escena[data-fase='animando'] .conjuro-foto {
+  animation: none;
+  opacity: 0;
+}
+.conjuro-escena[data-fase='listo'] .conjuro-foto {
+  animation: conjuro-aparece 0.55s ease-out both;
+}
+
+@keyframes conjuro-aparece {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Marco dorado: se dibuja desde la cúspide mientras baja la estela. */
+.conjuro-trazo {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: conjuro-dibuja 1s ease 6s forwards;
+}
+.conjuro-escena[data-fase='animando'] .conjuro-trazo {
+  animation: conjuro-dibuja 2.7s cubic-bezier(0.45, 0, 0.25, 1) both;
+}
+.conjuro-escena[data-fase='listo'] .conjuro-trazo {
+  animation: none;
+  stroke-dashoffset: 0;
+}
+.conjuro-marco {
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--brand-yellow) 55%, transparent));
+}
+
+@keyframes conjuro-dibuja {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Ken Burns muy lento: la foto respira una vez terminada la entrada. */
+.conjuro-escena[data-fase='listo'] .conjuro-zoom {
+  animation: conjuro-zoom 18s ease-in-out 0.6s infinite alternate;
+}
+
+@keyframes conjuro-zoom {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.07);
+  }
+}
+
+/* Etiqueta del producto: entra cuando la pizza ya está completa. */
+.conjuro-insignia {
+  opacity: 0;
+  animation: conjuro-insignia 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.15) 6.2s both;
+}
+.conjuro-escena[data-fase='animando'] .conjuro-insignia {
+  animation: none;
+  opacity: 0;
+}
+.conjuro-escena[data-fase='listo'] .conjuro-insignia {
+  animation: conjuro-insignia 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.15) 0.2s both;
+}
+
+@keyframes conjuro-insignia {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .conjuro-escena .conjuro-foto,
+  .conjuro-escena[data-fase] .conjuro-foto {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+  .conjuro-escena .conjuro-trazo,
+  .conjuro-escena[data-fase] .conjuro-trazo {
+    animation: none !important;
+    stroke-dashoffset: 0 !important;
+  }
+  .conjuro-escena .conjuro-zoom {
+    animation: none !important;
+  }
+  .conjuro-escena .conjuro-insignia,
+  .conjuro-escena[data-fase] .conjuro-insignia {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
   }
 }

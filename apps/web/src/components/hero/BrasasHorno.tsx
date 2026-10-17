@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { crearSpriteBrillo } from './sprites';
 
 type Brasa = {
   x: number;
@@ -23,7 +24,7 @@ const RADIO_CURSOR = 130;
  * apartan del cursor y la animación se pausa cuando el hero sale de
  * pantalla.
  */
-export default function BrasasHorno() {
+export default function BrasasHorno({ retrasoMs = 0 }: { retrasoMs?: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -34,7 +35,7 @@ export default function BrasasHorno() {
     const reducir = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
-    const sprites = { calida: crearSprite('255, 217, 61'), viva: crearSprite('255, 107, 53') };
+    const sprites = { calida: crearSpriteBrillo('255, 217, 61'), viva: crearSpriteBrillo('255, 107, 53') };
 
     let ancho = 0;
     let alto = 0;
@@ -148,16 +149,19 @@ export default function BrasasHorno() {
         raf = requestAnimationFrame(bucle);
       }
     });
-    observador.observe(canvas);
+    // Con retraso, las brasas esperan a que termine la entrada de la pizza:
+    // así no compiten por el hilo principal durante la animación del hero.
+    const arranque = window.setTimeout(() => observador.observe(canvas), retrasoMs);
 
     return () => {
+      window.clearTimeout(arranque);
       observador.disconnect();
       cancelAnimationFrame(raf);
       window.removeEventListener('resize', redimensionar);
       window.removeEventListener('pointermove', moverCursor);
       document.removeEventListener('pointerleave', soltarCursor);
     };
-  }, []);
+  }, [retrasoMs]);
 
   return (
     <canvas
@@ -166,20 +170,4 @@ export default function BrasasHorno() {
       aria-hidden="true"
     />
   );
-}
-
-function crearSprite(rgb: string): HTMLCanvasElement {
-  const lado = 32;
-  const sprite = document.createElement('canvas');
-  sprite.width = lado;
-  sprite.height = lado;
-  const ctx = sprite.getContext('2d')!;
-  const gradiente = ctx.createRadialGradient(lado / 2, lado / 2, 0, lado / 2, lado / 2, lado / 2);
-  gradiente.addColorStop(0, 'rgba(255, 250, 235, 1)');
-  gradiente.addColorStop(0.18, `rgba(${rgb}, 0.95)`);
-  gradiente.addColorStop(0.45, `rgba(${rgb}, 0.3)`);
-  gradiente.addColorStop(1, `rgba(${rgb}, 0)`);
-  ctx.fillStyle = gradiente;
-  ctx.fillRect(0, 0, lado, lado);
-  return sprite;
 }
