@@ -49,10 +49,10 @@ export default function EstadoAbierto() {
     <p className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-medium sm:px-3.5 sm:text-sm text-zinc-100 backdrop-blur-sm">
       <span aria-hidden="true" className="relative flex h-2.5 w-2.5">
         {abierto && (
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-70" />
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success-400 opacity-70" />
         )}
         <span
-          className={`relative inline-flex h-2.5 w-2.5 rounded-full ${abierto ? 'bg-emerald-400' : 'bg-brand-yellow'}`}
+          className={`relative inline-flex h-2.5 w-2.5 rounded-full ${abierto ? 'bg-success-400' : 'bg-brand-yellow'}`}
         />
       </span>
       {estado ? TEXTOS[estado] : NEGOCIO.horario}
