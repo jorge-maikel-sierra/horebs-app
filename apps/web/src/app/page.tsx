@@ -7,7 +7,11 @@ import ClientesFelicesSection from '@/components/ClientesFelicesSection';
 import FaqSection from '@/components/FaqSection';
 import WhatsappCta from '@/components/WhatsappCta';
 import ScrollReveal from '@/components/ScrollReveal';
-import HeroEffect from '@/components/HeroEffect';
+import BrasasHorno from '@/components/hero/BrasasHorno';
+import EstadoAbierto from '@/components/hero/EstadoAbierto';
+import PalabraRotativa from '@/components/hero/PalabraRotativa';
+import PizzaGiratoria from '@/components/hero/PizzaGiratoria';
+import TituloLetras from '@/components/hero/TituloLetras';
 import { faqJsonLd, jsonLdScript } from '@/lib/json-ld';
 import { FAQS } from '@/lib/faqs';
 
@@ -41,30 +45,51 @@ export default async function Home() {
 
   return (
     <div>
-      <section className="relative flex min-h-[100svh] flex-col items-center justify-center overflow-hidden bg-brand-navy px-6 py-16 text-center text-white sm:min-h-[88vh] sm:py-24">
+      <section className="relative flex min-h-[100svh] items-center overflow-hidden bg-brand-navy px-6 py-8 text-white sm:py-20">
         <div className="hero-mesh" />
-        <HeroEffect />
-        <div className="relative">
-          <h1 className="animate-fade-up text-5xl font-extrabold sm:text-6xl lg:text-7xl">
-            {NEGOCIO.nombre}
-          </h1>
-          <p className="animate-fade-up delay-1 mx-auto mt-4 max-w-xl text-lg text-zinc-200 sm:text-xl">
-            Pizza artesanal, masa dorada y crujiente, recién horneada en
-            Riohacha. Pedí online o directo por WhatsApp.
-          </p>
-          <div className="animate-fade-up delay-2 mt-8 flex flex-wrap items-center justify-center gap-4">
-            <Link
-              href="/catalogo"
-              className="btn-press rounded-lg btn-gradient px-6 py-3 font-semibold text-white transition hover:opacity-90"
-            >
-              Ver catálogo
-            </Link>
-            <WhatsappCta
-              href={whatsappUrl('¡Hola! Quiero hacer un pedido.')}
-              className="btn-press rounded-lg border border-white px-6 py-3 font-semibold text-white transition hover:bg-white hover:text-brand-navy"
-            >
-              Pedir por WhatsApp
-            </WhatsappCta>
+        <div aria-hidden="true" className="hero-horno" />
+        <BrasasHorno />
+        <div className="relative mx-auto grid w-full max-w-6xl items-center gap-6 sm:gap-10 lg:grid-cols-[1.05fr_1fr] lg:gap-6">
+          <div className="order-2 text-center lg:order-1 lg:text-left">
+            <div className="animate-fade-up">
+              <EstadoAbierto />
+            </div>
+            <TituloLetras
+              texto={NEGOCIO.nombre}
+              destacar="Horebs"
+              className="mt-4 text-[2.9rem] leading-none font-extrabold tracking-tight sm:mt-5 sm:text-6xl lg:text-7xl xl:text-8xl"
+            />
+            <p className="animate-fade-up delay-3 mt-3 text-xl font-bold sm:mt-4 sm:text-3xl">
+              Pizza{' '}
+              <PalabraRotativa
+                palabras={[
+                  'recién horneada',
+                  'dorada y crujiente',
+                  'a domicilio',
+                ]}
+              />
+            </p>
+            <p className="animate-fade-up delay-4 mx-auto mt-3 max-w-xl text-base text-zinc-200 sm:mt-4 sm:text-lg lg:mx-0">
+              Pizza artesanal hecha en Riohacha, con la masa dorada y crujiente
+              de siempre. Pedí online o directo por WhatsApp.
+            </p>
+            <div className="hero-ctas animate-fade-up mt-6 flex sm:mt-8 flex-wrap items-center justify-center gap-4 lg:justify-start">
+              <Link
+                href="/catalogo"
+                className="btn-press rounded-lg btn-gradient px-6 py-3 font-semibold text-white transition hover:opacity-90"
+              >
+                Ver catálogo
+              </Link>
+              <WhatsappCta
+                href={whatsappUrl('¡Hola! Quiero hacer un pedido.')}
+                className="btn-press rounded-lg border border-white px-6 py-3 font-semibold text-white transition hover:bg-white hover:text-brand-navy"
+              >
+                Pedir por WhatsApp
+              </WhatsappCta>
+            </div>
+          </div>
+          <div className="order-1 lg:order-2">
+            <PizzaGiratoria />
           </div>
         </div>
       </section>

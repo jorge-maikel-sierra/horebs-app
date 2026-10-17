@@ -2,6 +2,10 @@ export const NEGOCIO = {
   nombre: 'Pizzería Horebs',
   direccion: 'Carrera 7 # 17B - 66, Riohacha, La Guajira',
   horario: 'Lunes a domingo, 4:00pm – 11:00pm',
+  // El mismo horario en horas de 24 h (hora de Colombia), para calcular
+  // si el local está abierto ahora.
+  horaApertura: 16,
+  horaCierre: 23,
   whatsapp: '+57 315 786 1208',
   whatsappNumero: '573157861208',
   sitio: 'pizzeriahorebs.shop',
