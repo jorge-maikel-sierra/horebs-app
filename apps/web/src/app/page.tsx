@@ -97,7 +97,7 @@ export default async function Home() {
                     <span className="block text-sm font-bold text-white sm:text-base">
                       {especial.nombre}
                     </span>
-                    {/* brand-orange-400 on purpose: this badge sits on navy in both themes (4.9:1). */}
+                    {/* brand-orange-400 a propósito: la insignia va sobre navy en los dos temas (4.9:1). */}
                     {precioEspecial !== null && (
                       <span className="hidden text-sm font-semibold text-brand-orange-400 sm:block">
                         Desde {formatPrecio(precioEspecial)}
