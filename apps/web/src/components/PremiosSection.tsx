@@ -11,56 +11,82 @@ const PREMIOS = [
   },
 ] as const;
 
-function MedalIcon() {
+// Hojas de una rama de laurel a lo largo de un arco: [x, y, rotación].
+const HOJAS: [number, number, number][] = [
+  [17, 52, -10],
+  [12, 43, -28],
+  [9.5, 33, -45],
+  [10, 23, -62],
+  [13, 14, -80],
+];
+
+/** Rama de laurel; la derecha es la misma espejada. */
+function Laurel({ espejo = false }: { espejo?: boolean }) {
   return (
     <svg
       aria-hidden="true"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.7"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      viewBox="0 0 30 60"
+      className={`h-14 w-7 shrink-0 text-brand-yellow-600 dark:text-brand-yellow-500 ${espejo ? '-scale-x-100' : ''}`}
+      fill="currentColor"
     >
-      <circle cx="12" cy="8" r="6" />
-      <path d="m8.21 13.89-1.21 9.11 5-3 5 3-1.21-9.11" />
+      <path d="M22 58C12 50 7 38 9 24S16 6 20 3" fill="none" stroke="currentColor" strokeWidth="1.2" />
+      {HOJAS.map(([x, y, r]) => (
+        <g key={`${x}-${y}`} transform={`translate(${x} ${y}) rotate(${r})`}>
+          <ellipse cx="-4" cy="0" rx="4.6" ry="1.9" />
+          <ellipse cx="3.8" cy="-1.5" rx="4.2" ry="1.7" transform="rotate(50 3.8 -1.5)" />
+        </g>
+      ))}
     </svg>
   );
 }
 
+/**
+ * Banda de sellos al pie de "Clientes felices": las plataformas que
+ * recomiendan a Horebs, con laureles en vez de una sección propia.
+ */
 export default function PremiosSection() {
   return (
-    <section aria-labelledby="titulo-premios" className="px-6 py-16 text-center">
-      <h2 id="titulo-premios" className="text-2xl font-bold text-zinc-900 sm:text-3xl dark:text-zinc-50">
-        Nos recomiendan
-      </h2>
-      <p className="mx-auto mt-2 max-w-sm text-zinc-600 dark:text-zinc-400">
-        Reconocidos por plataformas de gastronomía en Riohacha.
-      </p>
-      <div className="mx-auto mt-8 grid max-w-sm grid-cols-2 gap-4 sm:gap-6">
-        {PREMIOS.map((premio) => (
-          <a
-            key={premio.nombre}
-            href={premio.href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="card-interactive card-gradient flex flex-col items-center gap-2 rounded-2xl border border-zinc-200 px-4 py-6 sm:px-6 sm:py-8 dark:border-zinc-800"
-          >
-            <span className="btn-gradient flex h-12 w-12 items-center justify-center rounded-full text-white shadow-sm">
-              <MedalIcon />
-            </span>
-            <span className="mt-1 font-semibold text-zinc-900 dark:text-zinc-50">
-              {premio.nombre}
-            </span>
-            <span className="text-xs text-zinc-500 dark:text-zinc-400">
-              {premio.etiqueta}
-            </span>
-            <span className="sr-only"> (se abre en una pestaña nueva)</span>
-          </a>
-        ))}
+    <div
+      aria-labelledby="titulo-premios"
+      role="group"
+      className="mx-auto mt-20 flex max-w-6xl flex-col items-center gap-8 rounded-[2rem] border border-[var(--carta-linea)] bg-[var(--carta-tarjeta)] px-6 py-10 text-center sm:px-10 lg:flex-row lg:justify-between lg:text-left"
+    >
+      <div>
+        <h3
+          id="titulo-premios"
+          className="font-display text-2xl text-zinc-900 sm:text-3xl dark:text-zinc-50"
+        >
+          También nos recomiendan
+        </h3>
+        <p className="mt-2 text-zinc-600 dark:text-zinc-400">
+          Plataformas de gastronomía de Riohacha.
+        </p>
       </div>
-    </section>
+
+      <ul className="flex flex-wrap items-center justify-center gap-x-10 gap-y-6">
+        {PREMIOS.map((premio) => (
+          <li key={premio.nombre}>
+            <a
+              href={premio.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex items-center gap-1 rounded-2xl px-2 py-1"
+            >
+              <Laurel />
+              <span className="px-1 text-center">
+                <span className="font-display block text-xl leading-tight text-zinc-900 transition-colors group-hover:text-accent-ink dark:text-zinc-50">
+                  {premio.nombre}
+                </span>
+                <span className="mt-1 block text-[0.65rem] font-semibold tracking-[0.18em] text-zinc-500 uppercase dark:text-zinc-400">
+                  {premio.etiqueta}
+                </span>
+              </span>
+              <Laurel espejo />
+              <span className="sr-only"> (se abre en una pestaña nueva)</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

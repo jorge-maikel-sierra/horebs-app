@@ -30,3 +30,6 @@ export const NEGOCIO = {
 export function whatsappUrl(mensaje: string) {
   return `https://wa.me/${NEGOCIO.whatsappNumero}?text=${encodeURIComponent(mensaje)}`;
 }
+
+/** Abre Google Maps con la ruta al local desde donde esté el cliente. */
+export const URL_COMO_LLEGAR = `https://www.google.com/maps/search/?api=1&query=${NEGOCIO.latitud},${NEGOCIO.longitud}`;

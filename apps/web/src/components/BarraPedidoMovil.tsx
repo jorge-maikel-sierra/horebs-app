@@ -6,29 +6,33 @@ import { whatsappUrl } from '@/lib/negocio';
 import WhatsappCta from '@/components/WhatsappCta';
 
 /**
- * Barra fija abajo, solo en mobile, con los dos caminos para pedir. Aparece
- * cuando el hero (y sus CTA) ya salió de pantalla, para que el pedido quede
- * siempre a un toque en una home de varias pantallas de alto. En desktop
- * no hace falta: el header ya tiene Catálogo y Carrito a la vista.
+ * Barra fija abajo, solo en mobile, con los dos caminos para pedir. Se
+ * muestra mientras no esté en pantalla ninguna de las secciones que ya
+ * tienen sus propios CTA de pedido (ocultarEn: ids del hero y del cierre)
+ * ni el footer, para que el pedido quede siempre a un toque sin repetirse.
+ * En desktop no hace falta: el header ya tiene Catálogo y Carrito.
  */
-export default function BarraPedidoMovil({ idHero }: { idHero: string }) {
+export default function BarraPedidoMovil({ ocultarEn }: { ocultarEn: string[] }) {
   const [visible, setVisible] = useState(false);
 
+  const clave = ocultarEn.join(',');
+
   useEffect(() => {
-    const hero = document.getElementById(idHero);
-    if (!hero) return;
-    // Se oculta otra vez al llegar al footer: ahí ya están los contactos y
-    // la barra taparía su última línea.
-    const footer = document.querySelector('footer');
+    // El footer también cuenta: ahí ya están los contactos y la barra
+    // taparía su última línea.
+    const objetivos = [
+      ...clave.split(',').map((id) => document.getElementById(id)),
+      document.querySelector('footer'),
+    ].filter((el): el is HTMLElement => el !== null);
+    if (objetivos.length === 0) return;
     const enPantalla = new Map<Element, boolean>();
     const observer = new IntersectionObserver((entries) => {
       for (const e of entries) enPantalla.set(e.target, e.isIntersecting);
-      setVisible(!enPantalla.get(hero) && !(footer && enPantalla.get(footer)));
+      setVisible(objetivos.every((el) => enPantalla.get(el) === false));
     });
-    observer.observe(hero);
-    if (footer) observer.observe(footer);
+    for (const el of objetivos) observer.observe(el);
     return () => observer.disconnect();
-  }, [idHero]);
+  }, [clave]);
 
   return (
     <div

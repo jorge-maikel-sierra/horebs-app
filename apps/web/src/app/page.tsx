@@ -1,12 +1,15 @@
-import Image from 'next/image';
 import Link from 'next/link';
 import { NEGOCIO, whatsappUrl } from '@/lib/negocio';
 import { formatPrecio } from '@/lib/formato';
-import PremiosSection from '@/components/PremiosSection';
 import ClientesFelicesSection from '@/components/ClientesFelicesSection';
 import FaqSection from '@/components/FaqSection';
 import WhatsappCta from '@/components/WhatsappCta';
 import BarraPedidoMovil from '@/components/BarraPedidoMovil';
+import FirmasCarta, {
+  precioDesde,
+  type ProductoDestacado,
+} from '@/components/home/FirmasCarta';
+import CierrePedido from '@/components/home/CierrePedido';
 import ScrollReveal from '@/components/ScrollReveal';
 import BrasasHorno from '@/components/hero/BrasasHorno';
 import EstadoAbierto from '@/components/hero/EstadoAbierto';
@@ -16,29 +19,13 @@ import TituloLetras from '@/components/hero/TituloLetras';
 import { faqJsonLd, jsonLdScript } from '@/lib/json-ld';
 import { FAQS } from '@/lib/faqs';
 
-type Producto = {
-  id: string;
-  nombre: string;
-  descripcion: string | null;
-  imagen_url: string | null;
-  slug: string | null;
-  variantes: { precio: number; precio_oferta: number | null }[];
-};
-
-async function getDestacados(): Promise<Producto[]> {
+async function getDestacados(): Promise<ProductoDestacado[]> {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
   const res = await fetch(`${apiUrl}/catalogo/productos?destacado=true`, {
     cache: 'no-store',
   });
   if (!res.ok) return [];
   return res.json();
-}
-
-function precioDesde(producto: Producto): number | null {
-  if (producto.variantes.length === 0) return null;
-  return Math.min(
-    ...producto.variantes.map((v) => v.precio_oferta ?? v.precio),
-  );
 }
 
 export default async function Home() {
@@ -124,91 +111,25 @@ export default async function Home() {
         </div>
       </section>
 
-      {destacados.length > 0 && (
-        <section aria-labelledby="titulo-firmas" className="mx-auto max-w-4xl px-6 py-12">
-          <h2 id="titulo-firmas" className="text-center text-2xl font-bold text-zinc-900 sm:text-3xl dark:text-zinc-50">
-            Nuestras firmas de la casa
-          </h2>
-          <div className="mt-6 grid gap-6 sm:grid-cols-2">
-            {destacados.map((p, i) => {
-              const desde = precioDesde(p);
-              return (
-                <Link
-                  key={p.id}
-                  href={p.slug ? `/menu/${p.slug}` : '/catalogo'}
-                  className={`card-interactive card-gradient-featured group animate-fade-up overflow-hidden rounded-2xl border border-brand-orange/30 ${i % 2 === 1 ? 'delay-1' : ''}`}
-                >
-                  {p.imagen_url && (
-                    <div className="relative h-48 w-full overflow-hidden">
-                      <Image
-                        src={p.imagen_url}
-                        alt={`${p.nombre} a domicilio en Riohacha`}
-                        fill
-                        sizes="(min-width: 640px) 420px, 100vw"
-                        className="object-cover transition-transform duration-500 group-hover:scale-110"
-                      />
-                    </div>
-                  )}
-                  <div className="p-4">
-                    <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-                      {p.nombre}
-                    </h3>
-                    {p.descripcion && (
-                      <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                        {p.descripcion}
-                      </p>
-                    )}
-                    {desde !== null && (
-                      <p className="mt-2 font-semibold text-accent-ink">
-                        Desde {formatPrecio(desde)}
-                      </p>
-                    )}
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-          <div className="mt-8 text-center">
-            <Link
-              href="/catalogo"
-              className="btn-press inline-flex items-center gap-1.5 rounded-lg border border-zinc-300 px-5 py-2.5 font-semibold text-zinc-900 transition-colors hover:border-accent-ink hover:text-accent-ink dark:border-zinc-700 dark:text-zinc-50"
-            >
-              Ver todo el menú
-              <span aria-hidden="true">→</span>
-            </Link>
-          </div>
-        </section>
-      )}
+      {/* Todo lo de abajo del hero es "la carta de la casa": papel cálido en
+          claro, tinta de horno en oscuro, con grano encima. */}
+      <div className="carta">
+        <FirmasCarta productos={destacados} />
+        <ScrollReveal>
+          <ClientesFelicesSection />
+        </ScrollReveal>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: jsonLdScript(faqJsonLd(FAQS)) }}
+        />
+        <ScrollReveal>
+          <FaqSection />
+        </ScrollReveal>
+      </div>
 
-      <ScrollReveal>
-        <ClientesFelicesSection />
-      </ScrollReveal>
-      <ScrollReveal>
-        <PremiosSection />
-      </ScrollReveal>
+      <CierrePedido />
 
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: jsonLdScript(faqJsonLd(FAQS)) }}
-      />
-      <ScrollReveal className="border-t border-zinc-200 dark:border-zinc-800">
-        <FaqSection />
-      </ScrollReveal>
-
-      <ScrollReveal className="border-t border-zinc-200 px-6 py-10 text-center dark:border-zinc-800">
-        <p className="font-semibold text-zinc-900 dark:text-zinc-50">
-          {NEGOCIO.direccion}
-        </p>
-        <p className="mt-1 text-zinc-600 dark:text-zinc-400">{NEGOCIO.horario}</p>
-        <Link
-          href="/contacto"
-          className="mt-3 inline-block text-sm font-medium text-accent-ink underline underline-offset-2 transition-colors hover:no-underline"
-        >
-          Ver mapa y datos de contacto
-        </Link>
-      </ScrollReveal>
-
-      <BarraPedidoMovil idHero="inicio" />
+      <BarraPedidoMovil ocultarEn={['inicio', 'pedir']} />
     </div>
   );
 }

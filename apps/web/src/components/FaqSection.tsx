@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { whatsappUrl } from '@/lib/negocio';
+import { NEGOCIO, whatsappUrl } from '@/lib/negocio';
 import { FAQS, PREGUNTAS_DESTACADAS } from '@/lib/faqs';
 import WhatsappCta from '@/components/WhatsappCta';
 
@@ -10,97 +10,128 @@ export default function FaqSection() {
   const [verTodas, setVerTodas] = useState(false);
 
   return (
-    <section aria-labelledby="titulo-faq" className="px-6 py-16">
-      <div className="mx-auto max-w-2xl">
-        <h2 id="titulo-faq" className="text-center text-2xl font-bold text-zinc-900 sm:text-3xl dark:text-zinc-50">
-          Preguntas frecuentes
-        </h2>
-        <p className="mx-auto mt-2 max-w-md text-center text-zinc-600 dark:text-zinc-400">
-          Lo que más nos preguntan antes de pedir.
-        </p>
+    <section
+      aria-labelledby="titulo-faq"
+      className="border-t border-[var(--carta-linea)] px-6 py-24 sm:py-32"
+    >
+      <div className="mx-auto grid max-w-6xl gap-14 lg:grid-cols-12 lg:gap-16">
+        <div className="lg:col-span-5">
+          <div className="lg:sticky lg:top-32">
+            <p className="flex items-center gap-3 text-xs font-semibold tracking-[0.25em] text-accent-ink uppercase">
+              Antes de pedir
+              <span aria-hidden="true" className="h-px w-8 bg-current opacity-50" />
+            </p>
+            <h2
+              id="titulo-faq"
+              className="font-display mt-5 text-balance text-4xl leading-[1.05] text-zinc-900 sm:text-5xl dark:text-zinc-50"
+            >
+              Preguntas frecuentes
+            </h2>
+            <p className="mt-5 max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
+              Domicilio, pagos y horarios: lo que más nos preguntan antes de
+              hacer un pedido.
+            </p>
 
-        <div className="mt-8 space-y-3">
-          {FAQS.map((faq, i) => {
-            const abiertaActual = abierta === i;
-            const idPanel = `faq-respuesta-${i}`;
-            return (
-              <div
-                key={faq.pregunta}
-                // Las no destacadas quedan en el HTML (el JSON-LD de FAQ de la
-                // home las declara) pero ocultas hasta "Ver las N preguntas".
-                hidden={!verTodas && i >= PREGUNTAS_DESTACADAS}
-                className="card-gradient overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800"
+            <div className="mt-10 max-w-md rounded-3xl border border-[var(--carta-linea)] bg-[var(--carta-tarjeta)] p-6">
+              <p className="font-display text-xl text-zinc-900 dark:text-zinc-50">
+                ¿Tienes otra duda?
+              </p>
+              <p className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+                Escríbenos y te respondemos por WhatsApp al {NEGOCIO.whatsapp}.
+              </p>
+              <WhatsappCta
+                href={whatsappUrl('¡Hola! Tengo una pregunta.')}
+                className="btn-press mt-5 inline-flex items-center gap-2 rounded-full bg-brand-navy px-5 py-2.5 text-sm font-semibold text-white transition hover:brightness-125"
               >
-                <button
-                  type="button"
-                  onClick={() => setAbierta(abiertaActual ? null : i)}
-                  aria-expanded={abiertaActual}
-                  aria-controls={idPanel}
-                  className="btn-press flex w-full items-center justify-between gap-4 px-5 py-4 text-left font-semibold text-zinc-900 dark:text-zinc-50"
-                >
-                  {faq.pregunta}
-                  <svg
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                    className={`shrink-0 text-accent-ink transition-transform duration-300 motion-reduce:transition-none ${
-                      abiertaActual ? 'rotate-180' : ''
-                    }`}
-                  >
-                    <path d="m6 9 6 6 6-6" />
-                  </svg>
-                </button>
-                <div
-                  id={idPanel}
-                  // Cerrada sigue en el DOM para animar la altura; inert la
-                  // saca del árbol de accesibilidad y del orden de Tab.
-                  inert={!abiertaActual}
-                  className={`grid transition-all duration-300 ease-out motion-reduce:transition-none ${
-                    abiertaActual ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
-                  }`}
-                >
-                  <div className="overflow-hidden">
-                    <p className="px-5 pb-4 text-sm text-zinc-600 dark:text-zinc-400">
-                      {faq.respuesta}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+                Escríbenos por WhatsApp
+                <span aria-hidden="true">→</span>
+              </WhatsappCta>
+            </div>
+          </div>
         </div>
 
-        {FAQS.length > PREGUNTAS_DESTACADAS && (
-          <div className="mt-4 flex justify-center">
+        <div className="lg:col-span-7">
+          <ul className="border-t border-[var(--carta-linea)]">
+            {FAQS.map((faq, i) => {
+              const abiertaActual = abierta === i;
+              const idPanel = `faq-respuesta-${i}`;
+              return (
+                <li
+                  key={faq.pregunta}
+                  // Las no destacadas quedan en el HTML (el JSON-LD de FAQ de la
+                  // home las declara) pero ocultas hasta "Ver las N preguntas".
+                  hidden={!verTodas && i >= PREGUNTAS_DESTACADAS}
+                  className="border-b border-[var(--carta-linea)]"
+                >
+                  <h3>
+                    <button
+                      type="button"
+                      onClick={() => setAbierta(abiertaActual ? null : i)}
+                      aria-expanded={abiertaActual}
+                      aria-controls={idPanel}
+                      className="group flex w-full items-baseline gap-5 py-6 text-left"
+                    >
+                      <span
+                        aria-hidden="true"
+                        className="font-display w-7 shrink-0 text-sm text-accent-ink tabular-nums"
+                      >
+                        {String(i + 1).padStart(2, '0')}
+                      </span>
+                      <span className="flex-1 text-lg font-semibold text-zinc-900 transition-colors group-hover:text-accent-ink dark:text-zinc-50">
+                        {faq.pregunta}
+                      </span>
+                      <span
+                        aria-hidden="true"
+                        className={`flex h-8 w-8 shrink-0 translate-y-1 items-center justify-center rounded-full border transition-colors ${
+                          abiertaActual
+                            ? 'border-transparent bg-brand-orange-700 text-white'
+                            : 'border-[var(--carta-linea)] text-zinc-500 dark:text-zinc-400'
+                        }`}
+                      >
+                        <svg
+                          viewBox="0 0 24 24"
+                          className="faq-signo h-4 w-4"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                        >
+                          <path d="M12 5v14M5 12h14" />
+                        </svg>
+                      </span>
+                    </button>
+                  </h3>
+                  <div
+                    id={idPanel}
+                    // Cerrada sigue en el DOM para animar la altura; inert la
+                    // saca del árbol de accesibilidad y del orden de Tab.
+                    inert={!abiertaActual}
+                    className={`grid transition-all duration-300 ease-out motion-reduce:transition-none ${
+                      abiertaActual ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+                    }`}
+                  >
+                    <div className="overflow-hidden">
+                      <p className="max-w-xl pr-12 pb-7 pl-12 leading-7 text-zinc-600 dark:text-zinc-400">
+                        {faq.respuesta}
+                      </p>
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+
+          {FAQS.length > PREGUNTAS_DESTACADAS && (
             <button
               type="button"
               onClick={() => setVerTodas((v) => !v)}
               aria-expanded={verTodas}
-              className="btn-press rounded-lg px-4 py-2.5 text-sm font-semibold text-accent-ink transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-900"
+              className="btn-press mt-8 inline-flex items-center gap-2 rounded-full border border-[var(--carta-linea)] bg-[var(--carta-tarjeta)] px-5 py-2.5 text-sm font-semibold text-zinc-900 transition-colors hover:border-accent-ink hover:text-accent-ink dark:text-zinc-50"
             >
-              {verTodas
-                ? 'Ver menos preguntas'
-                : `Ver las ${FAQS.length} preguntas`}
+              {verTodas ? 'Ver menos preguntas' : `Ver las ${FAQS.length} preguntas`}
             </button>
-          </div>
-        )}
-
-        <p className="mt-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
-          ¿Tienes otra duda?{' '}
-          <WhatsappCta
-            href={whatsappUrl('¡Hola! Tengo una pregunta.')}
-            className="font-semibold text-accent-ink underline-offset-2 transition-colors hover:underline"
-          >
-            Escríbenos por WhatsApp
-          </WhatsappCta>
-          .
-        </p>
+          )}
+        </div>
       </div>
     </section>
   );

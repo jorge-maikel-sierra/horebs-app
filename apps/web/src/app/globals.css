@@ -78,12 +78,24 @@
      fondos que no cambian con el tema (el hero navy), sigue usando la
      escala fija. */
   --accent-ink: var(--brand-orange-700);
+
+  /* Home debajo del hero ("la carta de la casa"): papel cálido en claro,
+     tinta de horno en oscuro. */
+  --carta-fondo: hsl(38 52% 97%);
+  --carta-tarjeta: hsl(40 60% 99%);
+  --carta-linea: hsl(30 24% 84%);
+  --carta-grano: 0.06;
 }
 
 :root.dark {
   --background: #0a0a0a;
   --foreground: #ededed;
   --accent-ink: var(--brand-orange-500);
+
+  --carta-fondo: hsl(24 18% 5%);
+  --carta-tarjeta: hsl(24 14% 8%);
+  --carta-linea: hsl(24 10% 17%);
+  --carta-grano: 0.09;
 }
 
 @theme inline {
@@ -144,6 +156,7 @@
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-young-serif), Georgia, serif;
 }
 
 /* Degradado ambiental sutil, compartido por todas las páginas: un halo
@@ -484,35 +497,6 @@ body {
   animation: barra-cargando 1.2s ease-in-out infinite;
 }
 
-/* Carrusel de reseñas de Google — cinta horizontal continua. El contenido
-   se duplica una vez en el marcado y se desliza -50%, así el loop es
-   perfecto (la segunda mitad es idéntica a la primera). Se pausa al pasar
-   el mouse para poder leer, y en reduced-motion se convierte en scroll
-   manual normal. */
-@keyframes marquee {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-50%);
-  }
-}
-.marquee-track {
-  animation: marquee 45s linear infinite;
-}
-/* Pausa al pasar el mouse, al navegar con teclado por las tarjetas y con
-   el botón de pausa (WCAG 2.2.2: todo movimiento de más de 5 s se tiene
-   que poder detener). */
-.marquee-track:hover,
-.marquee-track:focus-within,
-.marquee-pausado .marquee-track {
-  animation-play-state: paused;
-}
-.marquee-fade {
-  mask-image: linear-gradient(to right, transparent, black 6%, black 94%, transparent);
-  -webkit-mask-image: linear-gradient(to right, transparent, black 6%, black 94%, transparent);
-}
-
 /* Buscador de pedidos: entrada escalonada de resultados, menú desplegable y
    resaltado de coincidencias. El retraso sale de --i (índice de la tarjeta),
    acotado en el componente para que listas largas no tarden en aparecer. */
@@ -578,21 +562,6 @@ body {
   .reveal {
     opacity: 1;
     transform: none;
-  }
-  /* Sin movimiento: cinta con scroll manual, sin la copia del loop. El
-     scroll va en el contenedor; antes estaba en la cinta, que no tiene
-     ancho fijo, y las reseñas fuera de pantalla quedaban inalcanzables. */
-  .marquee-track {
-    animation: none;
-  }
-  .marquee-fade {
-    overflow-x: auto;
-    mask-image: none;
-    -webkit-mask-image: none;
-  }
-  .marquee-copia,
-  .marquee-control {
-    display: none;
   }
 }
 
@@ -850,5 +819,112 @@ body {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
+  }
+}
+
+/* ==========================================================================
+   Home: "la carta de la casa" (todo lo que va debajo del hero).
+   Motivos: el arco dorado de la lámpara del hero como marco de foto, hilo
+   dorado como separador, puntos guía de carta impresa en los precios y
+   grano de papel encima de la superficie.
+   ========================================================================== */
+
+.carta {
+  position: relative;
+  isolation: isolate;
+  background-color: var(--carta-fondo);
+}
+/* Grano de papel: ruido SVG fijo, sin imagen externa. */
+.carta::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: var(--carta-grano);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.35 0 0 0 0 0.2 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+}
+
+.hilo-dorado {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--brand-yellow-500) 30%,
+    var(--brand-orange-500) 70%,
+    transparent
+  );
+}
+
+/* Arco con la proporción 4:5: radio horizontal 50% del ancho y vertical 40%
+   del alto = medio círculo exacto arriba. */
+.arco {
+  border-radius: 50% 50% 1.25rem 1.25rem / 40% 40% 1.25rem 1.25rem;
+}
+/* Marco de 1px con el degradado de la lámpara del hero. */
+.arco-marco {
+  padding: 1px;
+  background: linear-gradient(160deg, var(--brand-yellow-500), var(--brand-orange-500) 55%, transparent);
+}
+
+/* Cifra decorativa hueca (N.º de la firma detrás de la foto). */
+.numeral-hueco {
+  color: transparent;
+  -webkit-text-stroke: 1.5px color-mix(in srgb, var(--brand-orange-500) 40%, transparent);
+}
+
+/* Puntos guía entre tamaño y precio, como en una carta impresa. */
+.puntos-guia {
+  flex: 1;
+  min-width: 1.5rem;
+  margin-inline: 0.5rem;
+  border-bottom: 2px dotted color-mix(in srgb, var(--foreground) 22%, transparent);
+  transform: translateY(-0.3em);
+}
+
+/* Entrada escalonada dentro de un ScrollReveal: cada .escalon usa --d. */
+.reveal .escalon {
+  opacity: 0;
+  transform: translateY(24px);
+  transition:
+    opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: calc(var(--d, 0) * 110ms);
+}
+.reveal-visible .escalon {
+  opacity: 1;
+  transform: none;
+}
+
+/* La foto del arco se acerca apenas al pasar por la firma. */
+.firma:hover .firma-foto,
+.firma:focus-within .firma-foto {
+  transform: scale(1.06);
+}
+.firma-foto {
+  transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Acordeón de la FAQ: el + gira a ×. */
+.faq-signo {
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+[aria-expanded='true'] .faq-signo {
+  transform: rotate(135deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal .escalon {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .firma-foto,
+  .faq-signo {
+    transition: none;
+  }
+  .firma:hover .firma-foto,
+  .firma:focus-within .firma-foto {
+    transform: none;
   }
 }

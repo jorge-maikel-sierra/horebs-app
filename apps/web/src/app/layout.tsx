@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 import { GoogleTagManager } from "@next/third-parties/google";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Young_Serif } from "next/font/google";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import { CartProvider } from "@/lib/cart-context";
@@ -36,6 +36,14 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// Serif de display para títulos de sección, precios y cifras: cálida y
+// gruesa, con aire de carta de restaurante. Solo títulos, nunca texto corrido.
+const youngSerif = Young_Serif({
+  variable: "--font-young-serif",
+  weight: "400",
+  subsets: ["latin"],
+});
+
 const THEME_INIT_SCRIPT = `(function () {
   try {
     var stored = localStorage.getItem('theme');
@@ -50,7 +58,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="es"
-      className={`h-full antialiased ${geistSans.variable} ${geistMono.variable}`}
+      className={`h-full antialiased ${geistSans.variable} ${geistMono.variable} ${youngSerif.variable}`}
       suppressHydrationWarning
     >
       {GTM_ID && <GoogleTagManager gtmId={GTM_ID} />}
