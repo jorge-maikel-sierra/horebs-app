@@ -47,7 +47,7 @@ function Firma({ producto, indice }: { producto: ProductoDestacado; indice: numb
         className="firma grid items-center gap-12 lg:grid-cols-12 lg:gap-16"
       >
         <div
-          className={`escalon relative mx-auto w-full max-w-[19rem] sm:max-w-[22rem] lg:col-span-5 lg:max-w-none ${
+          className={`escalon relative mx-auto w-full min-w-0 max-w-[19rem] sm:max-w-[22rem] lg:col-span-5 lg:max-w-none ${
             invertida ? 'lg:order-2' : ''
           }`}
         >
@@ -95,7 +95,7 @@ function Firma({ producto, indice }: { producto: ProductoDestacado; indice: numb
           )}
         </div>
 
-        <div className={`lg:col-span-7 ${invertida ? 'lg:order-1' : ''}`}>
+        <div className={`min-w-0 lg:col-span-7 ${invertida ? 'lg:order-1' : ''}`}>
           <p
             style={escalon(1)}
             className="escalon flex items-center gap-3 text-xs font-semibold tracking-[0.22em] text-accent-ink uppercase"
@@ -126,12 +126,14 @@ function Firma({ producto, indice }: { producto: ProductoDestacado; indice: numb
                 const tamano = v.nombre ? TAMANOS[v.nombre] : undefined;
                 return (
                   <div key={v.id ?? i} className="flex items-baseline">
-                    <dt className="shrink-0">
+                    {/* El tamaño puede partirse en dos líneas en pantallas
+                        muy angostas (320px); el precio nunca se parte. */}
+                    <dt className="min-w-0">
                       <span className="font-semibold text-zinc-900 dark:text-zinc-50">
                         {v.nombre ?? 'Precio'}
                       </span>
                       {tamano && (
-                        <span className="ml-2 text-sm text-zinc-600 dark:text-zinc-400">
+                        <span className="ml-2 inline-block text-sm text-zinc-600 dark:text-zinc-400">
                           {tamano.porciones} porciones · {tamano.cm} cm
                         </span>
                       )}

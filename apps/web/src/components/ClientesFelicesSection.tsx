@@ -171,7 +171,7 @@ export default async function ClientesFelicesSection() {
       className="border-t border-[var(--carta-linea)] px-6 py-24 sm:py-32"
     >
       <div className="mx-auto grid max-w-6xl gap-14 lg:grid-cols-12 lg:gap-16">
-        <div className="lg:col-span-4">
+        <div className="min-w-0 lg:col-span-4">
           <div className="lg:sticky lg:top-32">
             <p className="flex items-center gap-3 text-xs font-semibold tracking-[0.25em] text-accent-ink uppercase">
               Lo que dicen en Google
@@ -217,7 +217,7 @@ export default async function ClientesFelicesSection() {
           </div>
         </div>
 
-        <div className="lg:col-span-8">
+        <div className="min-w-0 lg:col-span-8">
           {destacada ? (
             <>
               <CitaDestacada review={destacada} />
@@ -226,7 +226,7 @@ export default async function ClientesFelicesSection() {
                   role="region"
                   aria-label="Más reseñas"
                   tabIndex={0}
-                  className="-mx-6 mt-6 flex snap-x snap-mandatory gap-4 overflow-x-auto px-6 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 xl:grid-cols-3"
+                  className="relative -mx-6 mt-6 flex snap-x snap-mandatory gap-4 overflow-x-auto px-6 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 xl:grid-cols-3"
                 >
                   {resto.map((r) => (
                     <TarjetaResena key={r.id} review={r} />
