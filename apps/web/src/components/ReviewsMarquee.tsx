@@ -1,9 +1,12 @@
+'use client';
+
+import { useState } from 'react';
 import Image from 'next/image';
 import type { GoogleReview } from '@/lib/google-reviews';
 
 function EstrellasIcon({ rating }: { rating: number }) {
   return (
-    <div className="flex gap-0.5 text-brand-orange" aria-hidden="true">
+    <div className="flex gap-0.5 text-accent-ink" aria-hidden="true">
       {Array.from({ length: 5 }).map((_, i) => (
         <svg
           key={i}
@@ -24,7 +27,7 @@ function EstrellasIcon({ rating }: { rating: number }) {
 function ReviewCard({ review }: { review: GoogleReview }) {
   const iniciales = review.author.charAt(0).toUpperCase();
   return (
-    <div className="card-gradient flex w-72 shrink-0 flex-col gap-3 rounded-2xl border border-zinc-200 p-5 dark:border-zinc-800">
+    <article className="card-gradient flex w-72 shrink-0 flex-col gap-3 rounded-2xl border border-zinc-200 p-5 dark:border-zinc-800">
       <div className="flex items-center gap-3">
         {review.authorPhoto ? (
           <Image
@@ -35,7 +38,7 @@ function ReviewCard({ review }: { review: GoogleReview }) {
             className="h-9 w-9 shrink-0 rounded-full"
           />
         ) : (
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-orange/15 text-sm font-semibold text-brand-orange">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-orange/15 text-sm font-semibold text-accent-ink">
             {iniciales}
           </div>
         )}
@@ -45,7 +48,7 @@ function ReviewCard({ review }: { review: GoogleReview }) {
               href={review.authorProfileUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="block truncate text-sm font-semibold text-zinc-900 transition-colors hover:text-brand-orange dark:text-zinc-50"
+              className="block truncate text-sm font-semibold text-zinc-900 transition-colors hover:text-accent-ink dark:text-zinc-50"
             >
               {review.author}
             </a>
@@ -60,23 +63,44 @@ function ReviewCard({ review }: { review: GoogleReview }) {
         </div>
       </div>
       <EstrellasIcon rating={review.rating} />
+      <p className="sr-only">{Math.round(review.rating)} de 5 estrellas</p>
       <p className="line-clamp-4 text-sm text-zinc-600 dark:text-zinc-400">
         {review.texto}
       </p>
-    </div>
+    </article>
   );
 }
 
 export default function ReviewsMarquee({ reviews }: { reviews: GoogleReview[] }) {
-  // Duplicado para el loop -50% sin salto — ver comentario en globals.css.
-  const track = [...reviews, ...reviews];
+  const [pausado, setPausado] = useState(false);
 
+  // La cinta lleva una copia de las reseñas para el loop -50% sin salto (ver
+  // globals.css). La copia es solo visual: aria-hidden + inert para que los
+  // lectores de pantalla no lean todo dos veces ni el Tab pase por enlaces
+  // repetidos.
   return (
-    <div className="marquee-fade overflow-hidden">
-      <div className="marquee-track flex w-max gap-4">
-        {track.map((review, i) => (
-          <ReviewCard key={`${review.id}-${i}`} review={review} />
-        ))}
+    <div className={pausado ? 'marquee-pausado' : undefined}>
+      <div className="marquee-fade overflow-hidden">
+        <div className="marquee-track flex w-max gap-4">
+          {reviews.map((review) => (
+            <ReviewCard key={review.id} review={review} />
+          ))}
+          <div aria-hidden="true" inert className="marquee-copia flex gap-4">
+            {reviews.map((review) => (
+              <ReviewCard key={`${review.id}-copia`} review={review} />
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="marquee-control mt-3 flex justify-center">
+        <button
+          type="button"
+          onClick={() => setPausado((v) => !v)}
+          aria-pressed={pausado}
+          className="btn-press rounded-full px-3 py-2 text-xs font-medium text-zinc-600 transition-colors hover:text-accent-ink dark:text-zinc-400"
+        >
+          {pausado ? 'Reanudar reseñas' : 'Pausar reseñas'}
+        </button>
       </div>
     </div>
   );

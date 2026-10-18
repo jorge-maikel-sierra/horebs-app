@@ -27,7 +27,7 @@ function suscribir(avisar: () => void) {
 }
 
 const TEXTOS: Record<Estado, string> = {
-  abierto: 'Abierto ahora · pedí hasta las 11:00 pm',
+  abierto: 'Abierto ahora · pide hasta las 11:00 pm',
   antes: 'Hoy abrimos a las 4:00 pm',
   despues: 'Cerrado · mañana abrimos a las 4:00 pm',
 };

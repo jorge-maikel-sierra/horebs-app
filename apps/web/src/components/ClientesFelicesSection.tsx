@@ -25,22 +25,32 @@ function GoogleIcon() {
   );
 }
 
+// Esta sección es de testimonios: muestra solo las reseñas de 4 y 5
+// estrellas. El promedio real y el enlace a todas las reseñas de Google
+// siguen visibles, así que no se oculta nada al que quiera verlas.
+const RATING_MINIMO_TESTIMONIO = 4;
+
 export default async function ClientesFelicesSection() {
-  const { reviews, rating, totalReseñas } = await getGoogleReviews();
+  const datos = await getGoogleReviews();
+  const { rating, totalReseñas } = datos;
+  const reviews = datos.reviews.filter((r) => r.rating >= RATING_MINIMO_TESTIMONIO);
 
   return (
-    <section className="py-16">
+    <section aria-labelledby="titulo-resenas" className="py-16">
       <div className="mx-auto max-w-2xl px-6 text-center">
-        <h2 className="text-2xl font-bold text-zinc-900 sm:text-3xl dark:text-zinc-50">
+        <h2 id="titulo-resenas" className="text-2xl font-bold text-zinc-900 sm:text-3xl dark:text-zinc-50">
           Clientes felices
         </h2>
         <p className="mx-auto mt-3 max-w-md text-zinc-600 dark:text-zinc-400">
-          Nos encanta que vuelvan. Mirá las reseñas reales de nuestros
+          Nos encanta que vuelvan. Mira las reseñas reales de nuestros
           clientes en Google.
         </p>
         {rating !== null && (
           <div className="mt-3 flex items-center justify-center gap-1.5 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-            <span className="text-brand-orange">{rating.toFixed(1)} ★</span>
+            <span className="text-accent-ink">
+              {rating.toFixed(1)} <span aria-hidden="true">★</span>
+              <span className="sr-only"> de 5 estrellas</span>
+            </span>
             {totalReseñas !== null && (
               <span className="font-normal text-zinc-500 dark:text-zinc-400">
                 ({totalReseñas} reseñas en Google)
@@ -62,11 +72,13 @@ export default async function ClientesFelicesSection() {
             >
               <GoogleIcon />
               Ver todas las reseñas
+              <span className="sr-only"> (se abre en Google Maps)</span>
             </a>
           </div>
         </div>
       ) : (
         <div className="card-gradient-featured relative mx-auto mt-8 max-w-2xl overflow-hidden rounded-3xl border border-brand-orange/25 px-8 py-10 text-center shadow-lg shadow-zinc-900/5 dark:shadow-black/30">
+          {/* Decorative quote glyph (aria-hidden), exempt from text contrast. */}
           <span
             aria-hidden="true"
             className="pointer-events-none absolute -top-2 left-6 font-serif text-8xl leading-none text-brand-orange/15 select-none"

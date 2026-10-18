@@ -6,6 +6,7 @@ import PremiosSection from '@/components/PremiosSection';
 import ClientesFelicesSection from '@/components/ClientesFelicesSection';
 import FaqSection from '@/components/FaqSection';
 import WhatsappCta from '@/components/WhatsappCta';
+import BarraPedidoMovil from '@/components/BarraPedidoMovil';
 import ScrollReveal from '@/components/ScrollReveal';
 import BrasasHorno from '@/components/hero/BrasasHorno';
 import EstadoAbierto from '@/components/hero/EstadoAbierto';
@@ -48,7 +49,10 @@ export default async function Home() {
 
   return (
     <div>
-      <section className="relative flex min-h-[100svh] items-center overflow-hidden bg-brand-navy px-6 py-8 text-white sm:py-20">
+      <section
+        id="inicio"
+        aria-label="Inicio"
+        className="superficie-oscura relative flex min-h-[100svh] items-center overflow-hidden bg-brand-navy px-6 py-8 text-white sm:py-20">
         <div className="hero-mesh" />
         <div aria-hidden="true" className="hero-horno" />
         <BrasasHorno retrasoMs={3200} />
@@ -67,25 +71,26 @@ export default async function Home() {
               <PalabraRotativa
                 palabras={[
                   'recién horneada',
-                  'dorada y crujiente',
+                  'dorada y crocante',
                   'a domicilio',
                 ]}
               />
             </p>
             <p className="animate-fade-up delay-4 mx-auto mt-3 max-w-xl text-base text-zinc-200 sm:mt-4 sm:text-lg lg:mx-0">
-              Pizza artesanal hecha en Riohacha, con la masa dorada y crujiente
-              de siempre. Pedí online o directo por WhatsApp.
+              Pizza artesanal hecha en Riohacha, con la masa crocante de
+              siempre y bien cargada de queso. Pide online o directo por
+              WhatsApp.
             </p>
-            <div className="hero-ctas animate-fade-up mt-6 flex sm:mt-8 flex-wrap items-center justify-center gap-4 lg:justify-start">
+            <div className="hero-ctas animate-fade-up mx-auto mt-6 flex max-w-xs flex-col items-stretch gap-3 sm:mt-8 sm:max-w-none sm:flex-row sm:items-center sm:justify-center sm:gap-4 lg:justify-start">
               <Link
                 href="/catalogo"
-                className="btn-press rounded-lg btn-gradient px-6 py-3 font-semibold text-white transition hover:opacity-90"
+                className="btn-press btn-gradient rounded-lg px-6 py-3 text-center font-semibold text-white transition hover:brightness-110"
               >
-                Ver catálogo
+                Pedir online
               </Link>
               <WhatsappCta
                 href={whatsappUrl('¡Hola! Quiero hacer un pedido.')}
-                className="btn-press rounded-lg border border-white px-6 py-3 font-semibold text-white transition hover:bg-white hover:text-brand-navy"
+                className="btn-press rounded-lg border border-white px-6 py-3 text-center font-semibold text-white transition hover:bg-white hover:text-brand-navy"
               >
                 Pedir por WhatsApp
               </WhatsappCta>
@@ -105,8 +110,9 @@ export default async function Home() {
                     <span className="block text-sm font-bold text-white sm:text-base">
                       {especial.nombre}
                     </span>
+                    {/* brand-orange-400 on purpose: this badge sits on navy in both themes (4.9:1). */}
                     {precioEspecial !== null && (
-                      <span className="hidden text-sm font-semibold text-brand-orange sm:block">
+                      <span className="hidden text-sm font-semibold text-brand-orange-400 sm:block">
                         Desde {formatPrecio(precioEspecial)}
                       </span>
                     )}
@@ -119,8 +125,8 @@ export default async function Home() {
       </section>
 
       {destacados.length > 0 && (
-        <section className="mx-auto max-w-4xl px-6 py-12">
-          <h2 className="text-center text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+        <section aria-labelledby="titulo-firmas" className="mx-auto max-w-4xl px-6 py-12">
+          <h2 id="titulo-firmas" className="text-center text-2xl font-bold text-zinc-900 sm:text-3xl dark:text-zinc-50">
             Nuestras firmas de la casa
           </h2>
           <div className="mt-6 grid gap-6 sm:grid-cols-2">
@@ -144,9 +150,6 @@ export default async function Home() {
                     </div>
                   )}
                   <div className="p-4">
-                    <span className="btn-gradient mb-2 inline-block rounded-full px-2.5 py-1 text-xs font-semibold text-white shadow-sm">
-                      Firma de la casa
-                    </span>
                     <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
                       {p.nombre}
                     </h3>
@@ -156,7 +159,7 @@ export default async function Home() {
                       </p>
                     )}
                     {desde !== null && (
-                      <p className="mt-2 font-semibold text-brand-orange">
+                      <p className="mt-2 font-semibold text-accent-ink">
                         Desde {formatPrecio(desde)}
                       </p>
                     )}
@@ -164,6 +167,15 @@ export default async function Home() {
                 </Link>
               );
             })}
+          </div>
+          <div className="mt-8 text-center">
+            <Link
+              href="/catalogo"
+              className="btn-press inline-flex items-center gap-1.5 rounded-lg border border-zinc-300 px-5 py-2.5 font-semibold text-zinc-900 transition-colors hover:border-accent-ink hover:text-accent-ink dark:border-zinc-700 dark:text-zinc-50"
+            >
+              Ver todo el menú
+              <span aria-hidden="true">→</span>
+            </Link>
           </div>
         </section>
       )}
@@ -190,11 +202,13 @@ export default async function Home() {
         <p className="mt-1 text-zinc-600 dark:text-zinc-400">{NEGOCIO.horario}</p>
         <Link
           href="/contacto"
-          className="mt-3 inline-block text-sm text-brand-orange underline transition-colors hover:text-brand-orange/80"
+          className="mt-3 inline-block text-sm font-medium text-accent-ink underline underline-offset-2 transition-colors hover:no-underline"
         >
-          Más datos de contacto
+          Ver mapa y datos de contacto
         </Link>
       </ScrollReveal>
+
+      <BarraPedidoMovil idHero="inicio" />
     </div>
   );
 }

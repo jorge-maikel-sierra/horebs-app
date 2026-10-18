@@ -6,6 +6,10 @@ export const NEGOCIO = {
   // si el local está abierto ahora.
   horaApertura: 16,
   horaCierre: 23,
+  // Costo fijo del domicilio en el checkout web. Debe coincidir con
+  // COSTO_DOMICILIO_DEFAULT de apps/api/src/common/costos.ts, que es el que
+  // realmente se cobra; acá solo se usa para mostrarlo en textos.
+  costoDomicilio: 5000,
   whatsapp: '+57 315 786 1208',
   whatsappNumero: '573157861208',
   sitio: 'pizzeriahorebs.shop',

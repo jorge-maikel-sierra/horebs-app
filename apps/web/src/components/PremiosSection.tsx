@@ -1,12 +1,12 @@
 const PREMIOS = [
   {
     nombre: 'Sluurpy',
-    etiqueta: 'Recomendado 2023',
+    etiqueta: 'Restaurante recomendado',
     href: 'https://co.sluurpy.com/riohacha/restaurante/7921075/pizzeria-horebs',
   },
   {
     nombre: 'Restaurant Guru',
-    etiqueta: 'Recomendado 2023',
+    etiqueta: 'Restaurante recomendado',
     href: 'https://restaurantguru.com/Horebs-Riohacha',
   },
 ] as const;
@@ -14,6 +14,7 @@ const PREMIOS = [
 function MedalIcon() {
   return (
     <svg
+      aria-hidden="true"
       width="24"
       height="24"
       viewBox="0 0 24 24"
@@ -31,21 +32,21 @@ function MedalIcon() {
 
 export default function PremiosSection() {
   return (
-    <section className="px-6 py-16 text-center">
-      <h2 className="text-2xl font-bold text-zinc-900 sm:text-3xl dark:text-zinc-50">
+    <section aria-labelledby="titulo-premios" className="px-6 py-16 text-center">
+      <h2 id="titulo-premios" className="text-2xl font-bold text-zinc-900 sm:text-3xl dark:text-zinc-50">
         Nos recomiendan
       </h2>
       <p className="mx-auto mt-2 max-w-sm text-zinc-600 dark:text-zinc-400">
         Reconocidos por plataformas de gastronomía en Riohacha.
       </p>
-      <div className="mt-8 flex flex-wrap items-center justify-center gap-6">
+      <div className="mx-auto mt-8 grid max-w-sm grid-cols-2 gap-4 sm:gap-6">
         {PREMIOS.map((premio) => (
           <a
             key={premio.nombre}
             href={premio.href}
             target="_blank"
             rel="noopener noreferrer"
-            className="card-interactive card-gradient flex w-44 flex-col items-center gap-2 rounded-2xl border border-zinc-200 px-6 py-8 dark:border-zinc-800"
+            className="card-interactive card-gradient flex flex-col items-center gap-2 rounded-2xl border border-zinc-200 px-4 py-6 sm:px-6 sm:py-8 dark:border-zinc-800"
           >
             <span className="btn-gradient flex h-12 w-12 items-center justify-center rounded-full text-white shadow-sm">
               <MedalIcon />
@@ -56,6 +57,7 @@ export default function PremiosSection() {
             <span className="text-xs text-zinc-500 dark:text-zinc-400">
               {premio.etiqueta}
             </span>
+            <span className="sr-only"> (se abre en una pestaña nueva)</span>
           </a>
         ))}
       </div>
