@@ -111,7 +111,7 @@ export default function InventarioReportesPage() {
                   </li>
                 ))}
               </ul>
-              <Link href="/admin/inventario" className="mt-2 inline-block text-xs text-brand-orange underline">
+              <Link href="/admin/inventario" className="mt-2 inline-block text-xs text-accent-ink underline">
                 Ir a Insumos para ajustar →
               </Link>
             </div>

@@ -24,7 +24,7 @@ export default function GlobalError({
       <body className="flex min-h-screen flex-col items-center justify-center gap-4 px-4 text-center font-sans">
         <h1 className="text-2xl font-bold text-zinc-900">Algo salió mal</h1>
         <p className="text-sm text-zinc-500">
-          Tuvimos un problema para cargar el sitio. Intentá de nuevo en un
+          Tuvimos un problema para cargar el sitio. Intenta de nuevo en un
           momento.
         </p>
         <button

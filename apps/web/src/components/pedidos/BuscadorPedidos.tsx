@@ -579,9 +579,9 @@ export default function BuscadorPedidos({
           aria-controls={`${uid}-ayuda-panel`}
           onClick={() => setVerAyuda((v) => !v)}
           title="Cómo buscar"
-          className={`btn-press flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-zinc-300 bg-white text-zinc-600 shadow-sm transition-colors hover:text-brand-orange-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:text-brand-orange ${FOCO} ${
+          className={`btn-press flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-zinc-300 bg-white text-zinc-600 shadow-sm transition-colors hover:text-accent-ink dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 ${FOCO} ${
             verAyuda
-              ? 'border-brand-orange text-brand-orange-700 dark:text-brand-orange'
+              ? 'border-brand-orange text-accent-ink'
               : ''
           }`}
         >
@@ -687,7 +687,7 @@ export default function BuscadorPedidos({
           onClick={() => setMasFiltros((v) => !v)}
           className={`btn-press inline-flex h-10 items-center gap-2 rounded-xl border px-3.5 text-sm font-semibold transition-colors ${FOCO} ${
             masFiltros || avanzadosActivos > 0
-              ? 'border-brand-orange bg-brand-orange/10 text-brand-orange-700 dark:text-brand-orange'
+              ? 'border-brand-orange bg-brand-orange/10 text-accent-ink'
               : 'border-zinc-300 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300'
           }`}
         >
@@ -732,7 +732,7 @@ export default function BuscadorPedidos({
               onLimpiar();
               inputRef.current?.focus();
             }}
-            className={`inline-flex h-10 items-center rounded-lg px-2 text-sm font-semibold text-brand-orange-700 hover:underline dark:text-brand-orange ${FOCO}`}
+            className={`inline-flex h-10 items-center rounded-lg px-2 text-sm font-semibold text-accent-ink hover:underline ${FOCO}`}
           >
             Limpiar filtros
           </button>

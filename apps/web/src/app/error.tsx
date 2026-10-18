@@ -21,7 +21,7 @@ export default function ErrorBoundary({
         Algo salió mal
       </h1>
       <p className="text-sm text-zinc-500 dark:text-zinc-400">
-        Tuvimos un problema para cargar esta página. Podés intentar de nuevo o
+        Tuvimos un problema para cargar esta página. Puedes intentar de nuevo o
         volver al inicio.
       </p>
       <div className="mt-2 flex gap-3">
@@ -34,7 +34,7 @@ export default function ErrorBoundary({
         </button>
         <Link
           href="/"
-          className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700 hover:border-brand-orange hover:text-brand-orange dark:border-zinc-700 dark:text-zinc-300"
+          className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700 hover:border-accent-ink hover:text-accent-ink dark:border-zinc-700 dark:text-zinc-300"
         >
           Volver al inicio
         </Link>

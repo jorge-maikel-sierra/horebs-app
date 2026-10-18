@@ -230,7 +230,7 @@ export default function AdminClientesPage() {
 
         {datos && datos.items.length === 0 && (
           <div className="animate-fade-up card-gradient mt-3 flex flex-col items-center rounded-3xl border border-dashed border-zinc-300 px-6 py-14 text-center dark:border-zinc-700">
-            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-orange/15 text-brand-orange-700 dark:text-brand-orange">
+            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-orange/15 text-accent-ink">
               <IconLupa />
             </span>
             <p className="mt-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">

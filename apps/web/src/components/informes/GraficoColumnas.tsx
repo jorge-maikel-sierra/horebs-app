@@ -231,7 +231,7 @@ export default function GraficoColumnas({
         type="button"
         onClick={() => setVerTabla((v) => !v)}
         aria-expanded={verTabla}
-        className="mt-1 text-xs font-semibold text-zinc-500 transition-colors hover:text-brand-orange dark:text-zinc-400"
+        className="mt-1 text-xs font-semibold text-zinc-500 transition-colors hover:text-accent-ink dark:text-zinc-400"
       >
         {verTabla ? 'Ocultar tabla' : 'Ver como tabla'}
       </button>

@@ -30,7 +30,7 @@ const FECHA = new Intl.DateTimeFormat('es-CO', {
 });
 
 const PASO =
-  'btn-press flex h-9 w-9 items-center justify-center rounded-xl border border-zinc-300 text-base font-semibold text-zinc-700 outline-none transition-colors hover:border-brand-orange focus-visible:ring-2 focus-visible:ring-brand-orange/60 dark:border-zinc-700 dark:text-zinc-200';
+  'btn-press flex h-9 w-9 items-center justify-center rounded-xl border border-zinc-300 text-base font-semibold text-zinc-700 outline-none transition-colors hover:border-accent-ink focus-visible:ring-2 focus-visible:ring-brand-orange/60 dark:border-zinc-700 dark:text-zinc-200';
 
 function firma(items: ItemEdit[], metodo: string) {
   return JSON.stringify([
@@ -250,7 +250,7 @@ export default function ModalEditarPedido({
               <span className="text-xs font-semibold tracking-wider text-zinc-500 uppercase dark:text-zinc-400">
                 Total
               </span>
-              <span className="text-xl font-extrabold tabular-nums text-brand-orange-700 sm:ml-3 dark:text-brand-orange">
+              <span className="text-xl font-extrabold tabular-nums text-accent-ink sm:ml-3">
                 {formatPrecio(total)}
               </span>
             </p>
@@ -442,7 +442,7 @@ export default function ModalEditarPedido({
                     onClick={() => setCategoriaId(activa ? null : cat.id)}
                     className={`btn-press h-9 rounded-full border px-3.5 text-xs font-semibold transition-colors ${FOCO} ${
                       activa
-                        ? 'border-brand-orange bg-brand-orange/10 text-brand-orange-700 dark:text-brand-orange'
+                        ? 'border-brand-orange bg-brand-orange/10 text-accent-ink'
                         : 'border-zinc-300 text-zinc-600 hover:border-zinc-400 dark:border-zinc-700 dark:text-zinc-300'
                     }`}
                   >
@@ -477,7 +477,7 @@ export default function ModalEditarPedido({
                         >
                           <span
                             aria-hidden="true"
-                            className="text-brand-orange-700 dark:text-brand-orange"
+                            className="text-accent-ink"
                           >
                             +
                           </span>
@@ -571,7 +571,7 @@ export default function ModalEditarPedido({
                       onChange={() => setMetodo(m.valor)}
                       className="peer sr-only"
                     />
-                    <span className="flex h-11 cursor-pointer items-center justify-center rounded-xl border border-zinc-300 text-sm font-semibold text-zinc-700 transition peer-checked:border-brand-orange peer-checked:bg-brand-orange/10 peer-checked:text-brand-orange-700 peer-focus-visible:ring-2 peer-focus-visible:ring-brand-orange/60 dark:border-zinc-700 dark:text-zinc-300 dark:peer-checked:text-brand-orange">
+                    <span className="flex h-11 cursor-pointer items-center justify-center rounded-xl border border-zinc-300 text-sm font-semibold text-zinc-700 transition peer-checked:border-brand-orange peer-checked:bg-brand-orange/10 peer-checked:text-accent-ink peer-focus-visible:ring-2 peer-focus-visible:ring-brand-orange/60 dark:border-zinc-700 dark:text-zinc-300">
                       {m.texto}
                     </span>
                   </label>
@@ -602,7 +602,7 @@ export default function ModalEditarPedido({
                 <dt className="font-semibold text-zinc-800 dark:text-zinc-200">
                   Total
                 </dt>
-                <dd className="font-extrabold tabular-nums text-brand-orange-700 dark:text-brand-orange">
+                <dd className="font-extrabold tabular-nums text-accent-ink">
                   {formatPrecio(total)}
                 </dd>
               </div>

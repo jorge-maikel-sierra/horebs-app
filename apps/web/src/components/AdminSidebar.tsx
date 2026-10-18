@@ -144,7 +144,7 @@ function CampanaAlertas({ total }: { total: number }) {
       title={
         total > 0 ? `${total} alertas pendientes` : 'Sin alertas pendientes'
       }
-      className="btn-press relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-zinc-300 text-zinc-700 transition-colors hover:border-brand-orange hover:text-brand-orange dark:border-zinc-700 dark:text-zinc-300"
+      className="btn-press relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-zinc-300 text-zinc-700 transition-colors hover:border-accent-ink hover:text-accent-ink dark:border-zinc-700 dark:text-zinc-300"
     >
       <IconCampana />
       {total > 0 && (
@@ -376,7 +376,7 @@ function SidebarContenido({
           className={`flex items-center gap-2 px-3 py-1.5 ${colapsado ? 'justify-center px-0' : ''}`}
           title={colapsado ? (email ?? undefined) : undefined}
         >
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-orange/15 text-xs font-semibold text-brand-orange">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-orange/15 text-xs font-semibold text-accent-ink">
             {(email ?? '?').charAt(0).toUpperCase()}
           </span>
           {!colapsado && (
@@ -486,7 +486,7 @@ export default function AdminSidebar() {
           onClick={alternarColapsado}
           aria-label={colapsado ? 'Expandir panel' : 'Colapsar panel'}
           title={colapsado ? 'Expandir panel' : 'Colapsar panel'}
-          className="btn-press absolute top-6 -right-3 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-500 shadow-sm hover:text-brand-orange dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400"
+          className="btn-press absolute top-6 -right-3 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-500 shadow-sm hover:text-accent-ink dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400"
         >
           <span
             className={`transition-transform duration-200 ${colapsado ? '' : 'rotate-180'}`}

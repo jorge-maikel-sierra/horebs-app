@@ -42,7 +42,7 @@ const ESTADO: Record<string, { texto: string; clase: string }> = {
   },
   en_preparacion: {
     texto: 'En preparación',
-    clase: 'bg-brand-orange/15 text-brand-orange-700 dark:text-brand-orange',
+    clase: 'bg-brand-orange/15 text-accent-ink',
   },
 };
 
@@ -75,7 +75,7 @@ function Preferencias({ pedidos }: { pedidos: PedidoCliente[] }) {
             className="inline-flex items-center gap-2 rounded-full bg-brand-orange/10 py-1 pr-1 pl-3 text-sm font-semibold text-zinc-800 dark:text-zinc-100"
           >
             {f.nombre}
-            <span className="rounded-full bg-white px-2 py-0.5 text-xs font-bold tabular-nums text-brand-orange-700 dark:bg-zinc-900 dark:text-brand-orange">
+            <span className="rounded-full bg-white px-2 py-0.5 text-xs font-bold tabular-nums text-accent-ink dark:bg-zinc-900">
               ×{f.cantidad}
             </span>
           </li>
@@ -181,7 +181,7 @@ export default function HistorialPedidos({
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-base font-bold tabular-nums text-brand-orange-700 dark:text-brand-orange">
+                      <p className="text-base font-bold tabular-nums text-accent-ink">
                         {formatPrecio(p.total)}
                       </p>
                       {p.costo_domicilio > 0 && (
@@ -237,7 +237,7 @@ export default function HistorialPedidos({
           <button
             type="button"
             onClick={() => setVisibles((v) => v + POR_LOTE)}
-            className={`btn-press mt-4 h-11 w-full rounded-xl border border-zinc-300 text-sm font-semibold text-zinc-700 transition-colors hover:border-brand-orange dark:border-zinc-700 dark:text-zinc-300 ${FOCO}`}
+            className={`btn-press mt-4 h-11 w-full rounded-xl border border-zinc-300 text-sm font-semibold text-zinc-700 transition-colors hover:border-accent-ink dark:border-zinc-700 dark:text-zinc-300 ${FOCO}`}
           >
             Ver más pedidos ({pedidos.length - visibles} restantes)
           </button>

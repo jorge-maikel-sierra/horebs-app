@@ -51,10 +51,10 @@ const CHIP_BASE =
   'inline-flex h-10 shrink-0 snap-start items-center gap-1.5 rounded-full px-4 text-sm font-medium whitespace-nowrap transition-colors';
 const CHIP_ACTIVO = 'btn-gradient text-white shadow-sm';
 const CHIP_INACTIVO =
-  'border border-zinc-300 bg-white/70 text-zinc-600 hover:border-brand-orange hover:text-brand-orange dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-300';
+  'border border-zinc-300 bg-white/70 text-zinc-600 hover:border-accent-ink hover:text-accent-ink dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-300';
 
 const INPUT_FECHA =
-  '[color-scheme:light] dark:[color-scheme:dark] h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 text-sm text-zinc-700 outline-none transition-colors hover:border-brand-orange focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200';
+  '[color-scheme:light] dark:[color-scheme:dark] h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 text-sm text-zinc-700 outline-none transition-colors hover:border-accent-ink focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200';
 
 export default function FiltroPeriodo<K extends string>({
   presets,
@@ -156,7 +156,7 @@ export default function FiltroPeriodo<K extends string>({
                 Rango personalizado
               </h2>
               <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">
-                Elegí desde y hasta qué día querés ver el informe.
+                Elige desde y hasta qué día quieres ver el informe.
               </p>
 
               <div className="mt-4 grid grid-cols-2 gap-3">

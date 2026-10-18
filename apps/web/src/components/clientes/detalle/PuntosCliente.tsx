@@ -165,7 +165,7 @@ export default function PuntosCliente({
           <button
             type="submit"
             disabled={enviando}
-            className={`btn-press h-11 w-full rounded-xl border border-zinc-300 text-sm font-semibold text-zinc-700 transition-colors hover:border-brand-orange disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-300 ${FOCO}`}
+            className={`btn-press h-11 w-full rounded-xl border border-zinc-300 text-sm font-semibold text-zinc-700 transition-colors hover:border-accent-ink disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-300 ${FOCO}`}
           >
             {enviando ? 'Guardando…' : 'Aplicar ajuste'}
           </button>
@@ -221,7 +221,7 @@ export default function PuntosCliente({
             <button
               type="button"
               onClick={() => setVisibles((v) => v + POR_LOTE)}
-              className={`btn-press mt-2 h-10 w-full rounded-xl text-sm font-semibold text-brand-orange-700 hover:bg-brand-orange/10 dark:text-brand-orange ${FOCO}`}
+              className={`btn-press mt-2 h-10 w-full rounded-xl text-sm font-semibold text-accent-ink hover:bg-brand-orange/10 ${FOCO}`}
             >
               Ver más ({movimientos.length - visibles})
             </button>

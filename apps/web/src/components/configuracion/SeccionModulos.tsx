@@ -66,7 +66,7 @@ export default function SeccionModulos({
               <span
                 className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
                   encendido
-                    ? 'bg-brand-orange/15 text-brand-orange-700 dark:text-brand-orange'
+                    ? 'bg-brand-orange/15 text-accent-ink'
                     : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'
                 }`}
               >

@@ -11,7 +11,7 @@ import { NEGOCIO } from '@/lib/negocio';
 export const metadata: Metadata = {
   title: 'Catálogo | Pizzería Horebs',
   description:
-    'Pizzas, panzerottis y bebidas de Pizzería Horebs en Riohacha. Pedí en línea con entrega a domicilio o retiro en el local.',
+    'Pizzas, panzerottis y bebidas de Pizzería Horebs en Riohacha. Pide en línea con entrega a domicilio o retiro en el local.',
   alternates: { canonical: '/catalogo' },
 };
 
@@ -89,7 +89,7 @@ function ProductoCard({
         {producto.slug ? (
           <Link
             href={`/menu/${producto.slug}`}
-            className="transition-colors hover:text-brand-orange"
+            className="transition-colors hover:text-accent-ink"
           >
             {producto.nombre}
           </Link>
@@ -119,7 +119,7 @@ function ProductoCard({
                       <span className="mr-1.5 text-zinc-500 line-through dark:text-zinc-400">
                         {formatPrecio(v.precio)}
                       </span>
-                      <span className="text-brand-orange">
+                      <span className="text-accent-ink">
                         {formatPrecio(v.precio_oferta)}
                       </span>
                     </>
@@ -199,7 +199,7 @@ export default async function CatalogoPage() {
 
       {destacados.length > 0 && (
         <section className="animate-fade-up delay-1 mt-6">
-          <h2 className="text-xl font-semibold text-brand-orange">
+          <h2 className="text-xl font-semibold text-accent-ink">
             Nuestras firmas de la casa
           </h2>
           <div className="mt-3 grid gap-4 sm:grid-cols-2">

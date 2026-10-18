@@ -19,11 +19,11 @@ export default function RequireRol({
     return (
       <div className="mx-auto max-w-md p-8 text-center">
         <p className="text-zinc-600 dark:text-zinc-400">
-          Necesitás iniciar sesión para ver esta página.
+          Necesitas iniciar sesión para ver esta página.
         </p>
         <Link
           href="/cuenta"
-          className="mt-4 inline-block text-brand-orange underline"
+          className="mt-4 inline-block text-accent-ink underline"
         >
           Ir a iniciar sesión
         </Link>

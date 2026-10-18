@@ -289,7 +289,7 @@ function FilaEmpleado({
             {emp.usuario_id && ' · con cuenta en el sistema'}
           </p>
           {(emp.telefono || emp.correo) && (
-            <p className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-brand-orange">
+            <p className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-accent-ink">
               {emp.telefono && (
                 <a href={`tel:${emp.telefono}`} className="hover:underline">
                   {emp.telefono}
@@ -319,7 +319,7 @@ function FilaEmpleado({
               Desactivar
             </button>
           ) : (
-            <button type="button" onClick={activar} className="text-brand-orange hover:underline">
+            <button type="button" onClick={activar} className="text-accent-ink hover:underline">
               Activar
             </button>
           )}
@@ -437,7 +437,7 @@ function EmpleadosInterno() {
     <div className="p-4 sm:p-6 lg:p-8">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <Link href="/admin/nomina" className="text-sm text-brand-orange hover:underline">
+          <Link href="/admin/nomina" className="text-sm text-accent-ink hover:underline">
             ← Volver a nómina
           </Link>
           <h1 className="mt-1 text-3xl font-semibold text-zinc-900 dark:text-zinc-50">Trabajadores</h1>

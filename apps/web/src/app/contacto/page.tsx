@@ -46,7 +46,7 @@ export default function ContactoPage() {
         Contacto
       </h1>
       <p className="animate-fade-up delay-1 mt-2 text-zinc-600 dark:text-zinc-400">
-        Escribinos, pasá por el local o mirá cómo llegar.
+        Escríbenos, pasa por el local o mira cómo llegar.
       </p>
 
       <div className="animate-fade-up delay-2 mt-8 grid gap-4 sm:grid-cols-3">
@@ -62,7 +62,7 @@ export default function ContactoPage() {
           <p className="mt-3 text-sm font-semibold text-zinc-500 dark:text-zinc-400">
             Dirección
           </p>
-          <p className="mt-0.5 text-zinc-900 transition-colors hover:text-brand-orange dark:text-zinc-50">
+          <p className="mt-0.5 text-zinc-900 transition-colors hover:text-accent-ink dark:text-zinc-50">
             {NEGOCIO.direccion}
           </p>
         </a>
@@ -87,7 +87,7 @@ export default function ContactoPage() {
           <p className="mt-3 text-sm font-semibold text-zinc-500 dark:text-zinc-400">
             WhatsApp
           </p>
-          <p className="mt-0.5 text-zinc-900 transition-colors hover:text-brand-orange dark:text-zinc-50">
+          <p className="mt-0.5 text-zinc-900 transition-colors hover:text-accent-ink dark:text-zinc-50">
             {NEGOCIO.whatsapp}
           </p>
         </WhatsappCta>
@@ -98,7 +98,7 @@ export default function ContactoPage() {
         className="btn-press animate-fade-up delay-3 mt-6 flex items-center justify-center gap-2 rounded-lg bg-[#25D366] py-3 font-semibold text-white shadow-sm transition hover:opacity-90"
       >
         <WhatsappIcon />
-        Escribinos por WhatsApp
+        Escríbenos por WhatsApp
       </WhatsappCta>
 
       <ScrollReveal className="mt-8 overflow-hidden rounded-2xl border border-zinc-200 shadow-lg shadow-zinc-900/5 dark:border-zinc-800 dark:shadow-black/30">

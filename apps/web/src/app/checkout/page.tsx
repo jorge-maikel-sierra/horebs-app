@@ -206,8 +206,8 @@ export default function CheckoutPage() {
         </h1>
         <p className="mt-4 text-zinc-600 dark:text-zinc-400">
           Tu carrito está vacío.{' '}
-          <Link href="/catalogo" className="text-brand-orange underline">
-            Volvé al catálogo
+          <Link href="/catalogo" className="text-accent-ink underline">
+            Vuelve al catálogo
           </Link>
           .
         </p>
@@ -247,19 +247,19 @@ export default function CheckoutPage() {
     setError(null);
 
     if (!session && !nombre.trim()) {
-      setError('Completá tu nombre.');
+      setError('Completa tu nombre.');
       return;
     }
     if (!apellido.trim()) {
-      setError('Completá tu apellido.');
+      setError('Completa tu apellido.');
       return;
     }
     if (!telefono.trim()) {
-      setError('Completá tu teléfono.');
+      setError('Completa tu teléfono.');
       return;
     }
     if (!session && !correo.trim()) {
-      setError('Completá tu correo.');
+      setError('Completa tu correo.');
       return;
     }
     if (modalidad === 'domicilio' && !direccion.trim()) {
@@ -356,7 +356,7 @@ export default function CheckoutPage() {
         )}
         <div className="mt-2 flex justify-between border-t border-zinc-200 pt-2 font-semibold dark:border-zinc-800">
           <span>Total</span>
-          <span className="text-brand-orange">{formatPrecio(totalConDescuento)}</span>
+          <span className="text-accent-ink">{formatPrecio(totalConDescuento)}</span>
         </div>
       </div>
 
@@ -383,7 +383,7 @@ export default function CheckoutPage() {
           <button
             type="button"
             onClick={() => supabase.auth.signOut()}
-            className="shrink-0 text-xs text-zinc-500 underline hover:text-brand-orange dark:text-zinc-400"
+            className="shrink-0 text-xs text-zinc-500 underline hover:text-accent-ink dark:text-zinc-400"
           >
             No soy yo
           </button>
@@ -478,7 +478,7 @@ export default function CheckoutPage() {
                 ⭐
               </span>
               <label htmlFor="usar-puntos" className="text-sm text-zinc-700 dark:text-zinc-300">
-                Tenés{' '}
+                Tienes{' '}
                 <span className="font-semibold text-zinc-900 dark:text-zinc-50">
                   {saldoPuntos?.puntos} puntos
                 </span>

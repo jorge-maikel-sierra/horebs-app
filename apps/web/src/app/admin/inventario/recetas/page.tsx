@@ -311,7 +311,7 @@ export default function InventarioRecetasPage() {
                   <button
                     type="button"
                     onClick={() => setCompSub((prev) => [...prev, { insumo_id: '', cantidad_necesaria_g: '' }])}
-                    className="text-xs text-brand-orange underline"
+                    className="text-xs text-accent-ink underline"
                   >
                     + Agregar insumo
                   </button>
@@ -340,7 +340,7 @@ export default function InventarioRecetasPage() {
                       <button
                         type="button"
                         onClick={() => empezarEdicionSub(s)}
-                        className="text-xs text-brand-orange underline"
+                        className="text-xs text-accent-ink underline"
                       >
                         Editar
                       </button>
@@ -498,7 +498,7 @@ export default function InventarioRecetasPage() {
                         { tipo_componente: 'insumo', insumo_id: '', subreceta_id: '', cantidad_necesaria_g: '' },
                       ])
                     }
-                    className="text-xs text-brand-orange underline"
+                    className="text-xs text-accent-ink underline"
                   >
                     + Agregar componente
                   </button>
@@ -540,7 +540,7 @@ export default function InventarioRecetasPage() {
                       <button
                         type="button"
                         onClick={() => empezarEdicionReceta(r)}
-                        className="text-xs text-brand-orange underline"
+                        className="text-xs text-accent-ink underline"
                       >
                         Editar
                       </button>

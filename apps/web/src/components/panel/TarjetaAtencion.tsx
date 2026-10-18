@@ -43,7 +43,7 @@ export default function TarjetaAtencion({
           className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
             urgente
               ? 'bg-amber-100 text-amber-700 dark:bg-amber-400/15 dark:text-amber-400'
-              : 'bg-brand-orange/15 text-brand-orange-700 dark:text-brand-orange'
+              : 'bg-brand-orange/15 text-accent-ink'
           }`}
         >
           {icono}
@@ -74,7 +74,7 @@ export default function TarjetaAtencion({
         </p>
       </div>
 
-      <span className="hidden items-center gap-1 text-xs font-semibold text-brand-orange-700 transition-transform sm:flex group-hover:translate-x-0.5 dark:text-brand-orange">
+      <span className="hidden items-center gap-1 text-xs font-semibold text-accent-ink transition-transform sm:flex group-hover:translate-x-0.5">
         Abrir
         <IconFlechaDerecha />
       </span>

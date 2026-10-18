@@ -157,7 +157,7 @@ function FilaTablero({ fila, onCambio }: { fila: TableroFila; onCambio: () => vo
             {empleado.telefono && (
               <a
                 href={`tel:${empleado.telefono}`}
-                className="ml-2 text-xs font-normal text-brand-orange hover:underline"
+                className="ml-2 text-xs font-normal text-accent-ink hover:underline"
               >
                 {empleado.telefono}
               </a>
@@ -210,7 +210,7 @@ function FilaTablero({ fila, onCambio }: { fila: TableroFila; onCambio: () => vo
       </div>
       {!bloqueada && (
         <p className="mt-1.5 text-xs text-zinc-400 dark:text-zinc-500">
-          Tocá un día para marcarlo: verde = trabajó, rojo = no trabajó, gris = sin marcar.
+          Toca un día para marcarlo: verde = trabajó, rojo = no trabajó, gris = sin marcar.
         </p>
       )}
 
@@ -238,7 +238,7 @@ function FilaTablero({ fila, onCambio }: { fila: TableroFila; onCambio: () => vo
           <button
             type="button"
             onClick={() => setFormAdelanto((v) => !v)}
-            className="text-xs font-medium text-brand-orange hover:underline"
+            className="text-xs font-medium text-accent-ink hover:underline"
           >
             {formAdelanto ? 'Cancelar' : '+ Adelanto'}
           </button>
@@ -386,7 +386,7 @@ function TableroAdmin() {
         ) : filas.length === 0 ? (
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
             No hay trabajadores activos.{' '}
-            <Link href="/admin/nomina/empleados" className="text-brand-orange hover:underline">
+            <Link href="/admin/nomina/empleados" className="text-accent-ink hover:underline">
               Registrar uno
             </Link>
             .
@@ -433,7 +433,7 @@ function MiNomina() {
       <div className="p-4 sm:p-6 lg:p-8">
         <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">Mi nómina</h1>
         <p className="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
-          Todavía no tenés una nómina registrada. Hablá con administración.
+          Todavía no tienes una nómina registrada. Habla con administración.
         </p>
       </div>
     );

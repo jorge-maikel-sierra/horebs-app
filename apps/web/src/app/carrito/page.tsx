@@ -73,11 +73,11 @@ export default function CarritoPage() {
           Carrito
         </h1>
         <EstadoVacio icon={<IconCarritoVacio />}>
-          Todavía no agregaste nada. Mirá el{' '}
-          <Link href="/catalogo" className="text-brand-orange underline">
+          Todavía no agregaste nada. Mira el{' '}
+          <Link href="/catalogo" className="text-accent-ink underline">
             catálogo
           </Link>{' '}
-          y elegí tu pizza.
+          y elige tu pizza.
         </EstadoVacio>
       </div>
     );
@@ -91,7 +91,7 @@ export default function CarritoPage() {
         </h1>
         <Link
           href="/catalogo"
-          className="btn-press inline-flex shrink-0 items-center gap-1.5 rounded-full border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-600 transition-colors hover:border-brand-orange hover:text-brand-orange dark:border-zinc-700 dark:text-zinc-300"
+          className="btn-press inline-flex shrink-0 items-center gap-1.5 rounded-full border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-600 transition-colors hover:border-accent-ink hover:text-accent-ink dark:border-zinc-700 dark:text-zinc-300"
         >
           <IconFlechaIzquierda />
           Seguir comprando
@@ -135,7 +135,7 @@ export default function CarritoPage() {
                     onClick={() =>
                       updateCantidad(item.varianteId, item.cantidad - 1)
                     }
-                    className="btn-press h-7 w-7 rounded-full border border-zinc-300 text-sm font-semibold transition-colors hover:border-brand-orange hover:text-brand-orange dark:border-zinc-700"
+                    className="btn-press h-7 w-7 rounded-full border border-zinc-300 text-sm font-semibold transition-colors hover:border-accent-ink hover:text-accent-ink dark:border-zinc-700"
                     aria-label={`Restar unidad de ${item.productoNombre} ${item.varianteNombre}`}
                   >
                     −
@@ -148,7 +148,7 @@ export default function CarritoPage() {
                     onClick={() =>
                       updateCantidad(item.varianteId, item.cantidad + 1)
                     }
-                    className="btn-press h-7 w-7 rounded-full border border-zinc-300 text-sm font-semibold transition-colors hover:border-brand-orange hover:text-brand-orange dark:border-zinc-700"
+                    className="btn-press h-7 w-7 rounded-full border border-zinc-300 text-sm font-semibold transition-colors hover:border-accent-ink hover:text-accent-ink dark:border-zinc-700"
                     aria-label={`Sumar unidad de ${item.productoNombre} ${item.varianteNombre}`}
                   >
                     +
@@ -184,7 +184,7 @@ export default function CarritoPage() {
 
       <div className="mt-6 flex items-center justify-between border-t border-zinc-200 pt-4 dark:border-zinc-800">
         <span className="text-lg font-semibold">Total</span>
-        <span key={total} className="animate-pop-in text-lg font-bold text-brand-orange">
+        <span key={total} className="animate-pop-in text-lg font-bold text-accent-ink">
           {formatPrecio(total)}
         </span>
       </div>

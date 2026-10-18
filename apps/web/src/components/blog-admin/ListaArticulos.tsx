@@ -26,7 +26,7 @@ function Miniatura({ url }: { url: string | null }) {
   const [fallida, setFallida] = useState(false);
   if (!url || fallida) {
     return (
-      <span className="flex h-14 w-20 shrink-0 items-center justify-center rounded-xl bg-brand-orange/10 text-brand-orange sm:h-16 sm:w-24">
+      <span className="flex h-14 w-20 shrink-0 items-center justify-center rounded-xl bg-brand-orange/10 text-accent-ink sm:h-16 sm:w-24">
         <IconoDocumento />
       </span>
     );
@@ -174,7 +174,7 @@ export default function ListaArticulos({
           </div>
         ) : posts.length === 0 ? (
           <div className="card-gradient flex flex-col items-center rounded-3xl border border-dashed border-zinc-300 px-6 py-14 text-center dark:border-zinc-700">
-            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-orange/15 text-brand-orange">
+            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-orange/15 text-accent-ink">
               <IconoDocumento />
             </span>
             <p className="mt-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
@@ -215,7 +215,7 @@ export default function ListaArticulos({
                       <button
                         type="button"
                         onClick={() => onEditar(post)}
-                        className={`block max-w-full truncate rounded text-left font-semibold text-zinc-900 hover:text-brand-orange dark:text-zinc-50 ${FOCO}`}
+                        className={`block max-w-full truncate rounded text-left font-semibold text-zinc-900 hover:text-accent-ink dark:text-zinc-50 ${FOCO}`}
                       >
                         {post.titulo}
                       </button>
@@ -261,7 +261,7 @@ export default function ListaArticulos({
                       type="button"
                       onClick={() => onEditar(post)}
                       title="Editar"
-                      className={`${BOTON_ACCION} text-zinc-600 hover:bg-zinc-100 hover:text-brand-orange dark:text-zinc-300 dark:hover:bg-zinc-800`}
+                      className={`${BOTON_ACCION} text-zinc-600 hover:bg-zinc-100 hover:text-accent-ink dark:text-zinc-300 dark:hover:bg-zinc-800`}
                     >
                       <IconoEditar />
                       <span className="sm:sr-only">Editar</span>

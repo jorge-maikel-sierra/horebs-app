@@ -143,7 +143,7 @@ export default function ProgramaFidelidad({
           aria-expanded={abierto}
           aria-controls={`${uid}-form`}
           onClick={() => setAbierto((v) => !v)}
-          className={`btn-press h-10 w-full shrink-0 rounded-xl border border-zinc-300 px-4 text-sm font-semibold text-zinc-700 transition-colors hover:border-brand-orange disabled:opacity-50 sm:w-auto dark:border-zinc-700 dark:text-zinc-300 ${FOCO}`}
+          className={`btn-press h-10 w-full shrink-0 rounded-xl border border-zinc-300 px-4 text-sm font-semibold text-zinc-700 transition-colors hover:border-accent-ink disabled:opacity-50 sm:w-auto dark:border-zinc-700 dark:text-zinc-300 ${FOCO}`}
         >
           {abierto ? 'Cerrar' : 'Ajustar reglas'}
         </button>

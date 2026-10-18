@@ -137,15 +137,15 @@ export default function CuentaPage() {
     const passwordLimpia = password.trim();
 
     if (modo === 'registro' && !nombre.trim()) {
-      setError('Completá tu nombre.');
+      setError('Completa tu nombre.');
       return;
     }
     if (modo === 'registro' && !apellido.trim()) {
-      setError('Completá tu apellido.');
+      setError('Completa tu apellido.');
       return;
     }
     if (!emailLimpio) {
-      setError('Completá tu email.');
+      setError('Completa tu email.');
       return;
     }
     if (passwordLimpia.length < 6) {
@@ -165,7 +165,7 @@ export default function CuentaPage() {
         setError(signUpError.message);
       } else if (!data.session) {
         setMensaje(
-          'Cuenta creada. Revisá tu correo para confirmarla antes de iniciar sesión.',
+          'Cuenta creada. Revisa tu correo para confirmarla antes de iniciar sesión.',
         );
       }
     } else {
@@ -200,7 +200,7 @@ export default function CuentaPage() {
     setRecuperarMensaje(null);
 
     if (!email.trim()) {
-      setRecuperarError('Escribí tu email arriba primero.');
+      setRecuperarError('Escribe tu email arriba primero.');
       return;
     }
 
@@ -259,7 +259,7 @@ export default function CuentaPage() {
     if (updateError) setEmailError(updateError.message);
     else {
       setEmailMensaje(
-        'Listo. Si tu correo requiere confirmación, revisá tu bandeja de entrada.',
+        'Listo. Si tu correo requiere confirmación, revisa tu bandeja de entrada.',
       );
     }
     setEmailGuardando(false);
@@ -504,7 +504,7 @@ export default function CuentaPage() {
           Mi cuenta
         </h1>
         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-          Iniciá sesión o creá una cuenta para gestionar tus datos.
+          Inicia sesión o crea una cuenta para gestionar tus datos.
         </p>
 
         <div className="relative mt-6 grid grid-cols-2 rounded-full bg-zinc-100 p-1 dark:bg-zinc-800/60">
@@ -608,7 +608,7 @@ export default function CuentaPage() {
                 type="button"
                 onClick={enviarRecuperacion}
                 disabled={recuperarEnviando}
-                className="text-sm text-brand-orange underline transition-opacity disabled:opacity-50"
+                className="text-sm text-accent-ink underline transition-opacity disabled:opacity-50"
               >
                 {recuperarEnviando
                   ? 'Enviando…'

@@ -118,7 +118,7 @@ export default function InventarioComprasPage() {
     }
     const detalle = lineas.filter((l) => l.producto_comprado.trim());
     if (detalle.length === 0) {
-      setErrorForm('Agregá al menos una línea.');
+      setErrorForm('Agrega al menos una línea.');
       return;
     }
     setGuardando(true);
@@ -378,7 +378,7 @@ export default function InventarioComprasPage() {
             <button
               type="button"
               onClick={() => setLineas((prev) => [...prev, { ...LINEA_VACIA }])}
-              className="mt-2 text-xs text-brand-orange underline"
+              className="mt-2 text-xs text-accent-ink underline"
             >
               + Agregar línea
             </button>

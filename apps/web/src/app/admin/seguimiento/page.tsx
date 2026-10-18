@@ -180,7 +180,7 @@ function ConfiguracionSeguimiento() {
         {guardando ? 'Guardando…' : 'Guardar'}
       </button>
       {error && <p className="w-full text-sm text-red-600 dark:text-red-400">{error}</p>}
-      {mensaje && <p className="w-full text-sm text-brand-orange">{mensaje}</p>}
+      {mensaje && <p className="w-full text-sm text-accent-ink">{mensaje}</p>}
     </form>
   );
 }
@@ -375,7 +375,7 @@ function ListaConversaciones() {
       <div className="flex h-[calc(100vh-16rem)] min-h-[28rem] flex-col rounded-lg border border-zinc-200 dark:border-zinc-800">
         {!seleccionado ? (
           <div className="flex flex-1 items-center justify-center p-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
-            Elegí una conversación de la lista para ver el hilo de mensajes.
+            Elige una conversación de la lista para ver el hilo de mensajes.
           </div>
         ) : (
           <>
@@ -452,7 +452,7 @@ function ListaConversaciones() {
             <div className="border-t border-zinc-200 p-3 dark:border-zinc-800">
               {seleccionado.estado !== 'derivado' ? (
                 <p className="rounded-md bg-zinc-50 px-3 py-2 text-xs text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400">
-                  El bot está atendiendo esta conversación — cambiá el estado
+                  El bot está atendiendo esta conversación — cambia el estado
                   a &quot;Derivado a humano&quot; para poder responder desde
                   acá.
                 </p>
@@ -463,7 +463,7 @@ function ListaConversaciones() {
                     onChange={(e) => setTextoRespuesta(e.target.value)}
                     maxLength={4096}
                     rows={2}
-                    placeholder="Escribí una respuesta…"
+                    placeholder="Escribe una respuesta…"
                     className="flex-1 resize-none rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
                   />
                   <button
@@ -544,7 +544,7 @@ function SeguimientoInterna() {
           Conversaciones
         </h2>
         <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-          Elegí una conversación derivada para leer qué escribió el cliente y
+          Elige una conversación derivada para leer qué escribió el cliente y
           responderle directamente desde acá.
         </p>
         <ListaConversaciones />

@@ -85,7 +85,7 @@ export default function BlogLikeButton({ slug }: { slug: string }) {
         className={`btn-press flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-60 ${
           meGusta
             ? 'btn-gradient border-transparent text-white'
-            : 'border-zinc-300 text-zinc-700 hover:border-brand-orange hover:text-brand-orange dark:border-zinc-700 dark:text-zinc-300'
+            : 'border-zinc-300 text-zinc-700 hover:border-accent-ink hover:text-accent-ink dark:border-zinc-700 dark:text-zinc-300'
         }`}
       >
         <span
@@ -99,8 +99,8 @@ export default function BlogLikeButton({ slug }: { slug: string }) {
       </button>
       {mostrarAviso && !session && (
         <p className="animate-fade-up mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-          <Link href="/cuenta" className="text-brand-orange underline">
-            Iniciá sesión
+          <Link href="/cuenta" className="text-accent-ink underline">
+            Inicia sesión
           </Link>{' '}
           para dar me gusta.
         </p>

@@ -39,18 +39,18 @@ export default function PoliticaPrivacidadPage() {
           <ul className="mt-3 list-disc space-y-2 pl-5">
             <li>
               <strong>Datos de contacto:</strong> nombre, apellido, número de
-              teléfono, correo electrónico (si creás una cuenta) y dirección
-              de entrega cuando pedís a domicilio.
+              teléfono, correo electrónico (si creas una cuenta) y dirección
+              de entrega cuando pides a domicilio.
             </li>
             <li>
               <strong>Datos del pedido:</strong> productos elegidos,
               cantidades, modalidad (local, retiro o domicilio) y método de
-              pago que elegís (efectivo, transferencia o tarjeta) — no
+              pago que eliges (efectivo, transferencia o tarjeta) — no
               procesamos ni guardamos números de tarjeta.
             </li>
             <li>
               <strong>Mensajes de WhatsApp, Messenger e Instagram:</strong>{' '}
-              el contenido de los mensajes que nos escribís, tu número o
+              el contenido de los mensajes que nos escribes, tu número o
               nombre de perfil, y si tu conversación llegó desde un anuncio,
               para poder responderte y medir qué anuncios funcionan.
             </li>
@@ -85,7 +85,7 @@ export default function PoliticaPrivacidadPage() {
           </ul>
           <p className="mt-3">
             No vendemos tus datos a terceros. No enviamos mensajes
-            promocionales por WhatsApp fuera de una conversación que vos
+            promocionales por WhatsApp fuera de una conversación que tú
             iniciaste, salvo que lo autorices explícitamente.
           </p>
         </section>
@@ -139,12 +139,12 @@ export default function PoliticaPrivacidadPage() {
             Tus derechos
           </h2>
           <p className="mt-3">
-            Podés pedirnos en cualquier momento que te mostremos, corrijamos
+            Puedes pedirnos en cualquier momento que te mostremos, corrijamos
             o eliminemos tus datos personales, escribiéndonos por WhatsApp
             al {NEGOCIO.whatsapp} o al correo{' '}
             <a
               href="mailto:jorgemaikelsierraamaya@gmail.com"
-              className="text-brand-orange hover:underline"
+              className="text-accent-ink hover:underline"
             >
               jorgemaikelsierraamaya@gmail.com
             </a>

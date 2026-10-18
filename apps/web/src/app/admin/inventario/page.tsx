@@ -128,7 +128,7 @@ export default function InventarioInsumosPage() {
       return;
     }
     if (!ajuste.motivo.trim()) {
-      setErrorAjuste('Contá el motivo del ajuste.');
+      setErrorAjuste('Indica el motivo del ajuste.');
       return;
     }
     setGuardandoAjuste(true);
@@ -169,7 +169,7 @@ export default function InventarioInsumosPage() {
       {stockNegativoCount > 0 && (
         <div className="mt-4 rounded-lg border border-red-300 bg-red-50 px-4 py-2.5 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-400">
           ⚠️ {stockNegativoCount} insumo{stockNegativoCount > 1 ? 's' : ''} con stock negativo —
-          el sistema descontó más de lo que había cargado. Corregilo con un ajuste manual abajo.
+          el sistema descontó más de lo que había cargado. Corrígelo con un ajuste manual abajo.
         </div>
       )}
 
@@ -332,7 +332,7 @@ export default function InventarioInsumosPage() {
                       <button
                         type="button"
                         onClick={() => empezarAjuste(i.id)}
-                        className="text-xs text-brand-orange underline"
+                        className="text-xs text-accent-ink underline"
                       >
                         Ajustar
                       </button>

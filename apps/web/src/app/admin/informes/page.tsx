@@ -264,7 +264,7 @@ function ListaTopClientes({ clientes }: { clientes: InformeClienteTop[] }) {
     <ol className="space-y-3">
       {clientes.map((c, idx) => (
         <li key={c.id} className="flex items-center gap-3">
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-orange/15 text-xs font-bold text-brand-orange">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-orange/15 text-xs font-bold text-accent-ink">
             {idx + 1}
           </span>
           <div className="min-w-0 flex-1">
@@ -354,7 +354,7 @@ function ListaTopProductos({ productos }: { productos: InformeProducto[] }) {
     <ol className="space-y-3">
       {productos.map((p, idx) => (
         <li key={p.nombre} className="flex items-center gap-3">
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-orange/15 text-xs font-bold text-brand-orange">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-orange/15 text-xs font-bold text-accent-ink">
             {idx + 1}
           </span>
           <div className="min-w-0 flex-1">

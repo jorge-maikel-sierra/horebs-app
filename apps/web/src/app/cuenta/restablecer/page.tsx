@@ -86,7 +86,7 @@ export default function RestablecerPasswordPage() {
             </p>
             <Link
               href="/cuenta"
-              className="text-sm text-brand-orange underline"
+              className="text-sm text-accent-ink underline"
             >
               Volver a Mi cuenta
             </Link>
@@ -96,11 +96,11 @@ export default function RestablecerPasswordPage() {
         {estado === 'guardado' && (
           <div className="mt-4 space-y-3">
             <p className={successClass}>
-              Contraseña actualizada. Ya podés iniciar sesión con la nueva.
+              Contraseña actualizada. Ya puedes iniciar sesión con la nueva.
             </p>
             <Link
               href="/cuenta"
-              className="text-sm text-brand-orange underline"
+              className="text-sm text-accent-ink underline"
             >
               Ir a Mi cuenta
             </Link>

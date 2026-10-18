@@ -180,7 +180,7 @@ export default function ModalClientes({
           ) : (
             filtrados.map((c) => (
               <li key={c.id} className="flex items-center gap-3 py-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-orange/15 text-sm font-bold text-brand-orange">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-orange/15 text-sm font-bold text-accent-ink">
                   {(c.nombre.trim().charAt(0) || '?').toUpperCase()}
                 </span>
                 <div className="min-w-0 flex-1">

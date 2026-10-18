@@ -80,8 +80,8 @@ export default async function PedidoConfirmacionPage({
           Pedido no encontrado
         </h1>
         <p className="mt-4 text-zinc-600 dark:text-zinc-400">
-          Revisá el enlace o volvé al{' '}
-          <Link href="/catalogo" className="text-brand-orange underline">
+          Revisa el enlace o vuelve al{' '}
+          <Link href="/catalogo" className="text-accent-ink underline">
             catálogo
           </Link>
           .
@@ -141,7 +141,7 @@ export default async function PedidoConfirmacionPage({
         ¡Pedido recibido!
       </h1>
       <p className="animate-fade-up delay-2 mt-2 text-center text-zinc-600 dark:text-zinc-400">
-        Pedido #{pedido.id.slice(0, 8)} — confirmalo por WhatsApp para que el
+        Pedido #{pedido.id.slice(0, 8)} — confírmalo por WhatsApp para que el
         local empiece a prepararlo.
       </p>
 
@@ -168,7 +168,7 @@ export default async function PedidoConfirmacionPage({
         )}
         <div className="mt-1 flex justify-between border-t border-zinc-200 pt-2 font-semibold dark:border-zinc-800">
           <span>Total</span>
-          <span className="text-brand-orange">{formatPrecio(pedido.total)}</span>
+          <span className="text-accent-ink">{formatPrecio(pedido.total)}</span>
         </div>
         <dl className="mt-3 space-y-2">
           <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:gap-4">
@@ -223,11 +223,11 @@ export default async function PedidoConfirmacionPage({
               <BotonCopiar texto={NEGOCIO.transferencia.llave} />
             </div>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Transferí el total de{' '}
+              Transfiere el total de{' '}
               <span className="font-semibold text-zinc-700 dark:text-zinc-300">
                 {formatPrecio(pedido.total)}
               </span>{' '}
-              y mandá el comprobante junto con la confirmación por WhatsApp.
+              y manda el comprobante junto con la confirmación por WhatsApp.
             </p>
           </div>
         </div>
@@ -259,7 +259,7 @@ export default async function PedidoConfirmacionPage({
 
       <Link
         href="/catalogo"
-        className="animate-fade-up delay-4 mt-3 block text-center text-sm text-zinc-500 transition-colors hover:text-brand-orange dark:text-zinc-400"
+        className="animate-fade-up delay-4 mt-3 block text-center text-sm text-zinc-500 transition-colors hover:text-accent-ink dark:text-zinc-400"
       >
         Seguir comprando
       </Link>

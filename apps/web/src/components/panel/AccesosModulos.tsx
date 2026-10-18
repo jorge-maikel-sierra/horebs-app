@@ -70,7 +70,7 @@ export default function AccesosModulos({ rol }: { rol: Rol | null }) {
               className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
                 a.destacado
                   ? 'bg-white/20 text-white'
-                  : 'bg-brand-orange/15 text-brand-orange-700 dark:text-brand-orange'
+                  : 'bg-brand-orange/15 text-accent-ink'
               }`}
             >
               {a.icono}

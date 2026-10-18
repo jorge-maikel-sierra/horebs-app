@@ -126,7 +126,7 @@ export default async function BlogPostPage({
 
       <Link
         href="/blog"
-        className="btn-press inline-flex items-center gap-1.5 rounded-full border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-600 transition-colors hover:border-brand-orange hover:text-brand-orange dark:border-zinc-700 dark:text-zinc-300"
+        className="btn-press inline-flex items-center gap-1.5 rounded-full border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-600 transition-colors hover:border-accent-ink hover:text-accent-ink dark:border-zinc-700 dark:text-zinc-300"
       >
         <IconFlechaIzquierda />
         Volver al blog

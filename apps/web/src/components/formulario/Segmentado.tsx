@@ -44,7 +44,7 @@ export default function Segmentado<T extends string>({
               <span
                 className={`text-xs font-bold tabular-nums ${
                   activo
-                    ? 'text-brand-orange-700 dark:text-brand-orange'
+                    ? 'text-accent-ink'
                     : 'text-zinc-500 dark:text-zinc-400'
                 }`}
               >

@@ -33,7 +33,7 @@ export default function SeccionPanel({
         {enlace && (
           <Link
             href={enlace.href}
-            className="inline-flex items-center gap-1 rounded text-sm font-semibold text-brand-orange-700 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-brand-orange/60 dark:text-brand-orange"
+            className="inline-flex items-center gap-1 rounded text-sm font-semibold text-accent-ink outline-none hover:underline focus-visible:ring-2 focus-visible:ring-brand-orange/60"
           >
             {enlace.texto}
             <IconFlechaDerecha />

@@ -56,7 +56,7 @@ export function iniciales(c: Pick<ClienteDirectorio, 'nombre' | 'apellido'>) {
 
 // Tintes de marca con su versión oscura; el mismo cliente siempre tiene el mismo color.
 const AVATARES = [
-  'bg-brand-orange/15 text-brand-orange-700 dark:text-brand-orange',
+  'bg-brand-orange/15 text-accent-ink',
   'bg-blue-100 text-brand-navy dark:bg-blue-400/15 dark:text-blue-300',
   'bg-amber-100 text-amber-800 dark:bg-amber-400/15 dark:text-amber-300',
   'bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-400',

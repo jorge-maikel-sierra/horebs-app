@@ -104,7 +104,7 @@ const IconDescargar = () => (
 );
 
 const ACCION =
-  'btn-press flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 outline-none transition-colors hover:bg-zinc-100 hover:text-brand-orange-700 focus-visible:ring-2 focus-visible:ring-brand-orange/60 disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-brand-orange';
+  'btn-press flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 outline-none transition-colors hover:bg-zinc-100 hover:text-accent-ink focus-visible:ring-2 focus-visible:ring-brand-orange/60 disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800';
 
 function PedidosInterno() {
   const { rol } = useRol();
@@ -249,7 +249,7 @@ function PedidosInterno() {
         </h1>
         <Link
           href="/admin/pos"
-          className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700 hover:border-brand-orange dark:border-zinc-700 dark:text-zinc-300"
+          className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700 hover:border-accent-ink dark:border-zinc-700 dark:text-zinc-300"
         >
           Volver al POS
         </Link>
@@ -285,7 +285,7 @@ function PedidosInterno() {
         pedidos.length > 0 &&
         pedidosFiltrados.length === 0 && (
           <div className="animate-fade-up card-gradient mt-6 flex flex-col items-center rounded-3xl border border-dashed border-zinc-300 px-6 py-14 text-center dark:border-zinc-700">
-            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-orange/15 text-brand-orange-700 dark:text-brand-orange">
+            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-orange/15 text-accent-ink">
               <svg
                 width="26"
                 height="26"
@@ -416,7 +416,7 @@ function PedidosInterno() {
                   </span>
                 </div>
                 <div className="text-right">
-                  <p className="font-bold text-brand-orange-700 dark:text-brand-orange">
+                  <p className="font-bold text-accent-ink">
                     {formatPrecio(p.total)}
                   </p>
                   {p.costo_domicilio > 0 && (
@@ -516,7 +516,7 @@ function PedidosInterno() {
               Entrega: {pedidoDetalle.direccion_entrega}
             </p>
           )}
-          <p className="mt-3 border-t border-zinc-100 pt-2 text-right text-lg font-bold tabular-nums text-brand-orange-700 dark:border-zinc-800/60 dark:text-brand-orange">
+          <p className="mt-3 border-t border-zinc-100 pt-2 text-right text-lg font-bold tabular-nums text-accent-ink dark:border-zinc-800/60">
             {formatPrecio(pedidoDetalle.total)}
           </p>
         </ModalBase>

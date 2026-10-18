@@ -21,7 +21,7 @@ export default function TarjetaTurno({
       className="card-gradient card-interactive group flex min-w-0 flex-col justify-between gap-4 rounded-2xl border border-zinc-200 p-4 outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/60 sm:p-5 dark:border-zinc-800"
     >
       <div className="flex items-start justify-between gap-2">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-orange/15 text-brand-orange-700 dark:text-brand-orange">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-orange/15 text-accent-ink">
           <IconReloj />
         </span>
         {!cargando && !fallo && (
@@ -69,7 +69,7 @@ export default function TarjetaTurno({
         </p>
       </div>
 
-      <span className="flex items-center gap-1 text-xs font-semibold text-brand-orange-700 transition-transform group-hover:translate-x-0.5 dark:text-brand-orange">
+      <span className="flex items-center gap-1 text-xs font-semibold text-accent-ink transition-transform group-hover:translate-x-0.5">
         {abierto ? 'Ir al punto de venta' : 'Abrir turno'}
         <IconFlechaDerecha />
       </span>

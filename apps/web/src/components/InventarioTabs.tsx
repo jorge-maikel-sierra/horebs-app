@@ -24,7 +24,7 @@ export default function InventarioTabs() {
             href={tab.href}
             className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors ${
               activo
-                ? 'border-brand-orange text-brand-orange'
+                ? 'border-brand-orange text-accent-ink'
                 : 'border-transparent text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50'
             }`}
           >

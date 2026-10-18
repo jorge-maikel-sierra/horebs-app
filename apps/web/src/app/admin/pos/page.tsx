@@ -207,7 +207,7 @@ function ProductoCard({
           <button
             type="button"
             onClick={() => onAgregar(producto.variantes[0])}
-            className="btn-press mt-auto flex items-center justify-between gap-1 rounded-lg bg-brand-orange/10 px-2 py-1.5 text-[11px] font-bold text-brand-orange transition-colors hover:bg-brand-orange hover:text-white"
+            className="btn-press mt-auto flex items-center justify-between gap-1 rounded-lg bg-brand-orange/10 px-2 py-1.5 text-[11px] font-bold text-accent-ink transition-colors hover:bg-brand-orange hover:text-white"
           >
             <span>Agregar</span>
             <span>
@@ -376,7 +376,7 @@ function PosInterno() {
     const nombre = nombrePersonalizado.trim();
     const precio = Number(precioPersonalizado);
     if (!nombre) {
-      setError('Escribí el nombre del producto personalizado.');
+      setError('Escribe el nombre del producto personalizado.');
       return;
     }
     if (!Number.isFinite(precio) || precio < 0) {
@@ -436,7 +436,7 @@ function PosInterno() {
     setErrorTurno(null);
     const monto = Number(montoInicial);
     if (!Number.isFinite(monto) || monto < 0) {
-      setErrorTurno('Ingresá un monto válido.');
+      setErrorTurno('Ingresa un monto válido.');
       return;
     }
     setAbriendoTurno(true);
@@ -528,7 +528,7 @@ function PosInterno() {
     setMensaje(null);
 
     if (items.length === 0) {
-      setError('Agregá al menos un producto.');
+      setError('Agrega al menos un producto.');
       return;
     }
     if (modalidad === 'domicilio' && !direccionEntrega.trim()) {
@@ -630,7 +630,7 @@ function PosInterno() {
         <div className="flex gap-2">
           <Link
             href="/admin/pedidos"
-            className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700 hover:border-brand-orange dark:border-zinc-700 dark:text-zinc-300"
+            className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700 hover:border-accent-ink dark:border-zinc-700 dark:text-zinc-300"
           >
             Ver pedidos
           </Link>
@@ -810,7 +810,7 @@ function PosInterno() {
               )}
               <div className="flex justify-between font-semibold">
                 <span>Total</span>
-                <span className="text-brand-orange">{formatPrecio(totalConDescuento)}</span>
+                <span className="text-accent-ink">{formatPrecio(totalConDescuento)}</span>
               </div>
             </div>
 
@@ -1020,7 +1020,7 @@ function PosInterno() {
               Abrir turno
             </h2>
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-              Antes de usar el punto de venta, contá cuánto hay en caja para
+              Antes de usar el punto de venta, cuenta cuánto hay en caja para
               arrancar el turno.
             </p>
             <form onSubmit={abrirTurno} className="mt-4 space-y-3">

@@ -79,8 +79,8 @@ export async function generateMetadata({
 
   const title = `${producto.nombre} a domicilio en Riohacha | ${NEGOCIO.nombre}`;
   const description = producto.descripcion
-    ? `${producto.descripcion} Pedí en línea o por WhatsApp — domicilio en Riohacha.`
-    : `${producto.nombre} a domicilio en Riohacha. Pedí en línea o por WhatsApp.`;
+    ? `${producto.descripcion} Pide en línea o por WhatsApp — domicilio en Riohacha.`
+    : `${producto.nombre} a domicilio en Riohacha. Pide en línea o por WhatsApp.`;
 
   return {
     title,
@@ -151,7 +151,7 @@ export default async function ProductoPage({
 
       <Link
         href="/catalogo"
-        className="btn-press inline-flex items-center gap-1.5 rounded-full border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-600 transition-colors hover:border-brand-orange hover:text-brand-orange dark:border-zinc-700 dark:text-zinc-300"
+        className="btn-press inline-flex items-center gap-1.5 rounded-full border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-600 transition-colors hover:border-accent-ink hover:text-accent-ink dark:border-zinc-700 dark:text-zinc-300"
       >
         <IconFlechaIzquierda />
         Volver al catálogo
@@ -197,7 +197,7 @@ export default async function ProductoPage({
                       <span className="mr-1.5 text-zinc-500 line-through dark:text-zinc-400">
                         {formatPrecio(v.precio)}
                       </span>
-                      <span className="text-brand-orange">
+                      <span className="text-accent-ink">
                         {formatPrecio(v.precio_oferta)}
                       </span>
                     </>
@@ -228,7 +228,7 @@ export default async function ProductoPage({
               <Link
                 key={p.id}
                 href={`/menu/${p.slug}`}
-                className="card-interactive rounded-lg border border-zinc-200 p-4 hover:border-brand-orange dark:border-zinc-800"
+                className="card-interactive rounded-lg border border-zinc-200 p-4 hover:border-accent-ink dark:border-zinc-800"
               >
                 <p className="font-semibold text-zinc-900 dark:text-zinc-50">
                   {p.nombre}

@@ -88,7 +88,7 @@ export default async function BlogPage() {
                 </div>
               )}
               <div className="flex flex-1 flex-col p-5">
-                <h2 className="font-semibold text-zinc-900 transition-colors group-hover:text-brand-orange dark:text-zinc-50">
+                <h2 className="font-semibold text-zinc-900 transition-colors group-hover:text-accent-ink dark:text-zinc-50">
                   {post.titulo}
                 </h2>
                 <p className="mt-1.5 line-clamp-2 text-sm text-zinc-600 dark:text-zinc-400">
@@ -113,7 +113,7 @@ export default async function BlogPage() {
                       )}
                     </div>
                   </div>
-                  <span className="btn-press inline-flex shrink-0 items-center gap-1.5 rounded-full border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-600 transition-colors group-hover:border-brand-orange group-hover:text-brand-orange dark:border-zinc-700 dark:text-zinc-300">
+                  <span className="btn-press inline-flex shrink-0 items-center gap-1.5 rounded-full border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-600 transition-colors group-hover:border-accent-ink group-hover:text-accent-ink dark:border-zinc-700 dark:text-zinc-300">
                     Leer más
                     <IconFlechaDerecha />
                   </span>

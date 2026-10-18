@@ -360,7 +360,7 @@ export default function EditorArticulo({
           {guardado ? (
             <EstadoChip estado={guardado.estado} />
           ) : (
-            <span className="rounded-full bg-brand-orange/15 px-2.5 py-0.5 text-xs font-bold whitespace-nowrap text-brand-orange-700 dark:text-brand-orange">
+            <span className="rounded-full bg-brand-orange/15 px-2.5 py-0.5 text-xs font-bold whitespace-nowrap text-accent-ink">
               Nuevo
             </span>
           )}
@@ -462,7 +462,7 @@ export default function EditorArticulo({
                       setSlugTocado(false);
                       cambiar('slug', slugSugerido);
                     }}
-                    className={`rounded text-xs font-semibold text-brand-orange-700 hover:underline dark:text-brand-orange ${FOCO}`}
+                    className={`rounded text-xs font-semibold text-accent-ink hover:underline ${FOCO}`}
                   >
                     Regenerar
                     <span className="sr-only"> el slug desde el título</span>
@@ -813,7 +813,7 @@ export default function EditorArticulo({
                       }
                       className={`btn-press h-8 rounded-full border px-3 text-xs font-semibold transition-colors ${FOCO} ${
                         activa
-                          ? 'border-brand-orange bg-brand-orange/10 text-brand-orange-700 dark:text-brand-orange'
+                          ? 'border-brand-orange bg-brand-orange/10 text-accent-ink'
                           : 'border-zinc-300 text-zinc-600 hover:border-zinc-400 dark:border-zinc-700 dark:text-zinc-300'
                       }`}
                     >

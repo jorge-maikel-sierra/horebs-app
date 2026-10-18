@@ -103,7 +103,7 @@ export default function BlogComentarios({ slug }: { slug: string }) {
               onChange={(e) => setTexto(e.target.value)}
               rows={3}
               maxLength={2000}
-              placeholder="Escribí tu comentario…"
+              placeholder="Escribe tu comentario…"
               className="w-full rounded-md border border-zinc-300 px-3 py-2 outline-none transition-colors focus:border-brand-orange dark:border-zinc-700 dark:bg-zinc-950"
             />
             {error && <p className={errorClass}>{error}</p>}
@@ -119,9 +119,9 @@ export default function BlogComentarios({ slug }: { slug: string }) {
           <p className="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
             <Link
               href="/cuenta"
-              className="font-semibold text-brand-orange underline"
+              className="font-semibold text-accent-ink underline"
             >
-              Iniciá sesión
+              Inicia sesión
             </Link>{' '}
             para dejar un comentario.
           </p>
@@ -143,7 +143,7 @@ export default function BlogComentarios({ slug }: { slug: string }) {
               className="card-gradient animate-fade-up flex items-start gap-3 rounded-2xl border border-zinc-200 p-4 dark:border-zinc-800"
               style={{ animationDelay: `${Math.min(i, 4) * 0.06}s` }}
             >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-orange/15 text-sm font-semibold text-brand-orange">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-orange/15 text-sm font-semibold text-accent-ink">
                 {c.autor_nombre.charAt(0).toUpperCase()}
               </div>
               <div className="min-w-0 flex-1">

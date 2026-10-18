@@ -107,8 +107,8 @@ export type TonoKpi = 'naranja' | 'azul' | 'amarillo' | 'verde';
 
 const TONOS: Record<TonoKpi, { chip: string; spark: string }> = {
   naranja: {
-    chip: 'bg-brand-orange/15 text-brand-orange',
-    spark: 'text-brand-orange',
+    chip: 'bg-brand-orange/15 text-accent-ink',
+    spark: 'text-accent-ink',
   },
   azul: {
     chip: 'bg-blue-100 text-brand-navy dark:bg-blue-400/15 dark:text-blue-300',
@@ -173,7 +173,7 @@ export function TarjetaKpi({
           </p>
         )}
         {onClick && accion && (
-          <p className="mt-2 text-xs font-semibold text-brand-orange">
+          <p className="mt-2 text-xs font-semibold text-accent-ink">
             {accion} →
           </p>
         )}
@@ -211,7 +211,7 @@ export function TiraDomicilio({
   return (
     <div className="card-gradient card-interactive flex flex-col gap-3 rounded-2xl border border-zinc-200 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:p-5 dark:border-zinc-800">
       <div className="flex items-center gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-orange/15 text-brand-orange">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-orange/15 text-accent-ink">
           {icono}
         </span>
         <div className="min-w-0">

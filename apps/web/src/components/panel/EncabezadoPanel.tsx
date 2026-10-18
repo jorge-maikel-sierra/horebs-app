@@ -26,7 +26,7 @@ export default function EncabezadoPanel({ rol }: { rol: Rol | null }) {
   const ahora = new Date();
   return (
     <header className="animate-fade-up">
-      <p className="text-sm font-semibold text-brand-orange-700 first-letter:uppercase dark:text-brand-orange">
+      <p className="text-sm font-semibold text-accent-ink first-letter:uppercase">
         {FECHA_LARGA.format(ahora)}
       </p>
       <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-zinc-900 sm:text-4xl dark:text-zinc-50">

@@ -29,7 +29,7 @@ function Etiqueta({
   tono: 'naranja' | 'verde' | 'azul' | 'gris';
 }) {
   const estilos = {
-    naranja: 'bg-brand-orange/15 text-brand-orange-700 dark:text-brand-orange',
+    naranja: 'bg-brand-orange/15 text-accent-ink',
     verde:
       'bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-400',
     azul: 'bg-blue-100 text-brand-navy dark:bg-blue-400/15 dark:text-blue-300',
@@ -68,7 +68,7 @@ export default function EncabezadoCliente({
     <header className="animate-fade-up">
       <Link
         href="/admin/clientes"
-        className="inline-flex h-9 items-center gap-1 rounded-lg pr-2 text-sm font-semibold text-zinc-500 outline-none hover:text-brand-orange-700 focus-visible:ring-2 focus-visible:ring-brand-orange/60 dark:text-zinc-400 dark:hover:text-brand-orange"
+        className="inline-flex h-9 items-center gap-1 rounded-lg pr-2 text-sm font-semibold text-zinc-500 outline-none hover:text-accent-ink focus-visible:ring-2 focus-visible:ring-brand-orange/60 dark:text-zinc-400"
       >
         <IconVolver />
         Clientes
@@ -120,7 +120,7 @@ export default function EncabezadoCliente({
           {digitos && (
             <a
               href={`tel:${digitos}`}
-              className={`${BOTON} border-zinc-300 text-zinc-700 hover:border-brand-orange dark:border-zinc-700 dark:text-zinc-300`}
+              className={`${BOTON} border-zinc-300 text-zinc-700 hover:border-accent-ink dark:border-zinc-700 dark:text-zinc-300`}
             >
               <IconTelefono tamano={16} />
               Llamar
@@ -129,7 +129,7 @@ export default function EncabezadoCliente({
           {c.correo && (
             <a
               href={`mailto:${c.correo}`}
-              className={`${BOTON} border-zinc-300 text-zinc-700 hover:border-brand-orange dark:border-zinc-700 dark:text-zinc-300`}
+              className={`${BOTON} border-zinc-300 text-zinc-700 hover:border-accent-ink dark:border-zinc-700 dark:text-zinc-300`}
             >
               <IconCorreo tamano={16} />
               Correo
@@ -141,8 +141,8 @@ export default function EncabezadoCliente({
             onClick={onEditar}
             className={`${BOTON} ${
               editando
-                ? 'border-brand-orange bg-brand-orange/10 text-brand-orange-700 dark:text-brand-orange'
-                : 'border-zinc-300 text-zinc-700 hover:border-brand-orange dark:border-zinc-700 dark:text-zinc-300'
+                ? 'border-brand-orange bg-brand-orange/10 text-accent-ink'
+                : 'border-zinc-300 text-zinc-700 hover:border-accent-ink dark:border-zinc-700 dark:text-zinc-300'
             }`}
           >
             <IconLapiz />
