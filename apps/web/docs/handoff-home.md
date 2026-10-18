@@ -17,6 +17,7 @@ Debajo del hero, todo vive dentro de `.carta` ("la carta de la casa"): papel cre
 | 4 | Preguntas frecuentes | `FaqSection` + `lib/faqs.ts` | Dos columnas: intro sticky + tarjeta de WhatsApp a la izquierda, acordeón numerado con líneas finas a la derecha. 5 visibles y el resto detrás de "Ver las N preguntas" |
 | 5 | Cierre | `home/CierrePedido` | `id="pedir"`, navy como el hero. "¿Se te antojó?", CTAs y ficha con estado en vivo, horario, dirección, "Cómo llegar", domicilio y WhatsApp |
 | — | Barra de pedido | `BarraPedidoMovil` | Solo mobile. Se oculta sobre `#inicio`, `#pedir` y el footer |
+| — | Footer (todas las páginas públicas) | `SiteFooter` | Contraportada de la carta: superficie `.carta` + `.hilo-dorado`, cuatro columnas (marca y redes, "La carta", "Visítanos", "Pide") y el sello "Horebs" gigante (`.sello-pie`) recortado al pie. En mobile, "La carta" y "Visítanos" van lado a lado |
 
 ## Tokens
 

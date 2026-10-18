@@ -928,3 +928,39 @@ body {
     transform: none;
   }
 }
+
+/* Footer: subrayado que crece desde la izquierda al pasar o enfocar. */
+.enlace-subrayado {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-size: 0% 1px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  transition:
+    background-size 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    color 0.2s ease;
+}
+.enlace-subrayado:hover,
+.enlace-subrayado:focus-visible {
+  background-size: 100% 1px;
+}
+
+/* "Horebs" gigante al pie del footer, con el degradado del fuego del hero
+   desvaneciéndose hacia abajo. Escala con el ancho de la pantalla. */
+.sello-pie {
+  font-size: clamp(5.5rem, 27vw, 22rem);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--brand-orange-500) 70%, transparent) 0%,
+    color-mix(in srgb, var(--brand-yellow-500) 35%, transparent) 45%,
+    transparent 85%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .enlace-subrayado {
+    transition: none;
+  }
+}
