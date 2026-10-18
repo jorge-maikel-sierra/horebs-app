@@ -71,11 +71,19 @@
   --success-700: hsl(142 72% 29%);
   --success-800: hsl(143 64% 23%);
   --success-900: hsl(144 61% 17%);
+
+  /* Naranja para TEXTO sobre las superficies del tema (precios, ratings,
+     enlaces, foco). El 500 sobre blanco da 2.9:1 y no pasa AA; el 700 da
+     5:1. En oscuro el 500 sobre #0a0a0a da 6.9:1. Para texto naranja sobre
+     fondos que no cambian con el tema (el hero navy), sigue usando la
+     escala fija. */
+  --accent-ink: var(--brand-orange-700);
 }
 
 :root.dark {
   --background: #0a0a0a;
   --foreground: #ededed;
+  --accent-ink: var(--brand-orange-500);
 }
 
 @theme inline {
@@ -132,6 +140,8 @@
   --color-success-800: var(--success-800);
   --color-success-900: var(--success-900);
 
+  --color-accent-ink: var(--accent-ink);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -154,6 +164,51 @@ body {
     var(--background);
   background-attachment: fixed;
   color: var(--foreground);
+}
+
+/* Foco de teclado visible en todo el sitio, con el naranja de texto del
+   tema (≥3:1 contra el fondo, WCAG 2.4.7 / 1.4.11). scroll-margin evita
+   que el header sticky tape el elemento enfocado (WCAG 2.4.11). */
+:focus-visible {
+  outline: 2px solid var(--accent-ink);
+  outline-offset: 2px;
+}
+:where(a, button, input, select, textarea, summary, [tabindex]) {
+  scroll-margin-top: 96px;
+  scroll-margin-bottom: 96px;
+}
+
+/* Enlace "Saltar al contenido": oculto hasta que recibe foco. */
+.skip-link {
+  position: absolute;
+  left: 1rem;
+  top: -100px;
+  z-index: 50;
+  border-radius: 0.5rem;
+  background: var(--brand-navy);
+  color: #fff;
+  padding: 0.75rem 1rem;
+  font-weight: 600;
+}
+.skip-link:focus {
+  top: 1rem;
+}
+
+/* Agranda el área táctil de un botón de ícono de 36px a 44px sin cambiar
+   su tamaño visual ni el layout (WCAG 2.5.8, guía de 44px de Apple). */
+.objetivo-tactil {
+  position: relative;
+}
+.objetivo-tactil::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+}
+
+/* Superficies que son oscuras en ambos temas (hero navy): el naranja de
+   texto del tema claro no contrasta ahí, así que el foco va en amarillo. */
+.superficie-oscura :focus-visible {
+  outline-color: var(--brand-yellow-500);
 }
 
 .blog-content {
@@ -349,13 +404,16 @@ body {
   transform: scale(0.96);
 }
 
-/* Degradado de marca para botones primarios (reemplaza bg-brand-orange) */
+/* Degradado de marca para botones primarios (reemplaza bg-brand-orange).
+   Arranca entre el 600 y el 700 y termina en el 800: con texto blanco da
+   ≥4.5:1 (WCAG AA) en toda la zona donde cae la etiqueta. El degradado
+   anterior se centraba en el 500 y quedaba en ~2.9:1. */
 .btn-gradient {
   background-image: linear-gradient(
     135deg,
-    color-mix(in srgb, var(--brand-orange) 85%, white) 0%,
-    var(--brand-orange) 55%,
-    color-mix(in srgb, var(--brand-orange) 80%, black) 100%
+    color-mix(in srgb, var(--brand-orange-600) 50%, var(--brand-orange-700)) 0%,
+    var(--brand-orange-700) 30%,
+    var(--brand-orange-800) 100%
   );
 }
 
@@ -442,7 +500,12 @@ body {
 .marquee-track {
   animation: marquee 45s linear infinite;
 }
-.marquee-track:hover {
+/* Pausa al pasar el mouse, al navegar con teclado por las tarjetas y con
+   el botón de pausa (WCAG 2.2.2: todo movimiento de más de 5 s se tiene
+   que poder detener). */
+.marquee-track:hover,
+.marquee-track:focus-within,
+.marquee-pausado .marquee-track {
   animation-play-state: paused;
 }
 .marquee-fade {
@@ -516,9 +579,20 @@ body {
     opacity: 1;
     transform: none;
   }
+  /* Sin movimiento: cinta con scroll manual, sin la copia del loop. El
+     scroll va en el contenedor; antes estaba en la cinta, que no tiene
+     ancho fijo, y las reseñas fuera de pantalla quedaban inalcanzables. */
   .marquee-track {
     animation: none;
+  }
+  .marquee-fade {
     overflow-x: auto;
+    mask-image: none;
+    -webkit-mask-image: none;
+  }
+  .marquee-copia,
+  .marquee-control {
+    display: none;
   }
 }
 

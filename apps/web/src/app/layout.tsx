@@ -74,9 +74,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: jsonLdScript(restauranteJsonLd()) }}
         />
+        <a href="#contenido" className="skip-link">
+          Saltar al contenido
+        </a>
         <CartProvider>
           <SiteHeader />
-          <main className="flex-1">{children}</main>
+          <main id="contenido" tabIndex={-1} className="flex-1 outline-none">
+            {children}
+          </main>
           <SiteFooter />
         </CartProvider>
         <SpeedInsights />

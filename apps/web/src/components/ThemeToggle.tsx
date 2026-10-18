@@ -21,7 +21,7 @@ export default function ThemeToggle() {
       type="button"
       onClick={toggle}
       aria-label={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-      className="btn-press flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-zinc-300 text-zinc-700 transition-colors hover:border-brand-orange hover:text-brand-orange dark:border-zinc-700 dark:text-zinc-300"
+      className="btn-press objetivo-tactil flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-zinc-300 text-zinc-700 transition-colors hover:border-accent-ink hover:text-accent-ink dark:border-zinc-700 dark:text-zinc-300"
     >
       {isDark ? (
         <svg

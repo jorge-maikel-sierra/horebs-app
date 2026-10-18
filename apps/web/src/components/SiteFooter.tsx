@@ -60,8 +60,7 @@ export default function SiteFooter() {
             {NEGOCIO.nombre}
           </p>
           <p className="mt-2 max-w-xs text-zinc-600 dark:text-zinc-400">
-            Pizza artesanal, masa dorada y crujiente, recién horneada en
-            Riohacha.
+            Pizza artesanal de masa crocante, recién horneada en Riohacha.
           </p>
           <div className="mt-4 flex items-center gap-3">
             <a
@@ -69,7 +68,7 @@ export default function SiteFooter() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Facebook"
-              className="btn-press flex h-9 w-9 items-center justify-center rounded-full border border-zinc-300 text-zinc-600 transition-colors hover:border-brand-orange hover:text-brand-orange dark:border-zinc-700 dark:text-zinc-400"
+              className="btn-press objetivo-tactil flex h-9 w-9 items-center justify-center rounded-full border border-zinc-300 text-zinc-600 transition-colors hover:border-accent-ink hover:text-accent-ink dark:border-zinc-700 dark:text-zinc-400"
             >
               <FacebookIcon />
             </a>
@@ -78,14 +77,14 @@ export default function SiteFooter() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Instagram"
-              className="btn-press flex h-9 w-9 items-center justify-center rounded-full border border-zinc-300 text-zinc-600 transition-colors hover:border-brand-orange hover:text-brand-orange dark:border-zinc-700 dark:text-zinc-400"
+              className="btn-press objetivo-tactil flex h-9 w-9 items-center justify-center rounded-full border border-zinc-300 text-zinc-600 transition-colors hover:border-accent-ink hover:text-accent-ink dark:border-zinc-700 dark:text-zinc-400"
             >
               <InstagramIcon />
             </a>
             <WhatsappCta
               href={whatsappUrl('¡Hola! Quiero hacer un pedido.')}
               ariaLabel="WhatsApp"
-              className="btn-press flex h-9 w-9 items-center justify-center rounded-full border border-zinc-300 text-zinc-600 transition-colors hover:border-brand-orange hover:text-brand-orange dark:border-zinc-700 dark:text-zinc-400"
+              className="btn-press objetivo-tactil flex h-9 w-9 items-center justify-center rounded-full border border-zinc-300 text-zinc-600 transition-colors hover:border-accent-ink hover:text-accent-ink dark:border-zinc-700 dark:text-zinc-400"
             >
               <WhatsappIcon />
             </WhatsappCta>
@@ -101,7 +100,7 @@ export default function SiteFooter() {
               <li key={enlace.href}>
                 <Link
                   href={enlace.href}
-                  className="text-zinc-600 transition-colors hover:text-brand-orange dark:text-zinc-400"
+                  className="text-zinc-600 transition-colors hover:text-accent-ink dark:text-zinc-400"
                 >
                   {enlace.label}
                 </Link>
@@ -120,7 +119,7 @@ export default function SiteFooter() {
             <li>
               <WhatsappCta
                 href={whatsappUrl('¡Hola! Quiero hacer un pedido.')}
-                className="transition-colors hover:text-brand-orange"
+                className="transition-colors hover:text-accent-ink"
               >
                 {NEGOCIO.whatsapp}
               </WhatsappCta>
@@ -136,7 +135,7 @@ export default function SiteFooter() {
         <p className="mt-1">
           <Link
             href="/politica-privacidad"
-            className="font-medium text-zinc-600 transition-colors hover:text-brand-orange dark:text-zinc-400"
+            className="font-medium text-zinc-600 transition-colors hover:text-accent-ink dark:text-zinc-400"
           >
             Política de privacidad
           </Link>
@@ -147,7 +146,7 @@ export default function SiteFooter() {
             href="https://jorge-sierra.dev/"
             target="_blank"
             rel="noopener noreferrer"
-            className="font-medium text-zinc-600 transition-colors hover:text-brand-orange dark:text-zinc-400"
+            className="font-medium text-zinc-600 transition-colors hover:text-accent-ink dark:text-zinc-400"
           >
             Jorge Maikel Sierra
           </a>

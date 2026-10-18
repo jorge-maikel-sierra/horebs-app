@@ -21,10 +21,12 @@ export default function SiteHeader() {
 
   if (pathname?.startsWith('/admin')) return null;
 
+  const etiquetaConteo = `${count} ${count === 1 ? 'producto' : 'productos'}`;
+
   return (
     <header className="sticky top-3 z-20 mt-3 px-3 sm:top-4 sm:mt-4 sm:px-4">
       <div className="mx-auto flex max-w-4xl items-center justify-between gap-2 rounded-2xl border border-zinc-200/70 bg-gradient-to-b from-white/95 to-zinc-50/85 px-4 py-3 shadow-lg shadow-zinc-900/10 backdrop-blur-md sm:px-6 dark:border-zinc-800/70 dark:from-zinc-900/95 dark:to-black/85 dark:shadow-black/10">
-        <Link href="/" className="shrink-0">
+        <Link href="/" className="shrink-0" aria-current={pathname === '/' ? 'page' : undefined}>
           <Image
             src="/logo-horebs.png"
             alt="Pizzería Horebs"
@@ -35,29 +37,32 @@ export default function SiteHeader() {
           />
         </Link>
 
-        <nav className="hidden items-center gap-5 text-sm font-medium whitespace-nowrap text-zinc-700 sm:flex dark:text-zinc-300">
+        <nav aria-label="Principal" className="hidden items-center gap-5 text-sm font-medium whitespace-nowrap text-zinc-700 sm:flex dark:text-zinc-300">
           {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="transition-colors hover:text-brand-orange"
+              aria-current={pathname?.startsWith(link.href) ? 'page' : undefined}
+              className="transition-colors hover:text-accent-ink aria-[current=page]:text-accent-ink"
             >
               {link.label}
             </Link>
           ))}
           <Link
             href="/carrito"
-            className="flex items-center gap-1.5 transition-colors hover:text-brand-orange"
+            className="flex items-center gap-1.5 transition-colors hover:text-accent-ink"
           >
             Carrito
             {count > 0 && (
               <span
                 key={count}
-                className="animate-badge-bump flex h-5 w-5 items-center justify-center rounded-full bg-brand-orange text-xs font-semibold text-white"
+                aria-hidden="true"
+                className="animate-badge-bump flex h-5 w-5 items-center justify-center rounded-full bg-brand-orange-700 text-xs font-semibold text-white"
               >
                 {count}
               </span>
             )}
+            {count > 0 && <span className="sr-only">, {etiquetaConteo}</span>}
           </Link>
           <ThemeToggle />
         </nav>
@@ -65,8 +70,8 @@ export default function SiteHeader() {
         <div className="flex items-center gap-1 sm:hidden">
           <Link
             href="/carrito"
-            aria-label="Carrito"
-            className="relative flex h-9 w-9 items-center justify-center text-zinc-700 transition-colors hover:text-brand-orange dark:text-zinc-300"
+            aria-label={count > 0 ? `Carrito, ${etiquetaConteo}` : 'Carrito'}
+            className="relative objetivo-tactil flex h-9 w-9 items-center justify-center text-zinc-700 transition-colors hover:text-accent-ink dark:text-zinc-300"
           >
             <svg
               width="20"
@@ -85,7 +90,8 @@ export default function SiteHeader() {
             {count > 0 && (
               <span
                 key={count}
-                className="animate-badge-bump absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-brand-orange text-[10px] font-semibold text-white"
+                aria-hidden="true"
+                className="animate-badge-bump absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-brand-orange-700 text-[10px] font-semibold text-white"
               >
                 {count}
               </span>
@@ -97,7 +103,8 @@ export default function SiteHeader() {
             onClick={() => setOpen((v) => !v)}
             aria-label={open ? 'Cerrar menú' : 'Abrir menú'}
             aria-expanded={open}
-            className="btn-press flex h-9 w-9 items-center justify-center text-zinc-700 dark:text-zinc-300"
+            aria-controls="menu-movil"
+            className="btn-press objetivo-tactil flex h-9 w-9 items-center justify-center text-zinc-700 dark:text-zinc-300"
           >
             {open ? (
               <svg
@@ -131,14 +138,18 @@ export default function SiteHeader() {
       </div>
 
       {open && (
-        <nav className="animate-fade-up mx-auto mt-2 max-w-4xl rounded-2xl border border-zinc-200/70 bg-gradient-to-b from-white/95 to-zinc-50/85 px-4 py-3 shadow-lg shadow-zinc-900/10 backdrop-blur-md sm:hidden dark:border-zinc-800/70 dark:from-zinc-900/95 dark:to-black/85 dark:shadow-black/10">
+        <nav
+          id="menu-movil"
+          aria-label="Principal"
+          className="animate-fade-up mx-auto mt-2 max-w-4xl rounded-2xl border border-zinc-200/70 bg-gradient-to-b from-white/95 to-zinc-50/85 px-4 py-3 shadow-lg shadow-zinc-900/10 backdrop-blur-md sm:hidden dark:border-zinc-800/70 dark:from-zinc-900/95 dark:to-black/85 dark:shadow-black/10">
           <ul className="flex flex-col gap-1 text-sm font-medium text-zinc-700 dark:text-zinc-300">
             {NAV_LINKS.map((link) => (
               <li key={link.href}>
                 <Link
                   href={link.href}
+                  aria-current={pathname?.startsWith(link.href) ? 'page' : undefined}
                   onClick={() => setOpen(false)}
-                  className="block rounded-md px-2 py-2 transition-colors hover:bg-zinc-50 hover:text-brand-orange dark:hover:bg-zinc-900"
+                  className="block rounded-md px-2 py-2 transition-colors hover:bg-zinc-50 hover:text-accent-ink dark:hover:bg-zinc-900"
                 >
                   {link.label}
                 </Link>
