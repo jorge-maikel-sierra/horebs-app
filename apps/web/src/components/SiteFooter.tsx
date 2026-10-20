@@ -1,6 +1,5 @@
 'use client';
 
-import type { ReactNode } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -56,152 +55,135 @@ const REDES = [
 ] as const;
 
 const claseRed =
-  'btn-press objetivo-tactil flex h-10 w-10 items-center justify-center rounded-full border border-[var(--carta-linea)] bg-[var(--carta-tarjeta)] text-zinc-600 transition-colors hover:border-accent-ink hover:text-accent-ink dark:text-zinc-400';
-
-function TituloColumna({ children }: { children: ReactNode }) {
-  return (
-    <p className="flex items-center gap-3 text-[0.7rem] font-semibold tracking-[0.25em] text-accent-ink uppercase">
-      {children}
-      <span aria-hidden="true" className="h-px flex-1 bg-current opacity-30" />
-    </p>
-  );
-}
+  'btn-press objetivo-tactil flex h-10 w-10 items-center justify-center rounded-full bg-[var(--superficie)] text-zinc-700 transition-colors hover:bg-brand-orange-700 hover:text-white dark:text-zinc-300';
 
 /**
- * La contraportada de la carta: misma superficie de papel/tinta con grano
- * que la home, cuatro columnas (marca, navegación, visita y pedido) y el
- * nombre de la casa en grande al pie, recortado como un sello.
+ * El cierre de todas las páginas, de borde a borde: media pantalla con la
+ * foto de la Especial en primer plano y, en la otra mitad, el menú del
+ * sitio en letra grande, los datos para pedir y la línea legal.
  */
 export default function SiteFooter() {
   const pathname = usePathname();
-  const anio = new Date().getFullYear();
+  // El año en hora de Colombia: el servidor corre en UTC y el 31 de
+  // diciembre en la noche ya estaría en el año siguiente.
+  const anio = new Intl.DateTimeFormat('es-CO', {
+    timeZone: 'America/Bogota',
+    year: 'numeric',
+  }).format(new Date());
 
   if (pathname?.startsWith('/admin')) return null;
 
   return (
-    <footer className="carta overflow-hidden text-sm">
-      <div aria-hidden="true" className="hilo-dorado" />
+    <footer className="grid bg-[var(--background)] lg:min-h-[80svh] lg:grid-cols-2">
+      <div className="relative h-[50svh] overflow-hidden lg:h-auto">
+        <Image
+          src="/hero-pizza-especial.webp"
+          alt="Una porción de la Pizza Horebs Especial con el queso estirándose"
+          fill
+          sizes="(min-width: 1024px) 50vw, 100vw"
+          className="scale-[1.35] object-cover"
+          style={{ objectPosition: '72% 32%' }}
+        />
+      </div>
 
-      <div className="mx-auto grid max-w-6xl grid-cols-2 gap-x-6 gap-y-12 px-6 pt-16 pb-12 sm:gap-x-10 sm:pt-20 lg:grid-cols-12">
-        <div className="col-span-2 min-w-0 lg:col-span-4">
-          <Link href="/" className="inline-flex items-center gap-3">
-            <Image src="/logo-horebs.png" alt="" width={44} height={44} className="h-11 w-11" />
-            <span className="font-display text-2xl text-zinc-900 dark:text-zinc-50">
+      <div className="flex flex-col justify-between gap-14 px-[var(--margen)] pt-[clamp(3rem,6vw,5rem)] pb-[var(--margen)] lg:pl-[clamp(2rem,6vw,6rem)]">
+        <div>
+          <Link href="/" className="inline-flex items-center gap-2.5">
+            <Image src="/logo-horebs.png" alt="" width={40} height={40} className="h-10 w-10" />
+            <span className="font-display text-xl text-zinc-900 dark:text-zinc-50">
               {NEGOCIO.nombre}
             </span>
           </Link>
-          <p className="mt-5 max-w-xs text-base leading-7 text-zinc-600 dark:text-zinc-400">
-            Pizza artesanal de masa crocante, recién horneada en Riohacha.
-          </p>
-          <ul className="mt-6 flex items-center gap-3" aria-label="Redes sociales">
-            {REDES.map(({ href, label, Icono }) => (
-              <li key={label}>
-                <a
-                  href={href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={`${label} (se abre en una pestaña nueva)`}
-                  className={claseRed}
-                >
-                  <Icono />
-                </a>
-              </li>
-            ))}
-            <li>
-              <WhatsappCta
-                href={whatsappUrl('¡Hola! Quiero hacer un pedido.')}
-                ariaLabel="WhatsApp (se abre en una pestaña nueva)"
-                className={claseRed}
-              >
-                <WhatsappIcon />
-              </WhatsappCta>
-            </li>
-          </ul>
+
+          <nav aria-label="Pie de página" className="mt-10">
+            <ul className="pie-menu space-y-2 text-[clamp(2rem,3.2vw,2.75rem)] leading-tight font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+              {ENLACES.map((enlace) => (
+                <li key={enlace.href}>
+                  <Link href={enlace.href}>{enlace.label}</Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
         </div>
 
-        <nav aria-label="Pie de página" className="min-w-0 lg:col-span-2">
-          <TituloColumna>La carta</TituloColumna>
-          <ul className="mt-4 space-y-0.5">
-            {ENLACES.map((enlace) => (
-              <li key={enlace.href}>
-                <Link
-                  href={enlace.href}
-                  className="enlace-subrayado inline-block py-1.5 text-base text-zinc-700 transition-colors hover:text-accent-ink dark:text-zinc-300"
-                >
-                  {enlace.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-
-        <div className="min-w-0 lg:col-span-3">
-          <TituloColumna>Visítanos</TituloColumna>
-          <address className="mt-5 space-y-4 text-base leading-7 text-zinc-700 not-italic dark:text-zinc-300">
-            <p>{NEGOCIO.direccion}</p>
+        <div className="t-cuerpo grid gap-10 text-zinc-800 sm:grid-cols-2 dark:text-zinc-200">
+          <address className="not-italic">
+            <p className="font-semibold text-zinc-900 dark:text-zinc-50">Visítanos</p>
+            <p className="mt-2">{NEGOCIO.direccion}</p>
             <p>{NEGOCIO.horario}</p>
             <a
               href={URL_COMO_LLEGAR}
               target="_blank"
               rel="noopener noreferrer"
-              className="enlace-subrayado inline-flex items-center gap-1.5 font-semibold text-accent-ink"
+              className="mt-2 inline-block font-semibold text-accent-ink underline decoration-2 underline-offset-4"
             >
               Cómo llegar
-              <span aria-hidden="true">→</span>
               <span className="sr-only"> (se abre en Google Maps)</span>
             </a>
           </address>
+          <div>
+            <p className="font-semibold text-zinc-900 dark:text-zinc-50">Pide por WhatsApp</p>
+            <WhatsappCta
+              href={whatsappUrl('¡Hola! Quiero hacer un pedido.')}
+              className="mt-2 inline-block tabular-nums underline-offset-4 hover:text-accent-ink hover:underline"
+            >
+              {NEGOCIO.whatsapp}
+            </WhatsappCta>
+            <p>
+              Domicilio {formatPrecio(NEGOCIO.costoDomicilio)}, o retíralo en el local sin costo.
+            </p>
+            <ul className="mt-4 flex items-center gap-3" aria-label="Redes sociales">
+              {REDES.map(({ href, label, Icono }) => (
+                <li key={label}>
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`${label} (se abre en una pestaña nueva)`}
+                    className={claseRed}
+                  >
+                    <Icono />
+                  </a>
+                </li>
+              ))}
+              <li>
+                <WhatsappCta
+                  href={whatsappUrl('¡Hola! Quiero hacer un pedido.')}
+                  ariaLabel="WhatsApp (se abre en una pestaña nueva)"
+                  className={claseRed}
+                >
+                  <WhatsappIcon />
+                </WhatsappCta>
+              </li>
+            </ul>
+          </div>
         </div>
 
-        <div className="col-span-2 min-w-0 lg:col-span-3">
-          <TituloColumna>Pide</TituloColumna>
-          <p className="mt-5 text-zinc-600 dark:text-zinc-400">Por WhatsApp</p>
-          <WhatsappCta
-            href={whatsappUrl('¡Hola! Quiero hacer un pedido.')}
-            className="font-display mt-1 inline-block text-2xl text-zinc-900 tabular-nums transition-colors hover:text-accent-ink dark:text-zinc-50"
-          >
-            {NEGOCIO.whatsapp}
-          </WhatsappCta>
-          <p className="mt-4 leading-6 text-zinc-600 dark:text-zinc-400">
-            Domicilio {formatPrecio(NEGOCIO.costoDomicilio)} · o retíralo en el
-            local sin costo.
+        <div className="t-chico flex flex-col gap-2 text-zinc-600 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between dark:text-zinc-400">
+          <p>
+            © {anio} {NEGOCIO.nombre}. Todos los derechos reservados.
+          </p>
+          <p className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <Link
+              href="/politica-privacidad"
+              className="underline-offset-4 hover:text-accent-ink hover:underline"
+            >
+              Política de privacidad
+            </Link>
+            <span>
+              Sitio desarrollado por{' '}
+              <a
+                href="https://jorge-sierra.dev/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-zinc-800 underline-offset-4 hover:text-accent-ink hover:underline dark:text-zinc-200"
+              >
+                Jorge Maikel Sierra
+              </a>
+            </span>
           </p>
         </div>
       </div>
-
-      <div className="mx-auto flex max-w-6xl flex-col gap-3 border-t border-[var(--carta-linea)] px-6 py-6 text-xs text-zinc-600 sm:flex-row sm:items-center sm:justify-between dark:text-zinc-400">
-        <p>
-          © {anio} {NEGOCIO.nombre}. Todos los derechos reservados.
-        </p>
-        <p className="flex flex-wrap items-center gap-x-4 gap-y-1">
-          <Link
-            href="/politica-privacidad"
-            className="enlace-subrayado transition-colors hover:text-accent-ink"
-          >
-            Política de privacidad
-          </Link>
-          <span>
-            Sitio desarrollado por{' '}
-            <a
-              href="https://jorge-sierra.dev/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="enlace-subrayado font-medium text-zinc-700 transition-colors hover:text-accent-ink dark:text-zinc-300"
-            >
-              Jorge Maikel Sierra
-            </a>
-          </span>
-        </p>
-      </div>
-
-      {/* El nombre de la casa como sello al pie: decorativo, recortado por
-          abajo y con el degradado del fuego del hero. */}
-      <p
-        aria-hidden="true"
-        className="sello-pie font-display pointer-events-none -mb-[0.28em] text-center leading-[0.8] select-none"
-      >
-        Horebs
-      </p>
     </footer>
   );
 }

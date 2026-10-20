@@ -27,17 +27,18 @@ function suscribir(avisar: () => void) {
 }
 
 const TEXTOS: Record<Estado, string> = {
-  abierto: 'Abierto ahora · pide hasta las 11:00 pm',
+  abierto: 'Abierto ahora, pide hasta las 11:00 pm',
   antes: 'Hoy abrimos a las 4:00 pm',
-  despues: 'Cerrado · mañana abrimos a las 4:00 pm',
+  despues: 'Cerrado por hoy, mañana abrimos a las 4:00 pm',
 };
 
 /**
- * Chip con el estado del local según la hora de Colombia. En el servidor
- * muestra el horario fijo: la hora del visitante solo se conoce en el
- * navegador y así no hay desajuste de hidratación.
+ * Estado del local según la hora de Colombia, como una línea de texto con
+ * un punto de color. En el servidor muestra el horario fijo: la hora del
+ * visitante solo se conoce en el navegador y así no hay desajuste de
+ * hidratación.
  */
-export default function EstadoAbierto() {
+export default function EstadoAbierto({ className = '' }: { className?: string }) {
   const estado = useSyncExternalStore<Estado | null>(
     suscribir,
     leerEstado,
@@ -46,7 +47,7 @@ export default function EstadoAbierto() {
   const abierto = estado === 'abierto';
 
   return (
-    <p className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-medium sm:px-3.5 sm:text-sm text-zinc-100 backdrop-blur-sm">
+    <p className={`inline-flex items-center gap-2.5 ${className}`}>
       <span aria-hidden="true" className="relative flex h-2.5 w-2.5">
         {abierto && (
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success-400 opacity-70" />

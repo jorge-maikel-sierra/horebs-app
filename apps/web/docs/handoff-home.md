@@ -2,103 +2,82 @@
 
 ## Resumen
 
-La home tiene que llevar al visitante a pedir, online o por WhatsApp, en el menor número de pasos. El público son clientes de Riohacha, casi todos en el celular, que llegan desde Google, Instagram o Meta Ads. Este documento describe el estado de la home después de la revisión de diseño de octubre de 2026 (design critique, design system, accesibilidad, UX copy y síntesis de reseñas).
+La home tiene que llevar al visitante a pedir, online o por WhatsApp, en el menor número de pasos. El público son clientes de Riohacha, casi todos en el celular, que llegan desde Google, Instagram o Meta Ads.
+
+Este documento describe la home después del rediseño de octubre de 2026, hecho con las skills `design-taste-frontend` (dirección "split stage", reglas de la casa medidas con su inspector), `cro` y `copywriting`. Todas las secciones van de borde a borde de la pantalla, con un solo par de márgenes (`--margen`).
+
+## Idea
+
+La foto de la Especial sobre su tabla queda fija en la mitad derecha mientras la otra mitad se lee como una carta. Cuando llega cada firma, la foto cambia con un fundido lento. El elemento interactivo es el selector de tamaño: la pizza dibujada crece a su diámetro real (24, 30 o 40 cm) y los precios de las dos firmas cambian juntos.
 
 ## Estructura
 
-Debajo del hero, todo vive dentro de `.carta` ("la carta de la casa"): papel crema en claro y tinta de horno en oscuro, con grano encima. Los motivos son el arco dorado de la lámpara del hero, el hilo dorado, los números grandes en serif y los puntos guía de carta impresa.
-
 | # | Sección | Componente | Notas |
 |---|---|---|---|
-| 1 | Hero | inline en `page.tsx` + `components/hero/*` | `id="inicio"`, `.superficie-oscura`. Sin cambios en el rediseño |
-| 2 | Firmas de la casa | `home/FirmasCarta` | Filas en zigzag: foto en `.arco` + `.arco-marco`, segundo arco desplazado, `.numeral-hueco`, sello "Desde" en navy, tamaños con `.puntos-guia` y CTA "Pedir esta pizza". Especial y Hawaiana son productos ancla (CLAUDE.md) |
-| 3 | Clientes felices | `ClientesFelicesSection` | Promedio grande (4,7) con estrellas de relleno parcial a la izquierda (sticky). A la derecha, la reseña más larga como cita en navy y las demás en tarjetas (scroll-snap en mobile). Solo reseñas de 4–5★ |
-| 3b | También nos recomiendan | `PremiosSection` | Banda al pie de las reseñas, con laureles SVG |
-| 4 | Preguntas frecuentes | `FaqSection` + `lib/faqs.ts` | Dos columnas: intro sticky + tarjeta de WhatsApp a la izquierda, acordeón numerado con líneas finas a la derecha. 5 visibles y el resto detrás de "Ver las N preguntas" |
-| 5 | Cierre | `home/CierrePedido` | `id="pedir"`, navy como el hero. "¿Se te antojó?", CTAs y ficha con estado en vivo, horario, dirección, "Cómo llegar", domicilio y WhatsApp |
-| — | Barra de pedido | `BarraPedidoMovil` | Solo mobile. Se oculta sobre `#inicio`, `#pedir` y el footer |
-| — | Footer (todas las páginas públicas) | `SiteFooter` | Contraportada de la carta: superficie `.carta` + `.hilo-dorado`, cuatro columnas (marca y redes, "La carta", "Visítanos", "Pide") y el sello "Horebs" gigante (`.sello-pie`) recortado al pie. En mobile, "La carta" y "Visítanos" van lado a lado |
+| — | Header (todas las páginas públicas) | `SiteHeader` | Barra plana de ancho completo, sticky, alto `--alto-header`. Logo + nombre, enlaces, tema y "Pedir". Bajo 1024px: "Pedir", carrito y menú (el tema va dentro del menú) |
+| 1 | Portada | inline en `page.tsx`, dentro de `home/EscenarioDividido` | `id="inicio"`, `data-foto=0`. h1 "Pizzería Horebs", bajada, estado en vivo (`EstadoAbierto`), domicilio, "Pizzas desde" (mínimo real de la API) y los dos CTA |
+| 2 | Las dos firmas de la casa | `home/FirmasTamanos` | Selector de tamaño (radios), pizza a escala en SVG y una ficha por firma con el precio del tamaño elegido, el precio por porción y "Pedir la Especial/Hawaiana". Cada ficha lleva `data-foto` |
+| 3 | Toda la carta | `home/CartaCompleta` | Rompe el escenario: hoja con bordes festoneados sobre navy. Tabla real de pizzas (foto, descripción, precio por tamaño) ordenada por `ventas_historicas`, y debajo los productos que no son pizza con sus variantes. Cierra con domicilio, horario y los dos CTA |
+| 4 | Lo que cuentan en Google | `home/ResenaCarta` | Promedio grande a la izquierda. A la derecha, la reseña más larga como carta (primera oración grande, firma al final) y 2 o 4 reseñas más. Solo 4–5★. Enlaces a Sluurpy y Restaurant Guru |
+| 5 | Antes de pedir | `home/PreguntasLectura` + `lib/faqs.ts` | Todas las preguntas a la vista, como texto corrido en dos columnas (`<dl>` con pregunta en negrita). El JSON-LD de FAQ va acá. El título queda sticky en desktop |
+| 6 | Pedir por WhatsApp | `home/PedirWhatsapp` | `id="pedir"`, navy. El número como letra de cartel (`.t-cartel`) de margen a margen; estado, horario, dirección, "Cómo llegar", "Pedir online" y redes en las esquinas |
+| — | Footer (todas las páginas públicas) | `SiteFooter` | Mitad foto (primer plano de la Especial) y mitad menú del sitio en letra grande, datos para pedir y línea legal |
 
-## Tokens
+`home/Entradas` activa las entradas escalonadas y `home/productos.ts` tiene el tipo y los helpers de precio.
+
+## Tokens y reglas
 
 | Token | Valor | Uso |
 |---|---|---|
-| `--accent-ink` / `text-accent-ink` | claro: `--brand-orange-700` (#ce370d, 5,0:1 sobre blanco) · oscuro: `--brand-orange-500` (#ff6933, 6,9:1 sobre #0a0a0a) | **Todo texto naranja sobre superficies del tema**: precios, ratings, enlaces, íconos de acordeón, hover de navegación, foco |
-| `--brand-orange-400` | #ff8457 | Texto naranja sobre el navy del hero (4,9:1) |
-| `.btn-gradient` | 600/700 → 700 (30%) → 800 | Botón primario. Texto blanco ≥4,5:1 en toda la zona de la etiqueta |
-| `--brand-yellow-500` | #ffd93d | Contorno de foco dentro de `.superficie-oscura` |
-| `bg-brand-orange-700` | — | Badge del contador del carrito (texto blanco 5,0:1) |
-| `--font-display` / `font-display` | Young Serif 400 | Títulos de sección, nombres de firma, precios, cifras. Nunca texto corrido |
-| `--carta-fondo` | claro hsl(38 52% 97%) · oscuro hsl(24 18% 5%) | Superficie de `.carta` |
-| `--carta-tarjeta` | claro hsl(40 60% 99%) · oscuro hsl(24 14% 8%) | Tarjetas y botones secundarios sobre la carta |
-| `--carta-linea` | claro hsl(30 24% 84%) · oscuro hsl(24 10% 17%) | Bordes y separadores finos |
+| `--margen` | `clamp(1rem, 2.2vw, 2rem)` | El único margen lateral de header, home y footer |
+| `--alto-header` | 4rem | Alto del header; la foto fija se pega debajo |
+| `--superficie` / `bg-superficie` | claro hsl(30 8% 95%) · oscuro hsl(30 6% 9%) | Un escalón de tono para separar superficies (portada, FAQ, opciones de tamaño) |
+| `--tinta-suave` / `text-tinta-suave` | claro #52525b · oscuro #a1a1aa | Texto secundario (≥4,5:1) |
+| `--accent-ink` | claro orange-700 · oscuro orange-500 | Texto naranja sobre el tema |
+| `.boton-pedir` | fondo `--brand-orange-700`, hover 800 | La acción. Texto blanco 5,0:1 |
+| `.boton-secundario` | navy (blanco en oscuro y sobre navy) | WhatsApp |
 
-**Regla:** `text-brand-orange` (500) ya no se usa para texto nuevo. Sobre blanco da 2,87:1 y no pasa AA. Quedan 99 usos en otras pantallas, sobre todo en admin, para migrar a `text-accent-ink` en otro PR.
+Tamaños de letra (Young Serif para display y títulos, Geist para el resto): `.t-display` (h1 y promedio), `.t-cartel` (solo el número de WhatsApp), `.t-titulo`, `.t-entrada`, `.t-cuerpo` (17–18px) y `.t-chico` (14px).
 
-## Componentes y estados
+Reglas de la casa que mide el inspector de la skill: nada de degradados, sombras en reposo, líneas finas, etiquetas en mayúsculas espaciadas, numeración decorativa ni vidrio. Las superficies se separan con tono o espacio. Paneles y fotos con esquinas rectas; botones redondos. El body pierde su degradado ambiental en la home (`body:has(.home)`).
+
+## Estados
 
 | Elemento | Estado | Comportamiento |
 |---|---|---|
-| CTA primario "Pedir online" (→ `/catalogo`) | hover | `brightness-110` (antes era `opacity-90`, que bajaba el contraste) |
-| CTA primario | active | `scale(0.96)` (`.btn-press`) |
-| CTA secundario "Pedir por WhatsApp" | hover | Fondo blanco, texto navy |
-| CTAs del hero | mobile | Apilados y a ancho completo (`max-w-xs`, `items-stretch`) |
-| "Ver todo el menú" | hover | Borde y texto en `accent-ink` |
-| Firma | hover / foco dentro | La foto del arco se acerca (`scale 1.06`, 0,9s) |
-| "Pedir esta pizza" | hover | La flecha se corre 4px |
-| Pregunta de la FAQ | hover | Texto en `accent-ink`. Abierta: el "+" gira 135° hasta formar una "×" sobre `brand-orange-700` |
-| Pregunta de la FAQ | abierta / cerrada | `aria-expanded`. El panel cerrado es `inert` (fuera del Tab y de los lectores) |
-| "Ver las 11 preguntas" | toggle | Muestra las ocultas con el atributo `hidden`, que siguen en el DOM para el JSON-LD |
-| Barra de pedido mobile | visible | Solo cuando ni el hero ni el footer están en pantalla. Oculta queda `inert` y `translate-y-full` |
+| Botones | hover / active | Fondo un tono más oscuro / `scale(0.96)` |
+| Opción de tamaño | marcada / foco | Fondo navy y texto blanco / contorno `--accent-ink` |
+| Pizza a escala | cambio de tamaño | El grupo escala a `cm / 40` en 0,6s; los cortes cambian a 6, 8 o 12 |
+| Fila de la carta | hover / foco dentro | Fondo `--superficie` y la foto se acerca a 1.12 |
+| Menú del footer | hover | La fila se corre 12px y las demás bajan a `--tinta-suave` |
+| Número de WhatsApp | hover | Pasa a amarillo |
 
 ## Responsive
 
 | Breakpoint | Cambios |
 |---|---|
-| < 640px | Hero: foto arriba y texto centrado. CTAs apilados. Firmas: foto arriba y texto abajo. Reseñas secundarias en carrusel horizontal con snap. Sellos apilados. Aparece la barra de pedido |
-| ≥ 640px | CTAs en fila. Reseñas secundarias en grilla de 2 columnas. Sin barra de pedido |
-| ≥ 1024px | Hero en 2 columnas. Firmas en zigzag (foto 5/12, texto 7/12, alternando lado). Reseñas y FAQ en 2 columnas con la columna izquierda sticky. Sellos en fila. Reseñas secundarias en 3 columnas desde 1280px |
-
-## Contenido
-
-| Elemento | Copy | Límite |
-|---|---|---|
-| Subtítulo rotativo | "Pizza" + recién horneada / dorada y crocante / a domicilio | La frase más larga reserva el ancho, así que una nueva no debería pasar de ~20 caracteres |
-| Bajada del hero | "Pizza artesanal hecha en Riohacha, con la masa crocante de siempre y bien cargada de queso. Pide online o directo por WhatsApp." | 2–3 líneas en mobile |
-| Descripción de firma | Viene de la API | Sin truncado. Si crece mucho, agregar `line-clamp-3` |
-| Reseña | Viene de Google | `line-clamp-4` |
-| FAQ: costo de domicilio | Sale de `NEGOCIO.costoDomicilio` | Tiene que coincidir con `COSTO_DOMICILIO_DEFAULT` de la API |
-
-Se usa "crocante" y no "crujiente" porque es la palabra que usan los clientes (ver `docs/investigacion/2026-10-resenas-google.md`).
+| < 1024px | El escenario es una columna: la foto (56svh) va arriba, sticky, y la columna sube por encima. Cada firma muestra su foto dentro de la ficha. Header compacto |
+| < 640px | La tabla de pizzas pasa a filas en grilla: foto de 80px, nombre y descripción, y los tres precios con su tamaño encima |
+| ≥ 1024px | Escenario 50/50 con la foto fija a la derecha. Reseñas y FAQ en 12 columnas |
 
 ## Casos borde
 
-- **La API no responde o no hay destacados:** desaparecen la sección de firmas y la insignia del hero. La home sigue funcionando.
-- **No hay reseñas de 4–5★ o falla la Places API:** se muestra el fallback "Ver reseñas en Google".
-- **Movimiento reducido:** no hay animaciones; los `.escalon` aparecen ya visibles y la foto no hace zoom.
-- **Sin JS:** el título y la foto se ven igual (CSS puro y `<img>` real bajo el canvas).
+- **La API no responde:** no hay firmas ni carta, y la foto fija queda en la del hero. La portada, reseñas, FAQ y cierre siguen.
+- **Una pizza no viene en el tamaño elegido:** la ficha dice "No viene en este tamaño" y la tabla muestra "—".
+- **Sin reseñas de 4–5★ o falla la Places API:** queda el texto con el enlace a Google.
+- **Movimiento reducido:** sin fundidos, sin acercamiento de la foto ni entradas; todo visible.
+- **Sin JS:** todo el contenido se ve (las entradas solo esconden bajo `.home[data-movimiento]`) y el selector muestra la Mediana.
 
 ## Animación
 
-| Elemento | Disparador | Duración | Easing |
-|---|---|---|---|
-| Letras del título | carga | 0,9s cada una, escalonadas 45ms, empiezan a los 200ms | `cubic-bezier(0.2, 0.9, 0.25, 1.15)` |
-| CTAs del hero | carga | 0,6s con 0,95s de demora | `cubic-bezier(0.16, 1, 0.3, 1)` |
-| Palabra rotativa | cada 2,6s | spring 260/24 | — |
-| Firmas (`.escalon`) | entra en pantalla | 0,7s, escalonado 110ms por elemento | `cubic-bezier(0.16, 1, 0.3, 1)` |
-| Barra de pedido | scroll | 300ms (translate-y) | default |
-
-## Accesibilidad
-
-- **Orden de foco:** "Saltar al contenido" → logo → navegación → carrito → tema → (menú en mobile) → CTAs del hero → insignia de la firma → cards → "Ver todo el menú" → "Ver todas las reseñas" → autores de las reseñas → región "Más reseñas" (enfocable, con scroll en mobile) → sellos → WhatsApp de la FAQ → "Ver las N preguntas" → WhatsApp → contacto → barra de pedido (si está visible) → footer.
-- **Foco:** contorno de 2px en `--accent-ink` (amarillo en el hero) con `outline-offset` de 2px. `scroll-margin` de 96px para que el header sticky no lo tape.
-- **Landmarks:** `<main id="contenido">`, `nav[aria-label="Principal"]` y las secciones con `aria-labelledby` apuntando a su h2.
-- **Carrito:** en mobile se anuncia "Carrito, 3 productos". En desktop el badge es `aria-hidden` y va acompañado de texto `sr-only`.
-- **Rating:** las estrellas son `aria-hidden` y se anuncia "N de 5 estrellas". El "★" del promedio también es `aria-hidden`.
-- **Enlaces externos:** texto `sr-only` "(se abre en …)".
-- **Áreas táctiles:** los botones de ícono miden 36px visibles y 44px de área (`.objetivo-tactil`).
+| Elemento | Disparador | Duración |
+|---|---|---|
+| Portada | carga | `fade-up` 0,7s, escalonado 80ms |
+| Foto fija | llega su sección | Fundido de 1,6s; la activa se acerca de 1 a 1.07 en 18s |
+| Secciones (`.entra`) | entran en pantalla | 0,7s, escalonado 75ms, suben 24px |
 
 ## Pendiente
 
-- Migrar los 99 `text-brand-orange` restantes a `text-accent-ink` (admin, cuenta, pedido, contacto).
-- El error de lint previo en `ThemeToggle.tsx:9` (`set-state-in-effect`) no es de este cambio.
+- Sin video: no hay un clip propio del horno de Horebs y uno genérico daría una idea falsa. Si el negocio graba uno, va como loop mudo en la foto fija.
+- Las fotos de las firmas repiten el encuadre del hero; una foto propia del local o del horno sumaría variedad.
+- Las skills quedaron instaladas en `.claude/skills/` (no versionadas) y los archivos de trabajo del inspector en `.taste-skill/`.

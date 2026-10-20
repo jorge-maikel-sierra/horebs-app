@@ -24,20 +24,27 @@ export default function SiteHeader() {
   const etiquetaConteo = `${count} ${count === 1 ? 'producto' : 'productos'}`;
 
   return (
-    <header className="sticky top-3 z-20 mt-3 px-3 sm:top-4 sm:mt-4 sm:px-4">
-      <div className="mx-auto flex max-w-4xl items-center justify-between gap-2 rounded-2xl border border-zinc-200/70 bg-gradient-to-b from-white/95 to-zinc-50/85 px-4 py-3 shadow-lg shadow-zinc-900/10 backdrop-blur-md sm:px-6 dark:border-zinc-800/70 dark:from-zinc-900/95 dark:to-black/85 dark:shadow-black/10">
-        <Link href="/" className="shrink-0" aria-current={pathname === '/' ? 'page' : undefined}>
+    <header className="sticky top-0 z-30 bg-[var(--background)]">
+      <div className="flex h-[var(--alto-header)] items-center justify-between gap-4 px-[var(--margen)]">
+        <Link
+          href="/"
+          className="flex shrink-0 items-center gap-2.5"
+          aria-current={pathname === '/' ? 'page' : undefined}
+        >
           <Image
             src="/logo-horebs.png"
-            alt="Pizzería Horebs"
+            alt=""
             width={40}
             height={40}
             className="h-9 w-9 sm:h-10 sm:w-10"
             priority
           />
+          <span className="font-display text-lg leading-none text-zinc-900 sm:text-xl dark:text-zinc-50">
+            Pizzería Horebs
+          </span>
         </Link>
 
-        <nav aria-label="Principal" className="hidden items-center gap-5 text-sm font-medium whitespace-nowrap text-zinc-700 sm:flex dark:text-zinc-300">
+        <nav aria-label="Principal" className="t-cuerpo hidden items-center gap-6 font-medium whitespace-nowrap text-zinc-700 lg:flex dark:text-zinc-300">
           {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
@@ -65,9 +72,21 @@ export default function SiteHeader() {
             {count > 0 && <span className="sr-only">, {etiquetaConteo}</span>}
           </Link>
           <ThemeToggle />
+          <Link
+            href="/catalogo"
+            className="btn-press rounded-full bg-brand-orange-700 px-5 py-2 font-semibold text-white transition-colors hover:bg-brand-orange-800"
+          >
+            Pedir
+          </Link>
         </nav>
 
-        <div className="flex items-center gap-1 sm:hidden">
+        <div className="flex items-center gap-1 lg:hidden">
+          <Link
+            href="/catalogo"
+            className="btn-press mr-1 rounded-full bg-brand-orange-700 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-orange-800"
+          >
+            Pedir
+          </Link>
           <Link
             href="/carrito"
             aria-label={count > 0 ? `Carrito, ${etiquetaConteo}` : 'Carrito'}
@@ -97,7 +116,6 @@ export default function SiteHeader() {
               </span>
             )}
           </Link>
-          <ThemeToggle />
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
@@ -141,21 +159,24 @@ export default function SiteHeader() {
         <nav
           id="menu-movil"
           aria-label="Principal"
-          className="animate-fade-up mx-auto mt-2 max-w-4xl rounded-2xl border border-zinc-200/70 bg-gradient-to-b from-white/95 to-zinc-50/85 px-4 py-3 shadow-lg shadow-zinc-900/10 backdrop-blur-md sm:hidden dark:border-zinc-800/70 dark:from-zinc-900/95 dark:to-black/85 dark:shadow-black/10">
-          <ul className="flex flex-col gap-1 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          className="animate-fade-up bg-[var(--background)] px-[var(--margen)] pt-2 pb-5 lg:hidden">
+          <ul className="flex flex-col gap-1 text-base font-medium text-zinc-700 dark:text-zinc-300">
             {NAV_LINKS.map((link) => (
               <li key={link.href}>
                 <Link
                   href={link.href}
                   aria-current={pathname?.startsWith(link.href) ? 'page' : undefined}
                   onClick={() => setOpen(false)}
-                  className="block rounded-md px-2 py-2 transition-colors hover:bg-zinc-50 hover:text-accent-ink dark:hover:bg-zinc-900"
+                  className="block py-2.5 transition-colors hover:text-accent-ink"
                 >
                   {link.label}
                 </Link>
               </li>
             ))}
           </ul>
+          <div className="mt-3">
+            <ThemeToggle />
+          </div>
         </nav>
       )}
     </header>

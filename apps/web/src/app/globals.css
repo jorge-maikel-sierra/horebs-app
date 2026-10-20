@@ -79,12 +79,15 @@
      escala fija. */
   --accent-ink: var(--brand-orange-700);
 
-  /* Home debajo del hero ("la carta de la casa"): papel cálido en claro,
-     tinta de horno en oscuro. */
-  --carta-fondo: hsl(38 52% 97%);
-  --carta-tarjeta: hsl(40 60% 99%);
-  --carta-linea: hsl(30 24% 84%);
-  --carta-grano: 0.06;
+  /* Marco de página: el único par de márgenes laterales del header, la
+     home y el footer, que van de borde a borde de la pantalla. */
+  --margen: clamp(1rem, 2.2vw, 2rem);
+  --alto-header: 4rem;
+
+  /* Un escalón de tono sobre el fondo para separar superficies sin
+     líneas ni sombras, y la tinta secundaria (≥4.5:1 en los dos temas). */
+  --superficie: hsl(30 8% 95%);
+  --tinta-suave: #52525b;
 }
 
 :root.dark {
@@ -92,10 +95,8 @@
   --foreground: #ededed;
   --accent-ink: var(--brand-orange-500);
 
-  --carta-fondo: hsl(24 18% 5%);
-  --carta-tarjeta: hsl(24 14% 8%);
-  --carta-linea: hsl(24 10% 17%);
-  --carta-grano: 0.09;
+  --superficie: hsl(30 6% 9%);
+  --tinta-suave: #a1a1aa;
 }
 
 @theme inline {
@@ -153,6 +154,8 @@
   --color-success-900: var(--success-900);
 
   --color-accent-ink: var(--accent-ink);
+  --color-superficie: var(--superficie);
+  --color-tinta-suave: var(--tinta-suave);
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
@@ -582,192 +585,159 @@ body {
   }
 }
 
-/* Hero: gradiente mesh que respira detrás de las brasas (hero/BrasasHorno.tsx) */
-.hero-mesh {
+/* ==========================================================================
+   Home: el escenario dividido (ver docs/handoff-home.md).
+   Una foto fija de la pizza en una mitad y la carta en la otra. Cinco
+   tamaños de letra, un solo margen, paneles y fotos con esquinas rectas,
+   botones redondos de relleno plano. Sin degradados, sombras ni líneas
+   finas: las superficies se separan con un escalón de tono.
+   ========================================================================== */
+
+body:has(.home) {
+  background: var(--background);
+}
+
+/* Los cinco tamaños de la página. */
+.t-display {
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 8.6vw, 8.5rem);
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+}
+/* El número de WhatsApp del cierre, ajustado para ir de margen a margen. */
+.t-cartel {
+  font-family: var(--font-display);
+  font-size: clamp(2.75rem, 11.2vw, 12rem);
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+}
+.t-titulo {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 3.2vw, 2.75rem);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+.t-entrada {
+  font-size: clamp(1.25rem, 1.6vw, 1.5rem);
+  line-height: 1.4;
+}
+.t-cuerpo {
+  font-size: clamp(1.0625rem, 1.1vw, 1.125rem);
+  line-height: 1.55;
+}
+.t-chico {
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.seccion {
+  padding-block: clamp(5rem, 10vw, 9rem);
+  padding-inline: var(--margen);
+}
+
+/* Botones de la home: redondos, relleno plano. El naranja es la acción. */
+.boton {
+  display: inline-flex;
+  min-height: 3rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  padding-inline: 1.75rem;
+  font-weight: 600;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.15s ease;
+}
+.boton:active {
+  transform: scale(0.96);
+}
+.boton-pedir {
+  background-color: var(--brand-orange-700);
+  color: #fff;
+}
+.boton-pedir:hover {
+  background-color: var(--brand-orange-800);
+}
+.boton-secundario {
+  background-color: var(--brand-navy);
+  color: #fff;
+}
+.boton-secundario:hover {
+  background-color: hsl(206 45% 29%);
+}
+.dark .boton-secundario,
+.superficie-oscura .boton-secundario {
+  background-color: #fff;
+  color: var(--brand-navy);
+}
+.dark .boton-secundario:hover,
+.superficie-oscura .boton-secundario:hover {
+  background-color: var(--brand-yellow-100);
+}
+
+/* Enlace de texto: subrayado que se acerca al pasar. */
+.enlace {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.3em;
+  transition:
+    text-underline-offset 0.2s ease,
+    color 0.2s ease;
+}
+.enlace:hover {
+  text-underline-offset: 0.15em;
+}
+
+/* --- El escenario: columna de lectura + foto fija -------------------- */
+.escenario {
+  display: grid;
+  gap: var(--margen);
+  padding: var(--margen);
+}
+.escenario-foto {
+  position: sticky;
+  top: var(--alto-header);
+  z-index: 0;
+  order: -1;
+  height: 56svh;
+  overflow: hidden;
+  background-color: var(--brand-navy);
+}
+.escenario-columna {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  background-color: var(--background);
+}
+@media (min-width: 1024px) {
+  .escenario {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+  .escenario-foto {
+    order: 2;
+    top: calc(var(--alto-header) + var(--margen));
+    height: calc(100svh - var(--alto-header) - 2 * var(--margen));
+  }
+}
+
+/* Cada foto del escenario entra con un fundido lento cuando llega su
+   sección; la activa además respira con un acercamiento muy lento. */
+.escenario-capa {
   position: absolute;
-  inset: -10%;
-  background:
-    radial-gradient(circle at 20% 20%, color-mix(in srgb, var(--brand-orange) 55%, transparent), transparent 55%),
-    radial-gradient(circle at 80% 25%, color-mix(in srgb, var(--brand-yellow) 45%, transparent), transparent 50%),
-    radial-gradient(circle at 50% 90%, color-mix(in srgb, var(--brand-orange) 35%, transparent), transparent 60%);
-  background-size: 160% 160%;
-  filter: blur(50px);
-  opacity: 0.6;
-  animation: mesh-drift 16s ease-in-out infinite alternate;
-}
-
-@keyframes mesh-drift {
-  0% {
-    background-position: 0% 0%, 100% 0%, 50% 100%;
-  }
-  100% {
-    background-position: 20% 30%, 70% 45%, 60% 70%;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .hero-mesh {
-    animation: none;
-  }
-}
-
-/* Boca del horno: resplandor cálido abajo, de donde salen las brasas. */
-.hero-horno {
-  position: absolute;
-  inset: auto -20% -30% -20%;
-  height: 55%;
-  background: radial-gradient(
-    ellipse at 50% 100%,
-    color-mix(in srgb, var(--brand-orange) 42%, transparent),
-    color-mix(in srgb, var(--brand-orange) 8%, transparent) 45%,
-    transparent 70%
-  );
-  filter: blur(30px);
-  animation: horno-respira 5s ease-in-out infinite alternate;
-  pointer-events: none;
-}
-
-@keyframes horno-respira {
-  from {
-    opacity: 0.65;
-    transform: scaleY(0.94);
-  }
-  to {
-    opacity: 1;
-    transform: scaleY(1.06);
-  }
-}
-
-/* Título letra por letra (hero/TituloLetras.tsx): sube, gira y enfoca. */
-.hero-letra {
-  display: inline-block;
-  animation: letra-sube 0.9s cubic-bezier(0.2, 0.9, 0.25, 1.15) both;
-  animation-delay: calc(var(--i, 0) * 45ms + 200ms);
-}
-
-@keyframes letra-sube {
-  from {
-    opacity: 0;
-    transform: translateY(0.55em) rotate(10deg);
-    filter: blur(8px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-    filter: none;
-  }
-}
-
-.texto-fuego {
-  background: linear-gradient(
-    180deg,
-    var(--brand-yellow) 10%,
-    var(--brand-orange) 85%
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  filter: drop-shadow(0 0 18px color-mix(in srgb, var(--brand-orange) 45%, transparent));
-}
-
-/* Los CTA entran cuando el título ya terminó de armarse. */
-.hero-ctas {
-  animation-delay: 0.95s;
-}
-
-.pizza-brillo {
-  background: radial-gradient(
-    circle,
-    color-mix(in srgb, var(--brand-orange) 50%, transparent) 0%,
-    color-mix(in srgb, var(--brand-yellow) 18%, transparent) 40%,
-    transparent 68%
-  );
-  filter: blur(24px);
-  animation: brillo-late 3.6s ease-in-out infinite alternate;
-}
-
-@keyframes brillo-late {
-  from {
-    opacity: 0.55;
-    transform: scale(0.94);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1.04);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .hero-horno,
-  .hero-letra,
-  .pizza-brillo {
-    animation: none;
-  }
-}
-
-/* ── Conjuro de la pizza (hero/ConjuroPizza.tsx) ────────────────────────
-   Fases en data-fase de la escena, que pone el JS: sin atributo = espera
-   (SSR), "animando" = espiral en curso, "listo" = foto real visible.
-   Si el JS no llega, el failsafe (6 s) muestra todo igual. */
-.conjuro-arco {
-  border-radius: 50% 50% 5% 5% / 40% 40% 4% 4%;
-  /* Sin sombra mientras el arco está vacío: dibujaría una silueta gris. */
-  transition: box-shadow 0.6s ease-out;
-}
-.conjuro-escena[data-fase='listo'] .conjuro-arco {
-  box-shadow: 0 40px 80px -30px rgba(0, 0, 0, 0.75);
-}
-
-.conjuro-foto {
+  inset: 0;
   opacity: 0;
-  animation: conjuro-aparece 0.5s ease 6s forwards;
+  transition: opacity 1.6s ease;
 }
-.conjuro-escena[data-fase='animando'] .conjuro-foto {
-  animation: none;
-  opacity: 0;
+.escenario-capa[data-activa='true'] {
+  opacity: 1;
 }
-.conjuro-escena[data-fase='listo'] .conjuro-foto {
-  animation: conjuro-aparece 0.55s ease-out both;
+.escenario-capa[data-activa='true'] img {
+  animation: deriva 18s ease-in-out infinite alternate;
 }
-
-@keyframes conjuro-aparece {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-/* Marco dorado: se dibuja desde la cúspide mientras baja la estela. */
-.conjuro-trazo {
-  stroke-dasharray: 1;
-  stroke-dashoffset: 1;
-  animation: conjuro-dibuja 1s ease 6s forwards;
-}
-.conjuro-escena[data-fase='animando'] .conjuro-trazo {
-  animation: conjuro-dibuja 2.7s cubic-bezier(0.45, 0, 0.25, 1) both;
-}
-.conjuro-escena[data-fase='listo'] .conjuro-trazo {
-  animation: none;
-  stroke-dashoffset: 0;
-}
-.conjuro-marco {
-  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--brand-yellow) 55%, transparent));
-}
-
-@keyframes conjuro-dibuja {
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
-/* Ken Burns muy lento: la foto respira una vez terminada la entrada. */
-.conjuro-escena[data-fase='listo'] .conjuro-zoom {
-  animation: conjuro-zoom 18s ease-in-out 0.6s infinite alternate;
-}
-
-@keyframes conjuro-zoom {
+@keyframes deriva {
   from {
     transform: scale(1);
   }
@@ -776,191 +746,128 @@ body {
   }
 }
 
-/* Etiqueta del producto: entra cuando la pizza ya está completa. */
-.conjuro-insignia {
-  opacity: 0;
-  animation: conjuro-insignia 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.15) 6.2s both;
+/* La portada ocupa la primera pantalla junto a la foto. */
+.portada {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background-color: var(--superficie);
+  padding: clamp(1.5rem, 4.5vw, 4.5rem);
 }
-.conjuro-escena[data-fase='animando'] .conjuro-insignia {
-  animation: none;
-  opacity: 0;
-}
-.conjuro-escena[data-fase='listo'] .conjuro-insignia {
-  animation: conjuro-insignia 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.15) 0.2s both;
-}
-
-@keyframes conjuro-insignia {
-  from {
-    opacity: 0;
-    transform: translateY(14px) scale(0.92);
-  }
-  to {
-    opacity: 1;
-    transform: none;
+@media (min-width: 1024px) {
+  .portada {
+    min-height: calc(100svh - var(--alto-header) - 2 * var(--margen));
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .conjuro-escena .conjuro-foto,
-  .conjuro-escena[data-fase] .conjuro-foto {
-    animation: none !important;
-    opacity: 1 !important;
-  }
-  .conjuro-escena .conjuro-trazo,
-  .conjuro-escena[data-fase] .conjuro-trazo {
-    animation: none !important;
-    stroke-dashoffset: 0 !important;
-  }
-  .conjuro-escena .conjuro-zoom {
-    animation: none !important;
-  }
-  .conjuro-escena .conjuro-insignia,
-  .conjuro-escena[data-fase] .conjuro-insignia {
-    animation: none !important;
-    opacity: 1 !important;
-    transform: none !important;
-  }
+/* Entrada de la portada al cargar (CSS puro, no depende del JS). */
+.aparece {
+  animation: fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--d, 0) * 80ms + 80ms);
 }
 
-/* ==========================================================================
-   Home: "la carta de la casa" (todo lo que va debajo del hero).
-   Motivos: el arco dorado de la lámpara del hero como marco de foto, hilo
-   dorado como separador, puntos guía de carta impresa en los precios y
-   grano de papel encima de la superficie.
-   ========================================================================== */
-
-.carta {
-  position: relative;
-  isolation: isolate;
-  background-color: var(--carta-fondo);
-}
-/* Grano de papel: ruido SVG fijo, sin imagen externa. */
-.carta::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  opacity: var(--carta-grano);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.35 0 0 0 0 0.2 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
-}
-
-.hilo-dorado {
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    var(--brand-yellow-500) 30%,
-    var(--brand-orange-500) 70%,
-    transparent
-  );
-}
-
-/* Arco con la proporción 4:5: radio horizontal 50% del ancho y vertical 40%
-   del alto = medio círculo exacto arriba. */
-.arco {
-  border-radius: 50% 50% 1.25rem 1.25rem / 40% 40% 1.25rem 1.25rem;
-}
-/* Marco de 1px con el degradado de la lámpara del hero. */
-.arco-marco {
-  padding: 1px;
-  background: linear-gradient(160deg, var(--brand-yellow-500), var(--brand-orange-500) 55%, transparent);
-}
-
-/* Cifra decorativa hueca (N.º de la firma detrás de la foto). */
-.numeral-hueco {
-  color: transparent;
-  -webkit-text-stroke: 1.5px color-mix(in srgb, var(--brand-orange-500) 40%, transparent);
-}
-
-/* Puntos guía entre tamaño y precio, como en una carta impresa. */
-.puntos-guia {
-  flex: 1;
-  min-width: 1.5rem;
-  margin-inline: 0.5rem;
-  border-bottom: 2px dotted color-mix(in srgb, var(--foreground) 22%, transparent);
-  transform: translateY(-0.3em);
-}
-
-/* Entrada escalonada dentro de un ScrollReveal: cada .escalon usa --d. */
-.reveal .escalon {
+/* Entrada de cada sección al llegar: título, texto y foto escalonados.
+   Solo se esconden cuando el JS ya marcó la home (data-movimiento), así
+   que sin JS todo queda visible. */
+.home[data-movimiento] [data-entrada] .entra {
   opacity: 0;
   transform: translateY(24px);
   transition:
     opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
     transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
-  transition-delay: calc(var(--d, 0) * 110ms);
+  transition-delay: calc(var(--d, 0) * 75ms);
 }
-.reveal-visible .escalon {
+.home[data-movimiento] [data-entrada].visto .entra {
   opacity: 1;
   transform: none;
 }
 
-/* La foto del arco se acerca apenas al pasar por la firma. */
-.firma:hover .firma-foto,
-.firma:focus-within .firma-foto {
-  transform: scale(1.06);
-}
-.firma-foto {
-  transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+/* Puntos guía entre el tamaño y el precio, como en una carta impresa. */
+.guia {
+  flex: 1;
+  min-width: 1.5rem;
+  margin-inline: 0.75rem;
+  border-bottom: 4px dotted color-mix(in srgb, currentColor 28%, transparent);
+  transform: translateY(-0.35em);
 }
 
-/* Acordeón de la FAQ: el + gira a ×. */
-.faq-signo {
-  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+/* La pizza dibujada a escala: el grupo se escala por diámetro real. */
+.pizza-escala {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
-[aria-expanded='true'] .faq-signo {
-  transform: rotate(135deg);
+
+/* Hoja de la carta con los bordes de arriba y abajo festoneados. */
+.hoja-festoneada {
+  --feston: 0.75rem;
+  -webkit-mask:
+    radial-gradient(var(--feston) at 50% 0, #0000 calc(100% - 0.5px), #000) 50% 0 / calc(2 * var(--feston)) 51% repeat-x,
+    radial-gradient(var(--feston) at 50% 100%, #0000 calc(100% - 0.5px), #000) 50% 100% / calc(2 * var(--feston)) 51% repeat-x;
+  mask:
+    radial-gradient(var(--feston) at 50% 0, #0000 calc(100% - 0.5px), #000) 50% 0 / calc(2 * var(--feston)) 51% repeat-x,
+    radial-gradient(var(--feston) at 50% 100%, #0000 calc(100% - 0.5px), #000) 50% 100% / calc(2 * var(--feston)) 51% repeat-x;
+}
+
+/* Fila de la carta: la foto se acerca y el fondo sube un tono al pasar. */
+.fila-carta {
+  transition: background-color 0.2s ease;
+}
+.fila-carta:hover,
+.fila-carta:focus-within {
+  background-color: var(--superficie);
+}
+.fila-carta img {
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.fila-carta:hover img,
+.fila-carta:focus-within img {
+  transform: scale(1.12);
+}
+
+/* Menú del footer: la fila señalada se corre y las demás se apagan. */
+.pie-menu a {
+  display: inline-block;
+  transition:
+    transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    color 0.2s ease;
+}
+.pie-menu:hover a,
+.pie-menu:focus-within a {
+  color: var(--tinta-suave);
+}
+.pie-menu a:hover,
+.pie-menu a:focus-visible {
+  transform: translateX(12px);
+  color: var(--foreground);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .reveal .escalon {
+  .escenario-capa {
+    transition: none;
+  }
+  .escenario-capa[data-activa='true'] img,
+  .aparece {
+    animation: none;
+  }
+  .home[data-movimiento] [data-entrada] .entra {
     opacity: 1;
     transform: none;
     transition: none;
   }
-  .firma-foto,
-  .faq-signo {
+  .boton,
+  .enlace,
+  .pizza-escala,
+  .fila-carta,
+  .fila-carta img,
+  .pie-menu a {
     transition: none;
   }
-  .firma:hover .firma-foto,
-  .firma:focus-within .firma-foto {
+  .boton:active,
+  .fila-carta:hover img,
+  .fila-carta:focus-within img,
+  .pie-menu a:hover,
+  .pie-menu a:focus-visible {
     transform: none;
-  }
-}
-
-/* Footer: subrayado que crece desde la izquierda al pasar o enfocar. */
-.enlace-subrayado {
-  background-image: linear-gradient(currentColor, currentColor);
-  background-size: 0% 1px;
-  background-position: 0 100%;
-  background-repeat: no-repeat;
-  transition:
-    background-size 0.35s cubic-bezier(0.16, 1, 0.3, 1),
-    color 0.2s ease;
-}
-.enlace-subrayado:hover,
-.enlace-subrayado:focus-visible {
-  background-size: 100% 1px;
-}
-
-/* "Horebs" gigante al pie del footer, con el degradado del fuego del hero
-   desvaneciéndose hacia abajo. Escala con el ancho de la pantalla. */
-.sello-pie {
-  font-size: clamp(5.5rem, 27vw, 22rem);
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--brand-orange-500) 70%, transparent) 0%,
-    color-mix(in srgb, var(--brand-yellow-500) 35%, transparent) 45%,
-    transparent 85%
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .enlace-subrayado {
-    transition: none;
   }
 }
