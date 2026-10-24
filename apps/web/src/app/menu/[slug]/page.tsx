@@ -5,6 +5,10 @@ import { notFound } from 'next/navigation';
 import AgregarAlCarritoBoton from '@/components/AgregarAlCarritoBoton';
 import ScrollReveal from '@/components/ScrollReveal';
 import TrackViewItem from '@/components/TrackViewItem';
+import { formatPrecio } from '@/lib/formato';
+import { NEGOCIO } from '@/lib/negocio';
+import { openGraphPagina } from '@/lib/seo';
+import { breadcrumbJsonLd, jsonLdScript } from '@/lib/json-ld';
 
 function IconFlechaIzquierda() {
   return (
@@ -23,9 +27,6 @@ function IconFlechaIzquierda() {
     </svg>
   );
 }
-import { formatPrecio } from '@/lib/formato';
-import { NEGOCIO } from '@/lib/negocio';
-import { breadcrumbJsonLd, jsonLdScript } from '@/lib/json-ld';
 
 type Variante = {
   id: string;
@@ -86,11 +87,11 @@ export async function generateMetadata({
     title,
     description,
     alternates: { canonical: `/menu/${slug}` },
-    openGraph: {
+    openGraph: openGraphPagina(`/menu/${slug}`, {
       title,
       description,
-      images: producto.imagen_url ? [producto.imagen_url] : undefined,
-    },
+      ...(producto.imagen_url && { images: [producto.imagen_url] }),
+    }),
   };
 }
 

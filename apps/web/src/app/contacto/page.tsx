@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { NEGOCIO, whatsappUrl } from '@/lib/negocio';
+import { openGraphPagina } from '@/lib/seo';
 import ScrollReveal from '@/components/ScrollReveal';
 import WhatsappCta from '@/components/WhatsappCta';
 
@@ -8,6 +9,7 @@ export const metadata: Metadata = {
   description:
     'Dirección, horario y WhatsApp de Pizzería Horebs en Riohacha, La Guajira.',
   alternates: { canonical: '/contacto' },
+  openGraph: openGraphPagina('/contacto'),
 };
 
 function PinIcon() {

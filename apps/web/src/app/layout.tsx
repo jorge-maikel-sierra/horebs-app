@@ -15,7 +15,8 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://pizzeriahorebs.shop"),
   title: "Pizzería Horebs",
   description: "Pide en línea — Pizzería Horebs, Riohacha",
-  alternates: { canonical: "/" },
+  // Sin canonical aquí: cada página declara el suyo. Si el layout lo fija,
+  // las páginas que no lo definen (carrito, cuenta…) apuntan a la home.
   openGraph: {
     siteName: "Pizzería Horebs",
     locale: "es_CO",

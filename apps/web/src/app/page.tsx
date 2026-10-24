@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import { NEGOCIO, whatsappUrl } from '@/lib/negocio';
@@ -15,6 +16,17 @@ import ConjuroPizza from '@/components/hero/ConjuroPizza';
 import TituloLetras from '@/components/hero/TituloLetras';
 import { faqJsonLd, jsonLdScript } from '@/lib/json-ld';
 import { FAQS } from '@/lib/faqs';
+import { openGraphPagina } from '@/lib/seo';
+
+const TITULO = `Pizza a domicilio en Riohacha | ${NEGOCIO.nombre}`;
+const DESCRIPCION = `Pizza artesanal de masa crocante en Riohacha. Domicilio por ${formatPrecio(NEGOCIO.costoDomicilio)} o retiro en el local, de lunes a domingo de 4:00 a 11:00 pm. Pide online o por WhatsApp.`;
+
+export const metadata: Metadata = {
+  title: TITULO,
+  description: DESCRIPCION,
+  alternates: { canonical: '/' },
+  openGraph: openGraphPagina('/', { title: TITULO, description: DESCRIPCION }),
+};
 
 type Producto = {
   id: string;
@@ -64,7 +76,9 @@ export default async function Home() {
             <TituloLetras
               texto={NEGOCIO.nombre}
               destacar="Horebs"
+              bajada="en Riohacha, La Guajira"
               className="mt-4 text-[2.9rem] leading-none font-extrabold tracking-tight sm:mt-5 sm:text-6xl lg:text-7xl xl:text-8xl"
+              bajadaClassName="animate-fade-up delay-2 mt-3 text-base font-semibold tracking-normal text-zinc-200 sm:mt-4 sm:text-xl"
             />
             <p className="animate-fade-up delay-3 mt-3 text-xl font-bold sm:mt-4 sm:text-3xl">
               Pizza{' '}

@@ -8,17 +8,22 @@ import type { CSSProperties } from 'react';
 export default function TituloLetras({
   texto,
   destacar,
+  bajada,
   className,
+  bajadaClassName,
 }: {
   texto: string;
   /** Palabra que va con el degradado de marca. */
   destacar?: string;
+  /** Segunda línea visible del título, sin animación por letras. */
+  bajada?: string;
   className?: string;
+  bajadaClassName?: string;
 }) {
   let indice = 0;
   return (
     <h1 className={className}>
-      <span className="sr-only">{texto}</span>
+      <span className="sr-only">{texto} </span>
       <span aria-hidden="true">
         {texto.split(' ').map((palabra, p) => (
           <span key={`${palabra}-${p}`}>
@@ -39,6 +44,7 @@ export default function TituloLetras({
           </span>
         ))}
       </span>
+      {bajada && <span className={`block ${bajadaClassName ?? ''}`}>{bajada}</span>}
     </h1>
   );
 }

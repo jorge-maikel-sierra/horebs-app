@@ -1,11 +1,13 @@
 import type { Metadata } from 'next';
 import { NEGOCIO } from '@/lib/negocio';
+import { openGraphPagina } from '@/lib/seo';
 
 export const metadata: Metadata = {
   title: 'Política de privacidad | Pizzería Horebs',
   description:
     'Cómo Pizzería Horebs recopila, usa y protege tus datos al pedir por el sitio, WhatsApp, Messenger o Instagram.',
   alternates: { canonical: '/politica-privacidad' },
+  openGraph: openGraphPagina('/politica-privacidad'),
 };
 
 export default function PoliticaPrivacidadPage() {

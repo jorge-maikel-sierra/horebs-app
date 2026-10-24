@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { NEGOCIO } from '@/lib/negocio';
+import { openGraphPagina } from '@/lib/seo';
 import { AUTOR } from '@/lib/autor';
 import { formatFecha } from '@/lib/formato';
 import { breadcrumbJsonLd, jsonLdScript } from '@/lib/json-ld';
@@ -62,18 +63,25 @@ export async function generateMetadata({
     return { title: `Artículo no encontrado | ${NEGOCIO.nombre}` };
   }
 
-  const title = `${post.titulo} | ${NEGOCIO.nombre}`;
+  // Algunos títulos ya nombran el negocio; no se repite el sufijo.
+  const title = post.titulo.includes(NEGOCIO.nombre)
+    ? post.titulo
+    : `${post.titulo} | ${NEGOCIO.nombre}`;
+  const ruta = `/blog/${slug}`;
 
   return {
     title,
     description: post.resumen,
-    alternates: { canonical: `/blog/${slug}` },
-    openGraph: {
+    alternates: { canonical: ruta },
+    openGraph: openGraphPagina(ruta, {
       title,
       description: post.resumen,
-      images: post.imagen_url ? [post.imagen_url] : undefined,
       type: 'article',
-    },
+      // La genera opengraph-image.tsx: las portadas son SVG y WhatsApp y
+      // Facebook no las previsualizan. Se enlaza explícita porque al definir
+      // openGraph aquí Next no la agrega sola.
+      images: [{ url: `${ruta}/opengraph-image`, width: 1200, height: 630, alt: post.titulo }],
+    }),
   };
 }
 

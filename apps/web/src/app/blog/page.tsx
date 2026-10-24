@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import { NEGOCIO } from '@/lib/negocio';
+import { openGraphPagina } from '@/lib/seo';
 import { AUTOR } from '@/lib/autor';
 import { formatFecha } from '@/lib/formato';
 import EstadoVacio from '@/components/EstadoVacio';
@@ -45,6 +46,7 @@ export const metadata: Metadata = {
   title: `Blog | ${NEGOCIO.nombre}`,
   description: `Novedades, recomendaciones y todo sobre pizza y comida en Riohacha, por ${NEGOCIO.nombre}.`,
   alternates: { canonical: '/blog' },
+  openGraph: openGraphPagina('/blog'),
 };
 
 export default async function BlogPage() {

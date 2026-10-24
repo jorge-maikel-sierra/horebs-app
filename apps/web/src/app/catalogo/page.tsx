@@ -7,12 +7,14 @@ import ScrollReveal from '@/components/ScrollReveal';
 import { formatPrecio } from '@/lib/formato';
 import { breadcrumbJsonLd, jsonLdScript } from '@/lib/json-ld';
 import { NEGOCIO } from '@/lib/negocio';
+import { openGraphPagina } from '@/lib/seo';
 
 export const metadata: Metadata = {
   title: 'Catálogo | Pizzería Horebs',
   description:
     'Pizzas, panzerottis y bebidas de Pizzería Horebs en Riohacha. Pide en línea con entrega a domicilio o retiro en el local.',
   alternates: { canonical: '/catalogo' },
+  openGraph: openGraphPagina('/catalogo'),
 };
 
 type Variante = {
