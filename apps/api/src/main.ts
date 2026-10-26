@@ -20,7 +20,14 @@ async function bootstrap() {
   const frontendUrls = (process.env.FRONTEND_URL ?? 'http://localhost:3001')
     .split(',')
     .map((url) => url.trim());
-  app.enableCors({ origin: frontendUrls, credentials: true });
+  // Fuera de producción el front puede levantar en cualquier puerto (si el
+  // 3001 está ocupado, Next salta al siguiente), así que se acepta cualquier
+  // localhost además de FRONTEND_URL.
+  const origenes: (string | RegExp)[] =
+    process.env.NODE_ENV === 'production'
+      ? frontendUrls
+      : [...frontendUrls, /^http:\/\/localhost:\d+$/];
+  app.enableCors({ origin: origenes, credentials: true });
 
   // Railway manda SIGTERM en cada redeploy — sin esto, Nest mata el
   // proceso al toque y corta requests en curso a mitad de camino.
