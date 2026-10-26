@@ -43,6 +43,7 @@ export type Producto = {
   id: string;
   nombre: string;
   categoria_id: string;
+  imagen_url?: string | null;
   variantes: Variante[];
 };
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { adminFetch } from '@/lib/admin-fetch';
 import { formatPrecio } from '@/lib/formato';
@@ -12,6 +13,7 @@ import ModalBase from '@/components/ModalBase';
 import ModalConfirmar from '@/components/ModalConfirmar';
 import BuscadorPedidos from '@/components/pedidos/BuscadorPedidos';
 import ModalEditarCliente from '@/components/pedidos/ModalEditarCliente';
+import MenuPedido from '@/components/pedidos/MenuPedido';
 import ModalEditarPedido from '@/components/pedidos/ModalEditarPedido';
 import Resaltado from '@/components/pedidos/Resaltado';
 import {
@@ -39,25 +41,6 @@ function formatFecha(iso: string) {
     timeStyle: 'short',
     timeZone: 'America/Bogota',
   }).format(new Date(iso));
-}
-
-function IconChevron({ abierto }: { abierto: boolean }) {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      className={`shrink-0 transition-transform duration-200 ${abierto ? 'rotate-180' : ''}`}
-    >
-      <path d="m6 9 6 6 6-6" />
-    </svg>
-  );
 }
 
 function Icono({ children }: { children: React.ReactNode }) {
@@ -103,8 +86,27 @@ const IconDescargar = () => (
   </Icono>
 );
 
+const IconOjo = () => (
+  <Icono>
+    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+    <circle cx="12" cy="12" r="3" />
+  </Icono>
+);
+
 const ACCION =
-  'btn-press flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 outline-none transition-colors hover:bg-zinc-100 hover:text-accent-ink focus-visible:ring-2 focus-visible:ring-brand-orange/60 disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800';
+  'btn-press flex h-10 w-10 items-center justify-center rounded-xl border border-brand-orange/40 text-accent-ink outline-none transition-colors hover:border-brand-orange hover:bg-brand-orange/10 focus-visible:ring-2 focus-visible:ring-brand-orange/60 disabled:opacity-40';
+const ETIQUETA =
+  'mt-3.5 text-[10px] font-semibold tracking-[0.14em] text-zinc-400 uppercase dark:text-zinc-500';
+const CHIP =
+  'mt-1 inline-block max-w-full truncate rounded-lg bg-zinc-100 px-2 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200';
+
+function tonoEstado(estado: string) {
+  if (estado === 'entregado')
+    return 'bg-emerald-500/10 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300';
+  if (estado === 'cancelado')
+    return 'bg-red-500/10 text-red-700 dark:bg-red-400/10 dark:text-red-300';
+  return 'bg-brand-yellow/20 text-brand-yellow-800 dark:bg-brand-yellow/15 dark:text-brand-yellow-300';
+}
 
 function PedidosInterno() {
   const { rol } = useRol();
@@ -231,6 +233,16 @@ function PedidosInterno() {
 
   const pedidoDetalle = pedidos.find((p) => p.id === detalleId) ?? null;
 
+  const imagenPorProducto = useMemo(
+    () =>
+      new Map(
+        productosCatalogo.flatMap((p) =>
+          p.imagen_url ? [[p.nombre, p.imagen_url] as const] : [],
+        ),
+      ),
+    [productosCatalogo],
+  );
+
   // El texto se aplica con un pequeño debounce: la lista no se recalcula ni se
   // vuelve a animar en cada tecla.
   const aplicados = useDebounced(filtros, 180);
@@ -326,162 +338,216 @@ function PedidosInterno() {
       >
         {pedidosFiltrados.map((p, indice) => {
           const nombreCompleto = nombreDelCliente(p.cliente);
+          // El ítem más caro (la pizza, no la gaseosa) va como foto principal.
+          const fotos = [
+            ...new Set(
+              [...p.items]
+                .sort((x, y) => y.precio_unitario - x.precio_unitario)
+                .flatMap((i) => {
+                  const url = imagenPorProducto.get(i.producto_nombre);
+                  return url ? [url] : [];
+                }),
+            ),
+          ];
           return (
-            <div
+            <article
               key={p.id}
               style={{ '--i': Math.min(indice, 8) } as CSSProperties}
-              className="resultado-item flex flex-col rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
+              className="resultado-item group flex flex-col rounded-3xl border border-zinc-200 bg-white p-3 shadow-[0_18px_40px_-28px_rgba(0,0,0,0.45)] transition-shadow duration-300 hover:shadow-[0_26px_50px_-24px_rgba(0,0,0,0.55)] dark:border-zinc-800 dark:bg-zinc-900"
             >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+              <div className="flex items-center justify-between gap-2 pl-1.5">
+                <p className="min-w-0 truncate text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">
+                  Código{' '}
+                  <span className="font-mono text-zinc-800 dark:text-zinc-200">
+                    #<Resaltado texto={p.id.slice(0, 8)} terminos={resaltar} />
+                  </span>
+                </p>
+                <MenuPedido
+                  etiqueta={`Más acciones del pedido #${p.id.slice(0, 8)}`}
+                  opciones={[
+                    {
+                      etiqueta: 'Editar cliente',
+                      icono: <IconLapiz />,
+                      deshabilitada: !p.cliente.id,
+                      titulo: !p.cliente.id
+                        ? 'El cliente de este pedido fue eliminado'
+                        : undefined,
+                      onSelect: () => setClienteEnEdicion(p.cliente),
+                    },
+                    ...(rol === 'admin'
+                      ? [
+                          {
+                            etiqueta: 'Eliminar pedido',
+                            icono: <IconBasura />,
+                            peligro: true,
+                            onSelect: () => setPedidoAEliminar(p),
+                          },
+                        ]
+                      : []),
+                  ]}
+                />
+              </div>
+
+              <div className="relative mt-2 h-36 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800">
+                {fotos[0] ? (
+                  <Image
+                    src={fotos[0]}
+                    alt=""
+                    fill
+                    sizes="(min-width: 1280px) 30vw, (min-width: 640px) 45vw, 100vw"
+                    className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                  />
+                ) : (
+                  <div className="card-gradient-featured absolute inset-0" />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/0 to-black/25" />
+
+                <div className="absolute top-2.5 left-2.5 flex flex-wrap gap-1.5">
                   <span
-                    className={`rounded-full px-2 py-0.5 text-[11px] font-semibold text-white ${
-                      p.canal === 'pos' ? 'bg-brand-navy' : 'bg-brand-orange'
+                    className={`rounded-full px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm ${
+                      p.canal === 'pos' ? 'bg-brand-navy' : 'bg-brand-orange-700'
                     }`}
                   >
                     {p.canal === 'pos' ? 'Local' : 'Web'}
                   </span>
-                  <span className="rounded-md bg-zinc-100 px-1.5 py-0.5 font-mono text-[11px] font-medium text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
-                    #<Resaltado texto={p.id.slice(0, 8)} terminos={resaltar} />
-                  </span>
                   {p.stock_status === 'pendiente' && (
                     <span
                       title="El descuento automático de stock falló para este pedido — revisar el inventario a mano."
-                      className="rounded-full bg-red-600 px-2 py-0.5 text-[11px] font-semibold text-white"
+                      className="rounded-full bg-red-600 px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm"
                     >
                       ⚠️ Stock
                     </span>
                   )}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setDetalleId(p.id)}
-                  aria-label="Ver detalle del pedido"
-                  className="btn-press -mt-1 -mr-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-zinc-400 outline-none hover:bg-zinc-100 hover:text-zinc-700 focus-visible:ring-2 focus-visible:ring-brand-orange/60 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
-                >
-                  <IconChevron abierto={detalleId === p.id} />
-                </button>
-              </div>
 
-              <div className="mt-2.5">
-                <p className="truncate font-semibold text-zinc-900 dark:text-zinc-50">
-                  <Resaltado texto={nombreCompleto} terminos={resaltar} />
-                </p>
-                <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">
-                  {p.cliente.telefono ? (
-                    <Resaltado texto={p.cliente.telefono} terminos={resaltar} />
-                  ) : (
-                    'Sin teléfono'
-                  )}{' '}
-                  · {formatFecha(p.created_at)}
-                </p>
-              </div>
-
-              <ul className="mt-2.5 flex-1 space-y-0.5 text-xs text-zinc-600 dark:text-zinc-400">
-                {p.items.slice(0, 3).map((i, idx) => (
-                  <li key={i.variante_id ?? idx} className="truncate">
-                    {i.cantidad}×{' '}
-                    <Resaltado texto={etiquetaItem(i)} terminos={resaltar} />
-                  </li>
-                ))}
-                {p.items.length > 3 && (
-                  <li className="text-zinc-400 dark:text-zinc-500">
-                    +{p.items.length - 3} más
-                  </li>
+                {fotos.length > 1 && (
+                  <div className="absolute right-2.5 bottom-2.5 flex -space-x-2.5">
+                    {fotos.slice(1, 4).map((url) => (
+                      <span
+                        key={url}
+                        className="relative h-8 w-8 overflow-hidden rounded-full shadow-md ring-2 ring-white/90"
+                      >
+                        <Image src={url} alt="" fill sizes="32px" className="object-cover" />
+                      </span>
+                    ))}
+                  </div>
                 )}
-              </ul>
-
-              {coincidenciasOcultas(p, terminos).map((c) => (
-                <p
-                  key={`${c.campo}-${c.texto}`}
-                  className="mt-2 flex items-start gap-1 rounded-lg bg-brand-orange/10 px-2 py-1 text-[11px] text-zinc-700 dark:text-zinc-300"
-                >
-                  <span className="shrink-0 font-semibold">{c.campo}:</span>
-                  <span className="min-w-0 [overflow-wrap:anywhere]">
-                    <Resaltado texto={c.texto} terminos={resaltar} />
-                  </span>
-                </p>
-              ))}
-
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-zinc-100 pt-2.5 text-xs dark:border-zinc-800/60">
-                <div className="flex flex-wrap items-center gap-1.5 text-zinc-500 dark:text-zinc-400">
-                  <span className="rounded-md bg-zinc-100 px-1.5 py-0.5 dark:bg-zinc-800">
-                    {MODALIDAD_LABEL[p.modalidad] ?? p.modalidad}
-                  </span>
-                  <span className="rounded-md bg-zinc-100 px-1.5 py-0.5 capitalize dark:bg-zinc-800">
-                    {p.metodo_pago}
-                  </span>
-                  <span className="rounded-md bg-zinc-100 px-1.5 py-0.5 capitalize dark:bg-zinc-800">
-                    {p.estado.replace('_', ' ')}
-                  </span>
-                </div>
-                <div className="text-right">
-                  <p className="font-bold text-accent-ink">
-                    {formatPrecio(p.total)}
-                  </p>
-                  {p.costo_domicilio > 0 && (
-                    <p className="text-[10px] text-zinc-500 dark:text-zinc-400">
-                      incl. {formatPrecio(p.costo_domicilio)} domicilio
-                    </p>
-                  )}
-                </div>
               </div>
 
-              <div className="mt-2.5 flex items-center gap-0.5 border-t border-zinc-100 pt-2 dark:border-zinc-800/60">
-                <button
-                  type="button"
-                  disabled={!p.cliente.id}
-                  onClick={() => setClienteEnEdicion(p.cliente)}
-                  title={
-                    !p.cliente.id
-                      ? 'El cliente de este pedido fue eliminado'
-                      : 'Editar cliente'
-                  }
-                  className={ACCION}
-                >
-                  <IconLapiz />
-                  <span className="sr-only">
-                    Editar cliente de {nombreCompleto}
+              <div className="flex flex-1 flex-col px-1.5 pt-3.5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h2 className="truncate text-lg leading-tight font-bold text-zinc-900 dark:text-zinc-50">
+                      <Resaltado texto={nombreCompleto} terminos={resaltar} />
+                    </h2>
+                    <p className="mt-1 truncate text-xs text-zinc-500 dark:text-zinc-400">
+                      {p.cliente.telefono ? (
+                        <Resaltado texto={p.cliente.telefono} terminos={resaltar} />
+                      ) : (
+                        'Sin teléfono'
+                      )}{' '}
+                      · {formatFecha(p.created_at)}
+                    </p>
+                  </div>
+                  <span
+                    className={`mt-0.5 flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold capitalize ${tonoEstado(p.estado)}`}
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                    {p.estado.replaceAll('_', ' ')}
                   </span>
-                </button>
+                </div>
+
+                <p className={ETIQUETA}>Productos</p>
+                <ul className="mt-1 flex-1 space-y-0.5 text-[13px] text-zinc-600 dark:text-zinc-300">
+                  {p.items.slice(0, 3).map((i, idx) => (
+                    <li key={i.variante_id ?? idx} className="truncate">
+                      <span className="font-semibold text-zinc-900 tabular-nums dark:text-zinc-50">
+                        {i.cantidad}×
+                      </span>{' '}
+                      <Resaltado texto={etiquetaItem(i)} terminos={resaltar} />
+                    </li>
+                  ))}
+                  {p.items.length > 3 && (
+                    <li className="text-zinc-400 dark:text-zinc-500">
+                      +{p.items.length - 3} más
+                    </li>
+                  )}
+                </ul>
+
+                {coincidenciasOcultas(p, terminos).map((c) => (
+                  <p
+                    key={`${c.campo}-${c.texto}`}
+                    className="mt-2 flex items-start gap-1 rounded-lg bg-brand-orange/10 px-2 py-1 text-[11px] text-zinc-700 dark:text-zinc-300"
+                  >
+                    <span className="shrink-0 font-semibold">{c.campo}:</span>
+                    <span className="min-w-0 [overflow-wrap:anywhere]">
+                      <Resaltado texto={c.texto} terminos={resaltar} />
+                    </span>
+                  </p>
+                ))}
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="min-w-0">
+                    <p className={ETIQUETA}>Entrega</p>
+                    <span className={CHIP}>
+                      {MODALIDAD_LABEL[p.modalidad] ?? p.modalidad}
+                    </span>
+                  </div>
+                  <div className="min-w-0">
+                    <p className={ETIQUETA}>Pago</p>
+                    <span className={`${CHIP} capitalize`}>{p.metodo_pago}</span>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex items-end justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-2xl font-extrabold tracking-tight text-zinc-900 tabular-nums dark:text-zinc-50">
+                      {formatPrecio(p.total)}
+                    </p>
+                    {p.costo_domicilio > 0 && (
+                      <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                        incl. {formatPrecio(p.costo_domicilio)} domicilio
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex shrink-0 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setDetalleId(p.id)}
+                      title="Ver detalle"
+                      className={ACCION}
+                    >
+                      <IconOjo />
+                      <span className="sr-only">
+                        Ver detalle del pedido #{p.id.slice(0, 8)}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={descargandoId === p.id}
+                      onClick={() => descargarFactura(p)}
+                      title="Descargar comprobante"
+                      className={ACCION}
+                    >
+                      <IconDescargar />
+                      <span className="sr-only">
+                        Descargar comprobante del pedido #{p.id.slice(0, 8)}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
                 <button
                   type="button"
                   onClick={() => setPedidoEnEdicion(p)}
-                  title="Editar pedido"
-                  className={ACCION}
+                  className="btn-gradient btn-press mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-xl text-[13px] font-bold tracking-[0.1em] text-white uppercase shadow-md shadow-brand-orange/25 outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/60 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-900"
                 >
                   <IconPedido />
-                  <span className="sr-only">
-                    Editar pedido #{p.id.slice(0, 8)}
-                  </span>
+                  Editar pedido
+                  <span className="sr-only"> #{p.id.slice(0, 8)}</span>
                 </button>
-                <button
-                  type="button"
-                  disabled={descargandoId === p.id}
-                  onClick={() => descargarFactura(p)}
-                  title="Descargar comprobante"
-                  className={ACCION}
-                >
-                  <IconDescargar />
-                  <span className="sr-only">
-                    Descargar comprobante del pedido #{p.id.slice(0, 8)}
-                  </span>
-                </button>
-                {rol === 'admin' && (
-                  <button
-                    type="button"
-                    onClick={() => setPedidoAEliminar(p)}
-                    title="Eliminar pedido"
-                    className={`${ACCION} ml-auto text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/30 dark:hover:text-red-300`}
-                  >
-                    <IconBasura />
-                    <span className="sr-only">
-                      Eliminar pedido #{p.id.slice(0, 8)}
-                    </span>
-                  </button>
-                )}
               </div>
-            </div>
+            </article>
           );
         })}
       </div>
