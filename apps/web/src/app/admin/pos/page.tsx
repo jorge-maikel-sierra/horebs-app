@@ -143,6 +143,36 @@ function IconPlato() {
   );
 }
 
+const ETIQUETA =
+  'text-[10px] font-semibold tracking-[0.14em] text-zinc-400 uppercase dark:text-zinc-500';
+const INPUT_BASE =
+  'mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none transition-colors placeholder:text-zinc-400 focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/25 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-50 dark:placeholder:text-zinc-500';
+const INPUT = `${INPUT_BASE} h-11`;
+const PANEL =
+  'rounded-3xl border border-zinc-200 bg-white shadow-[0_18px_40px_-28px_rgba(0,0,0,0.45)] dark:border-zinc-800 dark:bg-zinc-900';
+const BOTON_PRINCIPAL =
+  'btn-gradient btn-press flex h-12 w-full items-center justify-center gap-2 rounded-xl text-[13px] font-bold tracking-[0.1em] text-white uppercase shadow-md shadow-brand-orange/25 outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/60 focus-visible:ring-offset-2 disabled:opacity-50 dark:focus-visible:ring-offset-zinc-900';
+const BOTON_SECUNDARIO =
+  'btn-press inline-flex h-10 items-center rounded-xl border px-4 text-sm font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand-orange/60';
+
+/** Label con su input adentro: la asociación es implícita, sin ids. */
+function Campo({
+  etiqueta,
+  children,
+  className = '',
+}: {
+  etiqueta: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <label className={`block ${className}`}>
+      <span className={ETIQUETA}>{etiqueta}</span>
+      {children}
+    </label>
+  );
+}
+
 function OpcionBoton({
   selected,
   onClick,
@@ -159,10 +189,10 @@ function OpcionBoton({
       type="button"
       onClick={onClick}
       aria-pressed={selected}
-      className={`btn-press card-interactive flex flex-1 flex-col items-center gap-1.5 rounded-xl border p-3 text-center transition-colors ${
+      className={`btn-press flex flex-1 flex-col items-center gap-1.5 rounded-xl border px-2 py-3 text-center outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand-orange/60 ${
         selected
-          ? 'btn-gradient border-transparent text-white shadow-sm'
-          : 'card-gradient border-zinc-200 text-zinc-700 dark:border-zinc-800 dark:text-zinc-300'
+          ? 'border-brand-orange bg-brand-orange/10 text-accent-ink ring-1 ring-brand-orange'
+          : 'border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-300 dark:hover:border-zinc-700'
       }`}
     >
       {icon}
@@ -173,63 +203,78 @@ function OpcionBoton({
 
 function ProductoCard({
   producto,
+  enVenta,
   onAgregar,
 }: {
   producto: Producto;
+  enVenta: number;
   onAgregar: (variante: Variante) => void;
 }) {
   const unaVariante = producto.variantes.length === 1;
   const [imagenRota, setImagenRota] = useState(false);
 
   return (
-    <div className="card-interactive card-gradient flex flex-col overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800">
-      <div className="group relative h-24 w-full shrink-0 overflow-hidden bg-zinc-100 dark:bg-zinc-900">
+    <article className="group flex flex-col rounded-3xl border border-zinc-200 bg-white p-2 shadow-[0_18px_40px_-28px_rgba(0,0,0,0.45)] dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="relative h-28 shrink-0 overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800">
         {producto.imagen_url && !imagenRota ? (
           <Image
             src={producto.imagen_url}
-            alt={producto.nombre}
+            alt=""
             fill
-            sizes="(min-width: 1024px) 200px, 45vw"
-            className="object-cover transition-transform duration-500 group-hover:scale-110"
+            sizes="(min-width: 1024px) 220px, 45vw"
+            className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
             onError={() => setImagenRota(true)}
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-zinc-300 dark:text-zinc-700">
+          <div className="flex h-full w-full items-center justify-center text-zinc-300 dark:text-zinc-600">
             <IconPlato />
           </div>
         )}
-      </div>
-      <div className="flex flex-1 flex-col p-2.5">
-        <p className="line-clamp-2 text-xs leading-snug font-semibold text-zinc-900 dark:text-zinc-50">
-          {producto.nombre}
-        </p>
-        {unaVariante ? (
-          <button
-            type="button"
-            onClick={() => onAgregar(producto.variantes[0])}
-            className="btn-press mt-auto flex items-center justify-between gap-1 rounded-lg bg-brand-orange/10 px-2 py-1.5 text-[11px] font-bold text-accent-ink transition-colors hover:bg-brand-orange hover:text-white"
+        <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-black/0 to-black/0" />
+        {enVenta > 0 && (
+          <span
+            key={enVenta}
+            className="animate-pop-in absolute top-2 right-2 flex h-7 min-w-7 items-center justify-center rounded-full bg-brand-orange-700 px-2 text-xs font-bold text-white tabular-nums shadow-md"
           >
-            <span>Agregar</span>
-            <span>
-              {formatPrecio(producto.variantes[0].precio_oferta ?? producto.variantes[0].precio)}
-            </span>
-          </button>
-        ) : (
-          <div className="mt-1.5 flex flex-wrap gap-1">
-            {producto.variantes.map((v) => (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => onAgregar(v)}
-                className="btn-press rounded-full bg-zinc-100 px-2 py-1 text-[10px] font-semibold text-zinc-700 transition-colors hover:bg-brand-orange hover:text-white dark:bg-zinc-800 dark:text-zinc-300"
-              >
-                {v.nombre} · {formatPrecio(v.precio_oferta ?? v.precio)}
-              </button>
-            ))}
-          </div>
+            {enVenta}
+            <span className="sr-only"> en la venta</span>
+          </span>
         )}
       </div>
-    </div>
+
+      <div className="flex flex-1 flex-col px-1 pt-2.5 pb-0.5">
+        <h3 className="line-clamp-2 text-sm leading-snug font-bold text-zinc-900 dark:text-zinc-50">
+          {producto.nombre}
+        </h3>
+        <ul className="mt-auto space-y-1.5 pt-2.5">
+          {producto.variantes.map((v) => (
+            <li key={v.id}>
+              <button
+                type="button"
+                onClick={() => onAgregar(v)}
+                aria-label={`Agregar ${producto.nombre}${unaVariante ? '' : ` ${v.nombre}`}`}
+                className="btn-press group/v flex w-full items-center justify-between gap-2 rounded-xl border border-zinc-200 py-1.5 pr-1.5 pl-2.5 text-left outline-none transition-colors hover:border-brand-orange hover:bg-brand-orange/10 focus-visible:ring-2 focus-visible:ring-brand-orange/60 dark:border-zinc-800"
+              >
+                <span className="min-w-0">
+                  <span className="block truncate text-[10px] font-semibold tracking-[0.12em] text-zinc-500 uppercase dark:text-zinc-400">
+                    {unaVariante ? 'Agregar' : v.nombre}
+                  </span>
+                  <span className="block text-sm font-extrabold text-zinc-900 tabular-nums dark:text-zinc-50">
+                    {formatPrecio(v.precio_oferta ?? v.precio)}
+                  </span>
+                </span>
+                <span
+                  aria-hidden="true"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-orange/15 text-lg leading-none font-bold text-accent-ink transition-colors group-hover/v:bg-brand-orange-700 group-hover/v:text-white"
+                >
+                  +
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </article>
   );
 }
 
@@ -604,6 +649,29 @@ function PosInterno() {
     }
   }
 
+  const unidades = items.reduce((acc, i) => acc + i.cantidad, 0);
+  const cantidadPorProducto = new Map<string, number>();
+  for (const i of items) {
+    cantidadPorProducto.set(
+      i.productoNombre,
+      (cantidadPorProducto.get(i.productoNombre) ?? 0) + i.cantidad,
+    );
+  }
+
+  // En móvil la venta queda debajo de todo el catálogo: la barra flotante
+  // lleva hasta ella y se esconde cuando ya está en pantalla.
+  const [ventaVisible, setVentaVisible] = useState(false);
+  useEffect(() => {
+    const el = document.getElementById('venta-actual');
+    if (!el) return;
+    const observador = new IntersectionObserver(
+      ([entrada]) => setVentaVisible(entrada.isIntersecting),
+      { threshold: 0.1 },
+    );
+    observador.observe(el);
+    return () => observador.disconnect();
+  }, [cargandoTurno]);
+
   if (cargandoTurno) {
     return (
       <div className="p-4 sm:p-6 lg:p-8">
@@ -613,24 +681,27 @@ function PosInterno() {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+    <div className="p-4 pb-28 sm:p-6 sm:pb-28 lg:p-8">
+      <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+          <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
             Punto de venta
           </h1>
           {turno && (
-            <p className="mt-1 flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
-              <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-              Turno abierto desde las {formatHora(turno.abierto_en)} — caja
-              inicial {formatPrecio(turno.monto_inicial)}
+            <p className="mt-2 inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60 motion-safe:animate-ping" />
+                <span className="relative h-2 w-2 rounded-full bg-emerald-500" />
+              </span>
+              Turno abierto · {formatHora(turno.abierto_en)} · caja inicial{' '}
+              {formatPrecio(turno.monto_inicial)}
             </p>
           )}
         </div>
         <div className="flex gap-2">
           <Link
             href="/admin/pedidos"
-            className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700 hover:border-accent-ink dark:border-zinc-700 dark:text-zinc-300"
+            className={`${BOTON_SECUNDARIO} border-zinc-300 text-zinc-700 hover:border-accent-ink hover:text-accent-ink dark:border-zinc-700 dark:text-zinc-200`}
           >
             Ver pedidos
           </Link>
@@ -638,31 +709,38 @@ function PosInterno() {
             <button
               type="button"
               onClick={abrirModalCierre}
-              className="rounded-lg border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
+              className={`${BOTON_SECUNDARIO} border-red-300 text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/40`}
             >
               Cerrar turno
             </button>
           )}
         </div>
-      </div>
+      </header>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-2 lg:items-start lg:gap-8">
-        <div>
-          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-            Productos
-          </h2>
+      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] lg:items-start lg:gap-8">
+        <section aria-labelledby="pos-productos">
+          <div className="flex items-baseline justify-between gap-2">
+            <h2
+              id="pos-productos"
+              className="text-lg font-bold text-zinc-900 dark:text-zinc-50"
+            >
+              Productos
+            </h2>
+            <p className={ETIQUETA}>Toca un tamaño para agregarlo</p>
+          </div>
 
           {categorias.length > 0 && (
-            <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+            <div className="-mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1">
               {categorias.map((cat) => (
                 <button
                   key={cat.id}
                   type="button"
                   onClick={() => setCategoriaSeleccionada(cat.id)}
-                  className={`btn-press shrink-0 rounded-full px-4 py-2 text-sm font-semibold whitespace-nowrap transition-colors ${
+                  aria-pressed={categoriaSeleccionada === cat.id}
+                  className={`btn-press shrink-0 rounded-full px-4 py-2 text-sm font-semibold whitespace-nowrap outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand-orange/60 ${
                     categoriaSeleccionada === cat.id
-                      ? 'btn-gradient text-white shadow-sm'
-                      : 'card-gradient border border-zinc-200 text-zinc-600 dark:border-zinc-800 dark:text-zinc-300'
+                      ? 'btn-gradient text-white shadow-md shadow-brand-orange/25'
+                      : 'border border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300'
                   }`}
                 >
                   {cat.nombre}
@@ -671,11 +749,12 @@ function PosInterno() {
             </div>
           )}
 
-          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3">
             {productosDeCategoria.map((producto) => (
               <ProductoCard
                 key={producto.id}
                 producto={producto}
+                enVenta={cantidadPorProducto.get(producto.nombre) ?? 0}
                 onAgregar={(v) => agregarItem(producto, v)}
               />
             ))}
@@ -686,159 +765,203 @@ function PosInterno() {
             </p>
           )}
 
-          <div className="mt-4 rounded-2xl border border-dashed border-zinc-300 p-3 dark:border-zinc-700">
-            <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+          <div className="mt-4 rounded-3xl border border-dashed border-zinc-300 p-4 dark:border-zinc-700">
+            <p className="text-sm font-bold text-zinc-900 dark:text-zinc-50">
               Producto personalizado
             </p>
             <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
               Para bordes, adicionales o algo que no esté en el catálogo.
             </p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <input
-                value={nombrePersonalizado}
-                onChange={(e) => setNombrePersonalizado(e.target.value)}
-                placeholder="Ej: Borde de queso"
-                className="min-w-0 flex-1 rounded-md border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-              />
-              <input
-                type="number"
-                min={0}
-                step={500}
-                value={precioPersonalizado}
-                onChange={(e) => setPrecioPersonalizado(e.target.value)}
-                placeholder="Precio"
-                className="w-28 rounded-md border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-              />
+            <div className="mt-3 flex flex-wrap items-end gap-2">
+              <Campo etiqueta="Nombre" className="min-w-40 flex-1">
+                <input
+                  value={nombrePersonalizado}
+                  onChange={(e) => setNombrePersonalizado(e.target.value)}
+                  placeholder="Ej: Borde de queso"
+                  className={INPUT}
+                />
+              </Campo>
+              <Campo etiqueta="Precio" className="w-32">
+                <input
+                  type="number"
+                  min={0}
+                  step={500}
+                  value={precioPersonalizado}
+                  onChange={(e) => setPrecioPersonalizado(e.target.value)}
+                  placeholder="0"
+                  className={INPUT}
+                />
+              </Campo>
               <button
                 type="button"
                 onClick={agregarPersonalizado}
-                className="shrink-0 rounded-md bg-brand-orange px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
+                className="btn-gradient btn-press h-11 shrink-0 rounded-xl px-4 text-sm font-bold text-white shadow-md shadow-brand-orange/25 outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/60"
               >
                 Agregar
               </button>
             </div>
           </div>
-        </div>
+        </section>
 
-        <div className="lg:sticky lg:top-6">
-          <div className="card-gradient rounded-2xl border border-zinc-200 p-4 shadow-sm dark:border-zinc-800">
-            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+        <section
+          id="venta-actual"
+          aria-labelledby="pos-venta"
+          className={`${PANEL} scroll-mt-24 p-4 sm:p-5 lg:sticky lg:top-6`}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <h2
+              id="pos-venta"
+              className="text-lg font-bold text-zinc-900 dark:text-zinc-50"
+            >
               Venta actual
             </h2>
+            {unidades > 0 && (
+              <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] font-semibold text-zinc-600 tabular-nums dark:bg-zinc-800 dark:text-zinc-300">
+                {unidades} {unidades === 1 ? 'producto' : 'productos'}
+              </span>
+            )}
+          </div>
 
-            {items.length === 0 ? (
-              <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400">
+          {items.length === 0 ? (
+            <div className="mt-3 flex flex-col items-center rounded-2xl border border-dashed border-zinc-200 px-4 py-8 text-center dark:border-zinc-800">
+              <span className="text-zinc-300 dark:text-zinc-600">
+                <IconPlato />
+              </span>
+              <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
                 Todavía no agregaste productos.
               </p>
-            ) : (
-              <ul className="mt-3 space-y-1.5">
-                {items.map((i) => (
-                  <li
-                    key={i.id}
-                    className="flex items-center justify-between gap-2 rounded-lg border border-zinc-100 px-2.5 py-1.5 text-sm dark:border-zinc-800/70"
-                  >
-                    <span className="min-w-0 truncate">
-                      {i.varianteNombre
-                        ? `${i.productoNombre} (${i.varianteNombre})`
-                        : i.productoNombre}
+            </div>
+          ) : (
+            <ul className="mt-3 space-y-2">
+              {items.map((i) => (
+                <li
+                  key={i.id}
+                  className="rounded-2xl bg-zinc-50 p-3 dark:bg-zinc-800/50"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                        {i.productoNombre}
+                      </p>
+                      {i.varianteNombre && (
+                        <p className="truncate text-[10px] font-semibold tracking-[0.12em] text-zinc-500 uppercase dark:text-zinc-400">
+                          {i.varianteNombre}
+                        </p>
+                      )}
+                    </div>
+                    {editandoPrecioId === i.id ? (
+                      <input
+                        type="number"
+                        min={0}
+                        autoFocus
+                        aria-label={`Precio unitario de ${i.productoNombre}`}
+                        defaultValue={i.precio}
+                        onBlur={(e) => {
+                          editarPrecio(i.id, Number(e.target.value));
+                          setEditandoPrecioId(null);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') e.currentTarget.blur();
+                        }}
+                        className="h-8 w-24 rounded-lg border border-brand-orange bg-white px-2 text-right text-sm font-bold tabular-nums outline-none focus:ring-2 focus:ring-brand-orange/25 dark:bg-zinc-900"
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setEditandoPrecioId(i.id)}
+                        title="Editar precio unitario"
+                        className="shrink-0 rounded-md text-sm font-bold text-zinc-900 tabular-nums underline decoration-zinc-400 decoration-dotted underline-offset-4 outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/60 dark:text-zinc-50"
+                      >
+                        {formatPrecio(i.precio * i.cantidad)}
+                      </button>
+                    )}
+                  </div>
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <span className="text-[11px] text-zinc-500 tabular-nums dark:text-zinc-400">
+                      {formatPrecio(i.precio)} c/u
                     </span>
-                    <span className="flex shrink-0 items-center gap-2">
+                    <div className="flex items-center rounded-full border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900">
                       <button
                         type="button"
                         onClick={() => actualizarCantidad(i.id, i.cantidad - 1)}
-                        className="btn-press h-6 w-6 rounded-full border border-zinc-300 text-xs dark:border-zinc-700"
+                        aria-label={`Quitar uno de ${i.productoNombre}`}
+                        className="btn-press flex h-8 w-8 items-center justify-center rounded-full text-base text-zinc-600 outline-none hover:text-accent-ink focus-visible:ring-2 focus-visible:ring-brand-orange/60 dark:text-zinc-300"
                       >
                         −
                       </button>
-                      {i.cantidad}
+                      <span className="w-6 text-center text-sm font-bold tabular-nums">
+                        {i.cantidad}
+                      </span>
                       <button
                         type="button"
                         onClick={() => actualizarCantidad(i.id, i.cantidad + 1)}
-                        className="btn-press h-6 w-6 rounded-full border border-zinc-300 text-xs dark:border-zinc-700"
+                        aria-label={`Agregar uno de ${i.productoNombre}`}
+                        className="btn-press flex h-8 w-8 items-center justify-center rounded-full text-base text-zinc-600 outline-none hover:text-accent-ink focus-visible:ring-2 focus-visible:ring-brand-orange/60 dark:text-zinc-300"
                       >
                         +
                       </button>
-                      {editandoPrecioId === i.id ? (
-                        <input
-                          type="number"
-                          min={0}
-                          autoFocus
-                          defaultValue={i.precio}
-                          onBlur={(e) => {
-                            editarPrecio(i.id, Number(e.target.value));
-                            setEditandoPrecioId(null);
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') e.currentTarget.blur();
-                          }}
-                          className="w-20 rounded-md border border-zinc-300 px-1.5 py-0.5 text-right text-sm dark:border-zinc-700 dark:bg-zinc-900"
-                        />
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setEditandoPrecioId(i.id)}
-                          title="Editar precio unitario"
-                          className="w-20 text-right font-medium underline decoration-dotted"
-                        >
-                          {formatPrecio(i.precio * i.cantidad)}
-                        </button>
-                      )}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
 
-            <div className="mt-4 border-t border-zinc-200 pt-3 dark:border-zinc-800">
-              {modalidad === 'domicilio' && (
-                <>
-                  <div className="flex justify-between text-sm text-zinc-500 dark:text-zinc-400">
-                    <span>Subtotal</span>
-                    <span>{formatPrecio(totalItems)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm text-zinc-500 dark:text-zinc-400">
-                    <span>Domicilio</span>
-                    <span>{formatPrecio(costoDomicilio)}</span>
-                  </div>
-                </>
-              )}
-              {descuentoPuntos > 0 && (
-                <div className="flex justify-between text-sm text-green-700 dark:text-green-500">
-                  <span>Descuento · {canjePuntos} puntos</span>
-                  <span>-{formatPrecio(descuentoPuntos)}</span>
+          <div className="mt-4 space-y-1 border-t border-zinc-100 pt-3 dark:border-zinc-800">
+            {modalidad === 'domicilio' && (
+              <>
+                <div className="flex justify-between text-sm text-zinc-500 tabular-nums dark:text-zinc-400">
+                  <span>Subtotal</span>
+                  <span>{formatPrecio(totalItems)}</span>
                 </div>
-              )}
-              <div className="flex justify-between font-semibold">
-                <span>Total</span>
-                <span className="text-accent-ink">{formatPrecio(totalConDescuento)}</span>
+                <div className="flex justify-between text-sm text-zinc-500 tabular-nums dark:text-zinc-400">
+                  <span>Domicilio</span>
+                  <span>{formatPrecio(costoDomicilio)}</span>
+                </div>
+              </>
+            )}
+            {descuentoPuntos > 0 && (
+              <div className="flex justify-between text-sm text-emerald-700 tabular-nums dark:text-emerald-400">
+                <span>Descuento · {canjePuntos} puntos</span>
+                <span>-{formatPrecio(descuentoPuntos)}</span>
               </div>
+            )}
+            <div className="flex items-baseline justify-between gap-3 pt-1">
+              <span className={ETIQUETA}>Total</span>
+              <span className="text-3xl font-extrabold tracking-tight text-zinc-900 tabular-nums dark:text-zinc-50">
+                {formatPrecio(totalConDescuento)}
+              </span>
             </div>
+          </div>
 
-            <form onSubmit={registrarVenta} className="mt-6 space-y-3">
+          <form onSubmit={registrarVenta} className="mt-5 space-y-4">
+            <fieldset className="space-y-3">
+              <legend className="text-sm font-bold text-zinc-900 dark:text-zinc-50">
+                Cliente
+              </legend>
               <div className="relative">
-                <label className="block text-sm font-medium">
-                  Buscar cliente existente
-                </label>
-                <input
-                  value={busquedaCliente}
-                  onChange={(e) => setBusquedaCliente(e.target.value)}
-                  placeholder="Nombre o teléfono…"
-                  className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
-                />
+                <Campo etiqueta="Buscar cliente existente">
+                  <input
+                    value={busquedaCliente}
+                    onChange={(e) => setBusquedaCliente(e.target.value)}
+                    placeholder="Nombre o teléfono…"
+                    className={INPUT}
+                  />
+                </Campo>
                 {resultadosCliente.length > 0 && (
-                  <ul className="absolute z-10 mt-1 w-full rounded-md border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
+                  <ul className="animate-desplegar absolute z-10 mt-1 max-h-64 w-full overflow-y-auto rounded-xl border border-zinc-200 bg-white p-1 shadow-xl shadow-black/10 dark:border-zinc-700 dark:bg-zinc-900 dark:shadow-black/40">
                     {resultadosCliente.map((c) => (
                       <li key={c.id}>
                         <button
                           type="button"
                           onClick={() => seleccionarCliente(c)}
-                          className="block w-full px-3 py-2 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                          className="flex w-full items-baseline justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm outline-none hover:bg-zinc-100 focus-visible:bg-zinc-100 dark:hover:bg-zinc-800 dark:focus-visible:bg-zinc-800"
                         >
-                          <span className="font-medium">
+                          <span className="truncate font-semibold text-zinc-900 dark:text-zinc-50">
                             {c.nombre} {c.apellido ?? ''}
                           </span>
                           {c.telefono && (
-                            <span className="ml-2 text-zinc-500 dark:text-zinc-400">
+                            <span className="shrink-0 text-xs text-zinc-500 tabular-nums dark:text-zinc-400">
                               {c.telefono}
                             </span>
                           )}
@@ -849,116 +972,105 @@ function PosInterno() {
                 )}
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="block text-sm font-medium">Nombre</label>
+                <Campo etiqueta="Nombre">
                   <input
                     required
                     value={nombre}
                     onChange={(e) => setNombre(e.target.value)}
-                    className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+                    className={INPUT}
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium">Apellido</label>
+                </Campo>
+                <Campo etiqueta="Apellido">
                   <input
                     value={apellido}
                     onChange={(e) => setApellido(e.target.value)}
-                    className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+                    className={INPUT}
                   />
-                </div>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="block text-sm font-medium">
-                    Teléfono (opcional)
-                  </label>
+                </Campo>
+                <Campo etiqueta="Teléfono (opcional)">
                   <input
+                    type="tel"
                     value={telefono}
                     onChange={(e) => setTelefono(e.target.value)}
                     onBlur={() => consultarSaldoPuntos(telefono)}
-                    className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+                    className={INPUT}
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium">
-                    Correo (opcional)
-                  </label>
+                </Campo>
+                <Campo etiqueta="Correo (opcional)">
                   <input
                     type="email"
                     value={correo}
                     onChange={(e) => setCorreo(e.target.value)}
-                    className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+                    className={INPUT}
                   />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium">
-                  Cédula (opcional)
-                </label>
-                <input
-                  value={cedula}
-                  onChange={(e) => setCedula(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
-                />
+                </Campo>
+                <Campo etiqueta="Cédula (opcional)" className="sm:col-span-2">
+                  <input
+                    value={cedula}
+                    onChange={(e) => setCedula(e.target.value)}
+                    className={INPUT}
+                  />
+                </Campo>
               </div>
 
               {puedeCanjear && (
-                <div className="flex items-center justify-between gap-3 rounded-md border border-brand-orange/25 bg-brand-orange/[0.06] px-3 py-2">
-                  <label htmlFor="pos-usar-puntos" className="text-sm text-zinc-700 dark:text-zinc-300">
-                    {saldoPuntos?.puntos} puntos disponibles — usar {canjePuntos} (
-                    {formatPrecio(canjePuntos * (saldoPuntos?.valorPuntoPesos ?? 0))})
-                  </label>
+                <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-brand-orange/30 bg-brand-orange/[0.06] px-3 py-2.5">
+                  <span className="text-sm text-zinc-700 dark:text-zinc-300">
+                    <span className="font-semibold">
+                      {saldoPuntos?.puntos} puntos disponibles
+                    </span>{' '}
+                    · usar {canjePuntos} (
+                    {formatPrecio(
+                      canjePuntos * (saldoPuntos?.valorPuntoPesos ?? 0),
+                    )}
+                    )
+                  </span>
                   <input
-                    id="pos-usar-puntos"
                     type="checkbox"
                     checked={usarPuntos}
                     onChange={(e) => setUsarPuntos(e.target.checked)}
                     className="h-5 w-5 shrink-0 accent-brand-orange"
                   />
-                </div>
+                </label>
               )}
+            </fieldset>
 
-              <div>
-                <span className="block text-sm font-medium">Modalidad</span>
-                <div className="mt-2 flex gap-2">
-                  <OpcionBoton
-                    selected={modalidad === 'local'}
-                    onClick={() => setModalidad('local')}
-                    icon={<IconMesa />}
-                    label="Comer en el local"
-                  />
-                  <OpcionBoton
-                    selected={modalidad === 'retiro'}
-                    onClick={() => setModalidad('retiro')}
-                    icon={<IconLlevar />}
-                    label="Para llevar"
-                  />
-                  <OpcionBoton
-                    selected={modalidad === 'domicilio'}
-                    onClick={() => setModalidad('domicilio')}
-                    icon={<IconDomicilio />}
-                    label="A domicilio"
-                  />
-                </div>
+            <fieldset>
+              <legend className="text-sm font-bold text-zinc-900 dark:text-zinc-50">
+                Modalidad
+              </legend>
+              <div className="mt-2 flex gap-2">
+                <OpcionBoton
+                  selected={modalidad === 'local'}
+                  onClick={() => setModalidad('local')}
+                  icon={<IconMesa />}
+                  label="Comer en el local"
+                />
+                <OpcionBoton
+                  selected={modalidad === 'retiro'}
+                  onClick={() => setModalidad('retiro')}
+                  icon={<IconLlevar />}
+                  label="Para llevar"
+                />
+                <OpcionBoton
+                  selected={modalidad === 'domicilio'}
+                  onClick={() => setModalidad('domicilio')}
+                  icon={<IconDomicilio />}
+                  label="A domicilio"
+                />
               </div>
 
               {modalidad === 'domicilio' && (
-                <>
-                  <div>
-                    <label className="block text-sm font-medium">
-                      Dirección de entrega
-                    </label>
+                <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_9rem]">
+                  <Campo etiqueta="Dirección de entrega">
                     <input
                       required
                       value={direccionEntrega}
                       onChange={(e) => setDireccionEntrega(e.target.value)}
-                      className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+                      className={INPUT}
                     />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium">
-                      Costo de domicilio
-                    </label>
+                  </Campo>
+                  <Campo etiqueta="Costo domicilio">
                     <input
                       required
                       type="number"
@@ -966,68 +1078,92 @@ function PosInterno() {
                       step={500}
                       value={costoDomicilio}
                       onChange={(e) => setCostoDomicilio(Number(e.target.value))}
-                      className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+                      className={INPUT}
                     />
-                  </div>
-                </>
-              )}
-
-              <div>
-                <span className="block text-sm font-medium">Método de pago</span>
-                <div className="mt-2 flex gap-2">
-                  <OpcionBoton
-                    selected={metodoPago === 'efectivo'}
-                    onClick={() => setMetodoPago('efectivo')}
-                    icon={<IconEfectivo />}
-                    label="Efectivo"
-                  />
-                  <OpcionBoton
-                    selected={metodoPago === 'transferencia'}
-                    onClick={() => setMetodoPago('transferencia')}
-                    icon={<IconTransferencia />}
-                    label="Transferencia"
-                  />
-                  <OpcionBoton
-                    selected={metodoPago === 'tarjeta'}
-                    onClick={() => setMetodoPago('tarjeta')}
-                    icon={<IconTarjeta />}
-                    label="Tarjeta"
-                  />
+                  </Campo>
                 </div>
-              </div>
-
-              {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-              {mensaje && (
-                <p className="text-sm text-green-600 dark:text-green-500">{mensaje}</p>
               )}
+            </fieldset>
 
-              <button
-                type="submit"
-                disabled={enviando}
-                className="btn-press w-full rounded-lg btn-gradient py-3 font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+            <fieldset>
+              <legend className="text-sm font-bold text-zinc-900 dark:text-zinc-50">
+                Método de pago
+              </legend>
+              <div className="mt-2 flex gap-2">
+                <OpcionBoton
+                  selected={metodoPago === 'efectivo'}
+                  onClick={() => setMetodoPago('efectivo')}
+                  icon={<IconEfectivo />}
+                  label="Efectivo"
+                />
+                <OpcionBoton
+                  selected={metodoPago === 'transferencia'}
+                  onClick={() => setMetodoPago('transferencia')}
+                  icon={<IconTransferencia />}
+                  label="Transferencia"
+                />
+                <OpcionBoton
+                  selected={metodoPago === 'tarjeta'}
+                  onClick={() => setMetodoPago('tarjeta')}
+                  icon={<IconTarjeta />}
+                  label="Tarjeta"
+                />
+              </div>
+            </fieldset>
+
+            {error && (
+              <p
+                role="alert"
+                className="rounded-xl bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300"
               >
-                {enviando ? 'Registrando…' : 'Registrar venta'}
-              </button>
-            </form>
-          </div>
-        </div>
+                {error}
+              </p>
+            )}
+            {mensaje && (
+              <p
+                role="status"
+                className="rounded-xl bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300"
+              >
+                {mensaje}
+              </p>
+            )}
+
+            <button type="submit" disabled={enviando} className={BOTON_PRINCIPAL}>
+              {enviando ? 'Registrando…' : 'Registrar venta'}
+            </button>
+          </form>
+        </section>
       </div>
+
+      {items.length > 0 && !ventaVisible && (
+        <a
+          href="#venta-actual"
+          className="btn-gradient animate-fade-up fixed inset-x-4 bottom-4 z-30 flex h-14 items-center justify-between rounded-2xl px-4 text-white shadow-xl shadow-brand-orange/30 outline-none focus-visible:ring-2 focus-visible:ring-white lg:hidden"
+        >
+          <span className="flex items-center gap-2 text-sm font-bold">
+            <span className="flex h-7 min-w-7 items-center justify-center rounded-full bg-white/20 px-2 tabular-nums">
+              {unidades}
+            </span>
+            Ver venta
+          </span>
+          <span className="text-lg font-extrabold tabular-nums">
+            {formatPrecio(totalConDescuento)}
+          </span>
+        </a>
+      )}
 
       {!turno && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="animate-fade-up w-full max-w-md rounded-2xl bg-white p-6 dark:bg-zinc-900">
-            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+          <div className={`${PANEL} animate-fade-up w-full max-w-md p-6`}>
+            <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">
               Abrir turno
             </h2>
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
               Antes de usar el punto de venta, cuenta cuánto hay en caja para
               arrancar el turno.
             </p>
-            <form onSubmit={abrirTurno} className="mt-4 space-y-3">
-              <div>
-                <label className="block text-sm font-medium">
-                  Monto inicial en caja
-                </label>
+            <form onSubmit={abrirTurno} className="mt-5 space-y-4">
+              <Campo etiqueta="Monto inicial en caja">
                 <input
                   required
                   type="number"
@@ -1036,17 +1172,15 @@ function PosInterno() {
                   autoFocus
                   value={montoInicial}
                   onChange={(e) => setMontoInicial(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+                  className={INPUT}
                 />
-              </div>
+              </Campo>
               {errorTurno && (
-                <p className="text-sm text-red-600 dark:text-red-400">{errorTurno}</p>
+                <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+                  {errorTurno}
+                </p>
               )}
-              <button
-                type="submit"
-                disabled={abriendoTurno}
-                className="btn-press w-full rounded-lg btn-gradient py-3 font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-              >
+              <button type="submit" disabled={abriendoTurno} className={BOTON_PRINCIPAL}>
                 {abriendoTurno ? 'Abriendo…' : 'Abrir turno'}
               </button>
             </form>
@@ -1056,36 +1190,36 @@ function PosInterno() {
 
       {mostrarCierre && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="animate-fade-up w-full max-w-md rounded-2xl bg-white p-6 dark:bg-zinc-900">
+          <div className={`${PANEL} animate-fade-up w-full max-w-md p-6`}>
             {resultadoCierre ? (
               <>
-                <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+                <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">
                   Turno cerrado
                 </h2>
-                <dl className="mt-4 space-y-2 text-sm">
+                <p className={`${ETIQUETA} mt-4`}>Total vendido</p>
+                <p className="text-3xl font-extrabold tracking-tight text-zinc-900 tabular-nums dark:text-zinc-50">
+                  {formatPrecio(resultadoCierre.resumen.total_ventas)}
+                </p>
+                <dl className="mt-4 space-y-2 rounded-2xl bg-zinc-50 p-3 text-sm tabular-nums dark:bg-zinc-800/50">
                   <div className="flex justify-between">
-                    <dt>Ventas en efectivo</dt>
+                    <dt className="text-zinc-500 dark:text-zinc-400">Ventas en efectivo</dt>
                     <dd>{formatPrecio(resultadoCierre.resumen.total_efectivo)}</dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt>Ventas por transferencia</dt>
+                    <dt className="text-zinc-500 dark:text-zinc-400">Ventas por transferencia</dt>
                     <dd>
                       {formatPrecio(resultadoCierre.resumen.total_transferencia)}
                     </dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt>Ventas con tarjeta</dt>
+                    <dt className="text-zinc-500 dark:text-zinc-400">Ventas con tarjeta</dt>
                     <dd>{formatPrecio(resultadoCierre.resumen.total_tarjeta)}</dd>
                   </div>
-                  <div className="flex justify-between border-t border-zinc-200 pt-2 font-semibold dark:border-zinc-800">
-                    <dt>Total vendido</dt>
-                    <dd>{formatPrecio(resultadoCierre.resumen.total_ventas)}</dd>
-                  </div>
                   <div className="flex justify-between">
-                    <dt>Cantidad de ventas</dt>
+                    <dt className="text-zinc-500 dark:text-zinc-400">Cantidad de ventas</dt>
                     <dd>{resultadoCierre.resumen.cantidad_ventas}</dd>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between border-t border-zinc-200 pt-2 font-semibold dark:border-zinc-700">
                     <dt>Caja esperada</dt>
                     <dd>{formatPrecio(resultadoCierre.monto_esperado_efectivo)}</dd>
                   </div>
@@ -1097,7 +1231,7 @@ function PosInterno() {
                           resultadoCierre.diferencia_caja === 0
                             ? ''
                             : resultadoCierre.diferencia_caja > 0
-                              ? 'text-green-600 dark:text-green-500'
+                              ? 'text-emerald-600 dark:text-emerald-400'
                               : 'text-red-600 dark:text-red-400'
                         }
                       >
@@ -1109,92 +1243,88 @@ function PosInterno() {
                 <button
                   type="button"
                   onClick={cerrarModalCierre}
-                  className="btn-press mt-6 w-full rounded-lg btn-gradient py-3 font-semibold text-white hover:opacity-90"
+                  className={`${BOTON_PRINCIPAL} mt-6`}
                 >
                   Listo
                 </button>
               </>
             ) : (
               <>
-                <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+                <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">
                   Cerrar turno
                 </h2>
                 {turno && resumenTurno && (
-                  <dl className="mt-4 space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <dt>Caja inicial</dt>
-                      <dd>{formatPrecio(turno.monto_inicial)}</dd>
-                    </div>
-                    <div className="flex justify-between">
-                      <dt>Ventas en efectivo</dt>
-                      <dd>{formatPrecio(resumenTurno.total_efectivo)}</dd>
-                    </div>
-                    <div className="flex justify-between">
-                      <dt>Ventas por transferencia</dt>
-                      <dd>{formatPrecio(resumenTurno.total_transferencia)}</dd>
-                    </div>
-                    <div className="flex justify-between">
-                      <dt>Ventas con tarjeta</dt>
-                      <dd>{formatPrecio(resumenTurno.total_tarjeta)}</dd>
-                    </div>
-                    <div className="flex justify-between border-t border-zinc-200 pt-2 font-semibold dark:border-zinc-800">
-                      <dt>Total vendido</dt>
-                      <dd>{formatPrecio(resumenTurno.total_ventas)}</dd>
-                    </div>
-                    <div className="flex justify-between">
-                      <dt>Cantidad de ventas</dt>
-                      <dd>{resumenTurno.cantidad_ventas}</dd>
-                    </div>
-                    <div className="flex justify-between font-semibold">
-                      <dt>Caja esperada</dt>
-                      <dd>
-                        {formatPrecio(
-                          turno.monto_inicial + resumenTurno.total_efectivo,
-                        )}
-                      </dd>
-                    </div>
-                  </dl>
+                  <>
+                    <p className={`${ETIQUETA} mt-4`}>Caja esperada</p>
+                    <p className="text-3xl font-extrabold tracking-tight text-zinc-900 tabular-nums dark:text-zinc-50">
+                      {formatPrecio(
+                        turno.monto_inicial + resumenTurno.total_efectivo,
+                      )}
+                    </p>
+                    <dl className="mt-4 space-y-2 rounded-2xl bg-zinc-50 p-3 text-sm tabular-nums dark:bg-zinc-800/50">
+                      <div className="flex justify-between">
+                        <dt className="text-zinc-500 dark:text-zinc-400">Caja inicial</dt>
+                        <dd>{formatPrecio(turno.monto_inicial)}</dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt className="text-zinc-500 dark:text-zinc-400">Ventas en efectivo</dt>
+                        <dd>{formatPrecio(resumenTurno.total_efectivo)}</dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt className="text-zinc-500 dark:text-zinc-400">Ventas por transferencia</dt>
+                        <dd>{formatPrecio(resumenTurno.total_transferencia)}</dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt className="text-zinc-500 dark:text-zinc-400">Ventas con tarjeta</dt>
+                        <dd>{formatPrecio(resumenTurno.total_tarjeta)}</dd>
+                      </div>
+                      <div className="flex justify-between border-t border-zinc-200 pt-2 font-semibold dark:border-zinc-700">
+                        <dt>Total vendido</dt>
+                        <dd>{formatPrecio(resumenTurno.total_ventas)}</dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt className="text-zinc-500 dark:text-zinc-400">Cantidad de ventas</dt>
+                        <dd>{resumenTurno.cantidad_ventas}</dd>
+                      </div>
+                    </dl>
+                  </>
                 )}
-                <form onSubmit={confirmarCierre} className="mt-4 space-y-3">
-                  <div>
-                    <label className="block text-sm font-medium">
-                      Monto contado en caja (opcional)
-                    </label>
+                <form onSubmit={confirmarCierre} className="mt-5 space-y-4">
+                  <Campo etiqueta="Monto contado en caja (opcional)">
                     <input
                       type="number"
                       min={0}
                       step={1000}
                       value={montoContado}
                       onChange={(e) => setMontoContado(e.target.value)}
-                      className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+                      className={INPUT}
                     />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium">
-                      Notas (opcional)
-                    </label>
+                  </Campo>
+                  <Campo etiqueta="Notas (opcional)">
                     <textarea
                       value={notasCierre}
                       onChange={(e) => setNotasCierre(e.target.value)}
                       rows={2}
-                      className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+                      className={`${INPUT_BASE} py-2.5`}
                     />
-                  </div>
+                  </Campo>
                   {errorTurno && (
-                    <p className="text-sm text-red-600 dark:text-red-400">{errorTurno}</p>
+                    <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+                      {errorTurno}
+                    </p>
                   )}
                   <div className="flex gap-2">
                     <button
                       type="button"
                       onClick={cerrarModalCierre}
-                      className="flex-1 rounded-lg border border-zinc-300 py-2 text-sm font-semibold dark:border-zinc-700"
+                      className="btn-press h-12 flex-1 rounded-xl border border-zinc-300 text-sm font-semibold text-zinc-700 outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/60 dark:border-zinc-700 dark:text-zinc-200"
                     >
                       Cancelar
                     </button>
                     <button
                       type="submit"
                       disabled={cerrandoTurno}
-                      className="flex-1 rounded-lg bg-red-600 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+                      className="btn-press h-12 flex-1 rounded-xl bg-red-600 text-sm font-bold text-white outline-none hover:bg-red-700 focus-visible:ring-2 focus-visible:ring-red-500/60 disabled:opacity-50"
                     >
                       {cerrandoTurno ? 'Cerrando…' : 'Confirmar cierre'}
                     </button>
