@@ -30,7 +30,8 @@ carrito y checkout en línea.
   se decide DESPUÉS de tener el sitio nuevo funcionando — no es prioridad hoy
 - Horario del negocio: lunes a domingo, 4:00pm–11:00pm
 - Dirección oficial: Carrera 7 # 17B - 66, Riohacha, La Guajira (confirmada
-  por el dueño; es la que va en el PDF del comprobante, en lugar de la del RUT)
+  por el dueño; es la que va en el PDF del comprobante, en lugar de la del RUT).
+  Zona: sur de Riohacha (confirmado oct 2026) — nunca decir "centro"
 - Datos fiscales del emisor (RUT, persona natural — se imprimen en el PDF del
   comprobante, que NO es factura electrónica DIAN): NIT `1.118.843.420-7`,
   régimen "No responsable de IVA"; solo se muestra el nombre comercial
