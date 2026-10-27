@@ -6,6 +6,7 @@ import {
   type ConversacionParaSeguimiento,
 } from './conversaciones.service';
 import { MetaGraphService } from './meta-graph.service';
+import { AvisosPedidoService } from './avisos-pedido.service';
 
 // Los plazos (recordatorio / oferta) son editables desde /admin/seguimiento
 // — se leen de la tabla configuracion en cada corrida del cron, ver
@@ -44,10 +45,11 @@ export class SeguimientoService {
     private readonly conversaciones: ConversacionesService,
     private readonly metaGraph: MetaGraphService,
     private readonly pedidos: PedidosService,
+    private readonly avisosPedido: AvisosPedidoService,
   ) {}
 
-  // Nombre explícito: @nestjs/schedule genera uno con crypto.randomUUID()
-  // si no se lo damos, y ese global no existe en el Node 18 de Railway.
+  // Nombre explícito: identifica el job en logs y en el SchedulerRegistry
+  // (sin él, @nestjs/schedule genera uno aleatorio en cada arranque).
   @Cron('*/10 * * * *', { name: 'seguimiento-conversaciones' })
   async ejecutar(): Promise<void> {
     if (this.ejecutando) {
@@ -62,6 +64,8 @@ export class SeguimientoService {
         await this.conversaciones.obtenerConfiguracionSeguimiento();
       await this.enviarRecordatorios(recordatorioMinutos);
       await this.enviarOfertas(ofertaMinutos);
+      // Invitación a repetir el pedido, en la última hora de la ventana de 24h.
+      await this.avisosPedido.enviarRecompras();
     } finally {
       this.ejecutando = false;
     }

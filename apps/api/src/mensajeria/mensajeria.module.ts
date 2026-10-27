@@ -13,6 +13,7 @@ import { SeguimientoService } from './seguimiento.service';
 import { ImportarHistorialGeminiService } from './importar-historial-gemini.service';
 import { AvisoEquipoService } from './aviso-equipo.service';
 import { CheckoutWhatsappService } from './checkout-whatsapp.service';
+import { AvisosPedidoService } from './avisos-pedido.service';
 
 @Module({
   imports: [CatalogModule, ClientesModule, MailModule, PedidosModule],
@@ -27,8 +28,10 @@ import { CheckoutWhatsappService } from './checkout-whatsapp.service';
     ImportarHistorialGeminiService,
     AvisoEquipoService,
     CheckoutWhatsappService,
+    AvisosPedidoService,
   ],
   exports: [
+    AvisosPedidoService,
     ConversacionesService,
     ConversionesMetaService,
     MetaGraphService,

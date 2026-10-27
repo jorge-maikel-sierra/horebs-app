@@ -110,6 +110,29 @@ export class ConversionesMetaService {
     });
   }
 
+  /**
+   * Fire-and-forget para los flujos que no deben esperar a Meta (derivar,
+   * registrar una venta): mismo patrón que MailService. Las versiones
+   * async de arriba quedan para los tests y para quien sí necesite esperar.
+   */
+  avisarLead(canal: string, identificadorExterno: string): void {
+    this.notificarLead(canal, identificadorExterno).catch((err) =>
+      this.logger.error(`Lead no enviado: ${(err as Error).message}`),
+    );
+  }
+
+  avisarCompra(compra: {
+    telefono: string | null | undefined;
+    pedidoId: string;
+    total: number;
+  }): void {
+    this.notificarCompra(compra).catch((err) =>
+      this.logger.error(
+        `Purchase del pedido ${compra.pedidoId} no enviado: ${(err as Error).message}`,
+      ),
+    );
+  }
+
   private async protegido(
     evento: EventoMensajeria,
     accion: () => Promise<void>,

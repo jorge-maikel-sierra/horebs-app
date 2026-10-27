@@ -367,20 +367,36 @@ export class ConversacionesService {
     return data?.checkout ?? null;
   }
 
-  /** Último mensaje del cliente — define la ventana gratis de 24h de WhatsApp. */
-  async obtenerUltimaInteraccion(
+  /**
+   * Conversación con su último mensaje del cliente — define la ventana
+   * gratis de 24h de WhatsApp para los avisos que manda el sistema.
+   */
+  async obtenerVentana(
     canal: CanalMensajeria,
     identificadorExterno: string,
-  ): Promise<Date | null> {
+  ): Promise<{
+    conversacionId: string;
+    estado: EstadoConversacion;
+    ultimaInteraccion: Date;
+  } | null> {
     const { data, error } = await this.supabase
       .getClient()
       .from('conversaciones_bot')
-      .select('ultima_interaccion')
+      .select('id, estado, ultima_interaccion')
       .eq('canal', canal)
       .eq('identificador_externo', identificadorExterno)
-      .maybeSingle<{ ultima_interaccion: string | null }>();
+      .maybeSingle<{
+        id: string;
+        estado: EstadoConversacion;
+        ultima_interaccion: string | null;
+      }>();
     if (error) throw error;
-    return data?.ultima_interaccion ? new Date(data.ultima_interaccion) : null;
+    if (!data?.ultima_interaccion) return null;
+    return {
+      conversacionId: data.id,
+      estado: data.estado,
+      ultimaInteraccion: new Date(data.ultima_interaccion),
+    };
   }
 
   /**

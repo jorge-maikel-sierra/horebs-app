@@ -11,6 +11,7 @@ import { ConversacionesService } from '../mensajeria/conversaciones.service';
 import { MetaGraphService } from '../mensajeria/meta-graph.service';
 import { ConversionesMetaService } from '../mensajeria/conversiones-meta.service';
 import { ImportarHistorialGeminiService } from '../mensajeria/importar-historial-gemini.service';
+import { AvisosPedidoService } from '../mensajeria/avisos-pedido.service';
 import { FacturaService } from '../facturas/factura.service';
 import { PuntosService } from '../clientes/puntos.service';
 import { METODOS_PAGO, type MetodoPago } from '../common/metodos-pago';
@@ -127,6 +128,9 @@ const ESTADOS_PEDIDO = [
   'pendiente',
   'confirmado',
   'en_preparacion',
+  // Solo domicilio, entre el horno y la entrega — el cliente del bot recibe
+  // "va en camino" por WhatsApp.
+  'en_camino',
   'entregado',
   'cancelado',
 ];
@@ -158,6 +162,7 @@ export class AdminService {
     private readonly factura: FacturaService,
     private readonly puntos: PuntosService,
     private readonly importarHistorial: ImportarHistorialGeminiService,
+    private readonly avisosPedido: AvisosPedidoService,
   ) {}
 
   private async revertirStockSeguro(
@@ -283,7 +288,7 @@ export class AdminService {
 
     // Si el cliente llegó por un anuncio Click-to-WhatsApp, Meta se entera
     // de la venta (atribuida por teléfono). No espera ni puede fallar la venta.
-    void this.conversionesMeta.notificarCompra({
+    this.conversionesMeta.avisarCompra({
       telefono: cliente.telefono,
       pedidoId: pedido.id,
       total: Number(pedido.total),
@@ -509,6 +514,15 @@ export class AdminService {
         .update(payload)
         .eq('id', id);
       if (updateError) throw updateError;
+    }
+
+    // Pedidos del bot: el cliente se entera de cada cambio por WhatsApp.
+    // AvisosPedidoService ignora solo los de otros canales.
+    if (
+      cambios.estado !== undefined &&
+      cambios.estado !== pedidoActual.estado
+    ) {
+      this.avisosPedido.notificarEstado(id);
     }
 
     const { data: actualizado, error: obtenerError } = await client

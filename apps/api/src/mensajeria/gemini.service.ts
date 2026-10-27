@@ -609,7 +609,7 @@ export class GeminiService {
             telefono,
             conversacionId,
           });
-          void this.conversionesMeta.notificarLead(canal, identificadorExterno);
+          this.conversionesMeta.avisarLead(canal, identificadorExterno);
           return `Conversación derivada. Respondé al cliente con este mensaje EXACTO, sin cambiarlo ni agregar nada de "confirmado" o tiempos de entrega: "${MENSAJE_DERIVACION}"`;
         default:
           // En producción el modelo pidió herramientas que no existen

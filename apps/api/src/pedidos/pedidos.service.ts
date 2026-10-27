@@ -74,6 +74,16 @@ export interface ClienteBotDto {
   puntosActuales: number;
 }
 
+export interface PedidoParaAvisoDto {
+  id: string;
+  canal: string;
+  estado: string;
+  modalidad: string;
+  direccionEntrega: string | null;
+  /** Teléfono local del cliente (3187592616), sin el 57. */
+  telefono: string | null;
+}
+
 export interface UltimoPedidoDto {
   items: { varianteId: string; cantidad: number }[];
   direccionEntrega: string | null;
@@ -536,6 +546,89 @@ export class PedidosService {
     return items.length > 0
       ? { items, direccionEntrega: data.direccion_entrega }
       : null;
+  }
+
+  /** Lo justo para avisarle al cliente por WhatsApp un cambio de estado. */
+  async datosParaAviso(id: string): Promise<PedidoParaAvisoDto | null> {
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('pedidos')
+      .select(
+        'id, canal, estado, modalidad, direccion_entrega, clientes(telefono)',
+      )
+      .eq('id', id)
+      .maybeSingle<{
+        id: string;
+        canal: string;
+        estado: string;
+        modalidad: string;
+        direccion_entrega: string | null;
+        clientes: { telefono: string | null } | null;
+      }>();
+    if (error) throw error;
+    if (!data) return null;
+    return {
+      id: data.id,
+      canal: data.canal,
+      estado: data.estado,
+      modalidad: data.modalidad,
+      direccionEntrega: data.direccion_entrega,
+      telefono: data.clientes?.telefono ?? null,
+    };
+  }
+
+  /**
+   * Pedidos del bot ya entregados a los que todavía no se les mandó la
+   * invitación a repetir. Solo los de los últimos 3 días: más atrás la
+   * ventana de 24h de WhatsApp ya está cerrada de todas formas.
+   */
+  async pedidosParaRecompra(): Promise<PedidoParaAvisoDto[]> {
+    const desde = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('pedidos')
+      .select(
+        'id, canal, estado, modalidad, direccion_entrega, clientes(telefono)',
+      )
+      .eq('canal', 'whatsapp')
+      .eq('estado', 'entregado')
+      .is('recompra_enviada_en', null)
+      .gte('created_at', desde)
+      .returns<
+        {
+          id: string;
+          canal: string;
+          estado: string;
+          modalidad: string;
+          direccion_entrega: string | null;
+          clientes: { telefono: string | null } | null;
+        }[]
+      >();
+    if (error) throw error;
+    return (data ?? []).map((p) => ({
+      id: p.id,
+      canal: p.canal,
+      estado: p.estado,
+      modalidad: p.modalidad,
+      direccionEntrega: p.direccion_entrega,
+      telefono: p.clientes?.telefono ?? null,
+    }));
+  }
+
+  /**
+   * Marca la invitación a repetir como enviada. Devuelve false si ya estaba
+   * marcada: así dos corridas del cron nunca la mandan dos veces.
+   */
+  async reclamarRecompra(id: string): Promise<boolean> {
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('pedidos')
+      .update({ recompra_enviada_en: new Date().toISOString() })
+      .eq('id', id)
+      .is('recompra_enviada_en', null)
+      .select('id');
+    if (error) throw error;
+    return (data ?? []).length > 0;
   }
 
   /**

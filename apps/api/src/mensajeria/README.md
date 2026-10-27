@@ -98,6 +98,41 @@ bot no manda al cliente al sitio web.
 - **Sin `WHATSAPP_CATALOG_ID`**, o en Messenger/Instagram (que no tienen
   catálogo), el bot vuelve al link del sitio y a las tarjetas.
 
+## Checkout por botones y pedidos del bot (`checkout-whatsapp*.ts`)
+
+Desde el carrito del catálogo (o "Sí, lo mismo") el pedido se cierra con
+botones, sin pasar por Gemini:
+
+1. **Modalidad**: `🛵 Domicilio` / `🏃 Retiro` / `🍽️ En el local`.
+2. **Dirección** (solo domicilio): "¿Te lo llevamos a <última dirección>?"
+   o el botón nativo *Enviar ubicación* (queda como link de Google Maps). La
+   dirección también se puede escribir.
+3. **Nombre**: se salta si el teléfono ya es cliente con nombre y apellido.
+4. **Resumen** (precios y puntos desde la base) + botones de pago.
+5. **Pago**: el bot **crea el pedido** (`PedidosService.crearDesdeWhatsapp`,
+   canal `whatsapp`, estado `pendiente`, stock y puntos como el checkout
+   web, idempotente por el `wamid` del toque) y confirma con el número de
+   pedido. Con transferencia agrega la llave Nu.
+
+El estado del checkout vive en `conversaciones_bot.checkout`; "cancelar" lo
+limpia. Texto que no corresponde al paso (una pregunta) lo responde Gemini
+y los botones siguen sirviendo. Un pedido escrito por texto que calcula
+`calcular_pedido` entra al mismo paso de pago.
+
+**"¿Lo mismo de la última vez?"**: ante un saludo corto, sin memoria de
+Gemini y con un pedido anterior (cualquier canal), el bot ofrece repetirlo
+con los precios actuales.
+
+**Avisos de estado** (`avisos-pedido*.ts`): cada cambio de estado de un
+pedido `whatsapp` desde `/admin/pedidos` (confirmado → en el horno → en
+camino → entregado / cancelado) le llega al cliente con un texto fijo.
+**Invitación a repetir**: el cron de seguimiento la manda una sola vez,
+entre 23 y 24 h después del último mensaje del cliente, si su pedido ya
+está entregado. Ambos solo dentro de la ventana de 24h (sin plantilla, Meta
+descarta lo demás).
+
+Migración: `apps/api/docs/sql/2026-10-27-checkout-whatsapp-y-estados.sql`.
+
 ## Aviso al equipo cuando el bot deriva (`aviso-derivacion.ts`)
 
 Cuando una conversación pasa a una persona, el equipo recibe:
