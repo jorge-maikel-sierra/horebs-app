@@ -70,6 +70,34 @@ un margen de ~10s entre mensajes la memoria se mantiene sin problema. Si
 en producción se ve que el bot "se olvida" de un mensaje anterior, esta es
 la primera hipótesis a revisar.
 
+## Catálogo de WhatsApp (venta dentro del chat)
+
+Regla de negocio: si la venta empieza en WhatsApp, termina en WhatsApp. El
+bot no manda al cliente al sitio web.
+
+- **Catálogo de Meta**: "Pizzería Horebs" (`1949258666036000`), conectado
+  al número del bot con carrito activo. Se llena solo desde Supabase con una
+  lista de datos programada **cada hora** que lee
+  `GET /catalogo/feed.csv` (`CatalogService.getFeedCsv`). Cada ítem es una
+  variante y su id es el UUID de `variantes_producto`, el mismo que usa el
+  píxel. Un producto entra solo si tiene foto y slug (`entraEnCatalogoMeta`).
+  El catálogo viejo de anuncios (`992458518076809`) lee el mismo feed.
+- **`enviar_catalogo`**: manda el menú completo como `catalog_message`
+  (fotos, precios y carrito dentro del chat).
+- **`mostrar_productos`**: manda una `product_list` agrupada por categoría
+  con los productos que matchean (máximo 30 ítems y 10 secciones, límite de
+  Meta). Si Meta la rechaza (por ejemplo un producto nuevo que el feed
+  todavía no subió), cae a las tarjetas con botón.
+- **Carrito**: cuando el cliente envía el carrito llega un mensaje `order`.
+  Se toman solo el id de la variante y la cantidad (1–20); el precio que
+  manda WhatsApp se ignora. Las variantes se validan contra Supabase
+  (`CatalogService.resolverCarrito`) y Gemini recibe un texto como
+  "Envié mi carrito del catálogo: 2x Pizza Hawaiana (Grande)". Desde ahí
+  sigue el flujo normal: modalidad, nombre completo, `calcular_pedido` (que
+  recalcula precios desde la base) y derivación a una persona.
+- **Sin `WHATSAPP_CATALOG_ID`**, o en Messenger/Instagram (que no tienen
+  catálogo), el bot vuelve al link del sitio y a las tarjetas.
+
 ## Conversions API para Click-to-WhatsApp (`conversiones-meta.service.ts`)
 
 Le avisa a Meta qué conversaciones que empezaron con un clic en anuncio
@@ -117,6 +145,7 @@ de en Railway:
 | `MESSENGER_PAGE_ID` | ID de esa Página |
 | `GEMINI_API_KEY` | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) — gratis |
 | `GEMINI_MODEL` | opcional, default `gemini-flash-lite-latest` (el más barato disponible) |
+| `WHATSAPP_CATALOG_ID` | Commerce Manager → el catálogo conectado al número del bot (`1949258666036000`). El token necesita el permiso `catalog_management` |
 
 Instagram Direct usa el **mismo** `MESSENGER_PAGE_ACCESS_TOKEN` — así
 funciona la Instagram Messaging API (la cuenta de Instagram tiene que estar
@@ -164,10 +193,16 @@ pendiente solo se puede probar con el número de prueba que da Meta.
 
 ## Registrar los webhooks en Meta
 
+> **Si cambia el dominio del API en Railway**, hay que actualizar en Meta la
+> Callback URL del webhook **y** la URL de las listas de datos de los dos
+> catálogos. En septiembre de 2026 el dominio cambió, Meta siguió mandando
+> todo al dominio viejo (404) y el bot y los catálogos dejaron de funcionar
+> sin ningún error visible del lado del API.
+
 Por cada producto (WhatsApp, Messenger, Instagram) en el App Dashboard →
 Webhooks:
 
-1. **Callback URL**: `https://<tu-dominio-railway>/webhooks/whatsapp` (o
+1. **Callback URL**: `https://horebs-api-production-d191.up.railway.app/webhooks/whatsapp` (o
    `/messenger`, `/instagram` según el producto).
 2. **Verify Token**: el mismo valor que pusiste en `META_WEBHOOK_VERIFY_TOKEN`.
 3. Meta llama la URL con `GET` para confirmar el handshake antes de dejarte
