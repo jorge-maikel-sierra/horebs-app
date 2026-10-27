@@ -46,6 +46,15 @@ export interface CategoriaDto {
   orden: number;
 }
 
+export interface ItemCarritoResuelto {
+  varianteId: string;
+  productoNombre: string;
+  varianteNombre: string;
+  /** El producto tiene más de una variante activa (ej. tamaños de pizza). */
+  conTamanos: boolean;
+  cantidad: number;
+}
+
 /**
  * Un producto entra al catálogo de Meta solo si tiene foto y slug — el
  * feed lo excluye si no. El bot usa este mismo criterio para armar listas
@@ -98,6 +107,35 @@ export class CatalogService {
       ...producto,
       variantes: variantes_producto ?? [],
     }));
+  }
+
+  /**
+   * Valida contra la base un carrito del catálogo de WhatsApp: solo quedan
+   * las variantes activas de productos activos (las mismas que devuelve
+   * getProductos). A diferencia de `obtenerVariantesActivas`
+   * (pedidos/calcular-items.ts), no tira error si falta alguna: el bot le
+   * avisa al cliente y sigue con lo que sí está disponible.
+   */
+  async resolverCarrito(
+    items: { varianteId: string; cantidad: number }[],
+  ): Promise<{ disponibles: ItemCarritoResuelto[]; noDisponibles: number }> {
+    const productos = await this.getProductos();
+    const porVariante = new Map(
+      productos.flatMap((p) => p.variantes.map((v) => [v.id, { p, v }])),
+    );
+    const disponibles: ItemCarritoResuelto[] = [];
+    for (const item of items) {
+      const encontrado = porVariante.get(item.varianteId);
+      if (!encontrado) continue;
+      disponibles.push({
+        varianteId: item.varianteId,
+        productoNombre: encontrado.p.nombre,
+        varianteNombre: encontrado.v.nombre,
+        conTamanos: encontrado.p.variantes.length > 1,
+        cantidad: item.cantidad,
+      });
+    }
+    return { disponibles, noDisponibles: items.length - disponibles.length };
   }
 
   async getProductoPorSlug(slug: string): Promise<ProductoDto | null> {

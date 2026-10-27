@@ -1,5 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { createHmac, timingSafeEqual } from 'crypto';
+import {
+  CatalogService,
+  type ItemCarritoResuelto,
+} from '../catalog/catalog.service';
 import { GeminiService } from './gemini.service';
 import { MetaGraphService } from './meta-graph.service';
 import {
@@ -15,6 +19,11 @@ export interface ProcedenciaAnuncio {
   ctwaClid?: string;
 }
 
+export interface CarritoCatalogo {
+  items: { varianteId: string; cantidad: number }[];
+  nota: string | null;
+}
+
 export interface EventoEntrante {
   canal: CanalMensajeria;
   identificadorExterno: string; // wa_id de WhatsApp, o PSID/IGSID de Messenger/Instagram
@@ -22,6 +31,72 @@ export interface EventoEntrante {
   texto: string;
   procedenciaAnuncio: ProcedenciaAnuncio | null;
   mensajeId: string | null; // wamid (WhatsApp) o mid (Messenger/Instagram) — para deduplicar reenvíos de Meta
+  /** Carrito enviado desde el catálogo de WhatsApp — `texto` se arma al procesarlo. */
+  carrito?: CarritoCatalogo;
+}
+
+// Mismo tope que calcular_pedido en gemini.service.ts.
+const MAX_CANTIDAD_ITEM = 20;
+
+interface WhatsappOrden {
+  catalog_id?: string;
+  text?: string;
+  product_items?: {
+    product_retailer_id?: string;
+    quantity?: number;
+    // item_price y currency también llegan, pero se ignoran a propósito:
+    // el precio sale siempre de Supabase (calcular_pedido).
+  }[];
+}
+
+/**
+ * Carrito de un mensaje `order` de WhatsApp. Solo se toma el id de la
+ * variante y la cantidad (acotada a 1–20) — nunca el precio que manda el
+ * cliente, que se recalcula desde la base.
+ */
+export function carritoDesdeOrden(orden: WhatsappOrden): CarritoCatalogo {
+  const items = (orden.product_items ?? []).flatMap((item) => {
+    if (!item.product_retailer_id) return [];
+    const cantidad = Math.round(Number(item.quantity ?? 1)) || 1;
+    return [
+      {
+        varianteId: item.product_retailer_id,
+        cantidad: Math.min(Math.max(cantidad, 1), MAX_CANTIDAD_ITEM),
+      },
+    ];
+  });
+  return { items, nota: orden.text?.trim() || null };
+}
+
+/**
+ * Texto sintético que recibe Gemini en lugar del carrito — mismo criterio
+ * que "Quiero pedir …" del botón de las tarjetas: el modelo sigue el flujo
+ * normal de toma de pedido con productos que ya existen en el catálogo.
+ * Sin precios: el total lo calcula calcular_pedido desde la base.
+ */
+export function textoCarritoCatalogo(
+  disponibles: ItemCarritoResuelto[],
+  noDisponibles: number,
+  nota: string | null,
+): string {
+  if (disponibles.length === 0) {
+    return 'Envié mi carrito del catálogo, pero ninguno de esos productos está disponible en este momento.';
+  }
+  const items = disponibles
+    .map(
+      (i) =>
+        `${i.cantidad}x ${i.productoNombre}${i.conTamanos ? ` (${i.varianteNombre})` : ''}`,
+    )
+    .join(', ');
+  return [
+    `Envié mi carrito del catálogo: ${items}.`,
+    noDisponibles > 0
+      ? `(${noDisponibles} producto(s) del carrito ya no están disponibles.)`
+      : null,
+    nota ? `Nota: ${nota}` : null,
+  ]
+    .filter(Boolean)
+    .join(' ');
 }
 
 /**
@@ -47,6 +122,7 @@ interface WhatsappMensaje {
     type: string;
     button_reply?: { id: string; title: string };
   };
+  order?: WhatsappOrden;
 }
 
 interface WhatsappWebhookPayload {
@@ -92,6 +168,7 @@ export class WebhooksService {
     private readonly gemini: GeminiService,
     private readonly metaGraph: MetaGraphService,
     private readonly conversaciones: ConversacionesService,
+    private readonly catalog: CatalogService,
   ) {}
 
   verificarFirma(
@@ -165,15 +242,27 @@ export class WebhooksService {
       );
     }
 
+    if (evento.carrito) {
+      const { disponibles, noDisponibles } = await this.catalog.resolverCarrito(
+        evento.carrito.items,
+      );
+      evento.texto = textoCarritoCatalogo(
+        disponibles,
+        noDisponibles,
+        evento.carrito.nota,
+      );
+    }
+
     const conversacion = await this.conversaciones.registrarInteraccion(
       evento.canal,
       evento.identificadorExterno,
     );
     const ctwaClid = evento.procedenciaAnuncio?.ctwaClid;
     if (evento.canal === 'whatsapp' && ctwaClid) {
-      // Si falla (ej. la columna todavía no existe) no debe tumbar la
-      // respuesta al cliente: es un dato para medición, no para el bot.
-      await this.conversaciones
+      // Fire-and-forget: si falla (ej. la columna todavía no existe) no
+      // debe tumbar ni demorar la respuesta al cliente — es un dato para
+      // medición, no para el bot, y se lee recién al derivar.
+      void this.conversaciones
         .guardarCtwaClid(evento.canal, evento.identificadorExterno, ctwaClid)
         .catch((err: Error) =>
           this.logger.error(
@@ -246,9 +335,14 @@ export class WebhooksService {
     for (const entry of payload?.entry ?? []) {
       for (const change of entry?.changes ?? []) {
         for (const mensaje of change?.value?.messages ?? []) {
-          const texto = this.textoWhatsapp(mensaje);
-          // MVP: solo texto y tap de botón — audio/imagen/ubicación quedan
-          // para una extensión posterior, no se pidieron en el flujo básico.
+          const carrito =
+            mensaje.type === 'order' && mensaje.order
+              ? carritoDesdeOrden(mensaje.order)
+              : undefined;
+          const texto = carrito ? '' : this.textoWhatsapp(mensaje);
+          // Texto, tap de botón y carrito del catálogo — audio/imagen/
+          // ubicación quedan para una extensión posterior, no se pidieron
+          // en el flujo básico.
           if (texto === null) continue;
           eventos.push({
             canal: 'whatsapp',
@@ -257,6 +351,7 @@ export class WebhooksService {
             texto,
             procedenciaAnuncio: this.extraerProcedenciaWhatsapp(mensaje),
             mensajeId: mensaje.id ?? null,
+            carrito,
           });
         }
       }
