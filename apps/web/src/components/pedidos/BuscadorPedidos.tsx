@@ -652,6 +652,11 @@ export default function BuscadorPedidos({
             { valor: 'todos', texto: 'Todos', conteo: conteo.canal.todos },
             { valor: 'web', texto: 'Web', conteo: conteo.canal.web },
             { valor: 'pos', texto: 'Local', conteo: conteo.canal.pos },
+            {
+              valor: 'whatsapp',
+              texto: 'WhatsApp',
+              conteo: conteo.canal.whatsapp,
+            },
           ]}
         />
         <Segmentado

@@ -2,7 +2,7 @@
 
 import { useState, type CSSProperties } from 'react';
 import { FOCO, TARJETA } from '@/components/formulario/estilos';
-import { MODALIDAD_LABEL } from '@/lib/pedidos-busqueda';
+import { CANAL_LABEL, MODALIDAD_LABEL } from '@/lib/pedidos-busqueda';
 import { formatPrecio } from '@/lib/formato';
 import {
   productosFavoritos,
@@ -42,6 +42,10 @@ const ESTADO: Record<string, { texto: string; clase: string }> = {
   },
   en_preparacion: {
     texto: 'En preparación',
+    clase: 'bg-brand-orange/15 text-accent-ink',
+  },
+  en_camino: {
+    texto: 'En camino',
     clase: 'bg-brand-orange/15 text-accent-ink',
   },
 };
@@ -215,10 +219,14 @@ export default function HistorialPedidos({
                     </span>
                     <span
                       className={`rounded-full px-2 py-0.5 font-semibold text-white ${
-                        p.canal === 'pos' ? 'bg-brand-navy' : 'bg-brand-orange'
+                        p.canal === 'pos'
+                          ? 'bg-brand-navy'
+                          : p.canal === 'whatsapp'
+                            ? 'bg-emerald-700'
+                            : 'bg-brand-orange'
                       }`}
                     >
-                      {p.canal === 'pos' ? 'Local' : 'Web'}
+                      {CANAL_LABEL[p.canal] ?? p.canal}
                     </span>
                     <span className="rounded-md bg-zinc-100 px-1.5 py-0.5 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
                       {MODALIDAD_LABEL[p.modalidad] ?? p.modalidad}

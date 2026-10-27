@@ -7,7 +7,7 @@ import { sumarDias } from '@/lib/semana';
 /** Subconjunto de PedidoAdmin que necesita el buscador (compatible por estructura). */
 export type PedidoBuscable = {
   id: string;
-  canal: 'web' | 'pos';
+  canal: 'web' | 'pos' | 'whatsapp';
   cliente: {
     nombre: string;
     apellido: string | null;
@@ -24,7 +24,7 @@ export type PedidoBuscable = {
   items: { producto_nombre: string; variante_nombre: string }[];
 };
 
-export type FiltroCanal = 'todos' | 'web' | 'pos';
+export type FiltroCanal = 'todos' | 'web' | 'pos' | 'whatsapp';
 export type FiltroEstado = 'todos' | 'activos' | 'entregado' | 'cancelado';
 export type FiltroTipo = 'todos' | 'domicilio' | 'retiro' | 'local';
 export type FiltroPago = 'todos' | 'efectivo' | 'transferencia' | 'tarjeta';
@@ -57,7 +57,11 @@ export const MODALIDAD_LABEL: Record<string, string> = {
   local: 'Comer en el local',
 };
 
-export const CANAL_LABEL: Record<string, string> = { web: 'Web', pos: 'Local' };
+export const CANAL_LABEL: Record<string, string> = {
+  web: 'Web',
+  pos: 'Local',
+  whatsapp: 'WhatsApp',
+};
 
 // ---------------------------------------------------------------------------
 // Normalización
@@ -144,6 +148,7 @@ const TIPO_SINONIMOS: Record<string, string> = {
 const CANAL_SINONIMOS: Record<string, string> = {
   web: 'web online pagina internet',
   pos: 'local pos mostrador tienda',
+  whatsapp: 'whatsapp wsp chat bot',
 };
 
 const CACHE = new WeakMap<object, Indice>();
@@ -507,7 +512,7 @@ export function contarFacetas(
 ): ConteoFacetas {
   const terminos = tokenizar(filtros.texto);
   const conteo: ConteoFacetas = {
-    canal: { todos: 0, web: 0, pos: 0 },
+    canal: { todos: 0, web: 0, pos: 0, whatsapp: 0 },
     estado: { todos: 0, activos: 0, entregado: 0, cancelado: 0 },
     tipo: { todos: 0, domicilio: 0, retiro: 0, local: 0 },
     pago: { todos: 0, efectivo: 0, transferencia: 0, tarjeta: 0 },

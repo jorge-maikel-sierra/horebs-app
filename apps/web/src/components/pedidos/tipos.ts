@@ -19,7 +19,7 @@ export type ClientePedido = {
 
 export type PedidoAdmin = {
   id: string;
-  canal: 'web' | 'pos';
+  canal: 'web' | 'pos' | 'whatsapp';
   cliente: ClientePedido;
   modalidad: string;
   direccion_entrega: string | null;

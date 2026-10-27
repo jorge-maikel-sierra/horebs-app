@@ -77,6 +77,7 @@ const ESTADO_PEDIDO_LABEL: Record<string, string> = {
   pendiente: 'pendiente',
   confirmado: 'confirmado',
   en_preparacion: 'en preparación',
+  en_camino: 'en camino',
 };
 
 const COLUMNAS_ATENCION: Record<number, string> = {

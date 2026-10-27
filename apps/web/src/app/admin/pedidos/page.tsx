@@ -27,6 +27,7 @@ import {
 import { useDebounced } from '@/lib/use-debounced';
 import { hoyBogota } from '@/lib/semana';
 import {
+  CANAL_LABEL,
   FILTROS_INICIALES,
   MODALIDAD_LABEL,
   buscarPedidos,
@@ -100,7 +101,45 @@ const ETIQUETA =
 const CHIP =
   'mt-1 inline-block max-w-full truncate rounded-lg bg-zinc-100 px-2 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200';
 
+const IconSiguiente = () => (
+  <Icono>
+    <path d="M5 12h14" />
+    <path d="m13 6 6 6-6 6" />
+  </Icono>
+);
+const IconCancelar = () => (
+  <Icono>
+    <circle cx="12" cy="12" r="9" />
+    <path d="m15 9-6 6M9 9l6 6" />
+  </Icono>
+);
+
+/**
+ * Próximo paso del pedido. En camino solo aplica a domicilio. Los pedidos
+ * del bot de WhatsApp le avisan al cliente en cada cambio.
+ */
+function siguienteEstado(
+  p: Pick<PedidoAdmin, 'estado' | 'modalidad'>,
+): { estado: string; texto: string } | null {
+  switch (p.estado) {
+    case 'pendiente':
+      return { estado: 'confirmado', texto: 'Confirmar pedido' };
+    case 'confirmado':
+      return { estado: 'en_preparacion', texto: 'Pasar al horno' };
+    case 'en_preparacion':
+      return p.modalidad === 'domicilio'
+        ? { estado: 'en_camino', texto: 'Salió a domicilio' }
+        : { estado: 'entregado', texto: 'Marcar entregado' };
+    case 'en_camino':
+      return { estado: 'entregado', texto: 'Marcar entregado' };
+    default:
+      return null;
+  }
+}
+
 function tonoEstado(estado: string) {
+  if (estado === 'en_camino')
+    return 'bg-sky-500/10 text-sky-700 dark:bg-sky-400/10 dark:text-sky-300';
   if (estado === 'entregado')
     return 'bg-emerald-500/10 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300';
   if (estado === 'cancelado')
@@ -131,6 +170,12 @@ function PedidosInterno() {
   );
   const [eliminando, setEliminando] = useState(false);
   const [descargandoId, setDescargandoId] = useState<string | null>(null);
+  const [cambiandoEstadoId, setCambiandoEstadoId] = useState<string | null>(
+    null,
+  );
+  const [pedidoACancelar, setPedidoACancelar] = useState<PedidoAdmin | null>(
+    null,
+  );
 
   useEffect(() => {
     adminFetch('/admin/pedidos')
@@ -202,6 +247,41 @@ function PedidosInterno() {
     } finally {
       setEliminando(false);
       setPedidoAEliminar(null);
+    }
+  }
+
+  async function cambiarEstado(p: PedidoAdmin, estado: string) {
+    setCambiandoEstadoId(p.id);
+    try {
+      const res = await adminFetch(`/admin/pedidos/${p.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ estado }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(
+          typeof body?.message === 'string'
+            ? body.message
+            : 'No se pudo cambiar el estado.',
+        );
+      }
+      const actualizado: PedidoAdmin = await res.json();
+      setPedidos((prev) =>
+        prev.map((x) => (x.id === actualizado.id ? actualizado : x)),
+      );
+      mostrar(
+        p.canal === 'whatsapp'
+          ? 'Estado actualizado — se le avisó al cliente por WhatsApp'
+          : 'Estado actualizado',
+      );
+    } catch (err) {
+      mostrar(
+        err instanceof Error ? err.message : 'No se pudo cambiar el estado.',
+        true,
+      );
+    } finally {
+      setCambiandoEstadoId(null);
+      setPedidoACancelar(null);
     }
   }
 
@@ -338,6 +418,7 @@ function PedidosInterno() {
       >
         {pedidosFiltrados.map((p, indice) => {
           const nombreCompleto = nombreDelCliente(p.cliente);
+          const siguiente = siguienteEstado(p);
           // El ítem más caro (la pizza, no la gaseosa) va como foto principal.
           const fotos = [
             ...new Set(
@@ -374,6 +455,16 @@ function PedidosInterno() {
                         : undefined,
                       onSelect: () => setClienteEnEdicion(p.cliente),
                     },
+                    ...(siguienteEstado(p)
+                      ? [
+                          {
+                            etiqueta: 'Cancelar pedido',
+                            icono: <IconCancelar />,
+                            peligro: true,
+                            onSelect: () => setPedidoACancelar(p),
+                          },
+                        ]
+                      : []),
                     ...(rol === 'admin'
                       ? [
                           {
@@ -405,10 +496,14 @@ function PedidosInterno() {
                 <div className="absolute top-2.5 left-2.5 flex flex-wrap gap-1.5">
                   <span
                     className={`rounded-full px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm ${
-                      p.canal === 'pos' ? 'bg-brand-navy' : 'bg-brand-orange-700'
+                      p.canal === 'pos'
+                        ? 'bg-brand-navy'
+                        : p.canal === 'whatsapp'
+                          ? 'bg-emerald-700'
+                          : 'bg-brand-orange-700'
                     }`}
                   >
-                    {p.canal === 'pos' ? 'Local' : 'Web'}
+                    {CANAL_LABEL[p.canal] ?? p.canal}
                   </span>
                   {p.stock_status === 'pendiente' && (
                     <span
@@ -537,6 +632,19 @@ function PedidosInterno() {
                   </div>
                 </div>
 
+                {siguiente && (
+                  <button
+                    type="button"
+                    disabled={cambiandoEstadoId === p.id}
+                    onClick={() => cambiarEstado(p, siguiente.estado)}
+                    className="btn-press mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 text-[13px] font-bold tracking-[0.1em] text-white uppercase shadow-md shadow-emerald-700/25 outline-none hover:bg-emerald-800 focus-visible:ring-2 focus-visible:ring-emerald-600/60 focus-visible:ring-offset-2 disabled:opacity-60 dark:focus-visible:ring-offset-zinc-900"
+                  >
+                    {cambiandoEstadoId === p.id ? 'Guardando…' : siguiente.texto}
+                    {cambiandoEstadoId !== p.id && <IconSiguiente />}
+                    <span className="sr-only"> #{p.id.slice(0, 8)}</span>
+                  </button>
+                )}
+
                 <button
                   type="button"
                   onClick={() => setPedidoEnEdicion(p)}
@@ -631,6 +739,34 @@ function PedidosInterno() {
           cargando={eliminando}
           onConfirmar={confirmarEliminarPedido}
           onCancelar={() => setPedidoAEliminar(null)}
+        />
+      )}
+
+      {pedidoACancelar && (
+        <ModalConfirmar
+          titulo="¿Cancelar este pedido?"
+          descripcion={
+            <>
+              Pedido de{' '}
+              <span className="font-medium text-zinc-700 dark:text-zinc-300">
+                {pedidoACancelar.cliente.nombre
+                  ? nombreDelCliente(pedidoACancelar.cliente)
+                  : 'cliente sin nombre'}
+              </span>{' '}
+              por {formatPrecio(pedidoACancelar.total)}. El stock vuelve al
+              inventario
+              {pedidoACancelar.canal === 'whatsapp'
+                ? ' y al cliente le llega el aviso por WhatsApp'
+                : ''}
+              .
+            </>
+          }
+          textoConfirmar="Cancelar pedido"
+          textoCancelar="Volver"
+          peligro
+          cargando={cambiandoEstadoId === pedidoACancelar.id}
+          onConfirmar={() => cambiarEstado(pedidoACancelar, 'cancelado')}
+          onCancelar={() => setPedidoACancelar(null)}
         />
       )}
 
