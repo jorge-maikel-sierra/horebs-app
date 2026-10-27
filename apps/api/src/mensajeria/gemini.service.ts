@@ -12,6 +12,7 @@ import { PedidosService } from '../pedidos/pedidos.service';
 import { MetaGraphService } from './meta-graph.service';
 import { ConversionesMetaService } from './conversiones-meta.service';
 import { COSTO_DOMICILIO_DEFAULT } from '../common/costos';
+import { estadoAtencion, type EstadoAtencion } from '../common/horario';
 import {
   buscarProductoUnico,
   contieneNumeroNoVerificado,
@@ -65,6 +66,15 @@ function formatearParaWhatsapp(texto: string): string {
 // recibe a través de la herramienta obtener_horario.
 const HORARIO = 'Lunes a domingo, 4:00pm – 11:00pm';
 const DIRECCION = 'Carrera 7 # 17B - 66, Riohacha, La Guajira';
+// Confirmado por el dueño (2026-10-27) — ver common/horario.ts.
+const HORARIO_PEDIDOS_BOT =
+  'Por WhatsApp tomamos pedidos de 11:00 a.m. a 11:00 p.m.; los que llegan antes de las 4:00 p.m. quedan como reserva para la hora que elija el cliente, desde las 4:00 p.m.';
+const ESTADO_ATENCION_TEXTO: Record<EstadoAtencion, string> = {
+  abierto: 'el local está abierto y tomamos pedidos.',
+  reservas:
+    'el local todavía no abrió, pero tomamos el pedido como reserva desde las 4:00 p.m.',
+  cerrado: 'estamos cerrados; tomamos pedidos de nuevo desde las 11:00 a.m.',
+};
 const NOMBRE_NEGOCIO = 'Pizzería Horebs';
 const URL_CATALOGO = 'https://pizzeriahorebs.shop/catalogo';
 
@@ -217,7 +227,7 @@ const HERRAMIENTAS = [
     type: 'function',
     name: 'obtener_horario',
     description:
-      'Devuelve el horario de atención, la dirección del local, y el costo de domicilio. Usar también cuando pregunten cuánto cuesta el domicilio sin estar todavía armando un pedido.',
+      'Devuelve el horario del local, el horario en que el bot toma pedidos y reservas, si ahora mismo está abierto, la dirección y el costo de domicilio. Usar también cuando pregunten cuánto cuesta el domicilio, si están abiertos o si pueden reservar.',
     parameters: { type: 'object', properties: {} },
   },
   {
@@ -586,7 +596,13 @@ export class GeminiService {
             String(argumentos.nombre_producto ?? ''),
           );
         case 'obtener_horario':
-          return `Horario: ${HORARIO}\nDirección: ${DIRECCION}\nCosto de domicilio: $${COSTO_DOMICILIO_DEFAULT.toLocaleString('es-CO')}`;
+          return [
+            `Horario del local: ${HORARIO}`,
+            HORARIO_PEDIDOS_BOT,
+            `Ahora mismo: ${ESTADO_ATENCION_TEXTO[estadoAtencion(new Date())]}`,
+            `Dirección: ${DIRECCION}`,
+            `Costo de domicilio: $${COSTO_DOMICILIO_DEFAULT.toLocaleString('es-CO')}`,
+          ].join('\n');
         case 'obtener_categorias':
           return await this.textoCategorias();
         case 'obtener_tamanos_pizza':

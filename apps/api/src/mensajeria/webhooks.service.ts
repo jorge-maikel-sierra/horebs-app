@@ -130,6 +130,7 @@ interface WhatsappMensaje {
   interactive?: {
     type: string;
     button_reply?: { id: string; title: string };
+    list_reply?: { id: string; title: string };
   };
   order?: WhatsappOrden;
   location?: {
@@ -147,10 +148,14 @@ interface WhatsappMensaje {
 export function entradaCheckoutDe(
   mensaje: WhatsappMensaje,
 ): { entrada: EntradaCheckout; texto: string } | null {
+  // Botón de respuesta o fila de una lista (franjas de entrega): mismo trato.
   const boton =
-    mensaje.type === 'interactive' &&
-    mensaje.interactive?.type === 'button_reply'
-      ? mensaje.interactive.button_reply
+    mensaje.type === 'interactive'
+      ? mensaje.interactive?.type === 'button_reply'
+        ? mensaje.interactive.button_reply
+        : mensaje.interactive?.type === 'list_reply'
+          ? mensaje.interactive.list_reply
+          : undefined
       : undefined;
   if (boton && esBotonCheckout(boton.id)) {
     return { entrada: { tipo: 'boton', id: boton.id }, texto: boton.title };

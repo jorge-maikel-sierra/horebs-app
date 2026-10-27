@@ -4,6 +4,7 @@ import {
   direccionEscritaValida,
   esCancelar,
   esSaludoOIntencionDePedir,
+  horaDe,
   metodoPagoDe,
   modalidadDe,
   separarNombre,
@@ -88,7 +89,31 @@ describe('siguientePaso', () => {
         nombre: 'Jorge',
         apellido: 'Sierra',
       }),
+    ).toBe('hora');
+    expect(
+      siguientePaso({
+        paso: 'hora',
+        modalidad: 'retiro',
+        nombre: 'Jorge',
+        apellido: 'Sierra',
+        entrega: '18:30',
+      }),
     ).toBe('pago');
+  });
+});
+
+describe('horaDe', () => {
+  it('toma la fila de la lista de franjas', () => {
+    expect(horaDe({ tipo: 'boton', id: 'ck:hora:18:30' })).toBe('18:30');
+    expect(horaDe({ tipo: 'boton', id: 'ck:hora:ya' })).toBe('ya');
+  });
+
+  it('entiende "lo antes posible" escrito', () => {
+    expect(horaDe(texto('Lo antes posible porfa'))).toBe('ya');
+  });
+
+  it('otro botón no es una hora', () => {
+    expect(horaDe({ tipo: 'boton', id: BOTON.efectivo })).toBeNull();
   });
 });
 

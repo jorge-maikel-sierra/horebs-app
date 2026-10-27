@@ -30,7 +30,8 @@ export interface ItemCarritoPendiente {
 }
 
 export type ModalidadPedido = 'domicilio' | 'retiro' | 'local';
-export type PasoCheckout = 'modalidad' | 'direccion' | 'nombre' | 'pago';
+export type PasoCheckout =
+  'modalidad' | 'direccion' | 'nombre' | 'hora' | 'pago';
 
 /** `conversaciones_bot.checkout` (jsonb) — en qué paso del checkout con botones va el cliente. */
 export interface CheckoutWhatsapp {
@@ -43,6 +44,8 @@ export interface CheckoutWhatsapp {
   apellido?: string;
   /** Nota que el cliente escribió al mandar el carrito del catálogo. */
   nota?: string;
+  /** Franja elegida: 'ya' (lo antes posible) o 'HH:MM' en hora de Bogotá. */
+  entrega?: string;
 }
 
 export interface MensajeConversacion {

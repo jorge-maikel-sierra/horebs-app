@@ -31,6 +31,8 @@ export interface BotonRespuesta {
 const MAX_BOTONES = 3;
 const MAX_TITULO_BOTON = 20;
 const MAX_CUERPO = 1024;
+const MAX_FILAS_LISTA = 10;
+const MAX_TITULO_FILA = 24;
 
 export interface ListaProductos {
   encabezado: string;
@@ -183,6 +185,35 @@ export class MetaGraphService {
             type: 'reply',
             reply: { id: b.id, title: b.titulo.slice(0, MAX_TITULO_BOTON) },
           })),
+        },
+      }),
+    );
+  }
+
+  /**
+   * Lista interactiva (hasta 10 filas, títulos de 24 caracteres): el cliente
+   * toca "Elegir" y elige una opción. Vuelve como `list_reply.id`.
+   */
+  async enviarLista(
+    destinatarioId: string,
+    datos: { cuerpo: string; boton: string; filas: BotonRespuesta[] },
+  ): Promise<void> {
+    await this.conReintentos(() =>
+      this.enviarWhatsappInteractivo(destinatarioId, {
+        type: 'list',
+        body: {
+          text: normalizarNegritaWhatsapp(datos.cuerpo).slice(0, MAX_CUERPO),
+        },
+        action: {
+          button: datos.boton.slice(0, MAX_TITULO_BOTON),
+          sections: [
+            {
+              rows: datos.filas.slice(0, MAX_FILAS_LISTA).map((f) => ({
+                id: f.id,
+                title: f.titulo.slice(0, MAX_TITULO_FILA),
+              })),
+            },
+          ],
         },
       }),
     );

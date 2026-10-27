@@ -57,6 +57,8 @@ export interface CrearPedidoWhatsappInput extends Omit<
     direccion?: string;
   };
   modalidad: 'domicilio' | 'retiro' | 'local';
+  /** Reserva: hora de entrega (ISO). null/ausente = lo antes posible. */
+  programado_para?: string | null;
 }
 
 type CanalPedido = 'web' | 'whatsapp';
@@ -65,6 +67,7 @@ type CanalPedido = 'web' | 'whatsapp';
 type DatosPedido = Omit<CrearPedidoInput, 'cliente' | 'modalidad'> & {
   cliente: CrearPedidoWhatsappInput['cliente'] & { correo?: string };
   modalidad: CrearPedidoWhatsappInput['modalidad'];
+  programado_para?: string | null;
 };
 
 export interface ClienteBotDto {
@@ -247,6 +250,9 @@ export class PedidosService {
         costo_domicilio: costoDomicilio,
         metodo_pago: input.metodo_pago,
         canal,
+        ...(input.programado_para
+          ? { programado_para: input.programado_para }
+          : {}),
         total,
         notas: input.notas ?? null,
         idempotency_key: input.idempotency_key ?? null,

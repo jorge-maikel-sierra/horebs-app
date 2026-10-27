@@ -44,6 +44,18 @@ describe('armarResumenPedido', () => {
     expect(texto).not.toMatch(/puntos/i);
   });
 
+  it('muestra la entrega elegida', () => {
+    const { texto } = armarResumenPedido({
+      nombreCompleto: 'Jorge Sierra',
+      lineas: LINEAS,
+      modalidad: 'retiro',
+      direccion: null,
+      costoDomicilio: 5000,
+      entrega: '6:30 p.m. (reserva)',
+    });
+    expect(texto).toContain('Entrega: 6:30 p.m. (reserva)');
+  });
+
   it('sin domicilio no cobra el envío', () => {
     const { texto, total } = armarResumenPedido({
       nombreCompleto: 'Jorge Sierra',

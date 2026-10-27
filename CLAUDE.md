@@ -29,6 +29,9 @@ carrito y checkout en línea.
 - La migración del histórico de WooCommerce (18,723 pedidos, 5,393 clientes)
   se decide DESPUÉS de tener el sitio nuevo funcionando — no es prioridad hoy
 - Horario del negocio: lunes a domingo, 4:00pm–11:00pm
+- Horario del bot de WhatsApp: toma pedidos de 11:00am a 11:00pm; los que
+  llegan antes de las 4:00pm son reservas con franja de entrega (cada 30 min
+  desde las 4:00pm) — confirmado por el dueño el 27 oct 2026
 - Dirección oficial: Carrera 7 # 17B - 66, Riohacha, La Guajira (confirmada
   por el dueño; es la que va en el PDF del comprobante, en lugar de la del RUT).
   Zona: sur de Riohacha (confirmado oct 2026) — nunca decir "centro"

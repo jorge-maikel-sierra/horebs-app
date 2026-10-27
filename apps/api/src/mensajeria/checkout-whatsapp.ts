@@ -33,6 +33,9 @@ export const BOTON = {
   otraCosa: 'ck:lomismo:otro',
 } as const;
 
+/** Prefijo de las filas de la lista de franjas: ck:hora:ya / ck:hora:18:30. */
+export const PREFIJO_HORA = 'ck:hora:';
+
 export const BOTONES_MODALIDAD = [
   { id: BOTON.domicilio, titulo: '🛵 Domicilio' },
   { id: BOTON.retiro, titulo: '🏃 Retiro' },
@@ -97,6 +100,21 @@ export function metodoPagoDe(entrada: EntradaCheckout): MetodoPagoBot | null {
   return null;
 }
 
+/** Franja elegida en la lista ('ya' o 'HH:MM'), o "lo antes posible" escrito. */
+export function horaDe(entrada: EntradaCheckout): string | null {
+  if (entrada.tipo === 'boton') {
+    return entrada.id.startsWith(PREFIJO_HORA)
+      ? entrada.id.slice(PREFIJO_HORA.length)
+      : null;
+  }
+  if (entrada.tipo !== 'texto') return null;
+  return /\b(lo antes posible|lo mas pronto|ya mismo|de una|ahorita)\b/.test(
+    normalizar(entrada.texto),
+  )
+    ? 'ya'
+    : null;
+}
+
 /** "📍 Calle 1 # 2-3 — https://maps.google.com/?q=11.5,-72.9" */
 export function direccionDeUbicacion(
   entrada: Extract<EntradaCheckout, { tipo: 'ubicacion' }>,
@@ -145,6 +163,7 @@ export function siguientePaso(checkout: CheckoutWhatsapp): PasoCheckout {
   if (checkout.modalidad === 'domicilio' && !checkout.direccion)
     return 'direccion';
   if (!checkout.nombre || !checkout.apellido) return 'nombre';
+  if (!checkout.entrega) return 'hora';
   return 'pago';
 }
 

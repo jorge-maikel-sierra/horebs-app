@@ -4,6 +4,12 @@ import {
   type ItemCarritoResuelto,
 } from '../catalog/catalog.service';
 import { COSTO_DOMICILIO_DEFAULT } from '../common/costos';
+import {
+  estadoAtencion,
+  etiquetaHora,
+  franjaVigente,
+  franjasEntrega,
+} from '../common/horario';
 import { PedidosService } from '../pedidos/pedidos.service';
 import {
   AvisoEquipoService,
@@ -17,8 +23,10 @@ import {
   direccionEscritaValida,
   esBotonCheckout,
   esCancelar,
+  horaDe,
   metodoPagoDe,
   modalidadDe,
+  PREFIJO_HORA,
   separarNombre,
   siguientePaso,
   type EntradaCheckout,
@@ -36,6 +44,10 @@ const URL_CATALOGO = 'https://pizzeriahorebs.shop/catalogo';
 // Dato confirmado en CLAUDE.md — el mismo que muestra el sitio web en la
 // confirmación de un pedido con transferencia (apps/web/src/lib/negocio.ts).
 const TRANSFERENCIA = { banco: 'Nu', llave: '1118843420' };
+
+// Horario del bot: 11:00 a.m. a 11:00 p.m. (ver common/horario.ts).
+export const MENSAJE_CERRADO =
+  'Estamos cerrados 😴 Tomamos pedidos de 11:00 a.m. a 11:00 p.m. (el local abre a las 4:00 p.m.). Escribinos desde las 11 y te lo dejamos reservado 🍕';
 
 export interface ContextoCheckout {
   /** wa_id del cliente — en WhatsApp es también su teléfono. */
@@ -58,6 +70,15 @@ function lineasDeCarrito(items: ItemCarritoResuelto[]): LineaPedido[] {
   }));
 }
 
+/** 'ya' → "lo antes posible"; 'HH:MM' → "6:30 p.m. (reserva)". */
+function textoEntrega(entrega: string | undefined): string | undefined {
+  if (!entrega) return undefined;
+  if (entrega === 'ya') return 'lo antes posible';
+  const [h, m] = entrega.split(':').map(Number);
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${String(m).padStart(2, '0')} ${h < 12 ? 'a.m.' : 'p.m.'} (reserva)`;
+}
+
 function listaItems(items: ItemCarritoResuelto[]): string {
   return items
     .map(
@@ -68,8 +89,9 @@ function listaItems(items: ItemCarritoResuelto[]): string {
 }
 
 /**
- * Checkout del bot por botones: modalidad → dirección → nombre → pago →
- * pedido creado. Determinístico de punta a punta — ningún paso pasa por
+ * Checkout del bot por botones: modalidad → dirección → nombre → hora de
+ * entrega → pago → pedido creado. Solo de 11:00 a.m. a 11:00 p.m.; antes de
+ * las 4:00 p.m. el pedido queda como reserva. Determinístico de punta a punta — ningún paso pasa por
  * Gemini, así que nada de lo que ve el cliente acá lo escribe el modelo.
  * Si el cliente escribe algo que no corresponde al paso (una pregunta),
  * `manejar` devuelve false y responde Gemini; el checkout queda donde
@@ -94,6 +116,11 @@ export class CheckoutWhatsappService {
     noDisponibles: number,
     nota: string | null,
   ): Promise<void> {
+    if (estadoAtencion(new Date()) === 'cerrado') {
+      await this.limpiar(ctx);
+      await this.enviarTexto(ctx, MENSAJE_CERRADO);
+      return;
+    }
     if (disponibles.length === 0) {
       await this.limpiar(ctx);
       await this.enviarTexto(
@@ -235,6 +262,13 @@ export class CheckoutWhatsappService {
         await this.avanzar(ctx, checkout);
         return true;
       }
+      case 'hora': {
+        const hora = horaDe(entrada);
+        if (!hora) return false;
+        checkout.entrega = hora;
+        await this.avanzar(ctx, checkout);
+        return true;
+      }
       case 'pago': {
         const metodo = metodoPagoDe(entrada);
         if (!metodo) return false;
@@ -264,6 +298,12 @@ export class CheckoutWhatsappService {
       datos.identificadorExterno,
       datos.items,
     );
+    // Falta la hora de entrega: primero la lista de franjas, el resumen
+    // sale cuando la elige.
+    if (!datos.checkout.entrega) {
+      await this.pedirHora(ctx, datos.checkout);
+      return 'Se le mandó al cliente la lista de horarios de entrega; el resumen y los botones de pago le llegan cuando elija la hora.';
+    }
     return this.ofrecerPago(ctx, datos.checkout);
   }
 
@@ -272,6 +312,8 @@ export class CheckoutWhatsappService {
    * compró o ninguno de esos productos sigue disponible.
    */
   async ofrecerLoMismo(ctx: ContextoCheckout): Promise<boolean> {
+    // Fuera de horario responde Gemini (sabe el horario por obtener_horario).
+    if (estadoAtencion(new Date()) === 'cerrado') return false;
     const ultimo = await this.pedidos.ultimoPedidoPorTelefono(
       ctx.identificadorExterno,
     );
@@ -334,10 +376,50 @@ export class CheckoutWhatsappService {
           '¿A nombre de quién va el pedido? Escribime nombre y apellido 🙂',
         );
         return;
+      case 'hora':
+        await this.pedirHora(ctx, checkout);
+        return;
       case 'pago':
         await this.ofrecerPago(ctx, checkout);
         return;
     }
+  }
+
+  /**
+   * Lista de franjas: "Lo antes posible" con el local abierto, y reservas
+   * cada 30 min desde las 4:00 p.m. Fuera del horario del bot, cierra.
+   */
+  private async pedirHora(
+    ctx: ContextoCheckout,
+    checkout: CheckoutWhatsapp,
+  ): Promise<void> {
+    const ahora = new Date();
+    const franjas = franjasEntrega(ahora);
+    if (franjas.length === 0) {
+      await this.limpiar(ctx);
+      await this.enviarTexto(ctx, MENSAJE_CERRADO);
+      return;
+    }
+    checkout.paso = 'hora';
+    checkout.entrega = undefined;
+    await this.guardar(ctx, checkout);
+    const cuerpo =
+      estadoAtencion(ahora) === 'reservas'
+        ? 'Abrimos a las 4:00 p.m. 🕓 ¿Para qué hora te lo reservamos?'
+        : '¿Para cuándo lo querés?';
+    await this.metaGraph.enviarLista(ctx.identificadorExterno, {
+      cuerpo,
+      boton: 'Elegir hora',
+      filas: franjas.map((f) => ({
+        id: `${PREFIJO_HORA}${f.id}`,
+        titulo: f.titulo,
+      })),
+    });
+    await this.conversaciones.registrarMensaje(
+      ctx.conversacionId,
+      'saliente_bot',
+      `${cuerpo}\n[${franjas.map((f) => f.titulo).join(' · ')}]`,
+    );
   }
 
   /** Ofrece la dirección del último pedido; si no hay, pide la ubicación. */
@@ -408,6 +490,7 @@ export class CheckoutWhatsappService {
       modalidad: checkout.modalidad ?? 'retiro',
       direccion: checkout.direccion ?? null,
       costoDomicilio: COSTO_DOMICILIO_DEFAULT,
+      entrega: textoEntrega(checkout.entrega),
     });
 
     checkout.paso = 'pago';
@@ -422,6 +505,17 @@ export class CheckoutWhatsappService {
     checkout: CheckoutWhatsapp,
     metodo: MetodoPagoBot,
   ): Promise<void> {
+    // La franja puede vencer mientras el cliente decide cómo pagar (o el
+    // local puede haber cerrado): se vuelve a ofrecer la lista.
+    const franja = franjaVigente(checkout.entrega ?? 'ya', new Date());
+    if (!franja) {
+      await this.enviarTexto(
+        ctx,
+        'Esa hora ya no está disponible 🙏 Elegí otra, porfa.',
+      );
+      await this.pedirHora(ctx, checkout);
+      return;
+    }
     const carrito = await this.conversaciones.obtenerCarrito(
       'whatsapp',
       ctx.identificadorExterno,
@@ -442,6 +536,7 @@ export class CheckoutWhatsappService {
         direccion_entrega: esDomicilio ? checkout.direccion : undefined,
         metodo_pago: metodo,
         notas: checkout.nota,
+        programado_para: franja.programadoPara,
         items: carrito.map((i) => ({
           variante_id: i.varianteId,
           cantidad: i.cantidad,
@@ -473,6 +568,9 @@ export class CheckoutWhatsappService {
     await this.limpiar(ctx);
     const confirmacion = [
       `${INICIO_CONFIRMACION_PEDIDO} ${checkout.nombre}! Recibimos tu pedido *#${pedido.id.slice(0, 8)}* por *${pesos(pedido.total)}*.`,
+      franja.programadoPara
+        ? `🕒 Quedó reservado para las *${etiquetaHora(franja.programadoPara)}*.`
+        : null,
       'Te aviso por acá cuando lo confirmemos y cuando vaya en camino 🍕',
       metodo === 'transferencia'
         ? `\nPara transferir: *Banco ${TRANSFERENCIA.banco}*, llave *${TRANSFERENCIA.llave}*. Mandanos el comprobante por acá.`

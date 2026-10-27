@@ -12,6 +12,8 @@ export interface DatosResumenPedido {
   modalidad: string;
   direccion: string | null;
   costoDomicilio: number;
+  /** "lo antes posible" o "6:30 p.m. (reserva)". */
+  entrega?: string;
 }
 
 const ETIQUETA_MODALIDAD: Record<string, string> = {
@@ -51,8 +53,11 @@ export function armarResumenPedido(datos: DatosResumenPedido): {
     esDomicilio
       ? `Domicilio a ${datos.direccion ?? 'dirección sin especificar'}: ${pesos(domicilio)}`
       : `Modalidad: ${ETIQUETA_MODALIDAD[datos.modalidad] ?? datos.modalidad}`,
+    datos.entrega ? `Entrega: ${datos.entrega}` : null,
     `*Total: ${pesos(total)}*`,
-  ].join('\n');
+  ]
+    .filter((l) => l !== null)
+    .join('\n');
 
   return { texto, total };
 }

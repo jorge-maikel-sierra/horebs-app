@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import { estadoAtencion } from '../common/horario';
 import { PedidosService } from '../pedidos/pedidos.service';
 import {
   ConversacionesService,
@@ -58,6 +59,9 @@ export class SeguimientoService {
       );
       return;
     }
+    // Nada de mensajes automáticos fuera del horario del bot (11:00 a.m. a
+    // 11:00 p.m.): un recordatorio a las 2 a.m. no vende, molesta.
+    if (estadoAtencion(new Date()) === 'cerrado') return;
     this.ejecutando = true;
     try {
       const { recordatorioMinutos, ofertaMinutos } =

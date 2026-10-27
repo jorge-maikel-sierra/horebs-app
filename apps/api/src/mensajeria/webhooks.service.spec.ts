@@ -107,6 +107,22 @@ describe('entradaCheckoutDe', () => {
     });
   });
 
+  it('una fila de la lista de franjas también va al checkout', () => {
+    expect(
+      entradaCheckoutDe({
+        type: 'interactive',
+        from: '573001112233',
+        interactive: {
+          type: 'list_reply',
+          list_reply: { id: 'ck:hora:18:30', title: '6:30 p.m.' },
+        },
+      }),
+    ).toEqual({
+      entrada: { tipo: 'boton', id: 'ck:hora:18:30' },
+      texto: '6:30 p.m.',
+    });
+  });
+
   it('el botón "Agregar al pedido" de las tarjetas no es del checkout', () => {
     expect(
       entradaCheckoutDe({

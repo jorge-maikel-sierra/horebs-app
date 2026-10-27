@@ -107,6 +107,10 @@ export interface PedidoAdminDto {
   stock_status: string;
   total: number;
   created_at: string;
+  /** Reserva del bot: hora de entrega (ISO). null = lo antes posible. */
+  programado_para: string | null;
+  /** El cliente mandó el comprobante de transferencia por WhatsApp. */
+  tiene_comprobante: boolean;
   items: {
     variante_id: string | null;
     producto_nombre: string;
@@ -146,7 +150,7 @@ export interface ConfiguracionCorreos {
 
 const CLAVES_CORREO = ['correo_domiciliario', CLAVE_CORREO_AVISOS_BOT];
 const PEDIDO_ADMIN_SELECT =
-  'id, canal, modalidad, direccion_entrega, costo_domicilio, metodo_pago, estado, stock_status, total, created_at, clientes(id, nombre, apellido, telefono, direccion, correo), items_pedido(variante_id, nombre_personalizado, cantidad, precio_unitario, variantes_producto(nombre, productos(nombre)))';
+  'id, canal, modalidad, direccion_entrega, costo_domicilio, metodo_pago, estado, stock_status, total, created_at, programado_para, comprobante_path, clientes(id, nombre, apellido, telefono, direccion, correo), items_pedido(variante_id, nombre_personalizado, cantidad, precio_unitario, variantes_producto(nombre, productos(nombre)))';
 
 @Injectable()
 export class AdminService {
@@ -570,6 +574,10 @@ export class AdminService {
   }
 
   private mapPedido(p: any): PedidoAdminDto {
+    const reserva = p as {
+      programado_para?: string | null;
+      comprobante_path?: string | null;
+    };
     const cliente = p.clientes;
     const items = (p.items_pedido ?? []) as any[];
     return {
@@ -591,6 +599,8 @@ export class AdminService {
       stock_status: p.stock_status,
       total: p.total,
       created_at: p.created_at,
+      programado_para: reserva.programado_para ?? null,
+      tiene_comprobante: Boolean(reserva.comprobante_path),
       items: items.map((i) => ({
         variante_id: i.variante_id,
         producto_nombre:
