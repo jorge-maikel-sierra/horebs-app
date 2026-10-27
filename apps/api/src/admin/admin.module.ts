@@ -9,6 +9,7 @@ import { MensajeriaModule } from '../mensajeria/mensajeria.module';
 import { FacturaModule } from '../facturas/factura.module';
 import { BlogModule } from '../blog/blog.module';
 import { ClientesModule } from '../clientes/clientes.module';
+import { PedidosModule } from '../pedidos/pedidos.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { ClientesModule } from '../clientes/clientes.module';
     FacturaModule,
     BlogModule,
     ClientesModule,
+    PedidosModule,
   ],
   controllers: [AdminController],
   providers: [AdminService, ModulosService],

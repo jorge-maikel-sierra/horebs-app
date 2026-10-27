@@ -32,6 +32,7 @@ const MAX_BOTONES = 3;
 const MAX_TITULO_BOTON = 20;
 const MAX_CUERPO = 1024;
 const MAX_FILAS_LISTA = 10;
+const MAX_BYTES_MEDIA = 10 * 1024 * 1024;
 const MAX_TITULO_FILA = 24;
 
 export interface ListaProductos {
@@ -217,6 +218,55 @@ export class MetaGraphService {
         },
       }),
     );
+  }
+
+  /**
+   * Descarga un archivo que mandó el cliente (foto, PDF, nota de voz): la
+   * Cloud API primero da una URL temporal por id y después se baja con el
+   * mismo token. Tope de 10 MB — un comprobante o un audio corto pesan
+   * mucho menos.
+   */
+  async descargarMedia(
+    mediaId: string,
+  ): Promise<{ datos: Buffer; mime: string }> {
+    if (!this.whatsappToken) {
+      throw new ServiceUnavailableException('WhatsApp no está configurado.');
+    }
+    const auth = { Authorization: `Bearer ${this.whatsappToken}` };
+    const meta = await fetch(
+      `https://graph.facebook.com/${this.version}/${mediaId}`,
+      { headers: auth },
+    );
+    if (!meta.ok) {
+      throw new ServiceUnavailableException(
+        `No se pudo obtener el archivo ${mediaId}: ${meta.status}`,
+      );
+    }
+    const info = (await meta.json()) as {
+      url?: string;
+      mime_type?: string;
+      file_size?: number;
+    };
+    if (!info.url) {
+      throw new ServiceUnavailableException(
+        `El archivo ${mediaId} no tiene URL.`,
+      );
+    }
+    if ((info.file_size ?? 0) > MAX_BYTES_MEDIA) {
+      throw new ServiceUnavailableException(
+        `El archivo ${mediaId} pesa más de 10 MB.`,
+      );
+    }
+    const archivo = await fetch(info.url, { headers: auth });
+    if (!archivo.ok) {
+      throw new ServiceUnavailableException(
+        `No se pudo descargar el archivo ${mediaId}: ${archivo.status}`,
+      );
+    }
+    return {
+      datos: Buffer.from(await archivo.arrayBuffer()),
+      mime: info.mime_type ?? 'application/octet-stream',
+    };
   }
 
   /** Botón nativo "Enviar ubicación" — la respuesta llega como mensaje `location`. */

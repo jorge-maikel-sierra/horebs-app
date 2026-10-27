@@ -14,6 +14,7 @@ import { ImportarHistorialGeminiService } from './importar-historial-gemini.serv
 import { AvisoEquipoService } from './aviso-equipo.service';
 import { CheckoutWhatsappService } from './checkout-whatsapp.service';
 import { AvisosPedidoService } from './avisos-pedido.service';
+import { ComprobantesService } from './comprobantes.service';
 
 @Module({
   imports: [CatalogModule, ClientesModule, MailModule, PedidosModule],
@@ -29,6 +30,7 @@ import { AvisosPedidoService } from './avisos-pedido.service';
     AvisoEquipoService,
     CheckoutWhatsappService,
     AvisosPedidoService,
+    ComprobantesService,
   ],
   exports: [
     AvisosPedidoService,

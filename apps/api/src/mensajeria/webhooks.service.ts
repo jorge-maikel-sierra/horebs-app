@@ -7,6 +7,7 @@ import {
 import { GeminiService } from './gemini.service';
 import { MetaGraphService } from './meta-graph.service';
 import { CheckoutWhatsappService } from './checkout-whatsapp.service';
+import { ComprobantesService } from './comprobantes.service';
 import {
   direccionDeUbicacion,
   esBotonCheckout,
@@ -42,7 +43,13 @@ export interface EventoEntrante {
   carrito?: CarritoCatalogo;
   /** Toque de un botón del checkout (`ck:*`) o ubicación compartida. */
   entrada?: EntradaCheckout;
+  /** Foto, documento o nota de voz. */
+  media?: { id: string; tipo: TipoMedia };
 }
+
+// Respuesta fija cuando llega algo que el bot no sabe leer.
+const MENSAJE_SOLO_TEXTO =
+  'Por ahora solo puedo leer mensajes de texto 🙏 ¿Me lo escribís?';
 
 // Mismo tope que calcular_pedido en gemini.service.ts.
 const MAX_CANTIDAD_ITEM = 20;
@@ -139,6 +146,39 @@ interface WhatsappMensaje {
     name?: string;
     address?: string;
   };
+  image?: { id: string; caption?: string };
+  document?: { id: string; filename?: string; caption?: string };
+  audio?: { id: string; voice?: boolean };
+}
+
+export type TipoMedia = 'imagen' | 'documento' | 'audio';
+
+/**
+ * Foto, documento o nota de voz: el archivo se descarga después por id.
+ * El texto es lo que queda en el historial de la conversación.
+ */
+export function mediaDe(
+  mensaje: WhatsappMensaje,
+): { id: string; tipo: TipoMedia; texto: string } | null {
+  if (mensaje.type === 'image' && mensaje.image) {
+    const caption = mensaje.image.caption?.trim();
+    return {
+      id: mensaje.image.id,
+      tipo: 'imagen',
+      texto: `📎 Imagen${caption ? `: ${caption}` : ''}`,
+    };
+  }
+  if (mensaje.type === 'document' && mensaje.document) {
+    return {
+      id: mensaje.document.id,
+      tipo: 'documento',
+      texto: `📎 Documento${mensaje.document.filename ? `: ${mensaje.document.filename}` : ''}`,
+    };
+  }
+  if (mensaje.type === 'audio' && mensaje.audio) {
+    return { id: mensaje.audio.id, tipo: 'audio', texto: '🎤 Nota de voz' };
+  }
+  return null;
 }
 
 /**
@@ -221,6 +261,7 @@ export class WebhooksService {
     private readonly conversaciones: ConversacionesService,
     private readonly catalog: CatalogService,
     private readonly checkout: CheckoutWhatsappService,
+    private readonly comprobantes: ComprobantesService,
   ) {}
 
   verificarFirma(
@@ -334,6 +375,40 @@ export class WebhooksService {
       'entrante',
       evento.texto,
     );
+    // Foto o PDF: si el cliente tiene un pedido esperando el comprobante de
+    // transferencia, se guarda ahí — aunque la conversación esté derivada.
+    if (evento.canal === 'whatsapp' && evento.media && evento.mensajeId) {
+      if (evento.media.tipo !== 'audio') {
+        let guardado = false;
+        try {
+          guardado = await this.comprobantes.procesar({
+            identificadorExterno: evento.identificadorExterno,
+            conversacionId: conversacion.id,
+            mensajeId: evento.mensajeId,
+            mediaId: evento.media.id,
+          });
+        } catch (err) {
+          this.logger.error(
+            `No se pudo procesar el archivo de ${evento.identificadorExterno}: ${(err as Error).message}`,
+          );
+        }
+        if (guardado || conversacion.estado === 'derivado') return;
+      } else if (conversacion.estado === 'derivado') {
+        return;
+      }
+      await this.metaGraph.enviarMensajeSesion(
+        evento.canal,
+        evento.identificadorExterno,
+        MENSAJE_SOLO_TEXTO,
+      );
+      await this.conversaciones.registrarMensaje(
+        conversacion.id,
+        'saliente_bot',
+        MENSAJE_SOLO_TEXTO,
+      );
+      return;
+    }
+
     if (conversacion.estado === 'derivado') {
       this.logger.log(
         `Conversación ya derivada a humano, no se auto-responde — canal=${evento.canal} id=${evento.identificadorExterno}`,
@@ -436,9 +511,10 @@ export class WebhooksService {
               ? carritoDesdeOrden(mensaje.order)
               : undefined;
           const checkout = carrito ? null : entradaCheckoutDe(mensaje);
+          const media = carrito || checkout ? null : mediaDe(mensaje);
           const texto = carrito
             ? ''
-            : (checkout?.texto ?? this.textoWhatsapp(mensaje));
+            : (checkout?.texto ?? media?.texto ?? this.textoWhatsapp(mensaje));
           // Texto, toques de botón, ubicación y carrito del catálogo —
           // audio e imagen quedan para una extensión posterior.
           if (texto === null) continue;
@@ -451,6 +527,7 @@ export class WebhooksService {
             mensajeId: mensaje.id ?? null,
             carrito,
             entrada: checkout?.entrada,
+            media: media ? { id: media.id, tipo: media.tipo } : undefined,
           });
         }
       }

@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  NotFoundException,
   Param,
   Patch,
   Post,
@@ -18,6 +19,7 @@ import { UsuarioActual } from '../auth/usuario.decorator';
 import { AdminService } from './admin.service';
 import { ModulosService } from './modulos.service';
 import { BlogService } from '../blog/blog.service';
+import { PedidosService } from '../pedidos/pedidos.service';
 import type { UsuarioAutenticado } from '../auth/roles.guard';
 import type { CrearVentaInput, ItemVentaInput } from './admin.service';
 import type { CrearBlogPostInput } from '../blog/blog.service';
@@ -30,6 +32,7 @@ export class AdminController {
     private readonly admin: AdminService,
     private readonly blog: BlogService,
     private readonly modulos: ModulosService,
+    private readonly pedidos: PedidosService,
   ) {}
 
   @Get('perfil')
@@ -75,6 +78,17 @@ export class AdminController {
     @UsuarioActual() usuario: UsuarioAutenticado,
   ) {
     return this.admin.eliminarPedido(id, usuario.id);
+  }
+
+  /** Link firmado (10 min) al comprobante de transferencia que mandó el cliente. */
+  @Get('pedidos/:id/comprobante')
+  @Roles('admin', 'empleado')
+  async verComprobante(@Param('id') id: string): Promise<{ url: string }> {
+    const url = await this.pedidos.urlComprobante(id, 10 * 60);
+    if (!url) {
+      throw new NotFoundException('Este pedido no tiene comprobante.');
+    }
+    return { url };
   }
 
   @Get('pedidos/:id/factura')
