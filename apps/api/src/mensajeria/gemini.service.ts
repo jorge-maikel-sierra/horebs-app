@@ -13,6 +13,12 @@ import { MetaGraphService } from './meta-graph.service';
 import { ConversionesMetaService } from './conversiones-meta.service';
 import { COSTO_DOMICILIO_DEFAULT } from '../common/costos';
 import {
+  buscarProductoUnico,
+  contieneNumeroNoVerificado,
+  elegirVariante,
+  palabrasSignificativas,
+} from './busqueda-productos';
+import {
   ConversacionesService,
   type CanalMensajeria,
 } from './conversaciones.service';
@@ -71,29 +77,11 @@ const TAMANOS_PIZZA =
 const MENSAJE_DERIVACION =
   'Ya avisé al equipo — en breve una persona confirma tu pedido por acá mismo. ¡Gracias por tu paciencia!';
 
-// Tamaños y conectores no distinguen un producto de otro — se ignoran al
-// comparar. "pizza personal hawaiana" tiene que matchear "Pizza Hawaiana"
-// aunque la palabra de tamaño se meta en el medio.
-const PALABRAS_IGNORADAS = new Set([
-  'pizza',
-  'de',
-  'y',
-  'la',
-  'el',
-  'con',
-  'una',
-  'un',
-  'personal',
-  'mediana',
-  'grande',
-]);
-
-function palabrasSignificativas(texto: string): string[] {
-  const normalizado = texto.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-  return normalizado
-    .split(/[^a-z0-9]+/)
-    .filter((w) => w.length > 1 && !PALABRAS_IGNORADAS.has(w));
-}
+// Se agrega a todo resultado fallido de calcular_pedido. En producción
+// (oct 2026), con calcular_pedido fallando, el modelo inventó un total
+// ($23.500 en vez de $39.000) y una cuenta de pago que no existe.
+const SIN_TOTAL_INVENTADO =
+  'NO le des al cliente ningún total, precio sumado ni dato de pago: todavía no hay un total real. Aclarale lo que falta y, si no se puede resolver, usá derivar_a_humano.';
 
 // Mismo formato que espera el "to" de la Graph API (código de país sin "+",
 // ej. 573157861208) — PERSONAL_COCINA_WHATSAPP se carga en formato local
@@ -124,6 +112,8 @@ Reglas estrictas:
 - Si es el primer mensaje de la conversación (todavía no tenés ningún mensaje anterior en el historial), usá SIEMPRE obtener_cliente_registrado antes de responder — si te devuelve un nombre, saludalo por su nombre de pila en tu primera respuesta; si te dice que no hay cliente registrado, saludá de forma normal sin usar ningún nombre. Nunca vuelvas a llamar esta herramienta en mensajes posteriores de la misma conversación, y nunca inventes un nombre que la herramienta no te haya devuelto.
 - Mantené las respuestas breves — como un mensaje real de WhatsApp, no un párrafo largo.
 - No prometas descuentos, promociones ni tiempos de entrega exactos que no te haya dado una herramienta.
+- NUNCA des números de cuenta, llaves, Nequi, Daviplata, bancos ni ningún dato para transferir o pagar, y nunca le pidas al cliente que pague o mande un comprobante — esos datos los da una persona del equipo cuando confirma el pedido. Es un error grave que ya pasó: el bot inventó una cuenta que no existe.
+- Un total o un precio sumado solo se le da al cliente si sale de calcular_pedido en este mismo pedido. Si calcular_pedido devuelve un error, no hay total: nunca lo calcules ni lo estimes vos.
 - Para resaltar una palabra o un dato (un total, una dirección, un método de pago) usá UN SOLO asterisco de cada lado, como *esto* — WhatsApp no interpreta el doble asterisco de Markdown (**esto**) y lo muestra literal, con los asteriscos de más.
 
 Cómo tomar un pedido (importante, seguí este orden):
@@ -304,11 +294,6 @@ type Producto = Awaited<ReturnType<CatalogService['getProductos']>>[number];
 /** Corte por timeout, 429 o 5xx: vale la pena reintentar. Un 4xx no. */
 class ErrorTransitorioGemini extends ServiceUnavailableException {}
 
-interface BusquedaProducto {
-  encontrado?: Producto;
-  error?: string;
-}
-
 /**
  * Function-calling contra la Interactions API de Gemini, con memoria de
  * conversación entre mensajes separados vía `previous_interaction_id`
@@ -426,6 +411,9 @@ export class GeminiService {
     });
 
     let derivadoEnEsteTurno = false;
+    // Fuentes válidas para un número largo en la respuesta: lo que devolvió
+    // una herramienta en este turno, o lo que acaba de escribir el cliente.
+    const resultadosHerramientas: string[] = [textoEntrante];
 
     for (let turno = 0; turno < MAX_TURNOS_HERRAMIENTAS; turno++) {
       // (respuesta.steps ?? []) — la Interactions API de Gemini está en
@@ -492,6 +480,12 @@ export class GeminiService {
         identificadorExterno,
         telefono,
       );
+      resultadosHerramientas.push(resultado);
+      // Solo la primera línea: el resumen de calcular_pedido trae nombre y
+      // dirección del cliente en las siguientes.
+      this.logger.log(
+        `id=${identificadorExterno} herramienta=${llamada.name} → ${resultado.split('\n')[0].slice(0, 160)}`,
+      );
 
       respuesta = await this.llamarGemini({
         model: this.modelo,
@@ -526,8 +520,24 @@ export class GeminiService {
     const salida = (respuesta.steps ?? []).find(
       (p): p is PasoModelOutput => p.type === 'model_output',
     );
+    const texto = salida?.content[0]?.text;
+    if (texto && contieneNumeroNoVerificado(texto, resultadosHerramientas)) {
+      // Un número largo (cuenta, Nequi, teléfono) que ninguna herramienta
+      // devolvió es un dato inventado: no se manda, y una persona sigue.
+      this.logger.warn(
+        `id=${identificadorExterno} respuesta bloqueada: número no verificado — se deriva a una persona.`,
+      );
+      await this.ejecutarHerramienta(
+        'derivar_a_humano',
+        {},
+        canal,
+        identificadorExterno,
+        telefono,
+      );
+      return MENSAJE_DERIVACION;
+    }
     return formatearParaWhatsapp(
-      salida?.content[0]?.text ??
+      texto ??
         'Perdón, no pude procesar tu mensaje. Escribí *humano* para hablar con alguien del equipo.',
     );
   }
@@ -600,42 +610,6 @@ export class GeminiService {
         ),
       );
     }
-  }
-
-  private async buscarProductoUnico(
-    nombreBuscado: string,
-    productos: Producto[],
-  ): Promise<BusquedaProducto> {
-    const buscadas = palabrasSignificativas(nombreBuscado);
-    if (buscadas.length === 0) {
-      return {
-        error: `No se pudo identificar el producto "${nombreBuscado}".`,
-      };
-    }
-    const puntuados = productos
-      .map((p) => ({
-        producto: p,
-        puntaje: palabrasSignificativas(p.nombre).filter((w) =>
-          buscadas.includes(w),
-        ).length,
-      }))
-      .filter((r) => r.puntaje > 0)
-      .sort((a, b) => b.puntaje - a.puntaje);
-
-    if (puntuados.length === 0) {
-      return {
-        error: `No se encontró ningún producto que coincida con "${nombreBuscado}" en el catálogo.`,
-      };
-    }
-    const mejorPuntaje = puntuados[0].puntaje;
-    const empatados = puntuados.filter((r) => r.puntaje === mejorPuntaje);
-    if (empatados.length > 1) {
-      const nombres = empatados.map((r) => r.producto.nombre).join(', ');
-      return {
-        error: `"${nombreBuscado}" es ambiguo — podría ser: ${nombres}. Hay que preguntarle al cliente cuál de esos quiere.`,
-      };
-    }
-    return { encontrado: empatados[0].producto };
   }
 
   /** Variante del primer producto destacado del catálogo, para la portada. */
@@ -760,10 +734,7 @@ export class GeminiService {
 
   private async textoProducto(nombreBuscado: string): Promise<string> {
     const productos = await this.catalog.getProductos();
-    const { encontrado, error } = await this.buscarProductoUnico(
-      nombreBuscado,
-      productos,
-    );
+    const { encontrado, error } = buscarProductoUnico(nombreBuscado, productos);
     if (error)
       return `${error} Si no se puede resolver, ofrecé mandarle el menú completo con enviar_catalogo.`;
     const variantes = encontrado!.variantes
@@ -806,29 +777,20 @@ export class GeminiService {
       const cantidad = Math.min(Math.max(cantidadCruda, 1), 20);
       const tamanoBuscado = item.tamano ? String(item.tamano) : null;
 
-      const { encontrado, error } = await this.buscarProductoUnico(
-        nombreProducto,
-        productos,
-      );
+      const {
+        encontrado,
+        variante: varianteNombrada,
+        error,
+      } = buscarProductoUnico(nombreProducto, productos);
       if (error) {
-        return `No se pudo calcular el pedido: ${error}`;
+        return `No se pudo calcular el pedido: ${error} ${SIN_TOTAL_INVENTADO}`;
       }
 
-      let variante = encontrado!.variantes[0];
-      if (encontrado!.variantes.length > 1) {
-        const tamanoPalabras = palabrasSignificativas(tamanoBuscado ?? '');
-        const match = encontrado!.variantes.find((v) =>
-          palabrasSignificativas(v.nombre).some((w) =>
-            tamanoPalabras.includes(w),
-          ),
-        );
-        if (!match) {
-          const opciones = encontrado!.variantes
-            .map((v) => v.nombre)
-            .join(', ');
-          return `Para "${encontrado!.nombre}" falta saber el tamaño — opciones: ${opciones}. Preguntale al cliente cuál quiere.`;
-        }
-        variante = match;
+      const variante =
+        varianteNombrada ?? elegirVariante(encontrado!, tamanoBuscado);
+      if (!variante) {
+        const opciones = encontrado!.variantes.map((v) => v.nombre).join(', ');
+        return `Para "${encontrado!.nombre}" falta saber el tamaño — opciones: ${opciones}. Preguntale al cliente cuál quiere. ${SIN_TOTAL_INVENTADO}`;
       }
 
       const precio = variante.precio_oferta ?? variante.precio;
