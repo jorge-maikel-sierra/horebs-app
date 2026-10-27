@@ -99,8 +99,17 @@ export class AdminController {
 
   @Patch('configuracion')
   @Roles('admin')
-  actualizarConfiguracion(@Body() body: { correo_domiciliario: string }) {
-    return this.admin.actualizarConfiguracion(body.correo_domiciliario);
+  actualizarConfiguracion(
+    @Body()
+    body: {
+      correo_domiciliario?: string;
+      correo_avisos_bot?: string;
+    },
+  ) {
+    return this.admin.actualizarConfiguracion({
+      correo_domiciliario: body?.correo_domiciliario,
+      correo_avisos_bot: body?.correo_avisos_bot,
+    });
   }
 
   // Lectura para todo el staff (el menú y las pantallas la necesitan);

@@ -19,6 +19,8 @@ import {
   palabrasSignificativas,
 } from './busqueda-productos';
 import { armarResumenPedido, type LineaPedido } from './resumen-pedido';
+import { armarAvisoDerivacion } from './aviso-derivacion';
+import { MailService } from '../mail/mail.service';
 import {
   ConversacionesService,
   type CanalMensajeria,
@@ -327,6 +329,7 @@ export class GeminiService {
     private readonly conversaciones: ConversacionesService,
     private readonly metaGraph: MetaGraphService,
     private readonly conversionesMeta: ConversionesMetaService,
+    private readonly mail: MailService,
   ) {
     this.apiKey = this.config.get<string>('GEMINI_API_KEY');
     this.modelo = this.config.get<string>('GEMINI_MODEL') || MODELO_DEFAULT;
@@ -510,6 +513,7 @@ export class GeminiService {
           canal,
           identificadorExterno,
           telefono,
+          conversacionId,
         );
       }
       resultadosHerramientas.push(resultado);
@@ -565,6 +569,7 @@ export class GeminiService {
         canal,
         identificadorExterno,
         telefono,
+        conversacionId,
       );
       return MENSAJE_DERIVACION;
     }
@@ -580,6 +585,7 @@ export class GeminiService {
     canal: CanalMensajeria,
     identificadorExterno: string,
     telefono: string | null,
+    conversacionId: string,
   ): Promise<string> {
     try {
       switch (nombre) {
@@ -605,7 +611,12 @@ export class GeminiService {
         }
         case 'derivar_a_humano':
           await this.conversaciones.derivarAHumano(canal, identificadorExterno);
-          this.notificarEquipoDerivacion(canal, identificadorExterno);
+          this.notificarEquipoDerivacion(
+            canal,
+            identificadorExterno,
+            telefono,
+            conversacionId,
+          );
           void this.conversionesMeta.notificarLead(canal, identificadorExterno);
           return `Conversación derivada. Respondé al cliente con este mensaje EXACTO, sin cambiarlo ni agregar nada de "confirmado" o tiempos de entrega: "${MENSAJE_DERIVACION}"`;
         default:
@@ -623,25 +634,59 @@ export class GeminiService {
   }
 
   /**
-   * Avisa al equipo de cocina por WhatsApp que hay un cliente derivado
-   * esperando contacto. Fire-and-forget a propósito, mismo patrón que
-   * MailService.enviarNotificacionDomicilio — si falla (ej. el número de
-   * cocina no le escribió al bot en las últimas 24h y Meta rechaza el
-   * mensaje de sesión), se loguea pero nunca rompe la derivación real al
-   * cliente, que ya quedó registrada.
+   * Avisa al equipo que hay un cliente derivado esperando: por correo
+   * (canal principal, sin ventana de 24h) y por WhatsApp a
+   * PERSONAL_COCINA_WHATSAPP (solo llega si ese número le escribió al bot
+   * en las últimas 24h — sin plantilla, Meta descarta el resto). Fire-and-
+   * forget a propósito, mismo patrón que MailService: si falla, se loguea
+   * pero nunca rompe la derivación real al cliente, que ya quedó registrada.
    */
   private notificarEquipoDerivacion(
     canal: CanalMensajeria,
     identificadorExterno: string,
+    telefono: string | null,
+    conversacionId: string,
   ): void {
-    if (this.numerosCocina.length === 0) return;
-    const texto = `🔔 Cliente derivado a un humano — canal: ${canal}, contacto: ${identificadorExterno}. Contactalo para confirmar su pedido.`;
+    this.avisarEquipo(
+      canal,
+      identificadorExterno,
+      telefono,
+      conversacionId,
+    ).catch((err) =>
+      this.logger.error(
+        `No se pudo armar el aviso de derivación de ${identificadorExterno}: ${(err as Error).message}`,
+      ),
+    );
+  }
+
+  private async avisarEquipo(
+    canal: CanalMensajeria,
+    identificadorExterno: string,
+    telefono: string | null,
+    conversacionId: string,
+  ): Promise<void> {
+    const mensajes = await this.conversaciones.listarMensajes(conversacionId);
+    // Solo el pedido actual: lo anterior a la última derivación ya lo
+    // atendió una persona.
+    const ultimaDerivacion = mensajes.findLastIndex(
+      (m) => m.direccion === 'saliente_bot' && m.texto === MENSAJE_DERIVACION,
+    );
+    const aviso = armarAvisoDerivacion({
+      canal,
+      identificadorExterno,
+      telefono,
+      mensajes: mensajes.slice(ultimaDerivacion + 1),
+    });
+
+    this.mail.enviarAvisoEquipo(aviso);
     for (const numero of this.numerosCocina) {
-      this.metaGraph.enviarMensajeSesion('whatsapp', numero, texto).catch((err) =>
-        this.logger.error(
-          `No se pudo notificar a cocina (${numero}) sobre la derivación: ${(err as Error).message}`,
-        ),
-      );
+      this.metaGraph
+        .enviarMensajeSesion('whatsapp', numero, aviso.textoWhatsapp)
+        .catch((err) =>
+          this.logger.warn(
+            `No se pudo avisar por WhatsApp a ${numero} (¿sin mensajes al bot en 24h?): ${(err as Error).message}`,
+          ),
+        );
     }
   }
 

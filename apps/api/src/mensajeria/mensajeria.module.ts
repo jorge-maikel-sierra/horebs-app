@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { CatalogModule } from '../catalog/catalog.module';
+import { MailModule } from '../mail/mail.module';
 import { PedidosModule } from '../pedidos/pedidos.module';
 import { WebhooksController } from './webhooks.controller';
 import { WebhooksService } from './webhooks.service';
@@ -11,7 +12,7 @@ import { SeguimientoService } from './seguimiento.service';
 import { ImportarHistorialGeminiService } from './importar-historial-gemini.service';
 
 @Module({
-  imports: [CatalogModule, PedidosModule],
+  imports: [CatalogModule, MailModule, PedidosModule],
   controllers: [WebhooksController],
   providers: [
     WebhooksService,

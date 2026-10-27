@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
-import { MailService } from '../mail/mail.service';
+import { CLAVE_CORREO_AVISOS_BOT, MailService } from '../mail/mail.service';
 import { InventarioService } from '../inventario/inventario.service';
 import { ConversacionesService } from '../mensajeria/conversaciones.service';
 import { MetaGraphService } from '../mensajeria/meta-graph.service';
@@ -131,6 +131,16 @@ const ESTADOS_PEDIDO = [
   'cancelado',
 ];
 const MODALIDADES_VENTA = ['local', 'retiro', 'domicilio'];
+
+/** Correos de avisos editables desde /admin/configuracion. */
+export interface ConfiguracionCorreos {
+  /** Pedidos a domicilio y alertas de stock/puntos. */
+  correo_domiciliario: string | null;
+  /** Solo los avisos del bot cuando deriva una conversación. */
+  correo_avisos_bot: string | null;
+}
+
+const CLAVES_CORREO = ['correo_domiciliario', CLAVE_CORREO_AVISOS_BOT];
 const PEDIDO_ADMIN_SELECT =
   'id, canal, modalidad, direccion_entrega, costo_domicilio, metodo_pago, estado, stock_status, total, created_at, clientes(id, nombre, apellido, telefono, direccion, correo), items_pedido(variante_id, nombre_personalizado, cantidad, precio_unitario, variantes_producto(nombre, productos(nombre)))';
 
@@ -701,36 +711,52 @@ export class AdminService {
     return data;
   }
 
-  async obtenerConfiguracion(): Promise<{
-    correo_domiciliario: string | null;
-  }> {
+  async obtenerConfiguracion(): Promise<ConfiguracionCorreos> {
     const { data, error } = await this.supabase
       .getClient()
       .from('configuracion')
-      .select('valor')
-      .eq('clave', 'correo_domiciliario')
-      .maybeSingle();
+      .select('clave, valor')
+      .in('clave', CLAVES_CORREO)
+      .returns<{ clave: string; valor: string | null }[]>();
 
     if (error) throw error;
-    return { correo_domiciliario: data?.valor ?? null };
+    const valor = (clave: string): string | null =>
+      (data ?? []).find((f) => f.clave === clave)?.valor || null;
+    return {
+      correo_domiciliario: valor('correo_domiciliario'),
+      correo_avisos_bot: valor(CLAVE_CORREO_AVISOS_BOT),
+    };
   }
 
+  /**
+   * Guarda solo las claves que vienen en el body — cada tarjeta del panel
+   * guarda la suya. Upsert: `correo_avisos_bot` puede no tener fila todavía.
+   */
   async actualizarConfiguracion(
-    correoDomiciliario: string,
-  ): Promise<{ correo_domiciliario: string | null }> {
-    const correo = correoDomiciliario.trim();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
-      throw new BadRequestException('El correo no es válido.');
+    cambios: Partial<ConfiguracionCorreos>,
+  ): Promise<ConfiguracionCorreos> {
+    const filas = CLAVES_CORREO.flatMap((clave) => {
+      const crudo = cambios[clave as keyof ConfiguracionCorreos];
+      if (crudo === undefined) return [];
+      const correo = String(crudo ?? '').trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
+        throw new BadRequestException('El correo no es válido.');
+      }
+      return [{ clave, valor: correo, updated_at: new Date().toISOString() }];
+    });
+    if (filas.length === 0) {
+      throw new BadRequestException(
+        'No se recibió ningún correo para guardar.',
+      );
     }
 
     const { error } = await this.supabase
       .getClient()
       .from('configuracion')
-      .update({ valor: correo, updated_at: new Date().toISOString() })
-      .eq('clave', 'correo_domiciliario');
+      .upsert(filas, { onConflict: 'clave' });
 
     if (error) throw error;
-    return { correo_domiciliario: correo };
+    return this.obtenerConfiguracion();
   }
 
   async obtenerConfiguracionSeguimiento() {

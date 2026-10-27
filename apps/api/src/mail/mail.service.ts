@@ -1,4 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SupabaseService } from '../supabase/supabase.service';
 
@@ -21,6 +25,8 @@ const METODO_PAGO_LABEL: Record<string, string> = {
 };
 
 const RESEND_API_URL = 'https://api.resend.com/emails';
+/** Clave de `configuracion` con el correo que recibe los avisos del bot. */
+export const CLAVE_CORREO_AVISOS_BOT = 'correo_avisos_bot';
 
 @Injectable()
 export class MailService {
@@ -111,14 +117,75 @@ export class MailService {
     });
   }
 
+  /**
+   * Fire-and-forget, mismo patrón que las alertas de stock — el bot ya
+   * derivó la conversación; esto solo avisa al equipo por correo, que no
+   * tiene la ventana de 24h de WhatsApp. Va SOLO a `correo_avisos_bot`
+   * (editable en /admin/configuracion): sin esa clave no se manda, nunca
+   * cae al correo del domiciliario.
+   */
+  enviarAvisoEquipo(aviso: {
+    asunto: string;
+    texto: string;
+    html: string;
+  }): void {
+    this.enviarAvisoEquipoInterno(aviso).catch((err) => {
+      this.logger.error(
+        `No se pudo enviar el aviso al equipo "${aviso.asunto}": ${(err as Error).message}`,
+      );
+    });
+  }
+
+  private async enviarAvisoEquipoInterno(aviso: {
+    asunto: string;
+    texto: string;
+    html: string;
+  }) {
+    if (!this.apiKey) return;
+
+    const destino = await this.obtenerCorreo(CLAVE_CORREO_AVISOS_BOT);
+    if (!destino) {
+      this.logger.warn(
+        `No hay ${CLAVE_CORREO_AVISOS_BOT} configurado — se omite el aviso "${aviso.asunto}".`,
+      );
+      return;
+    }
+
+    const res = await fetch(RESEND_API_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: this.remitente,
+        to: destino,
+        subject: aviso.asunto,
+        text: aviso.texto,
+        html: aviso.html,
+      }),
+    });
+
+    if (!res.ok) {
+      const cuerpo = await res.text().catch(() => '');
+      throw new ServiceUnavailableException(
+        `Resend respondió ${res.status}: ${cuerpo}`,
+      );
+    }
+  }
+
   private async obtenerCorreoAlertas(): Promise<string | null> {
+    return this.obtenerCorreo('correo_domiciliario');
+  }
+
+  private async obtenerCorreo(clave: string): Promise<string | null> {
     const { data, error } = await this.supabase
       .getClient()
       .from('configuracion')
       .select('valor')
-      .eq('clave', 'correo_domiciliario')
-      .maybeSingle();
-    return error ? null : (data?.valor ?? null);
+      .eq('clave', clave)
+      .maybeSingle<{ valor: string | null }>();
+    return error ? null : data?.valor || null;
   }
 
   private async enviarAlertaStockBajoInterno(
@@ -169,7 +236,9 @@ export class MailService {
 
     if (!res.ok) {
       const cuerpo = await res.text().catch(() => '');
-      throw new Error(`Resend respondió ${res.status}: ${cuerpo}`);
+      throw new ServiceUnavailableException(
+        `Resend respondió ${res.status}: ${cuerpo}`,
+      );
     }
   }
 
@@ -209,7 +278,9 @@ export class MailService {
 
     if (!res.ok) {
       const cuerpo = await res.text().catch(() => '');
-      throw new Error(`Resend respondió ${res.status}: ${cuerpo}`);
+      throw new ServiceUnavailableException(
+        `Resend respondió ${res.status}: ${cuerpo}`,
+      );
     }
   }
 
@@ -249,7 +320,9 @@ export class MailService {
 
     if (!res.ok) {
       const cuerpo = await res.text().catch(() => '');
-      throw new Error(`Resend respondió ${res.status}: ${cuerpo}`);
+      throw new ServiceUnavailableException(
+        `Resend respondió ${res.status}: ${cuerpo}`,
+      );
     }
   }
 
@@ -312,7 +385,9 @@ export class MailService {
 
     if (!res.ok) {
       const cuerpo = await res.text().catch(() => '');
-      throw new Error(`Resend respondió ${res.status}: ${cuerpo}`);
+      throw new ServiceUnavailableException(
+        `Resend respondió ${res.status}: ${cuerpo}`,
+      );
     }
   }
 }

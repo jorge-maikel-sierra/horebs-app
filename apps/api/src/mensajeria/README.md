@@ -98,6 +98,25 @@ bot no manda al cliente al sitio web.
 - **Sin `WHATSAPP_CATALOG_ID`**, o en Messenger/Instagram (que no tienen
   catálogo), el bot vuelve al link del sitio y a las tarjetas.
 
+## Aviso al equipo cuando el bot deriva (`aviso-derivacion.ts`)
+
+Cuando una conversación pasa a una persona, el equipo recibe:
+
+- **Correo** (canal principal) **solo** a `correo_avisos_bot` de
+  `configuracion`, editable en `/admin/configuracion` → "Avisos del bot de
+  WhatsApp". Si está vacío no se manda (no cae al correo del
+  domiciliario). Trae el nombre del cliente, un botón
+  "Escribirle por WhatsApp" (`wa.me`), el resumen del pedido con el total,
+  el último mensaje del cliente (normalmente el método de pago) y los
+  últimos mensajes de la conversación.
+- **WhatsApp** a cada número de `PERSONAL_COCINA_WHATSAPP`, con la versión
+  corta. Sin plantilla, Meta solo entrega texto libre a un número que le
+  escribió al bot en las últimas 24h: fuera de esa ventana el mensaje se
+  descarta, por eso el correo es el canal confiable.
+
+Todo sale de los mensajes guardados de la conversación (el resumen lo arma
+el código), nunca de texto generado por el modelo.
+
 ## Conversions API para Click-to-WhatsApp (`conversiones-meta.service.ts`)
 
 Le avisa a Meta qué conversaciones que empezaron con un clic en anuncio
