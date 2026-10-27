@@ -18,7 +18,14 @@ const GEMINI_URL =
   'https://generativelanguage.googleapis.com/v1beta/interactions';
 const MODELO_DEFAULT = 'gemini-flash-lite-latest';
 const MAX_TURNOS_HERRAMIENTAS = 4;
-const TIMEOUT_GEMINI_MS = 20_000;
+// Medido en producción (oct 2026): un prompt mínimo tardó entre 5 y 28s
+// con el mismo modelo. Con 20s se cortaban respuestas que igual llegaban;
+// el webhook ya le respondió 200 a Meta, así que esperar más no tiene costo
+// del lado de Meta — solo demora la respuesta al cliente.
+const TIMEOUT_GEMINI_MS = 45_000;
+// Un solo reintento ante corte o error transitorio (429/5xx): más de eso
+// deja al cliente esperando minutos por una respuesta.
+const REINTENTOS_GEMINI = 1;
 const LIMITE_MENSAJES_VENTANA_MINUTOS = 60;
 const LIMITE_MENSAJES_MAX = 40;
 // WhatsApp rechaza mensajes de más de 4096 caracteres.
@@ -288,6 +295,9 @@ interface RespuestaInteraction {
 }
 
 type Producto = Awaited<ReturnType<CatalogService['getProductos']>>[number];
+
+/** Corte por timeout, 429 o 5xx: vale la pena reintentar. Un 4xx no. */
+class ErrorTransitorioGemini extends ServiceUnavailableException {}
 
 interface BusquedaProducto {
   encontrado?: Producto;
@@ -802,6 +812,24 @@ export class GeminiService {
   private async llamarGemini(
     body: Record<string, unknown>,
   ): Promise<RespuestaInteraction> {
+    for (let intento = 0; ; intento++) {
+      try {
+        return await this.llamarGeminiUnaVez(body);
+      } catch (err) {
+        if (
+          !(err instanceof ErrorTransitorioGemini) ||
+          intento >= REINTENTOS_GEMINI
+        ) {
+          throw err;
+        }
+        this.logger.warn(`${err.message} — reintentando una vez.`);
+      }
+    }
+  }
+
+  private async llamarGeminiUnaVez(
+    body: Record<string, unknown>,
+  ): Promise<RespuestaInteraction> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), TIMEOUT_GEMINI_MS);
     try {
@@ -816,14 +844,16 @@ export class GeminiService {
       });
       if (!res.ok) {
         const detalle = await res.text();
-        throw new ServiceUnavailableException(
-          `Gemini respondió ${res.status}: ${detalle}`,
-        );
+        const mensaje = `Gemini respondió ${res.status}: ${detalle}`;
+        if (res.status === 429 || res.status >= 500) {
+          throw new ErrorTransitorioGemini(mensaje);
+        }
+        throw new ServiceUnavailableException(mensaje);
       }
       return await res.json();
     } catch (err) {
       if ((err as Error).name === 'AbortError') {
-        throw new ServiceUnavailableException(
+        throw new ErrorTransitorioGemini(
           `Gemini no respondió en ${TIMEOUT_GEMINI_MS / 1000}s`,
         );
       }
