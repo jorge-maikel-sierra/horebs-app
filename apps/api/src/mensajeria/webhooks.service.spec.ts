@@ -6,6 +6,7 @@ const HAWAIANA_GRANDE = {
   varianteNombre: 'Grande',
   conTamanos: true,
   cantidad: 2,
+  precio: 42000,
 };
 
 describe('carritoDesdeOrden', () => {
@@ -59,6 +60,7 @@ describe('textoCarritoCatalogo', () => {
           varianteNombre: 'Única',
           conTamanos: false,
           cantidad: 1,
+          precio: 4000,
         },
       ],
       0,

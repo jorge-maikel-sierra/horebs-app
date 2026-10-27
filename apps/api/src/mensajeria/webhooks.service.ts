@@ -242,10 +242,12 @@ export class WebhooksService {
       );
     }
 
+    let carritoValidado: ItemCarritoResuelto[] | null = null;
     if (evento.carrito) {
       const { disponibles, noDisponibles } = await this.catalog.resolverCarrito(
         evento.carrito.items,
       );
+      carritoValidado = disponibles;
       evento.texto = textoCarritoCatalogo(
         disponibles,
         noDisponibles,
@@ -257,6 +259,18 @@ export class WebhooksService {
       evento.canal,
       evento.identificadorExterno,
     );
+    if (carritoValidado) {
+      // Con await a propósito: calcular_pedido lo lee en este mismo turno o
+      // en el siguiente — no es un dato accesorio.
+      await this.conversaciones.guardarCarrito(
+        evento.canal,
+        evento.identificadorExterno,
+        carritoValidado.map((i) => ({
+          varianteId: i.varianteId,
+          cantidad: i.cantidad,
+        })),
+      );
+    }
     const ctwaClid = evento.procedenciaAnuncio?.ctwaClid;
     if (evento.canal === 'whatsapp' && ctwaClid) {
       // Fire-and-forget: si falla (ej. la columna todavía no existe) no

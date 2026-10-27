@@ -53,6 +53,8 @@ export interface ItemCarritoResuelto {
   /** El producto tiene más de una variante activa (ej. tamaños de pizza). */
   conTamanos: boolean;
   cantidad: number;
+  /** Precio unitario vigente desde la base (oferta si hay). */
+  precio: number;
 }
 
 /**
@@ -133,6 +135,7 @@ export class CatalogService {
         varianteNombre: encontrado.v.nombre,
         conTamanos: encontrado.p.variantes.length > 1,
         cantidad: item.cantidad,
+        precio: encontrado.v.precio_oferta ?? encontrado.v.precio,
       });
     }
     return { disponibles, noDisponibles: items.length - disponibles.length };

@@ -18,6 +18,7 @@ import {
   elegirVariante,
   palabrasSignificativas,
 } from './busqueda-productos';
+import { armarResumenPedido, type LineaPedido } from './resumen-pedido';
 import {
   ConversacionesService,
   type CanalMensajeria,
@@ -105,7 +106,8 @@ Reglas estrictas:
 - Si el cliente pide el menú, la carta o el catálogo, o pregunta en general qué venden, usá enviar_catalogo — le llega el menú completo dentro de WhatsApp, con fotos, precios y carrito.
 - Si el cliente pide opciones de una categoría o una recomendación (por ejemplo "qué pizzas tienen", "algo para tomar", "qué me recomendás"), usá mostrar_productos — le llega una lista con foto, precio por tamaño y botón para agregar al carrito. NO listes productos ni precios vos en el mensaje, eso ya lo manda la herramienta.
 - Si el cliente pregunta por un producto específico (por ejemplo "cuánto vale la pizza hawaiana", "tienen pizza margarita personal"), usá consultar_producto con el nombre de ese producto. Si la herramienta te dice que no lo encontró, decile simplemente que no tenemos ese producto en el menú y ofrecele mandarle el menú — nunca le preguntes de qué local o pizzería está hablando, vos ya sabés que sos el asistente de Pizzería Horebs.
-- Cuando el mensaje del cliente empiece con "Envié mi carrito del catálogo:", esos son los productos, tamaños y cantidades de su pedido (ya validados contra el menú) — NO se los vuelvas a preguntar ni le muestres el menú de nuevo. Confirmale en una línea lo que eligió y seguí el flujo de toma de pedido desde el paso 2 (modalidad, dirección si es domicilio, nombre completo). Si el mensaje dice que algún producto ya no está disponible, avisale con amabilidad y preguntale si quiere reemplazarlo. Si dice que ninguno está disponible, pedile disculpas y ofrecele mandarle el menú con enviar_catalogo. Si trae una "Nota:", tenela en cuenta y repetila en el resumen.
+- Cuando el mensaje del cliente empiece con "Envié mi carrito del catálogo:", esos son los productos, tamaños y cantidades de su pedido (ya validados contra el menú) — NO se los vuelvas a preguntar ni le muestres el menú de nuevo. Confirmale en una línea lo que eligió y seguí el flujo de toma de pedido desde el paso 2 (modalidad, dirección si es domicilio, nombre completo). Ese carrito queda guardado en el sistema: al llamar calcular_pedido NO repitas sus productos en items (dejá items vacío, o poné solo lo que el cliente agregue aparte por escrito). Si quiere cambiar algo del carrito, pedile que lo edite y lo vuelva a mandar desde el catálogo. Si el mensaje dice que algún producto ya no está disponible, avisale con amabilidad y preguntale si quiere reemplazarlo. Si dice que ninguno está disponible, pedile disculpas y ofrecele mandarle el menú con enviar_catalogo. Si trae una "Nota:", tenela en cuenta.
+- Nunca inventes opciones, sabores, tamaños ni productos: solo ofrecé las opciones exactas que te devolvió una herramienta. Si una herramienta te lista opciones, copialas tal cual.
 - Cuando el mensaje del cliente sea "Quiero pedir <nombre de producto>" (esto pasa cuando toca el botón "Agregar al pedido" de una tarjeta), tratalo como el inicio de un pedido de ese producto — seguí el flujo normal de toma de pedido de abajo, preguntando el tamaño si el producto tiene más de uno.
 - Si el pedido del cliente es vago o genérico (por ejemplo "quiero más información", "contame más", "necesito ayuda") y no queda claro qué dato específico necesita, NO llames a ninguna herramienta todavía — preguntale primero si quiere ver el menú, el horario, el estado de su pedido, o hablar con alguien del equipo. Usá una herramienta recién cuando el cliente ya haya aclarado qué necesita.
 - Si te preguntan algo que ninguna herramienta puede responder, o el cliente pide hablar con alguien del equipo, usá la herramienta derivar_a_humano.
@@ -120,8 +122,8 @@ Cómo tomar un pedido (importante, seguí este orden):
 1. Cuando el cliente quiera pedir algo, andá anotando los productos, tamaños y cantidades a medida que los va diciendo — podés ir preguntando de a uno si hace falta.
 2. Preguntá si es para domicilio, para retirar, o para comer en el local. Si es domicilio, pedí la dirección.
 3. Antes de calcular el total, pedile el nombre COMPLETO (nombre y apellido) de quien hace el pedido — es obligatorio, no lo saltees aunque ya venga charlando hace rato. Si solo da un nombre, preguntale el apellido también.
-4. Cuando el cliente confirme que ya terminó de elegir todo y ya te dio su nombre completo, usá calcular_pedido con la lista completa de items, el nombre, el apellido, la modalidad (SOLO "domicilio", "retiro" o "local" — nunca metas la dirección ahí) y la dirección en el campo direccion si es domicilio — esa herramienta calcula el total real con los precios del catálogo, incluyendo el domicilio. NUNCA sumes los precios vos mismo ni inventes el costo del domicilio.
-5. Copiá el resumen que te devuelve calcular_pedido PALABRA POR PALABRA en tu respuesta al cliente (cliente, productos, línea de domicilio con su costo, total) — no lo reescribas ni lo resumas con tus propias palabras, ni cambies ningún número. Después preguntale cuál va a ser su método de pago (efectivo, transferencia o tarjeta).
+4. Cuando el cliente confirme que ya terminó de elegir todo y ya te dio su nombre completo, usá calcular_pedido con los items pedidos por escrito (sin repetir los del carrito del catálogo), el nombre, el apellido, la modalidad (SOLO "domicilio", "retiro" o "local" — nunca metas la dirección ahí) y la dirección en el campo direccion si es domicilio — esa herramienta calcula el total real con los precios del catálogo, incluyendo el domicilio. NUNCA sumes los precios vos mismo ni inventes el costo del domicilio.
+5. Si calcular_pedido sale bien, el sistema le manda al cliente el resumen exacto y la pregunta del método de pago — vos no tenés que repetir el resumen ni el total. Si devuelve un error, aclarale al cliente lo que falta.
 6. Apenas el cliente te diga el método de pago, usá derivar_a_humano para que una persona del equipo verifique y registre el pedido — copiá el mensaje que te devuelve esa herramienta TAL CUAL, es el único cierre permitido. Es un error grave que ya pasó antes: un cliente real terminó pensando que su pedido ya estaba confirmado y listo para retirar en 20-30 minutos, sin que nadie del equipo se enterara, porque nunca se llamó a derivar_a_humano. NUNCA digas "tu pedido ya quedó registrado", "ya fue registrado", ni dés un tiempo de entrega o de recogida de tu propia cuenta — eso no lo sabés vos.
 - El número de teléfono de contacto ya lo tenés (es el mismo WhatsApp desde el que te escribe) — no hace falta pedirlo aparte.`;
 
@@ -176,17 +178,20 @@ const HERRAMIENTAS = [
       properties: {
         items: {
           type: 'array',
+          description:
+            'Productos pedidos por escrito. Si el cliente mandó un carrito del catálogo, ese carrito YA está guardado y se suma solo: NO repitas sus productos acá — poné solo lo que agregó aparte por escrito, o dejá la lista vacía.',
           items: {
             type: 'object',
             properties: {
               producto: {
                 type: 'string',
-                description: 'Nombre del producto, ej. "pizza hawaiana"',
+                description:
+                  'Nombre del producto, ej. "pizza hawaiana" o "Coca-Cola 400ml"',
               },
               tamano: {
                 type: 'string',
                 description:
-                  'Tamaño elegido: personal, mediana o grande. Vacío si el producto no tiene tamaños (ej. bebidas).',
+                  'Tamaño o variante elegida, tal cual figura en el menú: personal, mediana o grande para pizzas; vacío si el producto no tiene tamaños.',
               },
               cantidad: { type: 'number', description: 'Cantidad de unidades' },
             },
@@ -215,7 +220,7 @@ const HERRAMIENTAS = [
             'Dirección de entrega. Solo si modalidad es "domicilio" — vacío en los otros casos.',
         },
       },
-      required: ['items', 'nombre', 'apellido', 'modalidad'],
+      required: ['nombre', 'apellido', 'modalidad'],
     },
   },
   {
@@ -291,8 +296,14 @@ interface RespuestaInteraction {
 
 type Producto = Awaited<ReturnType<CatalogService['getProductos']>>[number];
 
-/** Corte por timeout, 429 o 5xx: vale la pena reintentar. Un 4xx no. */
+/**
+ * Corte por timeout, 429, 5xx o un function call mal formado por el
+ * modelo: vale la pena reintentar. Otro 4xx no.
+ */
 class ErrorTransitorioGemini extends ServiceUnavailableException {}
+
+type ResultadoCalculo =
+  { ok: true; resumen: string; total: number } | { ok: false; texto: string };
 
 /**
  * Function-calling contra la Interactions API de Gemini, con memoria de
@@ -473,13 +484,34 @@ export class GeminiService {
 
       if (llamada.name === 'derivar_a_humano') derivadoEnEsteTurno = true;
 
-      const resultado = await this.ejecutarHerramienta(
-        llamada.name,
-        llamada.arguments,
-        canal,
-        identificadorExterno,
-        telefono,
-      );
+      let resultado: string;
+      if (llamada.name === 'calcular_pedido') {
+        const calculo = await this.calcularPedido(
+          llamada.arguments,
+          canal,
+          identificadorExterno,
+        );
+        if (calculo.ok) {
+          await this.enviarResumenPedido(
+            canal,
+            identificadorExterno,
+            conversacionId,
+            calculo,
+            respuesta.id,
+            llamada.id,
+          );
+          return null;
+        }
+        resultado = calculo.texto;
+      } else {
+        resultado = await this.ejecutarHerramienta(
+          llamada.name,
+          llamada.arguments,
+          canal,
+          identificadorExterno,
+          telefono,
+        );
+      }
       resultadosHerramientas.push(resultado);
       // Solo la primera línea: el resumen de calcular_pedido trae nombre y
       // dirección del cliente en las siguientes.
@@ -555,8 +587,6 @@ export class GeminiService {
           return await this.textoProducto(
             String(argumentos.nombre_producto ?? ''),
           );
-        case 'calcular_pedido':
-          return await this.textoCalcularPedido(argumentos);
         case 'obtener_horario':
           return `Horario: ${HORARIO}\nDirección: ${DIRECCION}\nCosto de domicilio: $${COSTO_DOMICILIO_DEFAULT.toLocaleString('es-CO')}`;
         case 'obtener_categorias':
@@ -579,7 +609,10 @@ export class GeminiService {
           void this.conversionesMeta.notificarLead(canal, identificadorExterno);
           return `Conversación derivada. Respondé al cliente con este mensaje EXACTO, sin cambiarlo ni agregar nada de "confirmado" o tiempos de entrega: "${MENSAJE_DERIVACION}"`;
         default:
-          return 'Herramienta desconocida.';
+          // En producción el modelo pidió herramientas que no existen
+          // (obtener_sabores_pizza, obtener_menu_completo): se le devuelve
+          // la lista real para que se corrija en la vuelta siguiente.
+          return `La herramienta "${nombre}" no existe. Las únicas disponibles son: ${HERRAMIENTAS.map((h) => h.name).join(', ')}.`;
       }
     } catch (err) {
       this.logger.error(
@@ -746,32 +779,69 @@ export class GeminiService {
     return `${encontrado!.nombre}${encontrado!.descripcion ? ` — ${encontrado!.descripcion}` : ''}. Precios: ${variantes}`;
   }
 
-  private async textoCalcularPedido(
+  /**
+   * Total real del pedido. Los productos del carrito del catálogo salen
+   * por id exacto de variante (guardado al recibir el carrito), sin que el
+   * modelo los vuelva a nombrar; solo lo pedido aparte por escrito pasa por
+   * la búsqueda por nombre. Si algo falla, devuelve el texto para el modelo
+   * — nunca un total.
+   */
+  private async calcularPedido(
     argumentos: Record<string, unknown>,
-  ): Promise<string> {
-    const items = Array.isArray(argumentos.items) ? argumentos.items : [];
+    canal: CanalMensajeria,
+    identificadorExterno: string,
+  ): Promise<ResultadoCalculo> {
+    const items = Array.isArray(argumentos.items)
+      ? (argumentos.items as Record<string, unknown>[])
+      : [];
     const nombre = String(argumentos.nombre ?? '').trim();
     const apellido = String(argumentos.apellido ?? '').trim();
     const modalidad = String(argumentos.modalidad ?? '').toLowerCase();
     const direccion = argumentos.direccion
       ? String(argumentos.direccion)
       : null;
-    if (items.length === 0) {
-      return 'No se recibió ningún producto para calcular. Pedile al cliente que confirme qué quiere ordenar.';
-    }
+    const fallo = (texto: string): ResultadoCalculo => {
+      // Producto y tamaño pedidos, nunca datos del cliente.
+      this.logger.warn(
+        `id=${identificadorExterno} calcular_pedido falló — items=${JSON.stringify(items.map((i) => [i.producto, i.tamano, i.cantidad]))} → ${texto.slice(0, 160)}`,
+      );
+      return { ok: false, texto };
+    };
+
     // Guardrail real, no solo la instrucción del prompt — si Gemini intenta
     // calcular sin nombre completo, esta herramienta se niega y lo manda a
     // preguntar, en vez de confiar en que el modelo siempre respete el
     // "required" del schema.
     if (!nombre || !apellido) {
-      return 'Todavía falta el nombre completo (nombre y apellido) de quien hace el pedido — preguntáselo al cliente antes de calcular el total.';
+      return fallo(
+        'Todavía falta el nombre completo (nombre y apellido) de quien hace el pedido — preguntáselo al cliente antes de calcular el total.',
+      );
+    }
+    if (!['domicilio', 'retiro', 'local'].includes(modalidad)) {
+      return fallo(
+        `Falta la modalidad: preguntale al cliente si es para domicilio, para retirar o para comer en el local. ${SIN_TOTAL_INVENTADO}`,
+      );
+    }
+    if (modalidad === 'domicilio' && !direccion?.trim()) {
+      return fallo(
+        `Falta la dirección de entrega: preguntásela al cliente. ${SIN_TOTAL_INVENTADO}`,
+      );
     }
 
-    const productos = await this.catalog.getProductos();
-    const lineas: string[] = [];
-    let subtotal = 0;
+    const carrito = await this.conversaciones.obtenerCarrito(
+      canal,
+      identificadorExterno,
+    );
+    const { disponibles } = await this.catalog.resolverCarrito(carrito);
+    const lineas: LineaPedido[] = disponibles.map((i) => ({
+      cantidad: i.cantidad,
+      productoNombre: i.productoNombre,
+      varianteNombre: i.conTamanos ? i.varianteNombre : null,
+      precioUnitario: i.precio,
+    }));
 
-    for (const item of items as Record<string, unknown>[]) {
+    const productos = items.length > 0 ? await this.catalog.getProductos() : [];
+    for (const item of items) {
       const nombreProducto = String(item.producto ?? '');
       const cantidadCruda = Math.round(Number(item.cantidad ?? 1)) || 1;
       const cantidad = Math.min(Math.max(cantidadCruda, 1), 20);
@@ -783,43 +853,103 @@ export class GeminiService {
         error,
       } = buscarProductoUnico(nombreProducto, productos);
       if (error) {
-        return `No se pudo calcular el pedido: ${error} ${SIN_TOTAL_INVENTADO}`;
+        return fallo(
+          `No se pudo calcular el pedido: ${error} ${SIN_TOTAL_INVENTADO}`,
+        );
       }
 
       const variante =
         varianteNombrada ?? elegirVariante(encontrado!, tamanoBuscado);
       if (!variante) {
         const opciones = encontrado!.variantes.map((v) => v.nombre).join(', ');
-        return `Para "${encontrado!.nombre}" falta saber el tamaño — opciones: ${opciones}. Preguntale al cliente cuál quiere. ${SIN_TOTAL_INVENTADO}`;
+        return fallo(
+          `Para "${encontrado!.nombre}" falta saber cuál — opciones exactas: ${opciones}. Preguntale al cliente cuál quiere, ofreciendo solo esas opciones. ${SIN_TOTAL_INVENTADO}`,
+        );
       }
+      lineas.push({
+        cantidad,
+        productoNombre: encontrado!.nombre,
+        varianteNombre:
+          encontrado!.variantes.length > 1 ? variante.nombre : null,
+        precioUnitario: variante.precio_oferta ?? variante.precio,
+      });
+    }
 
-      const precio = variante.precio_oferta ?? variante.precio;
-      const subtotalItem = precio * cantidad;
-      subtotal += subtotalItem;
-      lineas.push(
-        `${cantidad}x ${encontrado!.nombre} (${variante.nombre}): $${subtotalItem.toLocaleString('es-CO')}`,
+    if (lineas.length === 0) {
+      return fallo(
+        `No hay productos para calcular: el cliente no mandó un carrito del catálogo ni pidió productos por escrito. Preguntale qué quiere pedir. ${SIN_TOTAL_INVENTADO}`,
       );
     }
 
-    const esDomicilio = modalidad === 'domicilio';
-    const costoDomicilio = esDomicilio ? COSTO_DOMICILIO_DEFAULT : 0;
-    const total = subtotal + costoDomicilio;
+    const { texto, total } = armarResumenPedido({
+      nombreCompleto: `${nombre} ${apellido}`,
+      lineas,
+      modalidad,
+      direccion,
+      costoDomicilio: COSTO_DOMICILIO_DEFAULT,
+    });
+    return { ok: true, resumen: texto, total };
+  }
 
-    return [
-      'Resumen del pedido (copiá estos datos tal cual, no los cambies ni los redondees):',
-      `Cliente: ${nombre} ${apellido}`,
-      ...lineas,
-      esDomicilio
-        ? `Domicilio a ${direccion ?? 'dirección sin especificar'}: $${costoDomicilio.toLocaleString('es-CO')} (NO es gratis, cobrale este valor exacto)`
-        : `Modalidad: ${modalidad || 'sin especificar'}`,
-      `Total: $${total.toLocaleString('es-CO')}`,
-      // Refuerzo dentro del propio resultado de la herramienta — ya pasó
-      // en producción que el modelo, después de este resumen, saltó
-      // directo a decir "tu pedido ya quedó registrado" e inventó un
-      // tiempo de entrega, sin preguntar el método de pago ni derivar a
-      // un humano. Nadie del equipo se enteró de ese pedido.
-      '⚠️ Este pedido TODAVÍA NO está confirmado. Preguntale el método de pago (efectivo, transferencia o tarjeta) — recién cuando te lo diga, usá derivar_a_humano. Nunca digas "quedó registrado" ni nada que suene a confirmado, y nunca inventes un tiempo de entrega o de recogida, eso no lo sabés.',
-    ].join('\n');
+  /**
+   * Manda el resumen armado por código tal cual y le avisa a Gemini que ya
+   * se envió, para que en el turno siguiente sepa que falta el método de
+   * pago. Lo que Gemini conteste a ese aviso no se manda al cliente.
+   */
+  private async enviarResumenPedido(
+    canal: CanalMensajeria,
+    identificadorExterno: string,
+    conversacionId: string,
+    calculo: { resumen: string; total: number },
+    interaccionId: string,
+    llamadaId: string,
+  ): Promise<void> {
+    await this.metaGraph.enviarMensajeSesion(
+      canal,
+      identificadorExterno,
+      calculo.resumen,
+    );
+    await this.conversaciones.registrarMensaje(
+      conversacionId,
+      'saliente_bot',
+      calculo.resumen,
+    );
+    this.logger.log(
+      `id=${identificadorExterno} herramienta=calcular_pedido → resumen enviado por el sistema, total=${calculo.total}`,
+    );
+    try {
+      const aviso = await this.llamarGemini({
+        model: this.modelo,
+        previous_interaction_id: interaccionId,
+        input: {
+          type: 'function_result',
+          call_id: llamadaId,
+          name: 'calcular_pedido',
+          result: [
+            {
+              type: 'text',
+              text: `El sistema ya le mandó al cliente este resumen y la pregunta del método de pago — no lo repitas:\n${calculo.resumen}\nCuando el cliente diga el método de pago, usá derivar_a_humano.`,
+            },
+          ],
+        },
+      });
+      await this.conversaciones.guardarInteraccionGemini(
+        canal,
+        identificadorExterno,
+        aviso.id,
+      );
+    } catch (err) {
+      // El cliente ya tiene su resumen: si Gemini no responde, se guarda
+      // la interacción previa y la conversación sigue igual.
+      this.logger.warn(
+        `id=${identificadorExterno} no se pudo avisar a Gemini del resumen: ${(err as Error).message}`,
+      );
+      await this.conversaciones.guardarInteraccionGemini(
+        canal,
+        identificadorExterno,
+        interaccionId,
+      );
+    }
   }
 
   private async textoPedido(telefono: string | null): Promise<string> {
@@ -876,7 +1006,13 @@ export class GeminiService {
       if (!res.ok) {
         const detalle = await res.text();
         const mensaje = `Gemini respondió ${res.status}: ${detalle}`;
-        if (res.status === 429 || res.status >= 500) {
+        // malformed_tool_call: el modelo generó un JSON inválido para la
+        // herramienta (visto en producción); Google indica reintentar.
+        if (
+          res.status === 429 ||
+          res.status >= 500 ||
+          detalle.includes('malformed_tool_call')
+        ) {
           throw new ErrorTransitorioGemini(mensaje);
         }
         throw new ServiceUnavailableException(mensaje);

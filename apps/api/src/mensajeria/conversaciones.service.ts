@@ -23,6 +23,12 @@ export interface ConversacionCompleta {
 
 export type DireccionMensaje = 'entrante' | 'saliente_bot' | 'saliente_humano';
 
+/** Fila de `conversaciones_bot.carrito_pendiente` (jsonb). */
+export interface ItemCarritoPendiente {
+  varianteId: string;
+  cantidad: number;
+}
+
 export interface MensajeConversacion {
   id: string;
   conversacion_id: string;
@@ -309,9 +315,45 @@ export class ConversacionesService {
         gemini_interaction_id: null,
         seguimiento_etapa: 'ninguna',
         seguimiento_enviado_en: null,
+        carrito_pendiente: null,
       })
       .eq('id', id);
     if (error) throw error;
+  }
+
+  /**
+   * Carrito del catálogo de WhatsApp (ids exactos de variante) que el
+   * cliente mandó y todavía no se derivó. calcular_pedido lo usa tal cual,
+   * sin que el modelo tenga que volver a nombrar los productos. Un carrito
+   * nuevo pisa el anterior: WhatsApp manda siempre el carrito completo.
+   */
+  async guardarCarrito(
+    canal: CanalMensajeria,
+    identificadorExterno: string,
+    items: ItemCarritoPendiente[] | null,
+  ): Promise<void> {
+    const { error } = await this.supabase
+      .getClient()
+      .from('conversaciones_bot')
+      .update({ carrito_pendiente: items })
+      .eq('canal', canal)
+      .eq('identificador_externo', identificadorExterno);
+    if (error) throw error;
+  }
+
+  async obtenerCarrito(
+    canal: CanalMensajeria,
+    identificadorExterno: string,
+  ): Promise<ItemCarritoPendiente[]> {
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('conversaciones_bot')
+      .select('carrito_pendiente')
+      .eq('canal', canal)
+      .eq('identificador_externo', identificadorExterno)
+      .maybeSingle<{ carrito_pendiente: ItemCarritoPendiente[] | null }>();
+    if (error) throw error;
+    return data?.carrito_pendiente ?? [];
   }
 
   async marcarSeguimientoEnviado(
@@ -346,6 +388,9 @@ export class ConversacionesService {
           gemini_interaction_id: null,
           seguimiento_etapa: 'ninguna',
           seguimiento_enviado_en: null,
+          // El pedido ya pasó a una persona: un carrito viejo no debe
+          // colarse en el próximo pedido de este cliente.
+          carrito_pendiente: null,
         },
         { onConflict: 'canal,identificador_externo' },
       );

@@ -64,6 +64,7 @@ describe('CatalogService.resolverCarrito', () => {
         varianteNombre: 'Grande',
         conTamanos: true,
         cantidad: 2,
+        precio: 2,
       },
       {
         varianteId: 'v-coca',
@@ -71,6 +72,7 @@ describe('CatalogService.resolverCarrito', () => {
         varianteNombre: 'Única',
         conTamanos: false,
         cantidad: 1,
+        precio: 1,
       },
     ]);
   });
