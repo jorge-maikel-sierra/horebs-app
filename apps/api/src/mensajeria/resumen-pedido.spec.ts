@@ -29,7 +29,58 @@ describe('armarResumenPedido', () => {
     expect(texto).toContain('- 2x Bebidas (Jugo Hit 400ml): $8.000');
     expect(texto).toContain('Domicilio a Carrera 7H1 # 33 - 66: $5.000');
     expect(texto).toContain('*Total: $48.000*');
-    expect(texto).toContain('método de pago');
+    // La pregunta del pago va en los botones, no en el resumen.
+    expect(texto).not.toContain('método de pago');
+  });
+
+  it('muestra los puntos que suma y el saldo canjeable', () => {
+    const { texto } = armarResumenPedido({
+      nombreCompleto: 'Jorge Sierra',
+      lineas: LINEAS,
+      modalidad: 'domicilio',
+      direccion: 'Calle 1',
+      costoDomicilio: 5000,
+      puntos: {
+        ganados: 48,
+        saldo: 240,
+        valorPuntoPesos: 50,
+        minimoCanje: 100,
+      },
+    });
+    expect(texto).toContain(
+      '⭐ Con este pedido sumás 48 puntos. Ya tenés 240 ($12.000 para usar en tu próxima compra).',
+    );
+  });
+
+  it('saldo bajo el mínimo: no promete descuento', () => {
+    const { texto } = armarResumenPedido({
+      nombreCompleto: 'Jorge Sierra',
+      lineas: LINEAS,
+      modalidad: 'retiro',
+      direccion: null,
+      costoDomicilio: 5000,
+      puntos: { ganados: 43, saldo: 20, valorPuntoPesos: 50, minimoCanje: 100 },
+    });
+    expect(texto).toContain('Ya tenés 20.');
+    expect(texto).not.toContain('para usar');
+  });
+
+  it('cliente nuevo: solo lo que suma', () => {
+    const { texto } = armarResumenPedido({
+      nombreCompleto: 'Ana Ruiz',
+      lineas: LINEAS,
+      modalidad: 'retiro',
+      direccion: null,
+      costoDomicilio: 5000,
+      puntos: {
+        ganados: 43,
+        saldo: null,
+        valorPuntoPesos: 50,
+        minimoCanje: 100,
+      },
+    });
+    expect(texto).toContain('⭐ Con este pedido sumás 43 puntos.');
+    expect(texto).not.toContain('Ya tenés');
   });
 
   it('sin domicilio no cobra el envío', () => {

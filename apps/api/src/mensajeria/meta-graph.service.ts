@@ -22,6 +22,16 @@ export interface SeccionListaProductos {
   retailerIds: string[];
 }
 
+export interface BotonRespuesta {
+  id: string;
+  titulo: string;
+}
+
+// Límites de WhatsApp para mensajes interactivos con botones.
+const MAX_BOTONES = 3;
+const MAX_TITULO_BOTON = 20;
+const MAX_CUERPO = 1024;
+
 export interface ListaProductos {
   encabezado: string;
   cuerpo: string;
@@ -152,6 +162,41 @@ export class MetaGraphService {
           `No se pudo marcar leído/escribiendo ${mensajeId}: ${err.message}`,
         ),
       );
+  }
+
+  /**
+   * Hasta 3 botones de respuesta (límite de WhatsApp, títulos de hasta 20
+   * caracteres). El id vuelve en el webhook como `button_reply.id` — así el
+   * checkout avanza sin interpretar texto libre.
+   */
+  async enviarBotones(
+    destinatarioId: string,
+    cuerpo: string,
+    botones: BotonRespuesta[],
+  ): Promise<void> {
+    await this.conReintentos(() =>
+      this.enviarWhatsappInteractivo(destinatarioId, {
+        type: 'button',
+        body: { text: normalizarNegritaWhatsapp(cuerpo).slice(0, MAX_CUERPO) },
+        action: {
+          buttons: botones.slice(0, MAX_BOTONES).map((b) => ({
+            type: 'reply',
+            reply: { id: b.id, title: b.titulo.slice(0, MAX_TITULO_BOTON) },
+          })),
+        },
+      }),
+    );
+  }
+
+  /** Botón nativo "Enviar ubicación" — la respuesta llega como mensaje `location`. */
+  async pedirUbicacion(destinatarioId: string, cuerpo: string): Promise<void> {
+    await this.conReintentos(() =>
+      this.enviarWhatsappInteractivo(destinatarioId, {
+        type: 'location_request_message',
+        body: { text: normalizarNegritaWhatsapp(cuerpo).slice(0, MAX_CUERPO) },
+        action: { name: 'send_location' },
+      }),
+    );
   }
 
   async enviarMensajeSesion(

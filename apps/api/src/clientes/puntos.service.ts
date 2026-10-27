@@ -15,6 +15,17 @@ export interface CanjeCalculado {
   descuento: number;
 }
 
+/**
+ * Puntos que gana una compra — la misma fórmula que se otorga al registrar
+ * el pedido; el bot la usa para anticiparlos en el resumen.
+ */
+export function puntosPorMonto(
+  montoPagado: number,
+  config: Pick<ConfiguracionPuntos, 'puntosPor1000Pesos'>,
+): number {
+  return Math.floor(montoPagado / 1000) * config.puntosPor1000Pesos;
+}
+
 export interface MovimientoPuntosDto {
   id: string;
   tipo: 'ganado' | 'canjeado' | 'vencido' | 'ajuste';
@@ -224,7 +235,7 @@ export class PuntosService {
   ): Promise<number> {
     try {
       const config = await this.obtenerConfiguracion();
-      const puntos = Math.floor(montoPagado / 1000) * config.puntosPor1000Pesos;
+      const puntos = puntosPorMonto(montoPagado, config);
       if (puntos <= 0) return 0;
 
       const { error } = await this.supabase

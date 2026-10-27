@@ -6,6 +6,13 @@ import {
 } from '../catalog/catalog.service';
 import { GeminiService } from './gemini.service';
 import { MetaGraphService } from './meta-graph.service';
+import { CheckoutWhatsappService } from './checkout-whatsapp.service';
+import {
+  direccionDeUbicacion,
+  esBotonCheckout,
+  esSaludoOIntencionDePedir,
+  type EntradaCheckout,
+} from './checkout-whatsapp';
 import {
   ConversacionesService,
   type CanalMensajeria,
@@ -33,6 +40,8 @@ export interface EventoEntrante {
   mensajeId: string | null; // wamid (WhatsApp) o mid (Messenger/Instagram) — para deduplicar reenvíos de Meta
   /** Carrito enviado desde el catálogo de WhatsApp — `texto` se arma al procesarlo. */
   carrito?: CarritoCatalogo;
+  /** Toque de un botón del checkout (`ck:*`) o ubicación compartida. */
+  entrada?: EntradaCheckout;
 }
 
 // Mismo tope que calcular_pedido en gemini.service.ts.
@@ -123,6 +132,43 @@ interface WhatsappMensaje {
     button_reply?: { id: string; title: string };
   };
   order?: WhatsappOrden;
+  location?: {
+    latitude: number;
+    longitude: number;
+    name?: string;
+    address?: string;
+  };
+}
+
+/**
+ * Toque de un botón del checkout o ubicación compartida → entrada para
+ * CheckoutWhatsappService, con un texto legible para el historial.
+ */
+export function entradaCheckoutDe(
+  mensaje: WhatsappMensaje,
+): { entrada: EntradaCheckout; texto: string } | null {
+  const boton =
+    mensaje.type === 'interactive' &&
+    mensaje.interactive?.type === 'button_reply'
+      ? mensaje.interactive.button_reply
+      : undefined;
+  if (boton && esBotonCheckout(boton.id)) {
+    return { entrada: { tipo: 'boton', id: boton.id }, texto: boton.title };
+  }
+  if (mensaje.type === 'location' && mensaje.location) {
+    const ubicacion = {
+      tipo: 'ubicacion' as const,
+      latitud: mensaje.location.latitude,
+      longitud: mensaje.location.longitude,
+      direccion: mensaje.location.address,
+      nombre: mensaje.location.name,
+    };
+    return {
+      entrada: ubicacion,
+      texto: `Ubicación compartida: ${direccionDeUbicacion(ubicacion)}`,
+    };
+  }
+  return null;
 }
 
 interface WhatsappWebhookPayload {
@@ -169,6 +215,7 @@ export class WebhooksService {
     private readonly metaGraph: MetaGraphService,
     private readonly conversaciones: ConversacionesService,
     private readonly catalog: CatalogService,
+    private readonly checkout: CheckoutWhatsappService,
   ) {}
 
   verificarFirma(
@@ -242,15 +289,17 @@ export class WebhooksService {
       );
     }
 
-    let carritoValidado: ItemCarritoResuelto[] | null = null;
+    let carritoValidado: {
+      disponibles: ItemCarritoResuelto[];
+      noDisponibles: number;
+    } | null = null;
     if (evento.carrito) {
-      const { disponibles, noDisponibles } = await this.catalog.resolverCarrito(
+      carritoValidado = await this.catalog.resolverCarrito(
         evento.carrito.items,
       );
-      carritoValidado = disponibles;
       evento.texto = textoCarritoCatalogo(
-        disponibles,
-        noDisponibles,
+        carritoValidado.disponibles,
+        carritoValidado.noDisponibles,
         evento.carrito.nota,
       );
     }
@@ -259,18 +308,6 @@ export class WebhooksService {
       evento.canal,
       evento.identificadorExterno,
     );
-    if (carritoValidado) {
-      // Con await a propósito: calcular_pedido lo lee en este mismo turno o
-      // en el siguiente — no es un dato accesorio.
-      await this.conversaciones.guardarCarrito(
-        evento.canal,
-        evento.identificadorExterno,
-        carritoValidado.map((i) => ({
-          varianteId: i.varianteId,
-          cantidad: i.cantidad,
-        })),
-      );
-    }
     const ctwaClid = evento.procedenciaAnuncio?.ctwaClid;
     if (evento.canal === 'whatsapp' && ctwaClid) {
       // Fire-and-forget: si falla (ej. la columna todavía no existe) no
@@ -302,6 +339,41 @@ export class WebhooksService {
     // si no va a llegar una respuesta.
     if (evento.canal === 'whatsapp' && evento.mensajeId) {
       this.metaGraph.marcarLeidoEscribiendo(evento.mensajeId);
+    }
+
+    // Checkout determinístico por botones: carrito, toques, ubicación y
+    // las respuestas de cada paso no pasan por Gemini.
+    if (evento.canal === 'whatsapp') {
+      const ctx = {
+        identificadorExterno: evento.identificadorExterno,
+        conversacionId: conversacion.id,
+        mensajeId: evento.mensajeId,
+      };
+      if (carritoValidado) {
+        await this.checkout.iniciar(
+          ctx,
+          carritoValidado.disponibles,
+          carritoValidado.noDisponibles,
+          evento.carrito?.nota ?? null,
+        );
+        return;
+      }
+      const entrada = evento.entrada ?? {
+        tipo: 'texto' as const,
+        texto: evento.texto,
+      };
+      if (await this.checkout.manejar(ctx, entrada)) return;
+      if (
+        !evento.entrada &&
+        esSaludoOIntencionDePedir(evento.texto) &&
+        !(await this.conversaciones.obtenerUltimaInteraccionGemini(
+          evento.canal,
+          evento.identificadorExterno,
+        )) &&
+        (await this.checkout.ofrecerLoMismo(ctx))
+      ) {
+        return;
+      }
     }
 
     const respuesta = await this.gemini.responder(
@@ -358,10 +430,12 @@ export class WebhooksService {
             mensaje.type === 'order' && mensaje.order
               ? carritoDesdeOrden(mensaje.order)
               : undefined;
-          const texto = carrito ? '' : this.textoWhatsapp(mensaje);
-          // Texto, tap de botón y carrito del catálogo — audio/imagen/
-          // ubicación quedan para una extensión posterior, no se pidieron
-          // en el flujo básico.
+          const checkout = carrito ? null : entradaCheckoutDe(mensaje);
+          const texto = carrito
+            ? ''
+            : (checkout?.texto ?? this.textoWhatsapp(mensaje));
+          // Texto, toques de botón, ubicación y carrito del catálogo —
+          // audio e imagen quedan para una extensión posterior.
           if (texto === null) continue;
           eventos.push({
             canal: 'whatsapp',
@@ -371,6 +445,7 @@ export class WebhooksService {
             procedenciaAnuncio: this.extraerProcedenciaWhatsapp(mensaje),
             mensajeId: mensaje.id ?? null,
             carrito,
+            entrada: checkout?.entrada,
           });
         }
       }

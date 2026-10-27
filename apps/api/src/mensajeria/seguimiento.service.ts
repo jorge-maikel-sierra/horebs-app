@@ -1,6 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
-import { ConversacionesService } from './conversaciones.service';
+import { PedidosService } from '../pedidos/pedidos.service';
+import {
+  ConversacionesService,
+  type ConversacionParaSeguimiento,
+} from './conversaciones.service';
 import { MetaGraphService } from './meta-graph.service';
 
 // Los plazos (recordatorio / oferta) son editables desde /admin/seguimiento
@@ -39,6 +43,7 @@ export class SeguimientoService {
   constructor(
     private readonly conversaciones: ConversacionesService,
     private readonly metaGraph: MetaGraphService,
+    private readonly pedidos: PedidosService,
   ) {}
 
   // Nombre explícito: @nestjs/schedule genera uno con crypto.randomUUID()
@@ -68,6 +73,7 @@ export class SeguimientoService {
     );
     for (const c of candidatas) {
       try {
+        if (await this.yaCompro(c)) continue;
         await this.metaGraph.enviarMensajeSesion(c.canal, c.identificador_externo, TEXTO_RECORDATORIO);
         await this.conversaciones.registrarMensaje(c.id, 'saliente_bot', TEXTO_RECORDATORIO);
         await this.conversaciones.marcarSeguimientoEnviado(
@@ -84,12 +90,34 @@ export class SeguimientoService {
     }
   }
 
+  /**
+   * Quien hizo un pedido en las últimas 24h no abandonó nada: con el
+   * checkout del bot el pedido queda registrado y la conversación sigue en
+   * `bot`, así que sin este corte le llegaría "¿seguís interesado?". Se
+   * cierra el seguimiento para no volver a evaluarlo en cada corrida.
+   */
+  private async yaCompro(c: ConversacionParaSeguimiento): Promise<boolean> {
+    if (c.canal !== 'whatsapp') return false;
+    const compro = await this.pedidos.tienePedidoReciente(
+      c.identificador_externo,
+      24,
+    );
+    if (!compro) return false;
+    await this.conversaciones.marcarSeguimientoEnviado(
+      c.canal,
+      c.identificador_externo,
+      'oferta_enviada',
+    );
+    return true;
+  }
+
   private async enviarOfertas(minutosDesdeRecordatorio: number): Promise<void> {
     const candidatas = await this.conversaciones.buscarConRecordatorioVencido(
       minutosDesdeRecordatorio,
     );
     for (const c of candidatas) {
       try {
+        if (await this.yaCompro(c)) continue;
         await this.metaGraph.enviarMensajeSesion(c.canal, c.identificador_externo, TEXTO_OFERTA);
         await this.conversaciones.registrarMensaje(c.id, 'saliente_bot', TEXTO_OFERTA);
         await this.conversaciones.marcarSeguimientoEnviado(

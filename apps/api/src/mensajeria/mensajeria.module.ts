@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { CatalogModule } from '../catalog/catalog.module';
+import { ClientesModule } from '../clientes/clientes.module';
 import { MailModule } from '../mail/mail.module';
 import { PedidosModule } from '../pedidos/pedidos.module';
 import { WebhooksController } from './webhooks.controller';
@@ -10,9 +11,11 @@ import { ConversacionesService } from './conversaciones.service';
 import { ConversionesMetaService } from './conversiones-meta.service';
 import { SeguimientoService } from './seguimiento.service';
 import { ImportarHistorialGeminiService } from './importar-historial-gemini.service';
+import { AvisoEquipoService } from './aviso-equipo.service';
+import { CheckoutWhatsappService } from './checkout-whatsapp.service';
 
 @Module({
-  imports: [CatalogModule, MailModule, PedidosModule],
+  imports: [CatalogModule, ClientesModule, MailModule, PedidosModule],
   controllers: [WebhooksController],
   providers: [
     WebhooksService,
@@ -22,6 +25,8 @@ import { ImportarHistorialGeminiService } from './importar-historial-gemini.serv
     ConversionesMetaService,
     SeguimientoService,
     ImportarHistorialGeminiService,
+    AvisoEquipoService,
+    CheckoutWhatsappService,
   ],
   exports: [
     ConversacionesService,

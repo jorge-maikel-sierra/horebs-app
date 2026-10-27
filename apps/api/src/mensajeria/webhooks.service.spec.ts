@@ -1,4 +1,8 @@
-import { carritoDesdeOrden, textoCarritoCatalogo } from './webhooks.service';
+import {
+  carritoDesdeOrden,
+  entradaCheckoutDe,
+  textoCarritoCatalogo,
+} from './webhooks.service';
 
 const HAWAIANA_GRANDE = {
   varianteId: 'var-1',
@@ -83,5 +87,62 @@ describe('textoCarritoCatalogo', () => {
     expect(textoCarritoCatalogo([], 2, null)).toContain(
       'ninguno de esos productos está disponible',
     );
+  });
+});
+
+describe('entradaCheckoutDe', () => {
+  it('un toque ck:* va al checkout con su título como texto', () => {
+    expect(
+      entradaCheckoutDe({
+        type: 'interactive',
+        from: '573001112233',
+        interactive: {
+          type: 'button_reply',
+          button_reply: { id: 'ck:mod:domicilio', title: '🛵 Domicilio' },
+        },
+      }),
+    ).toEqual({
+      entrada: { tipo: 'boton', id: 'ck:mod:domicilio' },
+      texto: '🛵 Domicilio',
+    });
+  });
+
+  it('el botón "Agregar al pedido" de las tarjetas no es del checkout', () => {
+    expect(
+      entradaCheckoutDe({
+        type: 'interactive',
+        from: '573001112233',
+        interactive: {
+          type: 'button_reply',
+          button_reply: { id: 'pedir:Pizza Hawaiana', title: 'Agregar' },
+        },
+      }),
+    ).toBeNull();
+  });
+
+  it('una ubicación compartida se vuelve dirección con mapa', () => {
+    const resultado = entradaCheckoutDe({
+      type: 'location',
+      from: '573001112233',
+      location: { latitude: 11.54, longitude: -72.9, address: 'Cra 7 # 33-66' },
+    });
+    expect(resultado?.entrada).toMatchObject({
+      tipo: 'ubicacion',
+      latitud: 11.54,
+      longitud: -72.9,
+    });
+    expect(resultado?.texto).toContain(
+      'https://maps.google.com/?q=11.54,-72.9',
+    );
+  });
+
+  it('el texto común no es una entrada de checkout', () => {
+    expect(
+      entradaCheckoutDe({
+        type: 'text',
+        from: '573001112233',
+        text: { body: 'hola' },
+      }),
+    ).toBeNull();
   });
 });

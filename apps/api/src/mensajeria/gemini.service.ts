@@ -19,11 +19,16 @@ import {
   palabrasSignificativas,
 } from './busqueda-productos';
 import { armarResumenPedido, type LineaPedido } from './resumen-pedido';
-import { armarAvisoDerivacion } from './aviso-derivacion';
-import { MailService } from '../mail/mail.service';
+// Mensaje fijo para cerrar la conversación recién al derivar — antes el
+// modelo componía su propio cierre y en producción llegó a decir "tu
+// pedido ya quedó registrado" con un tiempo de entrega inventado.
+import { AvisoEquipoService, MENSAJE_DERIVACION } from './aviso-equipo.service';
+import { CheckoutWhatsappService } from './checkout-whatsapp.service';
 import {
   ConversacionesService,
   type CanalMensajeria,
+  type ItemCarritoPendiente,
+  type ModalidadPedido,
 } from './conversaciones.service';
 
 const GEMINI_URL =
@@ -71,28 +76,11 @@ const TAMANOS_PIZZA =
   'Mediana: 8 porciones, 30 centímetros de diámetro. ' +
   'Grande: 12 porciones, 40 centímetros de diámetro.';
 
-// Mensaje fijo para cerrar la conversación recién al derivar — antes el
-// modelo componía su propio cierre y en producción llegó a decir "tu
-// pedido ya quedó registrado" con un tiempo de entrega inventado, sin
-// preguntar el método de pago ni derivar de verdad a un humano. Se le da
-// el texto exacto para copiar, mismo criterio que el resumen de
-// calcular_pedido.
-const MENSAJE_DERIVACION =
-  'Ya avisé al equipo — en breve una persona confirma tu pedido por acá mismo. ¡Gracias por tu paciencia!';
-
 // Se agrega a todo resultado fallido de calcular_pedido. En producción
 // (oct 2026), con calcular_pedido fallando, el modelo inventó un total
 // ($23.500 en vez de $39.000) y una cuenta de pago que no existe.
 const SIN_TOTAL_INVENTADO =
   'NO le des al cliente ningún total, precio sumado ni dato de pago: todavía no hay un total real. Aclarale lo que falta y, si no se puede resolver, usá derivar_a_humano.';
-
-// Mismo formato que espera el "to" de la Graph API (código de país sin "+",
-// ej. 573157861208) — PERSONAL_COCINA_WHATSAPP se carga en formato local
-// (3157861208), igual que se muestran los números acá en Colombia.
-function formatearNumeroWhatsappCO(numero: string): string {
-  const digitos = numero.replace(/\D/g, '');
-  return digitos.startsWith('57') ? digitos : `57${digitos}`;
-}
 
 const SYSTEM_INSTRUCTION = `Sos el asistente virtual de ${NOMBRE_NEGOCIO}, una pizzería en Riohacha, La Guajira, Colombia. Respondés por WhatsApp con un tono cercano, cálido y directo, como una persona real del equipo — no como un robot.
 
@@ -125,8 +113,8 @@ Cómo tomar un pedido (importante, seguí este orden):
 2. Preguntá si es para domicilio, para retirar, o para comer en el local. Si es domicilio, pedí la dirección.
 3. Antes de calcular el total, pedile el nombre COMPLETO (nombre y apellido) de quien hace el pedido — es obligatorio, no lo saltees aunque ya venga charlando hace rato. Si solo da un nombre, preguntale el apellido también.
 4. Cuando el cliente confirme que ya terminó de elegir todo y ya te dio su nombre completo, usá calcular_pedido con los items pedidos por escrito (sin repetir los del carrito del catálogo), el nombre, el apellido, la modalidad (SOLO "domicilio", "retiro" o "local" — nunca metas la dirección ahí) y la dirección en el campo direccion si es domicilio — esa herramienta calcula el total real con los precios del catálogo, incluyendo el domicilio. NUNCA sumes los precios vos mismo ni inventes el costo del domicilio.
-5. Si calcular_pedido sale bien, el sistema le manda al cliente el resumen exacto y la pregunta del método de pago — vos no tenés que repetir el resumen ni el total. Si devuelve un error, aclarale al cliente lo que falta.
-6. Apenas el cliente te diga el método de pago, usá derivar_a_humano para que una persona del equipo verifique y registre el pedido — copiá el mensaje que te devuelve esa herramienta TAL CUAL, es el único cierre permitido. Es un error grave que ya pasó antes: un cliente real terminó pensando que su pedido ya estaba confirmado y listo para retirar en 20-30 minutos, sin que nadie del equipo se enterara, porque nunca se llamó a derivar_a_humano. NUNCA digas "tu pedido ya quedó registrado", "ya fue registrado", ni dés un tiempo de entrega o de recogida de tu propia cuenta — eso no lo sabés vos.
+5. Si calcular_pedido sale bien, el sistema le manda al cliente el resumen exacto y la pregunta del método de pago — vos no tenés que repetir el resumen ni el total. Si devuelve un error, aclarale al cliente lo que falta. En WhatsApp, cuando el cliente elige el método de pago el sistema registra el pedido solo y se lo confirma — vos no tenés que hacer nada más.
+6. Solo fuera de WhatsApp (Messenger o Instagram): apenas el cliente te diga el método de pago, usá derivar_a_humano para que una persona del equipo verifique y registre el pedido — copiá el mensaje que te devuelve esa herramienta TAL CUAL, es el único cierre permitido. Es un error grave que ya pasó antes: un cliente real terminó pensando que su pedido ya estaba confirmado y listo para retirar en 20-30 minutos, sin que nadie del equipo se enterara, porque nunca se llamó a derivar_a_humano. NUNCA digas "tu pedido ya quedó registrado", "ya fue registrado", ni dés un tiempo de entrega o de recogida de tu propia cuenta — eso no lo sabés vos.
 - El número de teléfono de contacto ya lo tenés (es el mismo WhatsApp desde el que te escribe) — no hace falta pedirlo aparte.`;
 
 const HERRAMIENTAS = [
@@ -305,7 +293,18 @@ type Producto = Awaited<ReturnType<CatalogService['getProductos']>>[number];
 class ErrorTransitorioGemini extends ServiceUnavailableException {}
 
 type ResultadoCalculo =
-  { ok: true; resumen: string; total: number } | { ok: false; texto: string };
+  | {
+      ok: true;
+      items: ItemCarritoPendiente[];
+      lineas: LineaPedido[];
+      datos: {
+        modalidad: ModalidadPedido;
+        direccion?: string;
+        nombre: string;
+        apellido: string;
+      };
+    }
+  | { ok: false; texto: string };
 
 /**
  * Function-calling contra la Interactions API de Gemini, con memoria de
@@ -320,7 +319,6 @@ export class GeminiService {
   private readonly logger = new Logger(GeminiService.name);
   private readonly apiKey?: string;
   private readonly modelo: string;
-  private readonly numerosCocina: string[];
 
   constructor(
     private readonly config: ConfigService,
@@ -329,7 +327,8 @@ export class GeminiService {
     private readonly conversaciones: ConversacionesService,
     private readonly metaGraph: MetaGraphService,
     private readonly conversionesMeta: ConversionesMetaService,
-    private readonly mail: MailService,
+    private readonly avisoEquipo: AvisoEquipoService,
+    private readonly checkout: CheckoutWhatsappService,
   ) {
     this.apiKey = this.config.get<string>('GEMINI_API_KEY');
     this.modelo = this.config.get<string>('GEMINI_MODEL') || MODELO_DEFAULT;
@@ -338,13 +337,6 @@ export class GeminiService {
         'GEMINI_API_KEY no configurada — el bot no puede responder.',
       );
     }
-    this.numerosCocina = (
-      this.config.get<string>('PERSONAL_COCINA_WHATSAPP') ?? ''
-    )
-      .split(',')
-      .map((n) => n.trim())
-      .filter(Boolean)
-      .map(formatearNumeroWhatsappCO);
   }
 
   /**
@@ -611,12 +603,12 @@ export class GeminiService {
         }
         case 'derivar_a_humano':
           await this.conversaciones.derivarAHumano(canal, identificadorExterno);
-          this.notificarEquipoDerivacion(
+          this.avisoEquipo.notificar({
             canal,
             identificadorExterno,
             telefono,
             conversacionId,
-          );
+          });
           void this.conversionesMeta.notificarLead(canal, identificadorExterno);
           return `Conversación derivada. Respondé al cliente con este mensaje EXACTO, sin cambiarlo ni agregar nada de "confirmado" o tiempos de entrega: "${MENSAJE_DERIVACION}"`;
         default:
@@ -630,63 +622,6 @@ export class GeminiService {
         `Error ejecutando herramienta ${nombre}: ${(err as Error).message}`,
       );
       return 'No se pudo obtener esta información en este momento.';
-    }
-  }
-
-  /**
-   * Avisa al equipo que hay un cliente derivado esperando: por correo
-   * (canal principal, sin ventana de 24h) y por WhatsApp a
-   * PERSONAL_COCINA_WHATSAPP (solo llega si ese número le escribió al bot
-   * en las últimas 24h — sin plantilla, Meta descarta el resto). Fire-and-
-   * forget a propósito, mismo patrón que MailService: si falla, se loguea
-   * pero nunca rompe la derivación real al cliente, que ya quedó registrada.
-   */
-  private notificarEquipoDerivacion(
-    canal: CanalMensajeria,
-    identificadorExterno: string,
-    telefono: string | null,
-    conversacionId: string,
-  ): void {
-    this.avisarEquipo(
-      canal,
-      identificadorExterno,
-      telefono,
-      conversacionId,
-    ).catch((err) =>
-      this.logger.error(
-        `No se pudo armar el aviso de derivación de ${identificadorExterno}: ${(err as Error).message}`,
-      ),
-    );
-  }
-
-  private async avisarEquipo(
-    canal: CanalMensajeria,
-    identificadorExterno: string,
-    telefono: string | null,
-    conversacionId: string,
-  ): Promise<void> {
-    const mensajes = await this.conversaciones.listarMensajes(conversacionId);
-    // Solo el pedido actual: lo anterior a la última derivación ya lo
-    // atendió una persona.
-    const ultimaDerivacion = mensajes.findLastIndex(
-      (m) => m.direccion === 'saliente_bot' && m.texto === MENSAJE_DERIVACION,
-    );
-    const aviso = armarAvisoDerivacion({
-      canal,
-      identificadorExterno,
-      telefono,
-      mensajes: mensajes.slice(ultimaDerivacion + 1),
-    });
-
-    this.mail.enviarAvisoEquipo(aviso);
-    for (const numero of this.numerosCocina) {
-      this.metaGraph
-        .enviarMensajeSesion('whatsapp', numero, aviso.textoWhatsapp)
-        .catch((err) =>
-          this.logger.warn(
-            `No se pudo avisar por WhatsApp a ${numero} (¿sin mensajes al bot en 24h?): ${(err as Error).message}`,
-          ),
-        );
     }
   }
 
@@ -884,6 +819,12 @@ export class GeminiService {
       varianteNombre: i.conTamanos ? i.varianteNombre : null,
       precioUnitario: i.precio,
     }));
+    // Ids exactos de todo lo que entra al pedido: el checkout con botones
+    // crea el pedido con estos, sin volver a buscar por nombre.
+    const itemsPedido = disponibles.map((i) => ({
+      varianteId: i.varianteId,
+      cantidad: i.cantidad,
+    }));
 
     const productos = items.length > 0 ? await this.catalog.getProductos() : [];
     for (const item of items) {
@@ -918,6 +859,7 @@ export class GeminiService {
           encontrado!.variantes.length > 1 ? variante.nombre : null,
         precioUnitario: variante.precio_oferta ?? variante.precio,
       });
+      itemsPedido.push({ varianteId: variante.id, cantidad });
     }
 
     if (lineas.length === 0) {
@@ -926,42 +868,67 @@ export class GeminiService {
       );
     }
 
-    const { texto, total } = armarResumenPedido({
-      nombreCompleto: `${nombre} ${apellido}`,
+    return {
+      ok: true,
+      items: itemsPedido,
       lineas,
-      modalidad,
-      direccion,
-      costoDomicilio: COSTO_DOMICILIO_DEFAULT,
-    });
-    return { ok: true, resumen: texto, total };
+      datos: {
+        modalidad: modalidad as ModalidadPedido,
+        direccion: direccion?.trim() || undefined,
+        nombre,
+        apellido,
+      },
+    };
   }
 
   /**
-   * Manda el resumen armado por código tal cual y le avisa a Gemini que ya
-   * se envió, para que en el turno siguiente sepa que falta el método de
-   * pago. Lo que Gemini conteste a ese aviso no se manda al cliente.
+   * Manda el resumen armado por código y le avisa a Gemini que ya se envió.
+   * En WhatsApp pasa al checkout con botones (paso de pago): el pedido se
+   * crea con un toque, sin que el modelo intervenga. En Messenger/Instagram
+   * se pregunta el pago por texto. Lo que Gemini conteste al aviso no se
+   * manda al cliente.
    */
   private async enviarResumenPedido(
     canal: CanalMensajeria,
     identificadorExterno: string,
     conversacionId: string,
-    calculo: { resumen: string; total: number },
+    calculo: Extract<ResultadoCalculo, { ok: true }>,
     interaccionId: string,
     llamadaId: string,
   ): Promise<void> {
-    await this.metaGraph.enviarMensajeSesion(
-      canal,
-      identificadorExterno,
-      calculo.resumen,
-    );
-    await this.conversaciones.registrarMensaje(
-      conversacionId,
-      'saliente_bot',
-      calculo.resumen,
-    );
+    let resumen: string;
+    if (canal === 'whatsapp') {
+      resumen = await this.checkout.ofrecerPagoDesdeCalculo({
+        identificadorExterno,
+        conversacionId,
+        items: calculo.items,
+        checkout: { paso: 'pago', ...calculo.datos },
+      });
+    } else {
+      resumen = `${
+        armarResumenPedido({
+          nombreCompleto: `${calculo.datos.nombre} ${calculo.datos.apellido}`,
+          lineas: calculo.lineas,
+          modalidad: calculo.datos.modalidad,
+          direccion: calculo.datos.direccion ?? null,
+          costoDomicilio: COSTO_DOMICILIO_DEFAULT,
+        }).texto
+      }\n\n¿Cuál va a ser tu método de pago: *efectivo*, *transferencia* o *tarjeta*?`;
+      await this.metaGraph.enviarMensajeSesion(
+        canal,
+        identificadorExterno,
+        resumen,
+      );
+      await this.conversaciones.registrarMensaje(
+        conversacionId,
+        'saliente_bot',
+        resumen,
+      );
+    }
     this.logger.log(
-      `id=${identificadorExterno} herramienta=calcular_pedido → resumen enviado por el sistema, total=${calculo.total}`,
+      `id=${identificadorExterno} herramienta=calcular_pedido → resumen enviado por el sistema`,
     );
+    const calculoEnviado = { resumen };
     try {
       const aviso = await this.llamarGemini({
         model: this.modelo,
@@ -973,7 +940,7 @@ export class GeminiService {
           result: [
             {
               type: 'text',
-              text: `El sistema ya le mandó al cliente este resumen y la pregunta del método de pago — no lo repitas:\n${calculo.resumen}\nCuando el cliente diga el método de pago, usá derivar_a_humano.`,
+              text: `El sistema ya le mandó al cliente este resumen y los botones del método de pago — no lo repitas:\n${calculoEnviado.resumen}\nCuando el cliente elija el método de pago, el sistema crea el pedido solo. Si escribe el método de pago en vez de tocar el botón, también lo toma el sistema.`,
             },
           ],
         },

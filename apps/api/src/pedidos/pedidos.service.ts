@@ -41,6 +41,44 @@ export interface CrearPedidoInput {
   idempotency_key?: string;
 }
 
+/**
+ * Pedido armado por el bot de WhatsApp: el cliente no tiene por qué dar un
+ * correo (lo identifica su teléfono) y puede pedir para comer en el local.
+ */
+export interface CrearPedidoWhatsappInput extends Omit<
+  CrearPedidoInput,
+  'cliente' | 'modalidad'
+> {
+  cliente: {
+    nombre: string;
+    apellido: string;
+    telefono: string;
+    direccion?: string;
+  };
+  modalidad: 'domicilio' | 'retiro' | 'local';
+}
+
+type CanalPedido = 'web' | 'whatsapp';
+
+/** Lo común a las dos entradas — el correo solo lo exige la web. */
+type DatosPedido = Omit<CrearPedidoInput, 'cliente' | 'modalidad'> & {
+  cliente: CrearPedidoWhatsappInput['cliente'] & { correo?: string };
+  modalidad: CrearPedidoWhatsappInput['modalidad'];
+};
+
+export interface ClienteBotDto {
+  id: string;
+  nombre: string | null;
+  apellido: string | null;
+  direccion: string | null;
+  puntosActuales: number;
+}
+
+export interface UltimoPedidoDto {
+  items: { varianteId: string; cantidad: number }[];
+  direccionEntrega: string | null;
+}
+
 export interface PedidoItemDto {
   variante_id: string | null;
   producto_nombre: string;
@@ -85,7 +123,10 @@ export interface PedidoResumenDto {
   }[];
 }
 
-const MODALIDADES = ['domicilio', 'retiro'];
+const MODALIDADES: Record<CanalPedido, string[]> = {
+  web: ['domicilio', 'retiro'],
+  whatsapp: ['domicilio', 'retiro', 'local'],
+};
 
 /**
  * Meta entrega el teléfono con código de país (573157861208); en
@@ -109,7 +150,33 @@ export class PedidosService {
   ) {}
 
   async crear(input: CrearPedidoInput): Promise<PedidoDto> {
-    this.validar(input);
+    this.validar(input, 'web');
+    return this.registrar(input, 'web');
+  }
+
+  /**
+   * Mismo núcleo que el checkout web (precios desde la base, stock, puntos,
+   * aviso de domicilio, idempotencia) — el pedido entra `pendiente` y el
+   * equipo lo avanza desde /admin/pedidos.
+   */
+  async crearDesdeWhatsapp(
+    input: CrearPedidoWhatsappInput,
+  ): Promise<PedidoDto> {
+    const datos = {
+      ...input,
+      cliente: {
+        ...input.cliente,
+        telefono: normalizarTelefonoCO(input.cliente.telefono),
+      },
+    };
+    this.validar(datos, 'whatsapp');
+    return this.registrar(datos, 'whatsapp');
+  }
+
+  private async registrar(
+    input: DatosPedido,
+    canal: CanalPedido,
+  ): Promise<PedidoDto> {
     const client = this.supabase.getClient();
 
     const { itemsCalculados, total: subtotalItems } = await calcularItems(
@@ -131,8 +198,12 @@ export class PedidosService {
       nombre: input.cliente.nombre,
       apellido: input.cliente.apellido,
       telefono: input.cliente.telefono,
-      correo: input.cliente.correo,
     };
+    // Mismo criterio que la dirección: sin correo (pedido por WhatsApp) no
+    // se pisa el que ya tenga guardado el cliente.
+    if (input.cliente.correo) {
+      clienteUpsert.correo = input.cliente.correo;
+    }
     if (input.cliente.direccion) {
       clienteUpsert.direccion = input.cliente.direccion;
     }
@@ -161,6 +232,7 @@ export class PedidosService {
           input.modalidad === 'domicilio' ? input.direccion_entrega : null,
         costo_domicilio: costoDomicilio,
         metodo_pago: input.metodo_pago,
+        canal,
         total,
         notas: input.notas ?? null,
         idempotency_key: input.idempotency_key ?? null,
@@ -401,7 +473,90 @@ export class PedidosService {
     return data?.nombre ?? null;
   }
 
-  private validar(input: CrearPedidoInput) {
+  /**
+   * Cliente identificado por teléfono, para que el bot no le vuelva a
+   * preguntar nombre ni dirección y le muestre sus puntos. `null` si nunca
+   * compró.
+   */
+  async clientePorTelefono(telefono: string): Promise<ClienteBotDto | null> {
+    const local = normalizarTelefonoCO(telefono);
+    if (!local) return null;
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('clientes')
+      .select('id, nombre, apellido, direccion, puntos_actuales')
+      .eq('telefono', local)
+      .maybeSingle<{
+        id: string;
+        nombre: string | null;
+        apellido: string | null;
+        direccion: string | null;
+        puntos_actuales: number | null;
+      }>();
+    if (error) throw error;
+    if (!data) return null;
+    return {
+      id: data.id,
+      nombre: data.nombre,
+      apellido: data.apellido,
+      direccion: data.direccion,
+      puntosActuales: data.puntos_actuales ?? 0,
+    };
+  }
+
+  /**
+   * Último pedido no cancelado del cliente, de cualquier canal (POS, web o
+   * WhatsApp), con las variantes exactas — para "¿lo mismo de la última
+   * vez?". Los ítems personalizados del POS (sin variante) se omiten.
+   */
+  async ultimoPedidoPorTelefono(
+    telefono: string,
+  ): Promise<UltimoPedidoDto | null> {
+    const cliente = await this.clientePorTelefono(telefono);
+    if (!cliente) return null;
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('pedidos')
+      .select('direccion_entrega, items_pedido(variante_id, cantidad)')
+      .eq('cliente_id', cliente.id)
+      .neq('estado', 'cancelado')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle<{
+        direccion_entrega: string | null;
+        items_pedido: { variante_id: string | null; cantidad: number }[];
+      }>();
+    if (error) throw error;
+    if (!data) return null;
+    const items = (data.items_pedido ?? []).flatMap((i) =>
+      i.variante_id
+        ? [{ varianteId: i.variante_id, cantidad: i.cantidad }]
+        : [],
+    );
+    return items.length > 0
+      ? { items, direccionEntrega: data.direccion_entrega }
+      : null;
+  }
+
+  /**
+   * ¿El cliente hizo un pedido (cualquier canal) en las últimas `horas`?
+   * El seguimiento de "carrito abandonado" no le escribe a quien ya compró.
+   */
+  async tienePedidoReciente(telefono: string, horas: number): Promise<boolean> {
+    const cliente = await this.clientePorTelefono(telefono);
+    if (!cliente) return false;
+    const desde = new Date(Date.now() - horas * 60 * 60 * 1000).toISOString();
+    const { count, error } = await this.supabase
+      .getClient()
+      .from('pedidos')
+      .select('id', { count: 'exact', head: true })
+      .eq('cliente_id', cliente.id)
+      .gte('created_at', desde);
+    if (error) throw error;
+    return (count ?? 0) > 0;
+  }
+
+  private validar(input: DatosPedido, canal: CanalPedido) {
     if (!input.cliente?.nombre?.trim()) {
       throw new BadRequestException('Falta el nombre del cliente.');
     }
@@ -420,13 +575,18 @@ export class PedidosService {
     if (!/^\+?[0-9 ()-]{7,20}$/.test(input.cliente.telefono.trim())) {
       throw new BadRequestException('El teléfono no tiene un formato válido.');
     }
-    if (!input.cliente?.correo?.trim()) {
+    if (canal === 'web' && !input.cliente?.correo?.trim()) {
       throw new BadRequestException('Falta el correo del cliente.');
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.cliente.correo.trim())) {
+    if (
+      input.cliente.correo &&
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.cliente.correo.trim())
+    ) {
       throw new BadRequestException('El correo no tiene un formato válido.');
     }
-    if (!MODALIDADES.includes(input.modalidad)) {
+    // canal es 'web' | 'whatsapp' fijo desde el código, nunca input externo.
+    // eslint-disable-next-line security/detect-object-injection
+    if (!MODALIDADES[canal].includes(input.modalidad)) {
       throw new BadRequestException('Modalidad inválida.');
     }
     if (input.modalidad === 'domicilio' && !input.direccion_entrega?.trim()) {

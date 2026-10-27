@@ -6,12 +6,35 @@ export interface LineaPedido {
   precioUnitario: number;
 }
 
+export interface PuntosResumen {
+  /** Puntos que suma este pedido (misma fórmula que al registrarlo). */
+  ganados: number;
+  /** Saldo actual del cliente, o null si todavía no está registrado. */
+  saldo: number | null;
+  valorPuntoPesos: number;
+  minimoCanje: number;
+}
+
 export interface DatosResumenPedido {
   nombreCompleto: string;
   lineas: LineaPedido[];
   modalidad: string;
   direccion: string | null;
   costoDomicilio: number;
+  puntos?: PuntosResumen;
+}
+
+function lineaPuntos(p: PuntosResumen): string | null {
+  if (p.ganados <= 0 && !p.saldo) return null;
+  const partes = [`⭐ Con este pedido sumás ${p.ganados} puntos.`];
+  if (p.saldo) {
+    partes.push(
+      p.saldo >= p.minimoCanje
+        ? `Ya tenés ${p.saldo} (${pesos(p.saldo * p.valorPuntoPesos)} para usar en tu próxima compra).`
+        : `Ya tenés ${p.saldo}.`,
+    );
+  }
+  return partes.join(' ');
 }
 
 const ETIQUETA_MODALIDAD: Record<string, string> = {
@@ -52,9 +75,10 @@ export function armarResumenPedido(datos: DatosResumenPedido): {
       ? `Domicilio a ${datos.direccion ?? 'dirección sin especificar'}: ${pesos(domicilio)}`
       : `Modalidad: ${ETIQUETA_MODALIDAD[datos.modalidad] ?? datos.modalidad}`,
     `*Total: ${pesos(total)}*`,
-    '',
-    '¿Cuál va a ser tu método de pago: *efectivo*, *transferencia* o *tarjeta*?',
-  ].join('\n');
+    datos.puntos ? lineaPuntos(datos.puntos) : null,
+  ]
+    .filter((l) => l !== null)
+    .join('\n');
 
   return { texto, total };
 }

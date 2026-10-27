@@ -29,6 +29,22 @@ export interface ItemCarritoPendiente {
   cantidad: number;
 }
 
+export type ModalidadPedido = 'domicilio' | 'retiro' | 'local';
+export type PasoCheckout = 'modalidad' | 'direccion' | 'nombre' | 'pago';
+
+/** `conversaciones_bot.checkout` (jsonb) — en qué paso del checkout con botones va el cliente. */
+export interface CheckoutWhatsapp {
+  paso: PasoCheckout;
+  modalidad?: ModalidadPedido;
+  direccion?: string;
+  /** Dirección de un pedido anterior, ofrecida con "¿Te lo llevamos a…?". */
+  direccionSugerida?: string;
+  nombre?: string;
+  apellido?: string;
+  /** Nota que el cliente escribió al mandar el carrito del catálogo. */
+  nota?: string;
+}
+
 export interface MensajeConversacion {
   id: string;
   conversacion_id: string;
@@ -316,9 +332,55 @@ export class ConversacionesService {
         seguimiento_etapa: 'ninguna',
         seguimiento_enviado_en: null,
         carrito_pendiente: null,
+        checkout: null,
       })
       .eq('id', id);
     if (error) throw error;
+  }
+
+  async guardarCheckout(
+    canal: CanalMensajeria,
+    identificadorExterno: string,
+    checkout: CheckoutWhatsapp | null,
+  ): Promise<void> {
+    const { error } = await this.supabase
+      .getClient()
+      .from('conversaciones_bot')
+      .update({ checkout })
+      .eq('canal', canal)
+      .eq('identificador_externo', identificadorExterno);
+    if (error) throw error;
+  }
+
+  async obtenerCheckout(
+    canal: CanalMensajeria,
+    identificadorExterno: string,
+  ): Promise<CheckoutWhatsapp | null> {
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('conversaciones_bot')
+      .select('checkout')
+      .eq('canal', canal)
+      .eq('identificador_externo', identificadorExterno)
+      .maybeSingle<{ checkout: CheckoutWhatsapp | null }>();
+    if (error) throw error;
+    return data?.checkout ?? null;
+  }
+
+  /** Último mensaje del cliente — define la ventana gratis de 24h de WhatsApp. */
+  async obtenerUltimaInteraccion(
+    canal: CanalMensajeria,
+    identificadorExterno: string,
+  ): Promise<Date | null> {
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('conversaciones_bot')
+      .select('ultima_interaccion')
+      .eq('canal', canal)
+      .eq('identificador_externo', identificadorExterno)
+      .maybeSingle<{ ultima_interaccion: string | null }>();
+    if (error) throw error;
+    return data?.ultima_interaccion ? new Date(data.ultima_interaccion) : null;
   }
 
   /**
@@ -391,6 +453,7 @@ export class ConversacionesService {
           // El pedido ya pasó a una persona: un carrito viejo no debe
           // colarse en el próximo pedido de este cliente.
           carrito_pendiente: null,
+          checkout: null,
         },
         { onConflict: 'canal,identificador_externo' },
       );

@@ -10,6 +10,8 @@ export interface DatosAvisoDerivacion {
   telefono: string | null;
   /** Mensajes del pedido actual, en orden — sin los de derivaciones viejas. */
   mensajes: { direccion: DireccionMensaje; texto: string }[];
+  /** Presente cuando el bot ya creó el pedido en el sistema (checkout con botones). */
+  pedido?: { id: string; total: number; metodoPago: string };
 }
 
 export interface AvisoDerivacion {
@@ -20,6 +22,7 @@ export interface AvisoDerivacion {
 }
 
 const URL_PANEL_SEGUIMIENTO = 'https://pizzeriahorebs.shop/admin/seguimiento';
+const URL_PANEL_PEDIDOS = 'https://pizzeriahorebs.shop/admin/pedidos';
 const INICIO_RESUMEN = '*Resumen de tu pedido*';
 const MENSAJES_DE_CONTEXTO = 6;
 
@@ -80,8 +83,13 @@ export function armarAvisoDerivacion(
     ? `https://wa.me/${datos.telefono}`
     : null;
   const quien = nombre ?? contacto;
+  const pedido = datos.pedido;
+  const numeroPedido = pedido ? `#${pedido.id.slice(0, 8)}` : null;
+  const urlPanel = pedido ? URL_PANEL_PEDIDOS : URL_PANEL_SEGUIMIENTO;
 
-  const asunto = `🔔 ${quien} espera atención${total ? ` — pedido de ${total}` : ''}`;
+  const asunto = pedido
+    ? `🛒 Nuevo pedido por WhatsApp ${numeroPedido} — ${quien} — ${total ?? `$${pedido.total.toLocaleString('es-CO')}`}`
+    : `🔔 ${quien} espera atención${total ? ` — pedido de ${total}` : ''}`;
 
   const contexto = datos.mensajes
     .slice(-MENSAJES_DE_CONTEXTO)
@@ -91,9 +99,11 @@ export function armarAvisoDerivacion(
     );
 
   const texto = [
-    resumen
-      ? 'Un cliente terminó de armar su pedido con el bot y espera que alguien lo confirme.'
-      : 'Un cliente pidió hablar con una persona del equipo.',
+    pedido
+      ? `Entró un pedido nuevo por WhatsApp (${numeroPedido}, pago: ${pedido.metodoPago}). Ya está en el panel como pendiente: confirmalo desde ahí y al cliente le llega el aviso.`
+      : resumen
+        ? 'Un cliente terminó de armar su pedido con el bot y espera que alguien lo confirme.'
+        : 'Un cliente pidió hablar con una persona del equipo.',
     '',
     `Cliente: ${quien}`,
     nombre ? `Contacto: ${contacto}` : null,
@@ -107,20 +117,24 @@ export function armarAvisoDerivacion(
     'Últimos mensajes:',
     ...contexto,
     '',
-    `Conversación completa: ${URL_PANEL_SEGUIMIENTO}`,
+    pedido
+      ? `Pedidos: ${URL_PANEL_PEDIDOS}`
+      : `Conversación completa: ${URL_PANEL_SEGUIMIENTO}`,
   ]
     .filter((l) => l !== null)
     .join('\n');
 
   const textoWhatsapp = [
-    '🔔 *Cliente esperando atención*',
+    pedido
+      ? `🛒 *Nuevo pedido por WhatsApp* ${numeroPedido}`
+      : '🔔 *Cliente esperando atención*',
     nombre ? `${nombre} · ${contacto}` : contacto,
     total ? `Pedido: ${total}` : 'Pidió hablar con una persona',
     ultimoDelCliente
       ? `Último mensaje: "${ultimoDelCliente.slice(0, 120)}"`
       : null,
     linkWhatsapp ? `Escribile: ${linkWhatsapp}` : null,
-    `Panel: ${URL_PANEL_SEGUIMIENTO}`,
+    `Panel: ${urlPanel}`,
   ]
     .filter((l) => l !== null)
     .join('\n');
@@ -140,7 +154,7 @@ export function armarAvisoDerivacion(
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background-color:#ffffff;border-radius:12px;overflow:hidden;">
           <tr><td style="background-color:${AZUL};padding:24px 28px;">
             <p style="margin:0;color:${AMARILLO};font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">Pizzería Horebs · Bot de WhatsApp</p>
-            <h1 style="margin:6px 0 0;color:#ffffff;font-size:20px;">🔔 ${escaparHtml(quien)} espera atención</h1>
+            <h1 style="margin:6px 0 0;color:#ffffff;font-size:20px;">${pedido ? `🛒 Nuevo pedido ${numeroPedido} — ${escaparHtml(quien)}` : `🔔 ${escaparHtml(quien)} espera atención`}</h1>
           </td></tr>
           <tr><td style="padding:24px 28px 0;">
             ${nombre ? `<p style="margin:0;font-size:14px;color:${AZUL};">${escaparHtml(contacto)}</p>` : ''}
@@ -170,7 +184,7 @@ export function armarAvisoDerivacion(
             ${filaContexto}
           </td></tr>
           <tr><td style="padding:16px 28px 24px;">
-            <a href="${URL_PANEL_SEGUIMIENTO}" style="color:${AZUL};font-size:13px;font-weight:600;">Ver la conversación completa en el panel</a>
+            <a href="${urlPanel}" style="color:${AZUL};font-size:13px;font-weight:600;">${pedido ? 'Abrir el pedido en el panel' : 'Ver la conversación completa en el panel'}</a>
           </td></tr>
         </table>
       </td></tr>
