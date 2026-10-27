@@ -5,8 +5,38 @@ export const VENTANA_SESION_MS = 24 * HORA_MS;
 // plantilla paga, después de las 24h ya no se le puede escribir.
 const INICIO_RECOMPRA_MS = 23 * HORA_MS;
 
-export const TEXTO_RECOMPRA =
-  '¿Qué tal estuvo tu pedido? 🍕 Si te quedaste con ganas, repetilo con un toque.';
+export interface PuntosRecompra {
+  /** Puntos que sumó el pedido entregado. */
+  ganados: number;
+  /** Saldo actual del cliente. */
+  saldo: number;
+  valorPuntoPesos: number;
+  minimoCanje: number;
+}
+
+function pesos(valor: number): string {
+  return `$${valor.toLocaleString('es-CO')}`;
+}
+
+/**
+ * Invitación a repetir, al día siguiente de la compra. Los puntos van acá y
+ * no en el resumen del pedido: son la excusa para volver a comprar.
+ */
+export function textoRecompra(puntos: PuntosRecompra | null): string {
+  const lineaPuntos =
+    puntos && (puntos.ganados > 0 || puntos.saldo > 0)
+      ? puntos.saldo >= puntos.minimoCanje
+        ? `⭐ Con esa compra sumaste ${puntos.ganados} puntos y ya tenés ${puntos.saldo}: son *${pesos(puntos.saldo * puntos.valorPuntoPesos)}* para tu próxima compra.`
+        : `⭐ Con esa compra sumaste ${puntos.ganados} puntos y ya vas en ${puntos.saldo}. Desde ${puntos.minimoCanje} los podés cambiar por descuento.`
+      : null;
+  return [
+    '¿Qué tal estuvo tu pedido? 🍕',
+    lineaPuntos,
+    'Si te quedaste con ganas, repetilo con un toque 👇',
+  ]
+    .filter((l) => l !== null)
+    .join('\n');
+}
 
 export interface PedidoParaAviso {
   id: string;

@@ -2,6 +2,7 @@ import {
   dentroDeLaVentana,
   enVentanaDeRecompra,
   textoAvisoEstado,
+  textoRecompra,
 } from './avisos-pedido';
 
 const HORA = 60 * 60 * 1000;
@@ -32,6 +33,28 @@ describe('textoAvisoEstado', () => {
 
   it('pendiente no avisa nada (ya recibió la confirmación)', () => {
     expect(textoAvisoEstado({ ...PEDIDO, estado: 'pendiente' })).toBeNull();
+  });
+});
+
+describe('textoRecompra', () => {
+  const config = { valorPuntoPesos: 50, minimoCanje: 100 };
+
+  it('con saldo canjeable muestra cuánta plata representa', () => {
+    expect(textoRecompra({ ganados: 70, saldo: 410, ...config })).toContain(
+      '⭐ Con esa compra sumaste 70 puntos y ya tenés 410: son *$20.500* para tu próxima compra.',
+    );
+  });
+
+  it('bajo el mínimo dice desde cuánto se canjean', () => {
+    expect(textoRecompra({ ganados: 40, saldo: 40, ...config })).toContain(
+      'ya vas en 40. Desde 100 los podés cambiar por descuento.',
+    );
+  });
+
+  it('sin puntos queda solo la invitación', () => {
+    const texto = textoRecompra(null);
+    expect(texto).not.toContain('⭐');
+    expect(texto).toContain('repetilo con un toque');
   });
 });
 

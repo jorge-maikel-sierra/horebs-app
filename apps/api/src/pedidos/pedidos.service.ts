@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { MailService } from '../mail/mail.service';
@@ -82,6 +83,9 @@ export interface PedidoParaAvisoDto {
   direccionEntrega: string | null;
   /** Teléfono local del cliente (3187592616), sin el 57. */
   telefono: string | null;
+  /** Solo en pedidosParaRecompra: puntos de este pedido y saldo actual. */
+  puntosGanados?: number;
+  puntosActuales?: number;
 }
 
 export interface UltimoPedidoDto {
@@ -479,7 +483,11 @@ export class PedidosService {
       .select('nombre')
       .eq('telefono', local)
       .maybeSingle();
-    if (error) throw error;
+    if (error) {
+      throw new ServiceUnavailableException(
+        `No se pudo consultar la base: ${error.message}`,
+      );
+    }
     return data?.nombre ?? null;
   }
 
@@ -503,7 +511,11 @@ export class PedidosService {
         direccion: string | null;
         puntos_actuales: number | null;
       }>();
-    if (error) throw error;
+    if (error) {
+      throw new ServiceUnavailableException(
+        `No se pudo consultar la base: ${error.message}`,
+      );
+    }
     if (!data) return null;
     return {
       id: data.id,
@@ -536,7 +548,11 @@ export class PedidosService {
         direccion_entrega: string | null;
         items_pedido: { variante_id: string | null; cantidad: number }[];
       }>();
-    if (error) throw error;
+    if (error) {
+      throw new ServiceUnavailableException(
+        `No se pudo consultar la base: ${error.message}`,
+      );
+    }
     if (!data) return null;
     const items = (data.items_pedido ?? []).flatMap((i) =>
       i.variante_id
@@ -565,7 +581,11 @@ export class PedidosService {
         direccion_entrega: string | null;
         clientes: { telefono: string | null } | null;
       }>();
-    if (error) throw error;
+    if (error) {
+      throw new ServiceUnavailableException(
+        `No se pudo consultar la base: ${error.message}`,
+      );
+    }
     if (!data) return null;
     return {
       id: data.id,
@@ -588,7 +608,7 @@ export class PedidosService {
       .getClient()
       .from('pedidos')
       .select(
-        'id, canal, estado, modalidad, direccion_entrega, clientes(telefono)',
+        'id, canal, estado, modalidad, direccion_entrega, puntos_ganados, clientes(telefono, puntos_actuales)',
       )
       .eq('canal', 'whatsapp')
       .eq('estado', 'entregado')
@@ -601,10 +621,18 @@ export class PedidosService {
           estado: string;
           modalidad: string;
           direccion_entrega: string | null;
-          clientes: { telefono: string | null } | null;
+          puntos_ganados: number | null;
+          clientes: {
+            telefono: string | null;
+            puntos_actuales: number | null;
+          } | null;
         }[]
       >();
-    if (error) throw error;
+    if (error) {
+      throw new ServiceUnavailableException(
+        `No se pudo consultar la base: ${error.message}`,
+      );
+    }
     return (data ?? []).map((p) => ({
       id: p.id,
       canal: p.canal,
@@ -612,6 +640,8 @@ export class PedidosService {
       modalidad: p.modalidad,
       direccionEntrega: p.direccion_entrega,
       telefono: p.clientes?.telefono ?? null,
+      puntosGanados: p.puntos_ganados ?? 0,
+      puntosActuales: p.clientes?.puntos_actuales ?? 0,
     }));
   }
 
@@ -627,7 +657,11 @@ export class PedidosService {
       .eq('id', id)
       .is('recompra_enviada_en', null)
       .select('id');
-    if (error) throw error;
+    if (error) {
+      throw new ServiceUnavailableException(
+        `No se pudo consultar la base: ${error.message}`,
+      );
+    }
     return (data ?? []).length > 0;
   }
 
@@ -645,7 +679,11 @@ export class PedidosService {
       .select('id', { count: 'exact', head: true })
       .eq('cliente_id', cliente.id)
       .gte('created_at', desde);
-    if (error) throw error;
+    if (error) {
+      throw new ServiceUnavailableException(
+        `No se pudo consultar la base: ${error.message}`,
+      );
+    }
     return (count ?? 0) > 0;
   }
 

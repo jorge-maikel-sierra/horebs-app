@@ -108,7 +108,8 @@ botones, sin pasar por Gemini:
    o el botón nativo *Enviar ubicación* (queda como link de Google Maps). La
    dirección también se puede escribir.
 3. **Nombre**: se salta si el teléfono ya es cliente con nombre y apellido.
-4. **Resumen** (precios y puntos desde la base) + botones de pago.
+4. **Resumen** (precios desde la base) + botones de pago. Los puntos no
+   van acá: se cuentan al día siguiente, en la invitación a repetir.
 5. **Pago**: el bot **crea el pedido** (`PedidosService.crearDesdeWhatsapp`,
    canal `whatsapp`, estado `pendiente`, stock y puntos como el checkout
    web, idempotente por el `wamid` del toque) y confirma con el número de
@@ -126,7 +127,8 @@ con los precios actuales.
 **Avisos de estado** (`avisos-pedido*.ts`): cada cambio de estado de un
 pedido `whatsapp` desde `/admin/pedidos` (confirmado → en el horno → en
 camino → entregado / cancelado) le llega al cliente con un texto fijo.
-**Invitación a repetir**: el cron de seguimiento la manda una sola vez,
+**Invitación a repetir** (con los puntos que sumó y su saldo, como excusa
+para volver): el cron de seguimiento la manda una sola vez,
 entre 23 y 24 h después del último mensaje del cliente, si su pedido ya
 está entregado. Ambos solo dentro de la ventana de 24h (sin plantilla, Meta
 descarta lo demás).

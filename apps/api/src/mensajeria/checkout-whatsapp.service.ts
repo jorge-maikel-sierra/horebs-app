@@ -3,7 +3,6 @@ import {
   CatalogService,
   type ItemCarritoResuelto,
 } from '../catalog/catalog.service';
-import { PuntosService, puntosPorMonto } from '../clientes/puntos.service';
 import { COSTO_DOMICILIO_DEFAULT } from '../common/costos';
 import { PedidosService } from '../pedidos/pedidos.service';
 import {
@@ -84,7 +83,6 @@ export class CheckoutWhatsappService {
     private readonly conversaciones: ConversacionesService,
     private readonly catalog: CatalogService,
     private readonly pedidos: PedidosService,
-    private readonly puntos: PuntosService,
     private readonly metaGraph: MetaGraphService,
     private readonly avisoEquipo: AvisoEquipoService,
   ) {}
@@ -351,7 +349,8 @@ export class CheckoutWhatsappService {
       this.pedidos.ultimoPedidoPorTelefono(ctx.identificadorExterno),
       this.pedidos.clientePorTelefono(ctx.identificadorExterno),
     ]);
-    const sugerida = ultimo?.direccionEntrega ?? cliente?.direccion ?? null;
+    const sugerida =
+      (ultimo?.direccionEntrega ?? cliente?.direccion)?.trim() || null;
     if (!sugerida) {
       await this.pedirUbicacion(ctx, checkout);
       return;
@@ -381,7 +380,11 @@ export class CheckoutWhatsappService {
     );
   }
 
-  /** Resumen (precios y puntos desde la base) + botones de pago. */
+  /**
+   * Resumen (precios desde la base) + botones de pago. Los puntos no van
+   * acá a propósito: se cuentan al día siguiente, en la invitación a
+   * repetir (avisos-pedido.ts), como excusa para una nueva compra.
+   */
   private async ofrecerPago(
     ctx: ContextoCheckout,
     checkout: CheckoutWhatsapp,
@@ -399,31 +402,12 @@ export class CheckoutWhatsappService {
       return texto;
     }
 
-    const lineas = lineasDeCarrito(disponibles);
-    const subtotal = lineas.reduce(
-      (s, l) => s + l.precioUnitario * l.cantidad,
-      0,
-    );
-    const total =
-      subtotal +
-      (checkout.modalidad === 'domicilio' ? COSTO_DOMICILIO_DEFAULT : 0);
-    const [config, cliente] = await Promise.all([
-      this.puntos.obtenerConfiguracion(),
-      this.pedidos.clientePorTelefono(ctx.identificadorExterno),
-    ]);
-
     const { texto } = armarResumenPedido({
       nombreCompleto: `${checkout.nombre} ${checkout.apellido}`,
-      lineas,
+      lineas: lineasDeCarrito(disponibles),
       modalidad: checkout.modalidad ?? 'retiro',
       direccion: checkout.direccion ?? null,
       costoDomicilio: COSTO_DOMICILIO_DEFAULT,
-      puntos: {
-        ganados: puntosPorMonto(total, config),
-        saldo: cliente?.puntosActuales ?? null,
-        valorPuntoPesos: config.valorPuntoPesos,
-        minimoCanje: config.puntosMinimoCanje,
-      },
     });
 
     checkout.paso = 'pago';
@@ -492,9 +476,6 @@ export class CheckoutWhatsappService {
       'Te aviso por acá cuando lo confirmemos y cuando vaya en camino 🍕',
       metodo === 'transferencia'
         ? `\nPara transferir: *Banco ${TRANSFERENCIA.banco}*, llave *${TRANSFERENCIA.llave}*. Mandanos el comprobante por acá.`
-        : null,
-      pedido.puntos_ganados > 0
-        ? `⭐ Sumaste ${pedido.puntos_ganados} puntos.`
         : null,
     ]
       .filter((l) => l !== null)

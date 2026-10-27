@@ -33,54 +33,15 @@ describe('armarResumenPedido', () => {
     expect(texto).not.toContain('método de pago');
   });
 
-  it('muestra los puntos que suma y el saldo canjeable', () => {
+  it('no incluye los puntos: van en un mensaje aparte al día siguiente', () => {
     const { texto } = armarResumenPedido({
       nombreCompleto: 'Jorge Sierra',
       lineas: LINEAS,
       modalidad: 'domicilio',
       direccion: 'Calle 1',
       costoDomicilio: 5000,
-      puntos: {
-        ganados: 48,
-        saldo: 240,
-        valorPuntoPesos: 50,
-        minimoCanje: 100,
-      },
     });
-    expect(texto).toContain(
-      '⭐ Con este pedido sumás 48 puntos. Ya tenés 240 ($12.000 para usar en tu próxima compra).',
-    );
-  });
-
-  it('saldo bajo el mínimo: no promete descuento', () => {
-    const { texto } = armarResumenPedido({
-      nombreCompleto: 'Jorge Sierra',
-      lineas: LINEAS,
-      modalidad: 'retiro',
-      direccion: null,
-      costoDomicilio: 5000,
-      puntos: { ganados: 43, saldo: 20, valorPuntoPesos: 50, minimoCanje: 100 },
-    });
-    expect(texto).toContain('Ya tenés 20.');
-    expect(texto).not.toContain('para usar');
-  });
-
-  it('cliente nuevo: solo lo que suma', () => {
-    const { texto } = armarResumenPedido({
-      nombreCompleto: 'Ana Ruiz',
-      lineas: LINEAS,
-      modalidad: 'retiro',
-      direccion: null,
-      costoDomicilio: 5000,
-      puntos: {
-        ganados: 43,
-        saldo: null,
-        valorPuntoPesos: 50,
-        minimoCanje: 100,
-      },
-    });
-    expect(texto).toContain('⭐ Con este pedido sumás 43 puntos.');
-    expect(texto).not.toContain('Ya tenés');
+    expect(texto).not.toMatch(/puntos/i);
   });
 
   it('sin domicilio no cobra el envío', () => {

@@ -3,11 +3,12 @@ import {
   PedidosService,
   type PedidoParaAvisoDto,
 } from '../pedidos/pedidos.service';
+import { PuntosService } from '../clientes/puntos.service';
 import {
-  TEXTO_RECOMPRA,
   dentroDeLaVentana,
   enVentanaDeRecompra,
   textoAvisoEstado,
+  textoRecompra,
 } from './avisos-pedido';
 import { BOTON } from './checkout-whatsapp';
 import { ConversacionesService } from './conversaciones.service';
@@ -36,6 +37,7 @@ export class AvisosPedidoService {
     private readonly pedidos: PedidosService,
     private readonly conversaciones: ConversacionesService,
     private readonly metaGraph: MetaGraphService,
+    private readonly puntos: PuntosService,
   ) {}
 
   /** Fire-and-forget: un aviso que falla nunca rompe el cambio de estado. */
@@ -107,13 +109,20 @@ export class AvisosPedidoService {
     // Se marca antes de enviar: si el envío falla no se reintenta, pero
     // tampoco puede llegar dos veces.
     if (!(await this.pedidos.reclamarRecompra(pedido.id))) return;
-    await this.metaGraph.enviarBotones(destino, TEXTO_RECOMPRA, [
+    const config = await this.puntos.obtenerConfiguracion();
+    const texto = textoRecompra({
+      ganados: pedido.puntosGanados ?? 0,
+      saldo: pedido.puntosActuales ?? 0,
+      valorPuntoPesos: config.valorPuntoPesos,
+      minimoCanje: config.puntosMinimoCanje,
+    });
+    await this.metaGraph.enviarBotones(destino, texto, [
       { id: BOTON.loMismo, titulo: '🍕 Pedir lo mismo' },
     ]);
     await this.conversaciones.registrarMensaje(
       ventana.conversacionId,
       'saliente_bot',
-      `${TEXTO_RECOMPRA}\n[🍕 Pedir lo mismo]`,
+      `${texto}\n[🍕 Pedir lo mismo]`,
     );
     this.logger.log(`Invitación a repetir enviada — pedido ${pedido.id}`);
   }
