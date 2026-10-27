@@ -116,6 +116,44 @@ export class MetaGraphService {
     }
   }
 
+  /**
+   * Doble check azul + "escribiendo…" en un solo llamado (Cloud API). El
+   * indicador se apaga solo al responder o a los 25s. Fire-and-forget: es
+   * cosmético, un error nunca frena la respuesta al cliente.
+   */
+  marcarLeidoEscribiendo(mensajeId: string): void {
+    if (!this.whatsappToken || !this.whatsappPhoneNumberId) return;
+    fetch(
+      `https://graph.facebook.com/${this.version}/${this.whatsappPhoneNumberId}/messages`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.whatsappToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messaging_product: 'whatsapp',
+          status: 'read',
+          message_id: mensajeId,
+          typing_indicator: { type: 'text' },
+        }),
+      },
+    )
+      .then(async (res) => {
+        if (!res.ok) {
+          const detalle = await res.text().catch(() => '');
+          this.logger.warn(
+            `No se pudo marcar leído/escribiendo ${mensajeId}: ${res.status} ${detalle}`,
+          );
+        }
+      })
+      .catch((err: Error) =>
+        this.logger.warn(
+          `No se pudo marcar leído/escribiendo ${mensajeId}: ${err.message}`,
+        ),
+      );
+  }
+
   async enviarMensajeSesion(
     canal: CanalMensajeria,
     destinatarioId: string,

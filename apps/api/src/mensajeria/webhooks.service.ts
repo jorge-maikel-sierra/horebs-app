@@ -298,6 +298,11 @@ export class WebhooksService {
       );
       return;
     }
+    // Solo cuando el bot va a responder: Meta pide no mostrar "escribiendo…"
+    // si no va a llegar una respuesta.
+    if (evento.canal === 'whatsapp' && evento.mensajeId) {
+      this.metaGraph.marcarLeidoEscribiendo(evento.mensajeId);
+    }
 
     const respuesta = await this.gemini.responder(
       evento.canal,
