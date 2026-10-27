@@ -1,4 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { CanalMensajeria } from './conversaciones.service';
 
@@ -12,10 +16,53 @@ export interface TarjetaProducto {
   precioDesde: number;
 }
 
+export interface SeccionListaProductos {
+  titulo: string;
+  /** `product_retailer_id` del catálogo de Meta = UUID de la variante. */
+  retailerIds: string[];
+}
+
+export interface ListaProductos {
+  encabezado: string;
+  cuerpo: string;
+  secciones: SeccionListaProductos[];
+}
+
 // WhatsApp corta el título de un botón de respuesta a 20 caracteres — el
 // nombre del producto va en el id del botón (hasta 256 caracteres), nunca
 // en el título.
 const TITULO_BOTON_AGREGAR = 'Agregar al pedido';
+
+// Límites de Meta para un mensaje product_list — si se pasan, rechaza el
+// mensaje entero en vez de recortarlo.
+const MAX_ITEMS_LISTA = 30;
+const MAX_SECCIONES_LISTA = 10;
+const MAX_TITULO_SECCION = 24;
+const MAX_ENCABEZADO_LISTA = 60;
+
+/**
+ * Recorta una lista a los límites de Meta: hasta 10 secciones, 30 ítems
+ * en total (se llenan en orden, así las primeras secciones quedan
+ * completas) y títulos cortos. Las secciones que quedan vacías se quitan.
+ */
+export function recortarListaProductos(lista: ListaProductos): ListaProductos {
+  let disponibles = MAX_ITEMS_LISTA;
+  const secciones: SeccionListaProductos[] = [];
+  for (const seccion of lista.secciones.slice(0, MAX_SECCIONES_LISTA)) {
+    const retailerIds = seccion.retailerIds.slice(0, disponibles);
+    disponibles -= retailerIds.length;
+    if (retailerIds.length === 0) continue;
+    secciones.push({
+      titulo: seccion.titulo.slice(0, MAX_TITULO_SECCION),
+      retailerIds,
+    });
+  }
+  return {
+    encabezado: lista.encabezado.slice(0, MAX_ENCABEZADO_LISTA),
+    cuerpo: lista.cuerpo,
+    secciones,
+  };
+}
 
 /**
  * Gemini responde en Markdown estándar (**negrita**), pero WhatsApp solo
@@ -43,6 +90,7 @@ export class MetaGraphService {
   private readonly whatsappPhoneNumberId?: string;
   private readonly pageToken?: string;
   private readonly pageId?: string;
+  private readonly whatsappCatalogId?: string;
 
   constructor(private readonly config: ConfigService) {
     this.version = this.config.get<string>('META_GRAPH_API_VERSION') ?? 'v21.0';
@@ -50,6 +98,9 @@ export class MetaGraphService {
     this.whatsappPhoneNumberId = this.config.get<string>(
       'WHATSAPP_PHONE_NUMBER_ID',
     );
+    // Catálogo de Meta Commerce conectado al número del bot. Sin él, el
+    // bot vuelve al link del sitio y a las tarjetas con botón.
+    this.whatsappCatalogId = this.config.get<string>('WHATSAPP_CATALOG_ID');
     this.pageToken = this.config.get<string>('MESSENGER_PAGE_ACCESS_TOKEN');
     this.pageId = this.config.get<string>('MESSENGER_PAGE_ID');
 
@@ -82,6 +133,111 @@ export class MetaGraphService {
     await this.conReintentos(() =>
       this.enviarMessengerOInstagram(destinatarioId, textoNormalizado),
     );
+  }
+
+  /**
+   * Catálogo nativo de WhatsApp (fotos, precios y carrito dentro del
+   * chat) — la venta no sale de WhatsApp. Sin catálogo conectado, o en
+   * Messenger/Instagram que no tienen catálogo, cae al link del sitio.
+   * Devuelve qué se mandó para que quien llama lo registre igual.
+   */
+  async enviarCatalogo(
+    canal: CanalMensajeria,
+    destinatarioId: string,
+    urlFallback: string,
+    miniaturaRetailerId?: string,
+  ): Promise<'catalogo' | 'link'> {
+    if (canal !== 'whatsapp' || !this.whatsappCatalogId) {
+      await this.enviarBotonCatalogo(canal, destinatarioId, urlFallback);
+      return 'link';
+    }
+    try {
+      await this.conReintentos(() =>
+        this.enviarWhatsappInteractivo(destinatarioId, {
+          type: 'catalog_message',
+          body: {
+            text: 'Acá tenés nuestro menú 🍕 Elegí lo que quieras, agregalo al carrito y mandámelo por acá.',
+          },
+          action: {
+            name: 'catalog_message',
+            ...(miniaturaRetailerId
+              ? {
+                  parameters: {
+                    thumbnail_product_retailer_id: miniaturaRetailerId,
+                  },
+                }
+              : {}),
+          },
+        }),
+      );
+      return 'catalogo';
+    } catch (err) {
+      this.logger.warn(
+        `catalog_message rechazado, se manda el link: ${(err as Error).message}`,
+      );
+      await this.enviarBotonCatalogo(canal, destinatarioId, urlFallback);
+      return 'link';
+    }
+  }
+
+  /**
+   * Lista nativa de productos del catálogo (product_list), agrupada en
+   * secciones — el cliente agrega al carrito sin salir del chat. Sin
+   * catálogo conectado, o fuera de WhatsApp, cae a las tarjetas con botón.
+   */
+  async enviarListaProductos(
+    canal: CanalMensajeria,
+    destinatarioId: string,
+    lista: ListaProductos,
+    tarjetasFallback: TarjetaProducto[],
+  ): Promise<'lista' | 'tarjetas'> {
+    const recortada = recortarListaProductos(lista);
+    if (
+      canal !== 'whatsapp' ||
+      !this.whatsappCatalogId ||
+      recortada.secciones.length === 0
+    ) {
+      await this.enviarTarjetasProductos(
+        canal,
+        destinatarioId,
+        tarjetasFallback,
+      );
+      return 'tarjetas';
+    }
+    const catalogId = this.whatsappCatalogId;
+    try {
+      await this.conReintentos(() =>
+        this.enviarWhatsappInteractivo(destinatarioId, {
+          type: 'product_list',
+          header: { type: 'text', text: recortada.encabezado },
+          body: { text: recortada.cuerpo },
+          action: {
+            catalog_id: catalogId,
+            sections: recortada.secciones.map((s) => ({
+              title: s.titulo,
+              product_items: s.retailerIds.map((id) => ({
+                product_retailer_id: id,
+              })),
+            })),
+          },
+        }),
+      );
+      return 'lista';
+    } catch (err) {
+      // El feed del catálogo se refresca cada hora: un producto recién
+      // creado en Supabase puede no estar todavía en Meta, y Meta rechaza
+      // la lista entera por un solo id desconocido. Mejor tarjetas que
+      // dejar al cliente sin respuesta.
+      this.logger.warn(
+        `product_list rechazado, se mandan tarjetas: ${(err as Error).message}`,
+      );
+      await this.enviarTarjetasProductos(
+        canal,
+        destinatarioId,
+        tarjetasFallback,
+      );
+      return 'tarjetas';
+    }
   }
 
   /**
@@ -152,7 +308,7 @@ export class MetaGraphService {
     url: string,
   ): Promise<void> {
     if (!this.whatsappToken || !this.whatsappPhoneNumberId) {
-      throw new Error('WhatsApp no está configurado.');
+      throw new ServiceUnavailableException('WhatsApp no está configurado.');
     }
     const res = await fetch(
       `https://graph.facebook.com/${this.version}/${this.whatsappPhoneNumberId}/messages`,
@@ -181,7 +337,40 @@ export class MetaGraphService {
     );
     if (!res.ok) {
       const cuerpo = await res.text().catch(() => '');
-      throw new Error(`WhatsApp Graph API respondió ${res.status}: ${cuerpo}`);
+      throw new ServiceUnavailableException(
+        `WhatsApp Graph API respondió ${res.status}: ${cuerpo}`,
+      );
+    }
+  }
+
+  private async enviarWhatsappInteractivo(
+    destinatarioId: string,
+    interactive: Record<string, unknown>,
+  ): Promise<void> {
+    if (!this.whatsappToken || !this.whatsappPhoneNumberId) {
+      throw new ServiceUnavailableException('WhatsApp no está configurado.');
+    }
+    const res = await fetch(
+      `https://graph.facebook.com/${this.version}/${this.whatsappPhoneNumberId}/messages`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.whatsappToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messaging_product: 'whatsapp',
+          to: destinatarioId,
+          type: 'interactive',
+          interactive,
+        }),
+      },
+    );
+    if (!res.ok) {
+      const detalle = await res.text().catch(() => '');
+      throw new ServiceUnavailableException(
+        `WhatsApp Graph API respondió ${res.status}: ${detalle}`,
+      );
     }
   }
 
@@ -190,7 +379,7 @@ export class MetaGraphService {
     producto: TarjetaProducto,
   ): Promise<void> {
     if (!this.whatsappToken || !this.whatsappPhoneNumberId) {
-      throw new Error('WhatsApp no está configurado.');
+      throw new ServiceUnavailableException('WhatsApp no está configurado.');
     }
     const cuerpo = [
       producto.descripcion,
@@ -238,7 +427,9 @@ export class MetaGraphService {
     );
     if (!res.ok) {
       const detalle = await res.text().catch(() => '');
-      throw new Error(`WhatsApp Graph API respondió ${res.status}: ${detalle}`);
+      throw new ServiceUnavailableException(
+        `WhatsApp Graph API respondió ${res.status}: ${detalle}`,
+      );
     }
   }
 
@@ -247,7 +438,7 @@ export class MetaGraphService {
     texto: string,
   ): Promise<void> {
     if (!this.whatsappToken || !this.whatsappPhoneNumberId) {
-      throw new Error('WhatsApp no está configurado.');
+      throw new ServiceUnavailableException('WhatsApp no está configurado.');
     }
     const res = await fetch(
       `https://graph.facebook.com/${this.version}/${this.whatsappPhoneNumberId}/messages`,
@@ -267,7 +458,9 @@ export class MetaGraphService {
     );
     if (!res.ok) {
       const cuerpo = await res.text().catch(() => '');
-      throw new Error(`WhatsApp Graph API respondió ${res.status}: ${cuerpo}`);
+      throw new ServiceUnavailableException(
+        `WhatsApp Graph API respondió ${res.status}: ${cuerpo}`,
+      );
     }
   }
 
@@ -276,7 +469,9 @@ export class MetaGraphService {
     texto: string,
   ): Promise<void> {
     if (!this.pageToken || !this.pageId) {
-      throw new Error('Messenger/Instagram no están configurados.');
+      throw new ServiceUnavailableException(
+        'Messenger/Instagram no están configurados.',
+      );
     }
     const res = await fetch(
       `https://graph.facebook.com/${this.version}/${this.pageId}/messages`,
@@ -295,7 +490,7 @@ export class MetaGraphService {
     );
     if (!res.ok) {
       const cuerpo = await res.text().catch(() => '');
-      throw new Error(
+      throw new ServiceUnavailableException(
         `Messenger/Instagram Graph API respondió ${res.status}: ${cuerpo}`,
       );
     }

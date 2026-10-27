@@ -46,6 +46,18 @@ export interface CategoriaDto {
   orden: number;
 }
 
+/**
+ * Un producto entra al catálogo de Meta solo si tiene foto y slug — el
+ * feed lo excluye si no. El bot usa este mismo criterio para armar listas
+ * de productos de WhatsApp: un `product_retailer_id` que no está en el
+ * catálogo hace que Meta rechace el mensaje entero.
+ */
+export function entraEnCatalogoMeta<
+  T extends Pick<ProductoDto, 'imagen_url' | 'slug'>,
+>(producto: T): producto is T & { imagen_url: string; slug: string } {
+  return Boolean(producto.imagen_url && producto.slug);
+}
+
 @Injectable()
 export class CatalogService {
   private readonly logger = new Logger(CatalogService.name);
@@ -127,15 +139,9 @@ export class CatalogService {
     const filas: string[][] = [];
 
     for (const producto of productos) {
-      if (!producto.imagen_url) {
+      if (!entraEnCatalogoMeta(producto)) {
         this.logger.warn(
-          `Feed: excluido "${producto.nombre}" (${producto.id}) — sin imagen.`,
-        );
-        continue;
-      }
-      if (!producto.slug) {
-        this.logger.warn(
-          `Feed: excluido "${producto.nombre}" (${producto.id}) — sin slug.`,
+          `Feed: excluido "${producto.nombre}" (${producto.id}) — ${producto.imagen_url ? 'sin slug' : 'sin imagen'}.`,
         );
         continue;
       }

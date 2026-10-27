@@ -4,7 +4,10 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { CatalogService } from '../catalog/catalog.service';
+import {
+  CatalogService,
+  entraEnCatalogoMeta,
+} from '../catalog/catalog.service';
 import { PedidosService } from '../pedidos/pedidos.service';
 import { MetaGraphService } from './meta-graph.service';
 import { ConversionesMetaService } from './conversiones-meta.service';
@@ -110,9 +113,10 @@ Reglas estrictas:
 - El costo de domicilio SIEMPRE es el que te devuelve una herramienta (obtener_horario si preguntan antes de armar un pedido, calcular_pedido si ya lo están armando), literal — nunca digas "el domicilio es gratis" ni lo redondees a $0 salvo que la herramienta lo devuelva exactamente en $0. Es un error grave que ya pasó antes: perdés plata real de la pizzería si lo regalás por error.
 - Si te preguntan cuánto cuesta el domicilio sin estar todavía armando un pedido, usá obtener_horario — ahí también viene ese dato real.
 - Si te preguntan qué otros productos venden, o qué tienen aparte de pizza, usá obtener_categorias para responder con las categorías reales del catálogo — nunca digas "solo vendemos pizza" de memoria, hoy también hay panzerotti y bebidas.
-- Si el cliente pide el menú, pregunta qué tienen, o pide opciones de una categoría (por ejemplo "qué pizzas tienen", "algo para tomar", "qué me recomendás"), usá mostrar_productos — manda hasta 3 tarjetas con foto, precio y un botón para agregar al pedido. NO listes productos ni precios vos en el mensaje, eso ya lo manda la herramienta.
-- El objetivo de la conversación es cerrar la venta ahí mismo, sin que el cliente tenga que salir de WhatsApp — nunca uses enviar_link_catalogo como respuesta por defecto ni como forma de evitar recomendar algo vos mismo. Usala ÚNICA Y EXCLUSIVAMENTE cuando el cliente pida el link completo de forma explícita (por ejemplo "mandame el link", "quiero ver todo el menú"); en cualquier otro caso preferí mostrar_productos o consultar_producto y seguí guiándolo hacia terminar el pedido en el chat.
-- Si el cliente pregunta por un producto específico (por ejemplo "cuánto vale la pizza hawaiana", "tienen pizza margarita personal"), usá consultar_producto con el nombre de ese producto. Si la herramienta te dice que no lo encontró, decile simplemente que no tenemos ese producto en el menú y ofrecele el catálogo o mostrarle los productos disponibles — nunca le preguntes de qué local o pizzería está hablando, vos ya sabés que sos el asistente de Pizzería Horebs.
+- El objetivo de la conversación es cerrar la venta ahí mismo, sin que el cliente tenga que salir de WhatsApp — nunca le mandes links a otra página ni le digas que pida por el sitio web.
+- Si el cliente pide el menú, la carta o el catálogo, o pregunta en general qué venden, usá enviar_catalogo — le llega el menú completo dentro de WhatsApp, con fotos, precios y carrito.
+- Si el cliente pide opciones de una categoría o una recomendación (por ejemplo "qué pizzas tienen", "algo para tomar", "qué me recomendás"), usá mostrar_productos — le llega una lista con foto, precio por tamaño y botón para agregar al carrito. NO listes productos ni precios vos en el mensaje, eso ya lo manda la herramienta.
+- Si el cliente pregunta por un producto específico (por ejemplo "cuánto vale la pizza hawaiana", "tienen pizza margarita personal"), usá consultar_producto con el nombre de ese producto. Si la herramienta te dice que no lo encontró, decile simplemente que no tenemos ese producto en el menú y ofrecele mandarle el menú — nunca le preguntes de qué local o pizzería está hablando, vos ya sabés que sos el asistente de Pizzería Horebs.
 - Cuando el mensaje del cliente sea "Quiero pedir <nombre de producto>" (esto pasa cuando toca el botón "Agregar al pedido" de una tarjeta), tratalo como el inicio de un pedido de ese producto — seguí el flujo normal de toma de pedido de abajo, preguntando el tamaño si el producto tiene más de uno.
 - Si el pedido del cliente es vago o genérico (por ejemplo "quiero más información", "contame más", "necesito ayuda") y no queda claro qué dato específico necesita, NO llames a ninguna herramienta todavía — preguntale primero si quiere ver el menú, el horario, el estado de su pedido, o hablar con alguien del equipo. Usá una herramienta recién cuando el cliente ya haya aclarado qué necesita.
 - Si te preguntan algo que ninguna herramienta puede responder, o el cliente pide hablar con alguien del equipo, usá la herramienta derivar_a_humano.
@@ -133,16 +137,16 @@ Cómo tomar un pedido (importante, seguí este orden):
 const HERRAMIENTAS = [
   {
     type: 'function',
-    name: 'enviar_link_catalogo',
+    name: 'enviar_catalogo',
     description:
-      'Manda el link del catálogo completo con fotos como botón de WhatsApp. Usar ÚNICAMENTE cuando el cliente pide ver el catálogo COMPLETO de forma explícita (ej. "mandame el link", "quiero ver todo el menú") — nunca como respuesta por defecto ni para evitar recomendar un producto. El objetivo es cerrar el pedido dentro del chat, no mandar al cliente a otra pantalla; para "qué tienen"/"qué pizzas hay"/recomendaciones en general, usar mostrar_productos o consultar_producto.',
+      'Manda el menú completo como catálogo dentro de WhatsApp (fotos, precios y carrito, sin salir del chat). Usar cuando el cliente pide el menú, la carta, el catálogo, o pregunta en general qué venden.',
     parameters: { type: 'object', properties: {} },
   },
   {
     type: 'function',
     name: 'mostrar_productos',
     description:
-      'Manda hasta 3 tarjetas de producto (foto, precio y botón para agregar al pedido). Usar cuando el cliente pide el menú, pregunta qué tienen, pide opciones de una categoría, o pide una recomendación — nunca listes productos ni precios vos mismo en el mensaje.',
+      'Manda una lista de productos del catálogo dentro de WhatsApp (foto, precio por tamaño y botón para agregar al carrito). Usar cuando el cliente pide opciones de una categoría (ej. "qué pizzas tienen", "algo para tomar") o pide una recomendación — nunca listes productos ni precios vos mismo en el mensaje.',
     parameters: {
       type: 'object',
       properties: {
@@ -433,17 +437,19 @@ export class GeminiService {
       );
       if (!llamada || respuesta.status !== 'requires_action') break;
 
-      if (llamada.name === 'enviar_link_catalogo') {
-        const textoCatalogo = `Mirá nuestro catálogo completo con fotos y precios acá: ${URL_CATALOGO}`;
-        await this.metaGraph.enviarBotonCatalogo(
+      if (llamada.name === 'enviar_catalogo') {
+        const enviado = await this.metaGraph.enviarCatalogo(
           canal,
           identificadorExterno,
           URL_CATALOGO,
+          await this.retailerIdMiniatura(),
         );
         await this.conversaciones.registrarMensaje(
           conversacionId,
           'saliente_bot',
-          textoCatalogo,
+          enviado === 'catalogo'
+            ? 'Menú enviado como catálogo de WhatsApp.'
+            : `Mirá nuestro catálogo completo con fotos y precios acá: ${URL_CATALOGO}`,
         );
         await this.conversaciones.guardarInteraccionGemini(
           canal,
@@ -455,17 +461,17 @@ export class GeminiService {
 
       if (llamada.name === 'mostrar_productos') {
         const consulta = String(llamada.arguments.consulta ?? '');
-        const tarjetas = await this.enviarTarjetasProductos(
+        const mostrados = await this.enviarProductos(
           canal,
           identificadorExterno,
           consulta,
         );
-        if (tarjetas.length > 0) {
-          const textoTarjetas = `Productos mostrados: ${tarjetas.map((t) => t.nombre).join(', ')}`;
+        if (mostrados.length > 0) {
+          const textoProductos = `Productos mostrados: ${mostrados.join(', ')}`;
           await this.conversaciones.registrarMensaje(
             conversacionId,
             'saliente_bot',
-            textoTarjetas,
+            textoProductos,
           );
         }
         await this.conversaciones.guardarInteraccionGemini(
@@ -631,38 +637,33 @@ export class GeminiService {
     return { encontrado: empatados[0].producto };
   }
 
+  /** Variante del primer producto destacado del catálogo, para la portada. */
+  private async retailerIdMiniatura(): Promise<string | undefined> {
+    const productos = await this.catalog.getProductos();
+    return productos.find(entraEnCatalogoMeta)?.variantes[0]?.id;
+  }
+
   /**
-   * Elige hasta 3 productos para mandar como tarjetas: si `consulta` matchea
-   * palabras del nombre/descripción de algún producto, se ordenan por
-   * puntaje; si no matchea nada o viene vacía, se usa el orden por
-   * defecto de getProductos() (destacado primero — los productos ancla
-   * confirmados en CLAUDE.md), tal cual ya usa el resto del catálogo.
+   * Elige los productos que matchean `consulta`: primero por categoría
+   * ("pizzas", "bebidas"), después por palabras del nombre/descripción
+   * ordenadas por puntaje; si nada matchea o viene vacía, se usa el orden
+   * por defecto de getProductos() (destacado primero — los productos ancla
+   * confirmados en CLAUDE.md). En WhatsApp va como lista nativa del
+   * catálogo agrupada por categoría; si no se puede, hasta 3 tarjetas.
+   * Devuelve los nombres de lo que se mostró.
    */
-  private async enviarTarjetasProductos(
+  private async enviarProductos(
     canal: CanalMensajeria,
     identificadorExterno: string,
     consulta: string,
-  ): Promise<{ nombre: string }[]> {
-    const productos = await this.catalog.getProductos();
+  ): Promise<string[]> {
+    const [productos, categorias] = await Promise.all([
+      this.catalog.getProductos(),
+      this.catalog.getCategorias(),
+    ]);
     if (productos.length === 0) return [];
 
-    const buscadas = palabrasSignificativas(consulta);
-    let elegidos = productos;
-    if (buscadas.length > 0) {
-      const puntuados = productos
-        .map((p) => ({
-          producto: p,
-          puntaje: palabrasSignificativas(
-            `${p.nombre} ${p.descripcion ?? ''}`,
-          ).filter((w) => buscadas.includes(w)).length,
-        }))
-        .filter((r) => r.puntaje > 0)
-        .sort((a, b) => b.puntaje - a.puntaje);
-      if (puntuados.length > 0) {
-        elegidos = puntuados.map((r) => r.producto);
-      }
-    }
-
+    const elegidos = this.elegirProductos(productos, categorias, consulta);
     const tarjetas = elegidos.slice(0, 3).map((p) => ({
       nombre: p.nombre,
       descripcion: p.descripcion,
@@ -672,12 +673,79 @@ export class GeminiService {
       ),
     }));
 
-    await this.metaGraph.enviarTarjetasProductos(
+    const enCatalogo = elegidos.filter(entraEnCatalogoMeta);
+    const secciones = categorias
+      .map((c) => ({
+        titulo: c.nombre,
+        productos: enCatalogo.filter((p) => p.categoria_id === c.id),
+      }))
+      .filter((s) => s.productos.length > 0);
+
+    const enviado = await this.metaGraph.enviarListaProductos(
       canal,
       identificadorExterno,
+      {
+        encabezado:
+          secciones.length === 1 ? secciones[0].titulo : NOMBRE_NEGOCIO,
+        cuerpo: 'Tocá un producto para ver el detalle y agregalo al carrito 🛒',
+        secciones: secciones.map((s) => ({
+          titulo: s.titulo,
+          retailerIds: s.productos.flatMap((p) => p.variantes.map((v) => v.id)),
+        })),
+      },
       tarjetas,
     );
-    return tarjetas.map((t) => ({ nombre: t.nombre }));
+    return enviado === 'lista'
+      ? secciones.flatMap((s) => s.productos.map((p) => p.nombre))
+      : tarjetas.map((t) => t.nombre);
+  }
+
+  /**
+   * Orden de prioridad: un producto nombrado ("pizza hawaiana personal")
+   * gana sobre su categoría; después la categoría ("pizzas", "bebidas");
+   * después palabras de la descripción; y si nada matchea, todo el menú.
+   */
+  private elegirProductos(
+    productos: Producto[],
+    categorias: { id: string; nombre: string }[],
+    consulta: string,
+  ): Producto[] {
+    const buscadas = palabrasSignificativas(consulta);
+    const puntuar = (texto: (p: Producto) => string) =>
+      productos
+        .map((p) => ({
+          producto: p,
+          puntaje: palabrasSignificativas(texto(p)).filter((w) =>
+            buscadas.includes(w),
+          ).length,
+        }))
+        .filter((r) => r.puntaje > 0)
+        .sort((a, b) => b.puntaje - a.puntaje)
+        .map((r) => r.producto);
+
+    const porNombre = puntuar((p) => p.nombre);
+    if (porNombre.length > 0) return porNombre;
+
+    // Raíz de 5 letras: "pizzas" → "pizza", "bebida" → "bebid". "pizza"
+    // está entre las palabras ignoradas de arriba, por eso la categoría se
+    // compara aparte.
+    const raiz = (palabra: string) =>
+      palabra.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').slice(0, 5);
+    const raicesConsulta = consulta
+      .split(/[^\p{L}0-9]+/u)
+      .filter((w) => w.length > 3)
+      .map(raiz);
+    const categoriasPedidas = new Set(
+      categorias
+        .filter((c) => raicesConsulta.includes(raiz(c.nombre)))
+        .map((c) => c.id),
+    );
+    if (categoriasPedidas.size > 0) {
+      return productos.filter((p) => categoriasPedidas.has(p.categoria_id));
+    }
+
+    const porDescripcion = puntuar((p) => `${p.nombre} ${p.descripcion ?? ''}`);
+    return porDescripcion.length > 0 ? porDescripcion : productos;
   }
 
   private async textoCategorias(): Promise<string> {
@@ -696,7 +764,7 @@ export class GeminiService {
       productos,
     );
     if (error)
-      return `${error} Si no se puede resolver, ofrecé mandar el link completo con enviar_link_catalogo.`;
+      return `${error} Si no se puede resolver, ofrecé mandarle el menú completo con enviar_catalogo.`;
     const variantes = encontrado!.variantes
       .map(
         (v) =>
