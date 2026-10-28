@@ -43,7 +43,7 @@ export default function BlogLikeButton({ slug }: { slug: string }) {
       setMeGusta(false);
       return;
     }
-    adminFetch(`/blog/posts/${slug}/likes/estado`)
+    adminFetch(`/blog/posts/${slug}/likes/yo`)
       .then((r) => (r.ok ? r.json() : { meGusta: false }))
       .then((d) => setMeGusta(!!d.meGusta))
       .catch(() => {});
@@ -61,8 +61,8 @@ export default function BlogLikeButton({ slug }: { slug: string }) {
     setTotal((t) => (t ?? 0) + (meGusta ? -1 : 1));
 
     try {
-      const res = await adminFetch(`/blog/posts/${slug}/likes`, {
-        method: 'POST',
+      const res = await adminFetch(`/blog/posts/${slug}/likes/yo`, {
+        method: meGustaAnterior ? 'DELETE' : 'PUT',
       });
       if (!res.ok) throw new Error();
       const data = await res.json();

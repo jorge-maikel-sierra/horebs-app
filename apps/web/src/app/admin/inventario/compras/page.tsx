@@ -165,7 +165,7 @@ export default function InventarioComprasPage() {
 
   async function vincularInsumo(compraId: string, detalleId: string, insumoId: string) {
     if (!insumoId) return;
-    const res = await adminFetch(`/inventario/compras/detalle/${detalleId}/vincular`, {
+    const res = await adminFetch(`/inventario/compras/detalles/${detalleId}`, {
       method: 'PATCH',
       body: JSON.stringify({ insumo_id: insumoId }),
     });
@@ -189,8 +189,9 @@ export default function InventarioComprasPage() {
     setProcesandoId(detalleId);
     setError(null);
     try {
-      const res = await adminFetch(`/inventario/compras/detalle/${detalleId}/procesar`, {
+      const res = await adminFetch(`/inventario/compras/detalles/${detalleId}`, {
         method: 'PATCH',
+        body: JSON.stringify({ estado: 'procesado' }),
       });
       if (!res.ok) {
         throw new Error(
@@ -219,8 +220,9 @@ export default function InventarioComprasPage() {
   }
 
   async function excluirLinea(compraId: string, detalleId: string) {
-    const res = await adminFetch(`/inventario/compras/detalle/${detalleId}/excluir`, {
+    const res = await adminFetch(`/inventario/compras/detalles/${detalleId}`, {
       method: 'PATCH',
+      body: JSON.stringify({ estado: 'excluido' }),
     });
     if (!res.ok) return;
     setCompras((prev) =>

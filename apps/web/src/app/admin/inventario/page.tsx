@@ -133,7 +133,7 @@ export default function InventarioInsumosPage() {
     }
     setGuardandoAjuste(true);
     try {
-      const res = await adminFetch(`/inventario/insumos/${id}/ajuste`, {
+      const res = await adminFetch(`/inventario/insumos/${id}/ajustes`, {
         method: 'POST',
         body: JSON.stringify({
           tipo: ajuste.tipo,

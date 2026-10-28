@@ -164,7 +164,7 @@ export default function DetalleClientePage() {
     motivo: string,
   ): Promise<string | null> {
     try {
-      const res = await adminFetch(`/admin/clientes/${id}/ajuste-puntos`, {
+      const res = await adminFetch(`/admin/clientes/${id}/movimientos-puntos`, {
         method: 'POST',
         body: JSON.stringify({ puntos, motivo }),
       });

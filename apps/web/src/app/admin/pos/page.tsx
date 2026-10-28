@@ -7,6 +7,7 @@ import { adminFetch } from '@/lib/admin-fetch';
 import { formatPrecio, formatHora } from '@/lib/formato';
 import CargandoSkeleton from '@/components/CargandoSkeleton';
 import { leerErrorApi } from '@/lib/error-api';
+import { NEGOCIO } from '@/lib/negocio';
 
 type Variante = {
   id: string;
@@ -74,8 +75,6 @@ type TurnoCerrado = {
   monto_esperado_efectivo: number;
   diferencia_caja: number | null;
 };
-
-const COSTO_DOMICILIO_DEFAULT = 5000;
 
 function IconMesa() {
   return (
@@ -302,7 +301,7 @@ function PosInterno() {
   );
   const [modalidad, setModalidad] = useState<Modalidad>('local');
   const [direccionEntrega, setDireccionEntrega] = useState('');
-  const [costoDomicilio, setCostoDomicilio] = useState(COSTO_DOMICILIO_DEFAULT);
+  const [costoDomicilio, setCostoDomicilio] = useState<number>(NEGOCIO.costoDomicilio);
   const [metodoPago, setMetodoPago] = useState<
     'efectivo' | 'transferencia' | 'tarjeta'
   >('efectivo');
@@ -487,7 +486,7 @@ function PosInterno() {
     }
     setAbriendoTurno(true);
     try {
-      const res = await adminFetch('/turnos/abrir', {
+      const res = await adminFetch('/turnos', {
         method: 'POST',
         body: JSON.stringify({ monto_inicial: monto }),
       });
@@ -543,9 +542,10 @@ function PosInterno() {
     }
     setCerrandoTurno(true);
     try {
-      const res = await adminFetch('/turnos/cerrar', {
-        method: 'POST',
+      const res = await adminFetch('/turnos/actual', {
+        method: 'PATCH',
         body: JSON.stringify({
+          estado: 'cerrado',
           monto_final_contado: montoContadoNum,
           notas_cierre: notasCierre.trim() || undefined,
         }),
@@ -636,7 +636,7 @@ function PosInterno() {
       setEditandoPrecioId(null);
       setModalidad('local');
       setDireccionEntrega('');
-      setCostoDomicilio(COSTO_DOMICILIO_DEFAULT);
+      setCostoDomicilio(NEGOCIO.costoDomicilio);
       setMetodoPago('efectivo');
       setSaldoPuntos(null);
       setUsarPuntos(false);

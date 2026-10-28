@@ -133,8 +133,8 @@ function FilaTablero({ fila, onCambio }: { fila: TableroFila; onCambio: () => vo
     setErrorLiquidar(null);
     setLiquidando(true);
     try {
-      const res = await adminFetch(`/nomina/semanas/${semana.id}/liquidar`, {
-        method: 'POST',
+      const res = await adminFetch(`/nomina/semanas/${semana.id}/liquidacion`, {
+        method: 'PUT',
         body: JSON.stringify({}),
       });
       if (!res.ok) {
@@ -410,8 +410,8 @@ function MiNomina() {
   useEffect(() => {
     async function cargar() {
       const [resActual, resHistorico] = await Promise.all([
-        adminFetch('/nomina/mi-semana'),
-        adminFetch('/nomina/mi-historico'),
+        adminFetch('/nomina/yo/semana-actual'),
+        adminFetch('/nomina/yo/historico'),
       ]);
       if (resActual.ok) {
         const body = await resActual.json();

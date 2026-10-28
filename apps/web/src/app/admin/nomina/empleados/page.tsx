@@ -268,12 +268,18 @@ function FilaEmpleado({
   }
 
   async function desactivar() {
-    await adminFetch(`/nomina/empleados/${emp.id}/desactivar`, { method: 'POST' });
+    await adminFetch(`/nomina/empleados/${emp.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ activo: false }),
+    });
     await onCambio();
   }
 
   async function activar() {
-    await adminFetch(`/nomina/empleados/${emp.id}/activar`, { method: 'POST' });
+    await adminFetch(`/nomina/empleados/${emp.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ activo: true }),
+    });
     await onCambio();
   }
 
