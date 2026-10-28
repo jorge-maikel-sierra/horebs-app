@@ -1,10 +1,21 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { UsuarioActual } from '../auth/usuario.decorator';
 import { ComprasService } from './compras.service';
 import type { CrearCompraInput } from './compras.service';
 import type { UsuarioAutenticado } from '../auth/roles.guard';
+import { UuidPipe } from '../common/pipes/uuid.pipe';
+import { ValidarBodyPipe } from '../common/pipes/validar-body.pipe';
+import { ESQUEMA_VINCULAR_DETALLE } from './esquemas';
 
 @Controller('inventario/compras')
 @UseGuards(RolesGuard)
@@ -29,7 +40,7 @@ export class ComprasController {
   @Patch('detalle/:id/procesar')
   @Roles('admin', 'empleado')
   async procesar(
-    @Param('id') id: string,
+    @Param('id', UuidPipe) id: string,
     @UsuarioActual() usuario: UsuarioAutenticado,
   ) {
     await this.compras.procesarLinea(id, usuario.id);
@@ -38,14 +49,18 @@ export class ComprasController {
 
   @Patch('detalle/:id/excluir')
   @Roles('admin', 'empleado')
-  async excluir(@Param('id') id: string) {
+  async excluir(@Param('id', UuidPipe) id: string) {
     await this.compras.excluirLinea(id);
     return { ok: true };
   }
 
   @Patch('detalle/:id/vincular')
   @Roles('admin', 'empleado')
-  async vincular(@Param('id') id: string, @Body() body: { insumo_id: string }) {
+  async vincular(
+    @Param('id', UuidPipe) id: string,
+    @Body(new ValidarBodyPipe(ESQUEMA_VINCULAR_DETALLE))
+    body: { insumo_id: string },
+  ) {
     await this.compras.vincularInsumo(id, body.insumo_id);
     return { ok: true };
   }

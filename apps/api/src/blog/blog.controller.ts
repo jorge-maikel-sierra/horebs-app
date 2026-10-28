@@ -15,6 +15,9 @@ import {
   UsuarioSupabaseActual,
 } from '../auth/supabase-auth.guard';
 import type { UsuarioSupabase } from '../auth/supabase-auth.guard';
+import { UuidPipe } from '../common/pipes/uuid.pipe';
+import { ValidarBodyPipe } from '../common/pipes/validar-body.pipe';
+import { ESQUEMA_COMENTARIO } from './esquemas';
 
 @Controller('blog')
 export class BlogController {
@@ -41,17 +44,18 @@ export class BlogController {
   @UseGuards(SupabaseAuthGuard)
   crearComentario(
     @Param('slug') slug: string,
-    @Body() body: CrearComentarioInput,
+    @Body(new ValidarBodyPipe(ESQUEMA_COMENTARIO)) body: CrearComentarioInput,
     @UsuarioSupabaseActual() usuario: UsuarioSupabase,
   ) {
-    const nombre = `${usuario.nombre} ${usuario.apellido}`.trim() || usuario.email;
+    const nombre =
+      `${usuario.nombre} ${usuario.apellido}`.trim() || usuario.email;
     return this.blog.crearComentario(slug, usuario.id, nombre, body);
   }
 
   @Delete('comentarios/:id')
   @UseGuards(SupabaseAuthGuard)
   eliminarComentario(
-    @Param('id') id: string,
+    @Param('id', UuidPipe) id: string,
     @UsuarioSupabaseActual() usuario: UsuarioSupabase,
   ) {
     return this.blog.eliminarComentario(id, usuario.id);

@@ -1,8 +1,17 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RecetasService } from './recetas.service';
 import type { CrearRecetaInput, CrearSubrecetaInput } from './recetas.service';
+import { UuidPipe } from '../common/pipes/uuid.pipe';
 
 @Controller('inventario')
 @UseGuards(RolesGuard)
@@ -23,7 +32,10 @@ export class RecetasController {
 
   @Patch('subrecetas/:id')
   @Roles('admin')
-  editarSubreceta(@Param('id') id: string, @Body() body: CrearSubrecetaInput) {
+  editarSubreceta(
+    @Param('id', UuidPipe) id: string,
+    @Body() body: CrearSubrecetaInput,
+  ) {
     return this.recetas.editarSubreceta(id, body);
   }
 
@@ -41,7 +53,10 @@ export class RecetasController {
 
   @Patch('recetas/:id')
   @Roles('admin')
-  editarReceta(@Param('id') id: string, @Body() body: CrearRecetaInput) {
+  editarReceta(
+    @Param('id', UuidPipe) id: string,
+    @Body() body: CrearRecetaInput,
+  ) {
     return this.recetas.editarReceta(id, body);
   }
 }

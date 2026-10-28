@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { errorDeBase } from '../common/error-de-base';
+import { finDiaBogota, inicioDiaBogota } from '../common/horario';
 
 export interface MovimientoDto {
   id: string;
@@ -26,7 +27,7 @@ export interface FiltrosMovimientos {
 const MOVIMIENTO_SELECT =
   'id, insumo_id, tipo, cantidad_g, referencia_tipo, referencia_id, motivo, created_at, insumos(nombre, unidad_medida)';
 
-const MAX_LIMITE = 200;
+export const MAX_LIMITE = 200;
 
 /**
  * Solo lectura del ledger que ya escriben aplicar_movimientos_stock() y
@@ -48,8 +49,10 @@ export class MovimientosService {
 
     if (filtros.insumoId) query = query.eq('insumo_id', filtros.insumoId);
     if (filtros.tipo) query = query.eq('tipo', filtros.tipo);
-    if (filtros.desde) query = query.gte('created_at', filtros.desde);
-    if (filtros.hasta) query = query.lte('created_at', filtros.hasta);
+    if (filtros.desde)
+      query = query.gte('created_at', inicioDiaBogota(filtros.desde));
+    if (filtros.hasta)
+      query = query.lte('created_at', finDiaBogota(filtros.hasta));
 
     const { data, error } = await query;
     if (error) throw errorDeBase(error);

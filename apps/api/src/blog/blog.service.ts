@@ -51,7 +51,7 @@ const BLOG_POST_SELECT =
 
 const COMENTARIO_SELECT = 'id, usuario_id, autor_nombre, contenido, created_at';
 
-const MAX_LARGO_COMENTARIO = 2000;
+export const MAX_LARGO_COMENTARIO = 2000;
 
 @Injectable()
 export class BlogService {

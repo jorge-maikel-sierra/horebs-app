@@ -2,6 +2,7 @@ import { setDefaultResultOrder } from 'node:dns';
 import { NestFactory } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
 import { AppModule } from './app.module';
+import { ContentTypeGuard } from './common/content-type.guard';
 import { ProblemDetailsFilter } from './common/problem-details.filter';
 
 async function bootstrap() {
@@ -32,6 +33,8 @@ async function bootstrap() {
 
   // Todo error sale como Problem Details (RFC 9457).
   app.useGlobalFilters(new ProblemDetailsFilter());
+  // 415 si un POST/PUT/PATCH trae un body que no es JSON (RFC 9110).
+  app.useGlobalGuards(new ContentTypeGuard());
 
   // Railway manda SIGTERM en cada redeploy — sin esto, Nest mata el
   // proceso al toque y corta requests en curso a mitad de camino.

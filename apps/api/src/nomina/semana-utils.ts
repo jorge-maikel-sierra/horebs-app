@@ -1,11 +1,13 @@
 // Duplicado a propósito en apps/web/src/lib/semana.ts — este monorepo no
 // tiene un paquete compartido entre apps/api y apps/web (mismo criterio ya
-// usado para OFFSET_ZONA_HORARIA en informes.service.ts).
+// usado para el offset de Bogotá en common/horario.ts).
 //
 // El negocio opera en hora de Bogotá — usar new Date() directo daría el
 // día en UTC, que ya es "mañana" desde ~7pm hora local en adelante.
 export function hoyBogota(): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date());
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Bogota',
+  }).format(new Date());
 }
 
 export interface RangoSemana {

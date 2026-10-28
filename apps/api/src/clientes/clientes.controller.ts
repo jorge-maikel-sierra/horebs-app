@@ -18,6 +18,9 @@ import { PuntosService } from './puntos.service';
 import type { ConsultaDirectorio } from './clientes-directorio.service';
 import type { EditarClienteInput } from './clientes.service';
 import type { UsuarioAutenticado } from '../auth/roles.guard';
+import { UuidPipe } from '../common/pipes/uuid.pipe';
+import { ValidarBodyPipe } from '../common/pipes/validar-body.pipe';
+import { ESQUEMA_AJUSTE_PUNTOS } from './esquemas';
 
 @Controller('admin/clientes')
 @UseGuards(RolesGuard)
@@ -43,39 +46,40 @@ export class ClientesController {
 
   @Get(':id')
   @Roles('admin', 'empleado')
-  obtenerDetalle(@Param('id') id: string) {
+  obtenerDetalle(@Param('id', UuidPipe) id: string) {
     return this.clientes.obtenerDetalle(id);
   }
 
   @Get(':id/pedidos')
   @Roles('admin', 'empleado')
-  listarPedidos(@Param('id') id: string) {
+  listarPedidos(@Param('id', UuidPipe) id: string) {
     return this.clientes.listarPedidos(id);
   }
 
   @Patch(':id')
   @Roles('admin', 'empleado')
-  editar(@Param('id') id: string, @Body() body: EditarClienteInput) {
+  editar(@Param('id', UuidPipe) id: string, @Body() body: EditarClienteInput) {
     return this.clientes.editar(id, body);
   }
 
   @Delete(':id')
   @Roles('admin')
-  eliminar(@Param('id') id: string) {
+  eliminar(@Param('id', UuidPipe) id: string) {
     return this.clientes.eliminar(id);
   }
 
   @Get(':id/movimientos-puntos')
   @Roles('admin', 'empleado')
-  listarMovimientosPuntos(@Param('id') id: string) {
+  listarMovimientosPuntos(@Param('id', UuidPipe) id: string) {
     return this.puntos.listarMovimientos(id);
   }
 
   @Post(':id/ajuste-puntos')
   @Roles('admin')
   ajustarPuntos(
-    @Param('id') id: string,
-    @Body() body: { puntos: number; motivo: string },
+    @Param('id', UuidPipe) id: string,
+    @Body(new ValidarBodyPipe(ESQUEMA_AJUSTE_PUNTOS))
+    body: { puntos: number; motivo: string },
     @UsuarioActual() usuario: UsuarioAutenticado,
   ) {
     return this.puntos.ajustarPuntos(id, body.puntos, body.motivo, usuario.id);

@@ -2,7 +2,9 @@ import {
   estadoAtencion,
   etiquetaHora,
   franjaVigente,
+  finDiaBogota,
   franjasEntrega,
+  inicioDiaBogota,
 } from './horario';
 
 /** Hora de Bogotá → Date (Colombia es UTC-5 todo el año). */
@@ -62,5 +64,20 @@ describe('franjaVigente y etiquetaHora', () => {
 
   it('formatea en 12 horas', () => {
     expect(etiquetaHora('2026-10-28T18:30:00-05:00')).toBe('6:30 p.m.');
+  });
+});
+
+describe('inicioDiaBogota y finDiaBogota', () => {
+  it('acotan el día en hora de Bogotá, no en UTC', () => {
+    expect(inicioDiaBogota('2026-10-27')).toBe('2026-10-27T00:00:00.000-05:00');
+    expect(finDiaBogota('2026-10-27')).toBe('2026-10-27T23:59:59.999-05:00');
+    // Una venta a las 9 p.m. de Bogotá (02:00 UTC del 28) cae dentro del 27.
+    const venta = new Date('2026-10-28T02:00:00Z').getTime();
+    expect(venta).toBeGreaterThanOrEqual(
+      new Date(inicioDiaBogota('2026-10-27')).getTime(),
+    );
+    expect(venta).toBeLessThanOrEqual(
+      new Date(finDiaBogota('2026-10-27')).getTime(),
+    );
   });
 });

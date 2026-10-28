@@ -1,7 +1,21 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
-import { EmpleadosService, type CrearEmpleadoInput, type EditarEmpleadoInput } from './empleados.service';
+import {
+  EmpleadosService,
+  type CrearEmpleadoInput,
+  type EditarEmpleadoInput,
+} from './empleados.service';
+import { UuidPipe } from '../common/pipes/uuid.pipe';
 
 @Controller('nomina/empleados')
 @UseGuards(RolesGuard)
@@ -22,19 +36,19 @@ export class EmpleadosController {
 
   @Patch(':id')
   @Roles('admin')
-  editar(@Param('id') id: string, @Body() body: EditarEmpleadoInput) {
+  editar(@Param('id', UuidPipe) id: string, @Body() body: EditarEmpleadoInput) {
     return this.empleados.editar(id, body);
   }
 
   @Post(':id/desactivar')
   @Roles('admin')
-  desactivar(@Param('id') id: string) {
+  desactivar(@Param('id', UuidPipe) id: string) {
     return this.empleados.desactivar(id);
   }
 
   @Post(':id/activar')
   @Roles('admin')
-  activar(@Param('id') id: string) {
+  activar(@Param('id', UuidPipe) id: string) {
     return this.empleados.activar(id);
   }
 }

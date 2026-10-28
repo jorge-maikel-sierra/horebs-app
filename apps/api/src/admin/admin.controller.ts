@@ -24,6 +24,15 @@ import type { UsuarioAutenticado } from '../auth/roles.guard';
 import type { CrearVentaInput, ItemVentaInput } from './admin.service';
 import type { CrearBlogPostInput } from '../blog/blog.service';
 import type { Rol } from '../auth/roles.decorator';
+import { UuidPipe } from '../common/pipes/uuid.pipe';
+import { ValidarBodyPipe } from '../common/pipes/validar-body.pipe';
+import {
+  ESQUEMA_ASIGNAR_ROL,
+  ESQUEMA_ESTADO_CONVERSACION,
+  ESQUEMA_MENSAJE_CONVERSACION,
+  ESQUEMA_MODULO,
+  ESQUEMA_SEGUIMIENTO_CONFIG,
+} from './esquemas';
 
 @Controller('admin')
 @UseGuards(RolesGuard)
@@ -59,7 +68,7 @@ export class AdminController {
   @Patch('pedidos/:id')
   @Roles('admin', 'empleado')
   editarPedido(
-    @Param('id') id: string,
+    @Param('id', UuidPipe) id: string,
     @Body()
     body: {
       metodo_pago?: string;
@@ -74,7 +83,7 @@ export class AdminController {
   @Delete('pedidos/:id')
   @Roles('admin')
   eliminarPedido(
-    @Param('id') id: string,
+    @Param('id', UuidPipe) id: string,
     @UsuarioActual() usuario: UsuarioAutenticado,
   ) {
     return this.admin.eliminarPedido(id, usuario.id);
@@ -83,7 +92,9 @@ export class AdminController {
   /** Link firmado (10 min) al comprobante de transferencia que mandó el cliente. */
   @Get('pedidos/:id/comprobante')
   @Roles('admin', 'empleado')
-  async verComprobante(@Param('id') id: string): Promise<{ url: string }> {
+  async verComprobante(
+    @Param('id', UuidPipe) id: string,
+  ): Promise<{ url: string }> {
     const url = await this.pedidos.urlComprobante(id, 10 * 60);
     if (!url) {
       throw new NotFoundException('Este pedido no tiene comprobante.');
@@ -94,7 +105,7 @@ export class AdminController {
   @Get('pedidos/:id/factura')
   @Roles('admin', 'empleado')
   async descargarFactura(
-    @Param('id') id: string,
+    @Param('id', UuidPipe) id: string,
     @Res({ passthrough: true }) res: Response,
   ): Promise<StreamableFile> {
     const { buffer, nombreArchivo } = await this.admin.generarFacturaPdf(id);
@@ -136,7 +147,10 @@ export class AdminController {
 
   @Patch('modulos/:id')
   @Roles('admin')
-  cambiarModulo(@Param('id') id: string, @Body() body: { activo?: unknown }) {
+  cambiarModulo(
+    @Param('id') id: string,
+    @Body(new ValidarBodyPipe(ESQUEMA_MODULO)) body: { activo?: unknown },
+  ) {
     return this.modulos.cambiar(id, body?.activo);
   }
 
@@ -148,13 +162,20 @@ export class AdminController {
 
   @Post('usuarios')
   @Roles('admin')
-  asignarRol(@Body() body: { email: string; rol: Rol; cedula?: string }) {
+  asignarRol(
+    @Body(new ValidarBodyPipe(ESQUEMA_ASIGNAR_ROL))
+    body: {
+      email: string;
+      rol: Rol;
+      cedula?: string;
+    },
+  ) {
     return this.admin.asignarRol(body.email, body.rol, body.cedula);
   }
 
   @Delete('usuarios/:id')
   @Roles('admin')
-  quitarRol(@Param('id') id: string) {
+  quitarRol(@Param('id', UuidPipe) id: string) {
     return this.admin.quitarRol(id);
   }
 
@@ -167,7 +188,11 @@ export class AdminController {
   @Patch('seguimiento/configuracion')
   @Roles('admin', 'empleado')
   actualizarConfiguracionSeguimiento(
-    @Body() body: { recordatorio_minutos: number; oferta_minutos: number },
+    @Body(new ValidarBodyPipe(ESQUEMA_SEGUIMIENTO_CONFIG))
+    body: {
+      recordatorio_minutos: number;
+      oferta_minutos: number;
+    },
   ) {
     return this.admin.actualizarConfiguracionSeguimiento(
       Number(body.recordatorio_minutos),
@@ -184,23 +209,25 @@ export class AdminController {
   @Patch('seguimiento/conversaciones/:id')
   @Roles('admin', 'empleado')
   actualizarEstadoConversacion(
-    @Param('id') id: string,
-    @Body() body: { estado: string },
+    @Param('id', UuidPipe) id: string,
+    @Body(new ValidarBodyPipe(ESQUEMA_ESTADO_CONVERSACION))
+    body: { estado: string },
   ) {
     return this.admin.actualizarEstadoConversacion(id, body.estado);
   }
 
   @Get('seguimiento/conversaciones/:id/mensajes')
   @Roles('admin', 'empleado')
-  listarMensajesConversacion(@Param('id') id: string) {
+  listarMensajesConversacion(@Param('id', UuidPipe) id: string) {
     return this.admin.listarMensajesConversacion(id);
   }
 
   @Post('seguimiento/conversaciones/:id/mensajes')
   @Roles('admin', 'empleado')
   enviarMensajeHumano(
-    @Param('id') id: string,
-    @Body() body: { texto: string },
+    @Param('id', UuidPipe) id: string,
+    @Body(new ValidarBodyPipe(ESQUEMA_MENSAJE_CONVERSACION))
+    body: { texto: string },
     @UsuarioActual() usuario: UsuarioAutenticado,
   ) {
     return this.admin.enviarMensajeHumano(id, body.texto, usuario.id);
@@ -231,7 +258,7 @@ export class AdminController {
   @Patch('blog/:id')
   @Roles('admin')
   actualizarBlogPost(
-    @Param('id') id: string,
+    @Param('id', UuidPipe) id: string,
     @Body() body: Partial<CrearBlogPostInput>,
   ) {
     return this.blog.actualizarBlogPost(id, body);
@@ -239,7 +266,7 @@ export class AdminController {
 
   @Delete('blog/:id')
   @Roles('admin')
-  eliminarBlogPost(@Param('id') id: string) {
+  eliminarBlogPost(@Param('id', UuidPipe) id: string) {
     return this.blog.eliminarBlogPost(id);
   }
 }

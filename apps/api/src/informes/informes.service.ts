@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { errorDeBase } from '../common/error-de-base';
+import { finDiaBogota, inicioDiaBogota } from '../common/horario';
 import { MENSAJE_DERIVACION } from '../mensajeria/aviso-equipo.service';
 import {
   agregarMetricasBot,
@@ -18,7 +19,6 @@ export type Granularidad = 'dia' | 'mes';
  * siguiente — agrupar/filtrar por fecha UTC cruda parte la noche de venta
  * por la mitad y corre pedidos de la noche al día siguiente.
  */
-const OFFSET_ZONA_HORARIA = '-05:00';
 const OFFSET_MS = 5 * 60 * 60 * 1000;
 
 export interface InformeDiaDto {
@@ -742,8 +742,8 @@ export class InformesService {
     return {
       desde,
       hasta,
-      desdeISO: `${desde}T00:00:00.000${OFFSET_ZONA_HORARIA}`,
-      hastaISO: `${hasta}T23:59:59.999${OFFSET_ZONA_HORARIA}`,
+      desdeISO: inicioDiaBogota(desde),
+      hastaISO: finDiaBogota(hasta),
     };
   }
 

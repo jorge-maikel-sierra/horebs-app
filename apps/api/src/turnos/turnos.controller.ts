@@ -4,6 +4,8 @@ import { Roles } from '../auth/roles.decorator';
 import { UsuarioActual } from '../auth/usuario.decorator';
 import { TurnosService } from './turnos.service';
 import type { UsuarioAutenticado } from '../auth/roles.guard';
+import { ValidarBodyPipe } from '../common/pipes/validar-body.pipe';
+import { ESQUEMA_ABRIR_TURNO, ESQUEMA_CERRAR_TURNO } from './esquemas';
 
 @Controller('turnos')
 @UseGuards(RolesGuard)
@@ -19,7 +21,8 @@ export class TurnosController {
   @Post('abrir')
   @Roles('admin', 'empleado')
   abrir(
-    @Body() body: { monto_inicial: number },
+    @Body(new ValidarBodyPipe(ESQUEMA_ABRIR_TURNO))
+    body: { monto_inicial: number },
     @UsuarioActual() usuario: UsuarioAutenticado,
   ) {
     return this.turnos.abrir(body.monto_inicial, usuario.id);
@@ -28,7 +31,8 @@ export class TurnosController {
   @Post('cerrar')
   @Roles('admin', 'empleado')
   cerrar(
-    @Body() body: { monto_final_contado?: number; notas_cierre?: string },
+    @Body(new ValidarBodyPipe(ESQUEMA_CERRAR_TURNO))
+    body: { monto_final_contado?: number; notas_cierre?: string },
     @UsuarioActual() usuario: UsuarioAutenticado,
   ) {
     return this.turnos.cerrar(

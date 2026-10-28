@@ -1,9 +1,27 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Put,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { UsuarioActual } from '../auth/usuario.decorator';
 import type { UsuarioAutenticado } from '../auth/roles.guard';
 import { NominaService, type RegistrarAdelantoInput } from './nomina.service';
+import { UuidPipe } from '../common/pipes/uuid.pipe';
+import { FechaPipe } from '../common/pipes/fecha.pipe';
+import { LimitePipe } from '../common/pipes/limite.pipe';
+import { ValidarBodyPipe } from '../common/pipes/validar-body.pipe';
+import { ESQUEMA_ASISTENCIA, ESQUEMA_LIQUIDAR_SEMANA } from './esquemas';
+
+/** Semanas de histórico que se pueden pedir de una vez (un año). */
+const LIMITE_MAX_HISTORICO = 52;
 
 @Controller('nomina')
 @UseGuards(RolesGuard)
@@ -12,32 +30,43 @@ export class NominaController {
 
   @Get('tablero')
   @Roles('admin')
-  tablero(@Query('semana_inicio') semanaInicio?: string) {
+  tablero(
+    @Query('semana_inicio', new FechaPipe('semana_inicio'))
+    semanaInicio?: string,
+  ) {
     return this.nomina.listarTableroSemanaActual(semanaInicio);
   }
 
   @Get('semanas/:id')
   @Roles('admin')
-  obtenerSemana(@Param('id') id: string) {
+  obtenerSemana(@Param('id', UuidPipe) id: string) {
     return this.nomina.obtenerSemana(id);
   }
 
   @Put('semanas/:id/asistencia/:fecha')
   @Roles('admin')
   marcarAsistencia(
-    @Param('id') id: string,
-    @Param('fecha') fecha: string,
-    @Body() body: { trabajo: boolean; motivo?: string },
+    @Param('id', UuidPipe) id: string,
+    @Param('fecha', new FechaPipe('fecha')) fecha: string,
+    @Body(new ValidarBodyPipe(ESQUEMA_ASISTENCIA))
+    body: { trabajo: boolean; motivo?: string },
     @UsuarioActual() usuario: UsuarioAutenticado,
   ) {
-    return this.nomina.marcarAsistencia(id, fecha, body.trabajo, body.motivo, usuario.id);
+    return this.nomina.marcarAsistencia(
+      id,
+      fecha,
+      body.trabajo,
+      body.motivo,
+      usuario.id,
+    );
   }
 
   @Post('semanas/:id/liquidar')
   @Roles('admin')
   liquidar(
-    @Param('id') id: string,
-    @Body() body: { notas?: string },
+    @Param('id', UuidPipe) id: string,
+    @Body(new ValidarBodyPipe(ESQUEMA_LIQUIDAR_SEMANA))
+    body: { notas?: string },
     @UsuarioActual() usuario: UsuarioAutenticado,
   ) {
     return this.nomina.liquidar(id, usuario.id, body.notas);
@@ -54,13 +83,13 @@ export class NominaController {
 
   @Delete('adelantos/:id')
   @Roles('admin')
-  eliminarAdelanto(@Param('id') id: string) {
+  eliminarAdelanto(@Param('id', UuidPipe) id: string) {
     return this.nomina.eliminarAdelanto(id);
   }
 
   @Get('empleados/:id/historico')
   @Roles('admin')
-  historicoEmpleado(@Param('id') id: string) {
+  historicoEmpleado(@Param('id', UuidPipe) id: string) {
     return this.nomina.obtenerHistoricoEmpleado(id);
   }
 
@@ -76,8 +105,10 @@ export class NominaController {
 
   @Get('mi-historico')
   @Roles('admin', 'empleado')
-  miHistorico(@UsuarioActual() usuario: UsuarioAutenticado, @Query('limit') limit?: string) {
-    const limite = limit ? Number(limit) : undefined;
+  miHistorico(
+    @UsuarioActual() usuario: UsuarioAutenticado,
+    @Query('limit', new LimitePipe(LIMITE_MAX_HISTORICO)) limite?: number,
+  ) {
     return this.nomina.listarMiHistorico(usuario.id, limite);
   }
 }
