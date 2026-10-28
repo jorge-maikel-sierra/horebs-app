@@ -2,6 +2,7 @@ import { setDefaultResultOrder } from 'node:dns';
 import { NestFactory } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
 import { AppModule } from './app.module';
+import { ProblemDetailsFilter } from './common/problem-details.filter';
 
 async function bootstrap() {
   // Railway (y otros hosts sin salida IPv6) resuelven dominios como
@@ -28,6 +29,9 @@ async function bootstrap() {
       ? frontendUrls
       : [...frontendUrls, /^http:\/\/localhost:\d+$/];
   app.enableCors({ origin: origenes, credentials: true });
+
+  // Todo error sale como Problem Details (RFC 9457).
+  app.useGlobalFilters(new ProblemDetailsFilter());
 
   // Railway manda SIGTERM en cada redeploy — sin esto, Nest mata el
   // proceso al toque y corta requests en curso a mitad de camino.
