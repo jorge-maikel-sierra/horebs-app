@@ -88,7 +88,9 @@ sospechoso por defecto en cualquier código nuevo que compare o agrupe fechas.
 - **Rutas:** sustantivos en plural, sin verbos. Un cambio de estado es un
   `PATCH` del recurso; algo idempotente es `PUT` (ej. `likes/yo`). Una ruta
   que se reemplaza convive con la vieja marcada `@Deprecada('/nueva')` hasta
-  que el web migre y pase una ventana de gracia.
+  que el web migre y pase una ventana de gracia. Quitar la vieja antes solo
+  lo decide el dueño del negocio, de forma explícita y por escrito (ej. el
+  sitio no tiene tráfico real); el revisor no lo infiere por su cuenta.
 - **Caché:** un `GET` público e igual para todos lleva `@CachePublica(60)`;
   todo lo demás sale con `no-store` (lo pone un interceptor global).
 - **Red de seguridad de refactors:** `test/rutas.snapshot.txt` fija las URLs.
