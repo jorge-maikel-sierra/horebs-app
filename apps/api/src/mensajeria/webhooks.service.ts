@@ -50,6 +50,8 @@ export interface EventoEntrante {
 // Respuesta fija cuando llega algo que el bot no sabe leer.
 const MENSAJE_SOLO_TEXTO =
   'Por ahora solo puedo leer mensajes de texto 🙏 ¿Me lo escribís?';
+const MENSAJE_AUDIO_NO_ENTENDIDO =
+  'No pude escuchar bien tu audio 🙏 ¿Me lo escribís?';
 
 // Mismo tope que calcular_pedido en gemini.service.ts.
 const MAX_CANTIDAD_ITEM = 20;
@@ -350,6 +352,18 @@ export class WebhooksService {
       );
     }
 
+    // Nota de voz: se transcribe y sigue como si el cliente lo hubiera
+    // escrito. En el historial queda con 🎤 para que el equipo lo sepa.
+    let textoHistorial = evento.texto;
+    if (evento.canal === 'whatsapp' && evento.media?.tipo === 'audio') {
+      const transcripcion = await this.transcribir(evento.media.id);
+      if (transcripcion) {
+        evento.texto = transcripcion;
+        evento.media = undefined;
+        textoHistorial = `🎤 ${transcripcion}`;
+      }
+    }
+
     const conversacion = await this.conversaciones.registrarInteraccion(
       evento.canal,
       evento.identificadorExterno,
@@ -373,7 +387,7 @@ export class WebhooksService {
     await this.conversaciones.registrarMensaje(
       conversacion.id,
       'entrante',
-      evento.texto,
+      textoHistorial,
     );
     // Foto o PDF: si el cliente tiene un pedido esperando el comprobante de
     // transferencia, se guarda ahí — aunque la conversación esté derivada.
@@ -396,15 +410,19 @@ export class WebhooksService {
       } else if (conversacion.estado === 'derivado') {
         return;
       }
+      const respuesta =
+        evento.media.tipo === 'audio'
+          ? MENSAJE_AUDIO_NO_ENTENDIDO
+          : MENSAJE_SOLO_TEXTO;
       await this.metaGraph.enviarMensajeSesion(
         evento.canal,
         evento.identificadorExterno,
-        MENSAJE_SOLO_TEXTO,
+        respuesta,
       );
       await this.conversaciones.registrarMensaje(
         conversacion.id,
         'saliente_bot',
-        MENSAJE_SOLO_TEXTO,
+        respuesta,
       );
       return;
     }
@@ -476,6 +494,18 @@ export class WebhooksService {
       'saliente_bot',
       respuesta,
     );
+  }
+
+  private async transcribir(mediaId: string): Promise<string | null> {
+    try {
+      const audio = await this.metaGraph.descargarMedia(mediaId);
+      return await this.gemini.transcribirAudio(audio.datos, audio.mime);
+    } catch (err) {
+      this.logger.warn(
+        `No se pudo descargar el audio ${mediaId}: ${(err as Error).message}`,
+      );
+      return null;
+    }
   }
 
   /**

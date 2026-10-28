@@ -998,6 +998,70 @@ export class GeminiService {
     return `Último pedido — estado: ${ultimo.estado}. Items: ${items}. Total: $${ultimo.total.toLocaleString('es-CO')}`;
   }
 
+  /**
+   * Nota de voz → texto, con la API generateContent (audio inline). Solo
+   * transcribe: el texto después sigue el mismo flujo que un mensaje
+   * escrito. null si no hay voz entendible o si el formato no es soportado
+   * (WhatsApp manda OGG/Opus; Gemini documenta OGG Vorbis).
+   */
+  async transcribirAudio(datos: Buffer, mime: string): Promise<string | null> {
+    if (!this.apiKey) return null;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), TIMEOUT_GEMINI_MS);
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${this.modelo}:generateContent`,
+        {
+          method: 'POST',
+          headers: {
+            'x-goog-api-key': this.apiKey,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  {
+                    text: 'Transcribí literalmente esta nota de voz en español de Colombia. Devolvé solo el texto dicho, sin comillas ni comentarios. Si no hay voz entendible, devolvé exactamente: (sin voz)',
+                  },
+                  {
+                    inline_data: {
+                      mime_type: mime.split(';')[0],
+                      data: datos.toString('base64'),
+                    },
+                  },
+                ],
+              },
+            ],
+          }),
+          signal: controller.signal,
+        },
+      );
+      if (!res.ok) {
+        const detalle = await res.text();
+        this.logger.warn(
+          `No se pudo transcribir el audio: ${res.status} ${detalle.slice(0, 200)}`,
+        );
+        return null;
+      }
+      const cuerpo = (await res.json()) as {
+        candidates?: { content?: { parts?: { text?: string }[] } }[];
+      };
+      const texto = (cuerpo.candidates?.[0]?.content?.parts ?? [])
+        .map((p) => p.text ?? '')
+        .join(' ')
+        .trim();
+      return texto && texto !== '(sin voz)' ? texto : null;
+    } catch (err) {
+      this.logger.warn(
+        `No se pudo transcribir el audio: ${(err as Error).message}`,
+      );
+      return null;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
   private async llamarGemini(
     body: Record<string, unknown>,
   ): Promise<RespuestaInteraction> {
