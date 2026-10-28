@@ -20,6 +20,7 @@ import { obtenerVariantesActivas } from '../pedidos/calcular-items';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Rol } from '../auth/roles.decorator';
 import type { EstadoConversacion } from '../mensajeria/conversaciones.service';
+import { errorDeBase } from '../common/error-de-base';
 
 /**
  * A diferencia del carrito público (calcularItems, precio 100% desde la
@@ -246,7 +247,7 @@ export class AdminService {
           .select('id, nombre, apellido, telefono, correo, cedula')
           .single();
 
-    if (clienteError) throw clienteError;
+    if (clienteError) throw errorDeBase(clienteError);
 
     const canje =
       telefono && input.usar_puntos
@@ -276,7 +277,7 @@ export class AdminService {
       )
       .single();
 
-    if (pedidoError) throw pedidoError;
+    if (pedidoError) throw errorDeBase(pedidoError);
 
     const { error: itemsError } = await client.from('items_pedido').insert(
       itemsCalculados.map((i) => ({
@@ -288,7 +289,7 @@ export class AdminService {
         subtotal: i.subtotal,
       })),
     );
-    if (itemsError) throw itemsError;
+    if (itemsError) throw errorDeBase(itemsError);
 
     // Si el cliente llegó por un anuncio Click-to-WhatsApp, Meta se entera
     // de la venta (atribuida por teléfono). No espera ni puede fallar la venta.
@@ -383,7 +384,7 @@ export class AdminService {
       .select(PEDIDO_ADMIN_SELECT)
       .eq('id', id)
       .maybeSingle();
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     if (!data) throw new NotFoundException('Pedido no encontrado.');
     return this.mapPedido(data);
   }
@@ -404,7 +405,7 @@ export class AdminService {
       .order('created_at', { ascending: false })
       .limit(100);
 
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     return (data ?? []).map((p) => this.mapPedido(p));
   }
 
@@ -439,7 +440,7 @@ export class AdminService {
       )
       .eq('id', id)
       .maybeSingle();
-    if (pedidoError) throw pedidoError;
+    if (pedidoError) throw errorDeBase(pedidoError);
     if (!pedidoActual) throw new NotFoundException('Pedido no encontrado.');
 
     const itemsActuales = (
@@ -480,7 +481,7 @@ export class AdminService {
         .from('items_pedido')
         .delete()
         .eq('pedido_id', id);
-      if (deleteError) throw deleteError;
+      if (deleteError) throw errorDeBase(deleteError);
 
       const { error: insertError } = await client.from('items_pedido').insert(
         itemsCalculados.map((i) => ({
@@ -492,7 +493,7 @@ export class AdminService {
           subtotal: i.subtotal,
         })),
       );
-      if (insertError) throw insertError;
+      if (insertError) throw errorDeBase(insertError);
 
       payload.total = totalItems + (pedidoActual.costo_domicilio ?? 0);
 
@@ -517,7 +518,7 @@ export class AdminService {
         .from('pedidos')
         .update(payload)
         .eq('id', id);
-      if (updateError) throw updateError;
+      if (updateError) throw errorDeBase(updateError);
     }
 
     // Pedidos del bot: el cliente se entera de cada cambio por WhatsApp.
@@ -534,7 +535,7 @@ export class AdminService {
       .select(PEDIDO_ADMIN_SELECT)
       .eq('id', id)
       .single();
-    if (obtenerError) throw obtenerError;
+    if (obtenerError) throw errorDeBase(obtenerError);
     const pedido = this.mapPedido(actualizado);
 
     // Purchase a Meta (Click-to-WhatsApp) al entregar, no al crear: un
@@ -561,7 +562,7 @@ export class AdminService {
       .select('id, items_pedido(variante_id, cantidad)')
       .eq('id', id)
       .maybeSingle();
-    if (pedidoError) throw pedidoError;
+    if (pedidoError) throw errorDeBase(pedidoError);
     if (!pedido) throw new NotFoundException('Pedido no encontrado.');
 
     const itemsActuales = (
@@ -581,7 +582,7 @@ export class AdminService {
       .from('pedidos')
       .delete({ count: 'exact' })
       .eq('id', id);
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     if (!count) throw new NotFoundException('Pedido no encontrado.');
 
     if (itemsActuales.length > 0) {
@@ -713,7 +714,7 @@ export class AdminService {
       .select('id, email, rol, cedula, created_at')
       .order('created_at');
 
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     return data ?? [];
   }
 
@@ -747,7 +748,7 @@ export class AdminService {
       .select('id, email, rol, cedula, created_at')
       .single();
 
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     return data;
   }
 
@@ -759,7 +760,7 @@ export class AdminService {
       .in('clave', CLAVES_CORREO)
       .returns<{ clave: string; valor: string | null }[]>();
 
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     const valor = (clave: string): string | null =>
       (data ?? []).find((f) => f.clave === clave)?.valor || null;
     return {
@@ -795,7 +796,7 @@ export class AdminService {
       .from('configuracion')
       .upsert(filas, { onConflict: 'clave' });
 
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     return this.obtenerConfiguracion();
   }
 
@@ -908,7 +909,7 @@ export class AdminService {
       .from('perfiles_staff')
       .delete()
       .eq('id', id);
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
   }
 
   private async buscarUsuarioPorEmail(email: string) {
@@ -920,7 +921,7 @@ export class AdminService {
         page,
         perPage: 200,
       });
-      if (error) throw error;
+      if (error) throw errorDeBase(error);
 
       const encontrado = data.users.find(
         (u) => u.email?.toLowerCase() === email,

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import { errorDeBase } from '../common/error-de-base';
 
 export type SegmentoCliente =
   'todos' | 'recurrentes' | 'nuevos' | 'sin_pedidos' | 'con_puntos';
@@ -376,7 +377,7 @@ export class ClientesDirectorioService {
         .select(columnas)
         .order('id')
         .range(desde, desde + LOTE - 1);
-      if (error) throw error;
+      if (error) throw errorDeBase(error);
       const lote = (data ?? []) as T[];
       todas.push(...lote);
       if (lote.length < LOTE) return todas;

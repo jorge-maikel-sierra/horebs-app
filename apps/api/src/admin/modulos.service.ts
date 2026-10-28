@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import { errorDeBase } from '../common/error-de-base';
 
 /**
  * Módulos del panel que el dueño puede apagar. Panel, Usuarios y
@@ -38,7 +39,7 @@ export class ModulosService {
       .select('clave, valor')
       .like('clave', `${PREFIJO}%`);
 
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
 
     const valores = new Map((data ?? []).map((f) => [f.clave, f.valor]));
     return MODULOS_ACTIVABLES.map((id) => ({
@@ -69,7 +70,7 @@ export class ModulosService {
         { onConflict: 'clave' },
       );
 
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     return { id: id as ModuloId, activo };
   }
 }

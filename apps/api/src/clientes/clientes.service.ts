@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { ClientesDirectorioService } from './clientes-directorio.service';
+import { errorDeBase } from '../common/error-de-base';
 
 export interface ClienteDto {
   id: string;
@@ -98,7 +99,7 @@ export class ClientesService {
       .order('nombre')
       .limit(10);
 
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     return data ?? [];
   }
 
@@ -115,7 +116,7 @@ export class ClientesService {
       .order('created_at', { ascending: false })
       .limit(100);
 
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     return data ?? [];
   }
 
@@ -128,7 +129,7 @@ export class ClientesService {
       )
       .eq('id', id)
       .single();
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
 
     const { data: pedidos, error: pedidosError } = await this.supabase
       .getClient()
@@ -136,7 +137,7 @@ export class ClientesService {
       .select('total, created_at')
       .eq('cliente_id', id)
       .order('created_at', { ascending: false });
-    if (pedidosError) throw pedidosError;
+    if (pedidosError) throw errorDeBase(pedidosError);
 
     const lista = pedidos ?? [];
     return {
@@ -157,7 +158,7 @@ export class ClientesService {
       .eq('cliente_id', id)
       .order('created_at', { ascending: false })
       .limit(MAX_PEDIDOS_CLIENTE);
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
 
     return ((data ?? []) as unknown as FilaPedidoCliente[]).map((p) => ({
       id: p.id,
@@ -218,7 +219,7 @@ export class ClientesService {
           'Ya existe otro cliente con ese teléfono.',
         );
       }
-      throw error;
+      throw errorDeBase(error);
     }
     this.directorio.invalidar();
     return data;
@@ -239,7 +240,7 @@ export class ClientesService {
       .delete({ count: 'exact' })
       .eq('id', id);
 
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     if (!count) throw new NotFoundException('Cliente no encontrado.');
     this.directorio.invalidar();
   }

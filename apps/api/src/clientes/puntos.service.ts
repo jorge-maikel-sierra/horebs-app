@@ -2,6 +2,7 @@ import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { SupabaseService } from '../supabase/supabase.service';
 import { MailService } from '../mail/mail.service';
+import { errorDeBase } from '../common/error-de-base';
 
 export interface ConfiguracionPuntos {
   puntosPor1000Pesos: number;
@@ -78,7 +79,7 @@ export class PuntosService {
         CLAVE_MINIMO_CANJE,
         CLAVE_VENCIMIENTO_MESES,
       ]);
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
 
     const mapa = new Map((data ?? []).map((f) => [f.clave, f.valor]));
     const num = (clave: string, defecto: number) => {
@@ -142,7 +143,7 @@ export class PuntosService {
       .getClient()
       .from('configuracion')
       .upsert(filas, { onConflict: 'clave' });
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
   }
 
   async obtenerSaldoPorTelefono(telefono: string): Promise<{
@@ -157,7 +158,7 @@ export class PuntosService {
       .select('nombre, puntos_actuales')
       .eq('telefono', telefono)
       .maybeSingle();
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     if (!data) return null;
 
     const config = await this.obtenerConfiguracion();
@@ -185,7 +186,7 @@ export class PuntosService {
       .select('puntos_actuales')
       .eq('id', clienteId)
       .single();
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
 
     const config = await this.obtenerConfiguracion();
     const saldo = data.puntos_actuales;
@@ -221,7 +222,7 @@ export class PuntosService {
         p_created_by: null,
         p_actualizar_actividad: false,
       });
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
   }
 
   /**
@@ -250,7 +251,7 @@ export class PuntosService {
           p_created_by: null,
           p_actualizar_actividad: true,
         });
-      if (error) throw error;
+      if (error) throw errorDeBase(error);
 
       // Se guarda en el pedido solo para trazabilidad histórica — la
       // fuente de verdad del saldo sigue siendo movimientos_puntos.
@@ -330,7 +331,7 @@ export class PuntosService {
           'El ajuste dejaría el saldo de puntos en negativo.',
         );
       }
-      throw error;
+      throw errorDeBase(error);
     }
     return data as number;
   }
@@ -348,7 +349,7 @@ export class PuntosService {
       .eq('cliente_id', clienteId)
       .order('created_at', { ascending: false })
       .limit(limit);
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     return data ?? [];
   }
 
@@ -386,7 +387,7 @@ export class PuntosService {
       .select('id, puntos_actuales')
       .gt('puntos_actuales', 0)
       .lt('puntos_ultima_actividad', limite.toISOString());
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
 
     let vencidos = 0;
     for (const cliente of data ?? []) {
