@@ -10,7 +10,6 @@ import { GeminiService } from './gemini.service';
 import { ConversacionesService } from './conversaciones.service';
 import { ConversionesMetaService } from './conversiones-meta.service';
 import { SeguimientoService } from './seguimiento.service';
-import { ImportarHistorialGeminiService } from './importar-historial-gemini.service';
 import { AvisoEquipoService } from './aviso-equipo.service';
 import { CheckoutWhatsappService } from './checkout-whatsapp.service';
 import { AvisosPedidoService } from './avisos-pedido.service';
@@ -26,7 +25,6 @@ import { ComprobantesService } from './comprobantes.service';
     ConversacionesService,
     ConversionesMetaService,
     SeguimientoService,
-    ImportarHistorialGeminiService,
     AvisoEquipoService,
     CheckoutWhatsappService,
     AvisosPedidoService,
@@ -37,7 +35,6 @@ import { ComprobantesService } from './comprobantes.service';
     ConversacionesService,
     ConversionesMetaService,
     MetaGraphService,
-    ImportarHistorialGeminiService,
   ],
 })
 export class MensajeriaModule {}

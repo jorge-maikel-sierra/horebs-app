@@ -6,7 +6,6 @@ import {
 } from '@nestjs/common';
 import { ConversacionesService } from '../mensajeria/conversaciones.service';
 import { MetaGraphService } from '../mensajeria/meta-graph.service';
-import { ImportarHistorialGeminiService } from '../mensajeria/importar-historial-gemini.service';
 
 /** Seguimiento del bot desde el panel: configuración, conversaciones y mensajes. */
 @Injectable()
@@ -16,7 +15,6 @@ export class SeguimientoAdminService {
   constructor(
     private readonly conversaciones: ConversacionesService,
     private readonly metaGraph: MetaGraphService,
-    private readonly importarHistorial: ImportarHistorialGeminiService,
   ) {}
 
   async obtenerConfiguracionSeguimiento() {
@@ -115,10 +113,5 @@ export class SeguimientoAdminService {
       textoLimpio,
       usuarioId,
     );
-  }
-
-  /** TEMPORAL — ver comentario en admin.controller.ts. */
-  importarHistorialGemini(dryRun: boolean) {
-    return this.importarHistorial.importarTodas(dryRun);
   }
 }

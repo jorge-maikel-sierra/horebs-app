@@ -5,7 +5,6 @@ import {
   Param,
   Patch,
   Post,
-  Query,
   UseGuards,
 } from '@nestjs/common';
 import { RolesGuard } from '../auth/roles.guard';
@@ -78,15 +77,5 @@ export class SeguimientoAdminController {
     @UsuarioActual() usuario: UsuarioAutenticado,
   ) {
     return this.seguimiento.enviarMensajeHumano(id, body.texto, usuario.id);
-  }
-
-  // TEMPORAL — migración de una sola vez para traer el historial que había
-  // quedado solo del lado de Gemini antes de que existiera
-  // mensajes_conversacion. Borrar esta ruta (y ImportarHistorialGeminiService)
-  // una vez usada.
-  @Post('importar-historial-gemini')
-  @Roles('admin')
-  importarHistorialGemini(@Query('dryRun') dryRun?: string) {
-    return this.seguimiento.importarHistorialGemini(dryRun === 'true');
   }
 }
