@@ -36,6 +36,15 @@ import {
   type FiltrosPedidos,
 } from '@/lib/pedidos-busqueda';
 
+/** "2026-10-28T18:30:00-05:00" → "6:30 p. m." en hora de Bogotá. */
+function horaReserva(iso: string) {
+  return new Intl.DateTimeFormat('es-CO', {
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: 'America/Bogota',
+  }).format(new Date(iso));
+}
+
 function formatFecha(iso: string) {
   return new Intl.DateTimeFormat('es-CO', {
     dateStyle: 'short',
@@ -170,6 +179,9 @@ function PedidosInterno() {
   );
   const [eliminando, setEliminando] = useState(false);
   const [descargandoId, setDescargandoId] = useState<string | null>(null);
+  const [abriendoComprobanteId, setAbriendoComprobanteId] = useState<
+    string | null
+  >(null);
   const [cambiandoEstadoId, setCambiandoEstadoId] = useState<string | null>(
     null,
   );
@@ -282,6 +294,29 @@ function PedidosInterno() {
     } finally {
       setCambiandoEstadoId(null);
       setPedidoACancelar(null);
+    }
+  }
+
+  async function verComprobante(p: PedidoAdmin) {
+    setAbriendoComprobanteId(p.id);
+    // La pestaña se abre antes del await: si no, el navegador la bloquea
+    // como popup por no venir directo del clic.
+    const ventana = window.open('', '_blank');
+    try {
+      const res = await adminFetch(`/admin/pedidos/${p.id}/comprobante`);
+      if (!res.ok) throw new Error('No se pudo abrir el comprobante.');
+      const { url } = (await res.json()) as { url: string };
+      // Si el navegador bloqueó la pestaña, se abre en la misma.
+      if (ventana) ventana.location.href = url;
+      else window.location.assign(url);
+    } catch (err) {
+      ventana?.close();
+      mostrar(
+        err instanceof Error ? err.message : 'No se pudo abrir el comprobante.',
+        true,
+      );
+    } finally {
+      setAbriendoComprobanteId(null);
     }
   }
 
@@ -587,10 +622,32 @@ function PedidosInterno() {
                     <span className={CHIP}>
                       {MODALIDAD_LABEL[p.modalidad] ?? p.modalidad}
                     </span>
+                    {p.programado_para && (
+                      <span
+                        className="mt-1 ml-1 inline-block rounded-lg bg-sky-500/10 px-2 py-1 text-xs font-semibold text-sky-700 dark:bg-sky-400/10 dark:text-sky-300"
+                        title="Pedido reservado por WhatsApp para esta hora"
+                      >
+                        🕒 Reserva {horaReserva(p.programado_para)}
+                      </span>
+                    )}
                   </div>
                   <div className="min-w-0">
                     <p className={ETIQUETA}>Pago</p>
                     <span className={`${CHIP} capitalize`}>{p.metodo_pago}</span>
+                    {p.tiene_comprobante && (
+                      <button
+                        type="button"
+                        onClick={() => verComprobante(p)}
+                        disabled={abriendoComprobanteId === p.id}
+                        className="btn-press mt-1 ml-1 inline-block rounded-lg bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-700 outline-none hover:bg-emerald-500/20 focus-visible:ring-2 focus-visible:ring-emerald-600/60 disabled:opacity-60 dark:bg-emerald-400/10 dark:text-emerald-300"
+                      >
+                        💸 Comprobante
+                        <span className="sr-only">
+                          {' '}
+                          del pedido #{p.id.slice(0, 8)}
+                        </span>
+                      </button>
+                    )}
                   </div>
                 </div>
 

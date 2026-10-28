@@ -27,6 +27,10 @@ export type PedidoAdmin = {
   metodo_pago: string;
   estado: string;
   stock_status: string;
+  /** Reserva del bot: hora de entrega (ISO). null = lo antes posible. */
+  programado_para?: string | null;
+  /** El cliente mandó el comprobante de transferencia por WhatsApp. */
+  tiene_comprobante?: boolean;
   total: number;
   created_at: string;
   items: ItemPedido[];
