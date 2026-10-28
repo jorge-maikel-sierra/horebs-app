@@ -69,6 +69,56 @@ sospechoso por defecto en cualquier código nuevo que compare o agrupe fechas.
   CommonJS, usar `import()` dinámico adentro de la función que lo necesita —
   un `import` estático revienta en runtime con `ERR_REQUIRE_ESM`, no en build.
 
+### Contrato HTTP del API (RFC 9110 y RFC 9457)
+
+- **Errores:** siempre una excepción de Nest; el filtro global
+  (`common/problem-details.filter.ts`) los responde como
+  `application/problem+json`. El texto para el usuario va en `detail`; el web
+  lo lee con `leerErrorApi()` (`apps/web/src/lib/error-api.ts`). Un error de
+  Supabase sale por `errorDeBase(error)` (409, 400, 404 o 503 según el código
+  de Postgres). Nunca `throw new Error()` ni el error crudo.
+- **Entrada:** todo `:id` uuid lleva `UuidPipe`; `?limit=` lleva `LimitePipe`;
+  las fechas `FechaPipe`; un body de forma simple lleva
+  `ValidarBodyPipe(ESQUEMA_X)` con el esquema en el `esquemas.ts` del módulo
+  (estricto: un campo desconocido es 400). Sin `class-validator`.
+- **Códigos:** `POST` que crea → 201 (con `@Ubicacion('/ruta/:id')` solo si
+  existe ese `GET`); acción que no crea nada → `@HttpCode(200)`; `DELETE` →
+  `@HttpCode(204)`; conflicto de estado (ya liquidada, duplicado) →
+  `ConflictException` (409), no 400.
+- **Rutas:** sustantivos en plural, sin verbos. Un cambio de estado es un
+  `PATCH` del recurso; algo idempotente es `PUT` (ej. `likes/yo`). Una ruta
+  que se reemplaza convive con la vieja marcada `@Deprecada('/nueva')` hasta
+  que el web migre y pase una ventana de gracia.
+- **Caché:** un `GET` público e igual para todos lleva `@CachePublica(60)`;
+  todo lo demás sale con `no-store` (lo pone un interceptor global).
+- **Red de seguridad de refactors:** `test/rutas.snapshot.txt` fija las URLs.
+  Mover código entre archivos no puede cambiarlo; un cambio de contrato se
+  hace a propósito con `ACTUALIZAR_RUTAS=1 npm run test:e2e`.
+
+### Estándares de código (clean code)
+
+Reglas de ESLint en `apps/api/eslint.config.mjs`, solo sobre `src/**` sin
+specs: `max-lines` 400, `max-lines-per-function` 50, `complexity` 10,
+`max-params` 4, `max-depth` 3, `no-explicit-any`. Van como `warn` porque hay
+deuda medida; **el conteo solo puede bajar** y no se acepta código nuevo que
+agregue advertencias. Cada regla pasa a `error` cuando llega a cero
+(`no-floating-promises` ya lo es). Conteo al 2026-10-28: `max-lines` 7,
+`max-lines-per-function` 26, `complexity` 41, `max-params` 15,
+`max-depth` 3, `no-explicit-any` 26 (filas de Supabase sin tipar en los
+mappers).
+
+- Un controller es delgado: delega y nada más. Un controller por recurso
+  (`admin/pedidos-admin.controller.ts`, no un `admin.controller.ts` de todo).
+- Un service de más de 400 líneas se parte: lo puro (tipos, mappers, cálculo,
+  plantillas, prompts) va a su propio archivo y se testea sin Nest; ver
+  `admin/calcular-items-venta.ts`, `mail/plantilla-domicilio.ts`,
+  `mensajeria/gemini-prompt.ts`.
+- No se repite un bloque de más de tres líneas: se extrae
+  (`admin/items-stock.ts`).
+- Nombres de métodos del dominio en español (`darMeGusta`, no `toggleLike`).
+  Los `getX` que ya existen (`getProductos`, `getMeGusta`…) se renombran
+  cuando se toca ese código, no en un cambio aparte.
+
 ## Frontend (Next.js admin)
 
 - Fetch autenticado: `adminFetch()` de `@/lib/admin-fetch` (agrega el bearer

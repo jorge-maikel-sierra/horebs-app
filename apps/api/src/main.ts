@@ -60,4 +60,4 @@ async function bootstrap() {
   await app.listen(port);
   new Logger('Bootstrap').log(`API corriendo en http://localhost:${port}`);
 }
-bootstrap();
+void bootstrap();
