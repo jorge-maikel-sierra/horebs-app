@@ -66,6 +66,24 @@ type InformeDto = {
     lista_nuevos?: ClienteLista[];
     lista_recurrentes?: ClienteLista[];
   };
+  /** Opcional: un API anterior al bot no lo manda. */
+  bot?: InformeBot;
+};
+
+type InformeBot = {
+  conversaciones: number;
+  pedidos: number;
+  ventas: number;
+  ticket_promedio: number;
+  conversion: number;
+  entregados: number;
+  cancelados: number;
+  derivaciones: number;
+  repetir_toques: number;
+  recompras_enviadas: number;
+  reservas: number;
+  comprobantes: number;
+  serie_diaria: InformeDia[];
 };
 
 type RangoPreset = 'hoy' | '7dias' | 'mes' | 'mes_pasado' | 'anio' | 'personalizado';
@@ -93,7 +111,12 @@ const MODALIDAD_LABEL: Record<string, string> = {
 const CANAL_LABEL: Record<string, string> = {
   web: 'Pedidos web',
   pos: 'Mostrador (POS)',
+  whatsapp: 'Bot de WhatsApp',
 };
+
+function porcentaje(valor: number) {
+  return `${Math.round(valor * 100)}%`;
+}
 
 // El negocio opera en hora de Bogotá — usar toISOString() acá daría la
 // fecha en UTC, que ya es "mañana" desde ~7pm hora local en adelante.
@@ -230,6 +253,30 @@ function GraficoVentasDiarias({ datos }: { datos: InformeDia[] }) {
       formatoValor={formatPrecio}
       formatoEje={formatoEjePesos}
     />
+  );
+}
+
+function IconChat() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+}
+
+/** Filas "etiqueta — valor" para el embudo y la fidelización del bot. */
+function ListaValores({ filas }: { filas: { etiqueta: string; valor: string }[] }) {
+  return (
+    <dl className="divide-y divide-zinc-100 dark:divide-zinc-800">
+      {filas.map((f) => (
+        <div key={f.etiqueta} className="flex items-baseline justify-between gap-3 py-2.5">
+          <dt className="text-sm text-zinc-600 dark:text-zinc-400">{f.etiqueta}</dt>
+          <dd className="text-sm font-bold text-zinc-900 tabular-nums dark:text-zinc-50">
+            {f.valor}
+          </dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 
@@ -706,6 +753,77 @@ function InformesPageInterno() {
               <ListaTopClientes clientes={informe.clientes.top_clientes} />
             </Panel>
           </div>
+
+          {informe.bot && (
+            <>
+              <h2 className="mt-8 text-lg font-bold text-zinc-900 dark:text-zinc-50">
+                Bot de WhatsApp
+              </h2>
+              <div className="mt-3 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+                <TarjetaKpi
+                  tono="azul"
+                  icono={<IconChat />}
+                  label="Conversaciones"
+                  valor={String(informe.bot.conversaciones)}
+                  detalle="Clientes que le escribieron al bot"
+                  delta={calcularDelta(informe.bot.conversaciones, anterior?.bot?.conversaciones)}
+                  vs={vs}
+                />
+                <TarjetaKpi
+                  tono="naranja"
+                  icono={<IconPedidosIcon />}
+                  label="Pedidos del bot"
+                  valor={String(informe.bot.pedidos)}
+                  delta={calcularDelta(informe.bot.pedidos, anterior?.bot?.pedidos)}
+                  vs={vs}
+                  serie={informe.bot.serie_diaria.map((d) => d.pedidos)}
+                />
+                <TarjetaKpi
+                  tono="verde"
+                  icono={<IconTendencia />}
+                  label="Conversión"
+                  valor={porcentaje(informe.bot.conversion)}
+                  detalle="Pedidos por cada conversación"
+                  delta={calcularDelta(informe.bot.conversion, anterior?.bot?.conversion)}
+                  vs={vs}
+                />
+                <TarjetaKpi
+                  tono="amarillo"
+                  icono={<IconMoneda />}
+                  label="Ventas del bot"
+                  valor={formatPrecio(informe.bot.ventas)}
+                  detalle={`Ticket promedio ${formatPrecio(informe.bot.ticket_promedio)}`}
+                  delta={calcularDelta(informe.bot.ventas, anterior?.bot?.ventas)}
+                  vs={vs}
+                  serie={informe.bot.serie_diaria.map((d) => d.total)}
+                />
+              </div>
+
+              <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                <Panel titulo="Embudo" subtitulo="De la conversación a la entrega">
+                  <ListaValores
+                    filas={[
+                      { etiqueta: 'Conversaciones', valor: String(informe.bot.conversaciones) },
+                      { etiqueta: 'Pedidos creados por el bot', valor: String(informe.bot.pedidos) },
+                      { etiqueta: 'Entregados', valor: String(informe.bot.entregados) },
+                      { etiqueta: 'Cancelados', valor: String(informe.bot.cancelados) },
+                      { etiqueta: 'Pasadas a una persona', valor: String(informe.bot.derivaciones) },
+                    ]}
+                  />
+                </Panel>
+                <Panel titulo="Fidelización" subtitulo="Lo que hace volver al cliente">
+                  <ListaValores
+                    filas={[
+                      { etiqueta: 'Toques en "Pedir lo mismo"', valor: String(informe.bot.repetir_toques) },
+                      { etiqueta: 'Invitaciones a repetir enviadas', valor: String(informe.bot.recompras_enviadas) },
+                      { etiqueta: 'Reservas', valor: String(informe.bot.reservas) },
+                      { etiqueta: 'Comprobantes recibidos', valor: String(informe.bot.comprobantes) },
+                    ]}
+                  />
+                </Panel>
+              </div>
+            </>
+          )}
 
           {modalClientes && (
             <ModalClientes
