@@ -7,6 +7,7 @@ import { adminFetch } from '@/lib/admin-fetch';
 import { formatFecha, formatHora } from '@/lib/formato';
 import { errorClass } from '@/lib/feedback-estilos';
 import EstadoVacio from '@/components/EstadoVacio';
+import { leerErrorApi } from '@/lib/error-api';
 
 type Comentario = {
   id: string;
@@ -57,9 +58,8 @@ export default function BlogComentarios({ slug }: { slug: string }) {
         body: JSON.stringify({ contenido: texto.trim() }),
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
         throw new Error(
-          body?.message ?? 'No se pudo publicar el comentario.',
+          await leerErrorApi(res, 'No se pudo publicar el comentario.'),
         );
       }
       const nuevo = await res.json();

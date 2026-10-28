@@ -35,6 +35,7 @@ import {
   terminosParaResaltar,
   type FiltrosPedidos,
 } from '@/lib/pedidos-busqueda';
+import { leerErrorApi } from '@/lib/error-api';
 
 /** "2026-10-28T18:30:00-05:00" → "6:30 p. m." en hora de Bogotá. */
 function horaReserva(iso: string) {
@@ -242,11 +243,8 @@ function PedidosInterno() {
         method: 'DELETE',
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
         throw new Error(
-          typeof body?.message === 'string'
-            ? body.message
-            : 'No se pudo eliminar el pedido.',
+          await leerErrorApi(res, 'No se pudo eliminar el pedido.'),
         );
       }
       setPedidos((prev) => prev.filter((x) => x.id !== p.id));
@@ -270,11 +268,8 @@ function PedidosInterno() {
         body: JSON.stringify({ estado }),
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
         throw new Error(
-          typeof body?.message === 'string'
-            ? body.message
-            : 'No se pudo cambiar el estado.',
+          await leerErrorApi(res, 'No se pudo cambiar el estado.'),
         );
       }
       const actualizado: PedidoAdmin = await res.json();

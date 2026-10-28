@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { adminFetch } from '@/lib/admin-fetch';
 import { formatPrecio, formatHora } from '@/lib/formato';
 import CargandoSkeleton from '@/components/CargandoSkeleton';
+import { leerErrorApi } from '@/lib/error-api';
 
 type Variante = {
   id: string;
@@ -491,8 +492,7 @@ function PosInterno() {
         body: JSON.stringify({ monto_inicial: monto }),
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.message ?? 'No se pudo abrir el turno.');
+        throw new Error(await leerErrorApi(res, 'No se pudo abrir el turno.'));
       }
       const data = await res.json();
       setTurno(data);
@@ -551,8 +551,7 @@ function PosInterno() {
         }),
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.message ?? 'No se pudo cerrar el turno.');
+        throw new Error(await leerErrorApi(res, 'No se pudo cerrar el turno.'));
       }
       const data = await res.json();
       setResultadoCierre(data);
@@ -616,8 +615,9 @@ function PosInterno() {
       });
 
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.message ?? 'No se pudo registrar la venta.');
+        throw new Error(
+          await leerErrorApi(res, 'No se pudo registrar la venta.'),
+        );
       }
 
       const venta = await res.json();

@@ -40,6 +40,7 @@ import {
   type Estado,
   type FormBlog,
 } from './tipos';
+import { leerErrorApi } from '@/lib/error-api';
 
 const VistaPreviaMarkdown = dynamic(() => import('./VistaPreviaMarkdown'), {
   loading: () => (
@@ -181,7 +182,6 @@ export default function EditorArticulo({
         },
       );
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
         if (res.status === 409) {
           // Slug repetido: el error va en el campo y el foco se queda ahí.
           setErrores({
@@ -193,9 +193,10 @@ export default function EditorArticulo({
           return;
         }
         setErrorGeneral(
-          typeof body?.message === 'string' && res.status < 500
-            ? body.message
-            : 'No se pudo guardar el artículo. Inténtalo de nuevo.',
+          await leerErrorApi(
+            res,
+            'No se pudo guardar el artículo. Inténtalo de nuevo.',
+          ),
         );
         return;
       }

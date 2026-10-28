@@ -16,6 +16,7 @@ import {
   type Producto,
   type Variante,
 } from './tipos';
+import { leerErrorApi } from '@/lib/error-api';
 
 const METODOS = [
   { valor: 'efectivo', texto: 'Efectivo' },
@@ -218,11 +219,11 @@ export default function ModalEditarPedido({
         }),
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
         setErrorGeneral(
-          typeof body?.message === 'string' && res.status < 500
-            ? body.message
-            : 'No se pudo guardar el pedido. Inténtalo de nuevo.',
+          await leerErrorApi(
+            res,
+            'No se pudo guardar el pedido. Inténtalo de nuevo.',
+          ),
         );
         return;
       }

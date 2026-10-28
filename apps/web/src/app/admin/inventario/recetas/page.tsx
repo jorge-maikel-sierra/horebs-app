@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { adminFetch } from '@/lib/admin-fetch';
 import InventarioTabs from '@/components/InventarioTabs';
 import CargandoSkeleton from '@/components/CargandoSkeleton';
+import { leerErrorApi } from '@/lib/error-api';
 
 type Insumo = { id: string; nombre: string };
 type Subreceta = {
@@ -140,8 +141,9 @@ export default function InventarioRecetasPage() {
         },
       );
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.message ?? 'No se pudo guardar la subreceta.');
+        throw new Error(
+          await leerErrorApi(res, 'No se pudo guardar la subreceta.'),
+        );
       }
       cancelarFormSub();
       cargarTodo();
@@ -208,8 +210,9 @@ export default function InventarioRecetasPage() {
         },
       );
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.message ?? 'No se pudo guardar la receta.');
+        throw new Error(
+          await leerErrorApi(res, 'No se pudo guardar la receta.'),
+        );
       }
       cancelarFormReceta();
       cargarTodo();

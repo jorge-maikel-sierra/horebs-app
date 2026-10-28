@@ -23,6 +23,8 @@ import { hoyBogota } from '@/lib/semana';
 import { useAviso } from '@/lib/use-aviso';
 import { useDebounced } from '@/lib/use-debounced';
 import { useRol } from '@/lib/use-rol';
+import { leerErrorApi } from '@/lib/error-api';
+import CargandoSkeleton from '@/components/CargandoSkeleton';
 
 const NUMERO = new Intl.NumberFormat('es-CO');
 
@@ -124,11 +126,8 @@ export default function AdminClientesPage() {
         method: 'DELETE',
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
         throw new Error(
-          typeof body?.message === 'string'
-            ? body.message
-            : 'No se pudo eliminar el cliente.',
+          await leerErrorApi(res, 'No se pudo eliminar el cliente.'),
         );
       }
       mostrar(`${nombreCompleto(cliente)} eliminado`);
@@ -202,16 +201,7 @@ export default function AdminClientesPage() {
           )}
         </p>
 
-        {primeraCarga && (
-          <div
-            className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
-            aria-hidden="true"
-          >
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="skeleton h-40 rounded-2xl" />
-            ))}
-          </div>
-        )}
+        {primeraCarga && <CargandoSkeleton filas={6} />}
 
         {fallo && !datos && (
           <div className="mt-3 rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">

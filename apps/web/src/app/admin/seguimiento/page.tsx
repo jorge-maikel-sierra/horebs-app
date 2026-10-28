@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { adminFetch } from '@/lib/admin-fetch';
 import CargandoSkeleton from '@/components/CargandoSkeleton';
 import { useRol } from '@/lib/use-rol';
+import { leerErrorApi } from '@/lib/error-api';
 
 type EstadoConversacion = 'bot' | 'derivado';
 type DireccionMensaje = 'entrante' | 'saliente_bot' | 'saliente_humano';
@@ -129,8 +130,7 @@ function ConfiguracionSeguimiento() {
         }),
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.message ?? 'No se pudo guardar.');
+        throw new Error(await leerErrorApi(res, 'No se pudo guardar.'));
       }
       setMensaje('Guardado.');
     } catch (err) {
@@ -315,8 +315,9 @@ function ListaConversaciones() {
         },
       );
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.message ?? 'No se pudo enviar el mensaje.');
+        throw new Error(
+          await leerErrorApi(res, 'No se pudo enviar el mensaje.'),
+        );
       }
       setTextoRespuesta('');
       cercaDelFinalRef.current = true;

@@ -7,6 +7,7 @@ import Campo from '@/components/formulario/Campo';
 import { FOCO, claseCampo } from '@/components/formulario/estilos';
 import { adminFetch } from '@/lib/admin-fetch';
 import type { ClientePedido } from './tipos';
+import { leerErrorApi } from '@/lib/error-api';
 
 type Form = {
   nombre: string;
@@ -92,11 +93,11 @@ export default function ModalEditarCliente({
         body: JSON.stringify(form),
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
         const mensaje =
-          typeof body?.message === 'string' && res.status < 500
-            ? body.message
-            : 'No se pudo guardar el cliente. Inténtalo de nuevo.';
+          await leerErrorApi(
+            res,
+            'No se pudo guardar el cliente. Inténtalo de nuevo.',
+          );
         if (/tel[eé]fono/i.test(mensaje)) {
           setErrores({ telefono: mensaje });
           document.getElementById(`${uid}-telefono`)?.focus();

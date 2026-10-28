@@ -9,6 +9,7 @@ import Campo from '@/components/formulario/Campo';
 import { TARJETA, claseCampo } from '@/components/formulario/estilos';
 import { adminFetch } from '@/lib/admin-fetch';
 import { useAviso } from '@/lib/use-aviso';
+import { leerErrorApi } from '@/lib/error-api';
 
 type ClaveCorreo = 'correo_domiciliario' | 'correo_avisos_bot';
 type Correos = Record<ClaveCorreo, string>;
@@ -46,11 +47,8 @@ function TarjetaCorreo({
         body: JSON.stringify({ [clave]: correo }),
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
         throw new Error(
-          typeof body?.message === 'string'
-            ? body.message
-            : 'No se pudo guardar.',
+          await leerErrorApi(res, 'No se pudo guardar.'),
         );
       }
       onGuardado();

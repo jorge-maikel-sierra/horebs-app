@@ -5,6 +5,7 @@ import { adminFetch } from '@/lib/admin-fetch';
 import { formatPrecio, formatFecha } from '@/lib/formato';
 import InventarioTabs from '@/components/InventarioTabs';
 import CargandoSkeleton from '@/components/CargandoSkeleton';
+import { leerErrorApi } from '@/lib/error-api';
 
 type Insumo = { id: string; nombre: string };
 
@@ -143,8 +144,9 @@ export default function InventarioComprasPage() {
         }),
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.message ?? 'No se pudo registrar la compra.');
+        throw new Error(
+          await leerErrorApi(res, 'No se pudo registrar la compra.'),
+        );
       }
       const nueva: Compra = await res.json();
       setCompras((prev) => [nueva, ...prev]);
@@ -191,8 +193,9 @@ export default function InventarioComprasPage() {
         method: 'PATCH',
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.message ?? 'No se pudo procesar la línea.');
+        throw new Error(
+          await leerErrorApi(res, 'No se pudo procesar la línea.'),
+        );
       }
       setCompras((prev) =>
         prev.map((c) =>

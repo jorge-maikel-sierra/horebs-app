@@ -5,6 +5,7 @@ import { adminFetch } from '@/lib/admin-fetch';
 import { formatCantidad, formatFecha, type UnidadMedida } from '@/lib/formato';
 import InventarioTabs from '@/components/InventarioTabs';
 import CargandoSkeleton from '@/components/CargandoSkeleton';
+import { leerErrorApi } from '@/lib/error-api';
 
 type Insumo = {
   id: string;
@@ -86,8 +87,7 @@ export default function InventarioInsumosPage() {
         }),
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.message ?? 'No se pudo crear el insumo.');
+        throw new Error(await leerErrorApi(res, 'No se pudo crear el insumo.'));
       }
       const nuevo: Insumo = await res.json();
       setInsumos((prev) => [...prev, nuevo].sort((a, b) => a.nombre.localeCompare(b.nombre)));
@@ -142,8 +142,9 @@ export default function InventarioInsumosPage() {
         }),
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.message ?? 'No se pudo registrar el ajuste.');
+        throw new Error(
+          await leerErrorApi(res, 'No se pudo registrar el ajuste.'),
+        );
       }
       const actualizado: Insumo = await res.json();
       setInsumos((prev) => prev.map((i) => (i.id === id ? actualizado : i)));

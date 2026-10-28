@@ -26,6 +26,7 @@ import {
   formatoEjePesos,
   rangoAnterior,
 } from '@/lib/informes-rango';
+import { leerErrorApi } from '@/lib/error-api';
 
 type InformeDia = { fecha: string; total: number; pedidos: number };
 type InformeDesglose = { clave: string; total: number; pedidos: number };
@@ -508,8 +509,9 @@ function InformesPageInterno() {
     async function pedir(desde: string, hasta: string): Promise<InformeDto> {
       const res = await adminFetch(`/informes?desde=${desde}&hasta=${hasta}`);
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.message ?? 'No se pudo cargar el informe.');
+        throw new Error(
+          await leerErrorApi(res, 'No se pudo cargar el informe.'),
+        );
       }
       return res.json();
     }

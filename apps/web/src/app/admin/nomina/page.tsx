@@ -14,6 +14,7 @@ import {
   sumarDias,
 } from '@/lib/semana';
 import CargandoSkeleton from '@/components/CargandoSkeleton';
+import { leerErrorApi } from '@/lib/error-api';
 
 type Empleado = {
   id: string;
@@ -108,8 +109,9 @@ function FilaTablero({ fila, onCambio }: { fila: TableroFila; onCambio: () => vo
         }),
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.message ?? 'No se pudo registrar el adelanto.');
+        throw new Error(
+          await leerErrorApi(res, 'No se pudo registrar el adelanto.'),
+        );
       }
       setMonto('');
       setMotivo('');
@@ -136,8 +138,9 @@ function FilaTablero({ fila, onCambio }: { fila: TableroFila; onCambio: () => vo
         body: JSON.stringify({}),
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.message ?? 'No se pudo liquidar la semana.');
+        throw new Error(
+          await leerErrorApi(res, 'No se pudo liquidar la semana.'),
+        );
       }
       setConfirmandoLiquidar(false);
       onCambio();

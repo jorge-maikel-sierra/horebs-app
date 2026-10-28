@@ -5,6 +5,7 @@ import RequireRol from '@/components/RequireRol';
 import { adminFetch } from '@/lib/admin-fetch';
 import type { Rol } from '@/lib/use-rol';
 import CargandoSkeleton from '@/components/CargandoSkeleton';
+import { leerErrorApi } from '@/lib/error-api';
 
 type UsuarioStaff = {
   id: string;
@@ -44,8 +45,7 @@ function UsuariosInterno() {
         body: JSON.stringify({ email, rol: rolNuevo, cedula: cedula || undefined }),
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.message ?? 'No se pudo asignar el rol.');
+        throw new Error(await leerErrorApi(res, 'No se pudo asignar el rol.'));
       }
       setEmail('');
       setCedula('');

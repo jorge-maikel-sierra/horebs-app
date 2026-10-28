@@ -27,6 +27,8 @@ import { formatFecha, formatPrecio } from '@/lib/formato';
 import { hoyBogota } from '@/lib/semana';
 import { useAviso } from '@/lib/use-aviso';
 import { useRol } from '@/lib/use-rol';
+import { leerErrorApi } from '@/lib/error-api';
+import CargandoSkeleton from '@/components/CargandoSkeleton';
 
 type Resultado = {
   id: string;
@@ -141,11 +143,8 @@ export default function DetalleClientePage() {
         }),
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
         const mensaje =
-          typeof body?.message === 'string' && res.status < 500
-            ? body.message
-            : 'No se pudo guardar. Inténtalo de nuevo.';
+          await leerErrorApi(res, 'No se pudo guardar. Inténtalo de nuevo.');
         if (/tel[eé]fono/i.test(mensaje)) setErrores({ telefono: mensaje });
         else setErrorGeneral(mensaje);
         return;
@@ -170,10 +169,7 @@ export default function DetalleClientePage() {
         body: JSON.stringify({ puntos, motivo }),
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        return typeof body?.message === 'string' && res.status < 500
-          ? body.message
-          : 'No se pudo registrar el ajuste.';
+        return await leerErrorApi(res, 'No se pudo registrar el ajuste.');
       }
       setVersion((v) => v + 1);
       mostrar('Ajuste de puntos registrado');
@@ -190,11 +186,8 @@ export default function DetalleClientePage() {
         method: 'DELETE',
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
         throw new Error(
-          typeof body?.message === 'string'
-            ? body.message
-            : 'No se pudo eliminar el cliente.',
+          await leerErrorApi(res, 'No se pudo eliminar el cliente.'),
         );
       }
       router.push('/admin/clientes');
@@ -211,13 +204,7 @@ export default function DetalleClientePage() {
   if (!listo) {
     return (
       <div className="p-4 sm:p-6 lg:p-8" aria-busy="true">
-        <div className="skeleton h-9 w-28 rounded-lg" />
-        <div className="skeleton mt-3 h-40 rounded-3xl" />
-        <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
-          {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="skeleton h-32 rounded-2xl" />
-          ))}
-        </div>
+        <CargandoSkeleton filas={5} />
       </div>
     );
   }

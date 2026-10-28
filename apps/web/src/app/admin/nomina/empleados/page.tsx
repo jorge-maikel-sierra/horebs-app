@@ -7,6 +7,7 @@ import { adminFetch } from '@/lib/admin-fetch';
 import { formatPrecio } from '@/lib/formato';
 import { formatearFechaCorta } from '@/lib/semana';
 import CargandoSkeleton from '@/components/CargandoSkeleton';
+import { leerErrorApi } from '@/lib/error-api';
 
 type Empleado = {
   id: string;
@@ -253,8 +254,9 @@ function FilaEmpleado({
         }),
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.message ?? 'No se pudo guardar el trabajador.');
+        throw new Error(
+          await leerErrorApi(res, 'No se pudo guardar el trabajador.'),
+        );
       }
       setEditando(false);
       await onCambio();
@@ -417,8 +419,9 @@ function EmpleadosInterno() {
         }),
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.message ?? 'No se pudo crear el trabajador.');
+        throw new Error(
+          await leerErrorApi(res, 'No se pudo crear el trabajador.'),
+        );
       }
       setForm(FORM_VACIO);
       setMostrarForm(false);

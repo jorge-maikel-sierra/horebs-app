@@ -11,6 +11,7 @@ import { supabase } from '@/lib/supabase';
 import { trackBeginCheckout } from '@/lib/analytics';
 import { errorClass } from '@/lib/feedback-estilos';
 import ModalCargando from '@/components/ModalCargando';
+import { leerErrorApi } from '@/lib/error-api';
 
 function IconPaquete() {
   return (
@@ -289,8 +290,7 @@ export default function CheckoutPage() {
       });
 
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.message ?? 'No se pudo crear el pedido.');
+        throw new Error(await leerErrorApi(res, 'No se pudo crear el pedido.'));
       }
 
       const pedido = await res.json();
