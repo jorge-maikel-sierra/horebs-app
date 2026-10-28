@@ -1,30 +1,13 @@
-import {
-  Body,
-  Controller,
-  Get,
-  HttpCode,
-  Patch,
-  Post,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Get, Patch, Post, UseGuards } from '@nestjs/common';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { UsuarioActual } from '../auth/usuario.decorator';
 import { TurnosService } from './turnos.service';
+import type { CierreTurnoInput } from './turnos.service';
 import type { UsuarioAutenticado } from '../auth/roles.guard';
 import { ValidarBodyPipe } from '../common/pipes/validar-body.pipe';
-import {
-  ESQUEMA_ABRIR_TURNO,
-  ESQUEMA_CERRAR_TURNO,
-  ESQUEMA_CERRAR_TURNO_ACTUAL,
-} from './esquemas';
-import { Deprecada } from '../common/deprecacion.interceptor';
+import { ESQUEMA_ABRIR_TURNO, ESQUEMA_CERRAR_TURNO_ACTUAL } from './esquemas';
 import { Ubicacion } from '../common/ubicacion.interceptor';
-
-interface CierreTurnoBody {
-  monto_final_contado?: number;
-  notas_cierre?: string;
-}
 
 @Controller('turnos')
 @UseGuards(RolesGuard)
@@ -52,7 +35,7 @@ export class TurnosController {
   @Roles('admin', 'empleado')
   cerrarActual(
     @Body(new ValidarBodyPipe(ESQUEMA_CERRAR_TURNO_ACTUAL))
-    body: CierreTurnoBody,
+    body: CierreTurnoInput,
     @UsuarioActual() usuario: UsuarioAutenticado,
   ) {
     return this.turnos.cerrar(
@@ -60,28 +43,5 @@ export class TurnosController {
       body.monto_final_contado,
       body.notas_cierre,
     );
-  }
-
-  @Post('abrir')
-  @Deprecada('/turnos')
-  @Roles('admin', 'empleado')
-  abrirDeprecada(
-    @Body(new ValidarBodyPipe(ESQUEMA_ABRIR_TURNO))
-    body: { monto_inicial: number },
-    @UsuarioActual() usuario: UsuarioAutenticado,
-  ) {
-    return this.abrir(body, usuario);
-  }
-
-  @Post('cerrar')
-  @HttpCode(200)
-  @Deprecada('/turnos/actual')
-  @Roles('admin', 'empleado')
-  cerrarDeprecada(
-    @Body(new ValidarBodyPipe(ESQUEMA_CERRAR_TURNO))
-    body: CierreTurnoBody,
-    @UsuarioActual() usuario: UsuarioAutenticado,
-  ) {
-    return this.cerrarActual(body, usuario);
   }
 }

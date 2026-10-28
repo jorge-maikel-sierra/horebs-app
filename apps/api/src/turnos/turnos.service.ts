@@ -33,6 +33,12 @@ export interface TurnoActualDto {
   resumen: ResumenVentasDto | null;
 }
 
+/** Body de `PATCH /turnos/actual` al cerrar: ambos campos son opcionales. */
+export interface CierreTurnoInput {
+  monto_final_contado?: number;
+  notas_cierre?: string;
+}
+
 export interface TurnoCerradoDto extends TurnoDto {
   resumen: ResumenVentasDto;
   monto_esperado_efectivo: number;
