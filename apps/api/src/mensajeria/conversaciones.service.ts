@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import { errorDeBase } from '../common/error-de-base';
 
 export type CanalMensajeria = 'whatsapp' | 'messenger' | 'instagram';
 export type EstadoConversacion = 'bot' | 'derivado';
@@ -89,7 +90,7 @@ export class ConversacionesService {
       .eq('canal', canal)
       .eq('identificador_externo', identificadorExterno)
       .maybeSingle();
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     return (data?.estado as EstadoConversacion) ?? 'bot';
   }
 
@@ -109,7 +110,7 @@ export class ConversacionesService {
       .eq('canal', canal)
       .eq('identificador_externo', identificadorExterno)
       .maybeSingle();
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     return data?.gemini_interaction_id ?? null;
   }
 
@@ -124,7 +125,7 @@ export class ConversacionesService {
       .update({ gemini_interaction_id: interactionId })
       .eq('canal', canal)
       .eq('identificador_externo', identificadorExterno);
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
   }
 
   /**
@@ -156,7 +157,7 @@ export class ConversacionesService {
         'id, canal, identificador_externo, estado, seguimiento_etapa, seguimiento_enviado_en, ultima_interaccion',
       )
       .single();
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     return data;
   }
 
@@ -174,7 +175,7 @@ export class ConversacionesService {
       .eq('estado', 'bot')
       .eq('seguimiento_etapa', 'ninguna')
       .lt('ultima_interaccion', limite);
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     return data ?? [];
   }
 
@@ -192,7 +193,7 @@ export class ConversacionesService {
       .eq('estado', 'bot')
       .eq('seguimiento_etapa', 'recordatorio_enviado')
       .lt('seguimiento_enviado_en', limite);
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     return data ?? [];
   }
 
@@ -204,7 +205,7 @@ export class ConversacionesService {
       .from('configuracion')
       .select('clave, valor')
       .in('clave', [CLAVE_RECORDATORIO_MINUTOS, CLAVE_OFERTA_MINUTOS]);
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
 
     const mapa = new Map((data ?? []).map((f) => [f.clave, f.valor]));
     const recordatorio = Number(mapa.get(CLAVE_RECORDATORIO_MINUTOS));
@@ -228,7 +229,7 @@ export class ConversacionesService {
       ],
       { onConflict: 'clave' },
     );
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
   }
 
   /** Listado completo para el panel de admin — todas las conversaciones
@@ -241,7 +242,7 @@ export class ConversacionesService {
         'id, canal, identificador_externo, estado, seguimiento_etapa, seguimiento_enviado_en, ultima_interaccion',
       )
       .order('ultima_interaccion', { ascending: false });
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     return data ?? [];
   }
 
@@ -257,7 +258,7 @@ export class ConversacionesService {
       )
       .eq('id', id)
       .maybeSingle();
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     return data;
   }
 
@@ -281,7 +282,7 @@ export class ConversacionesService {
       })
       .select()
       .single();
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     return data;
   }
 
@@ -306,7 +307,7 @@ export class ConversacionesService {
       })
       .select()
       .single();
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     return data;
   }
 
@@ -318,7 +319,7 @@ export class ConversacionesService {
       .select()
       .eq('conversacion_id', conversacionId)
       .order('created_at', { ascending: true });
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     return data ?? [];
   }
 
@@ -338,7 +339,7 @@ export class ConversacionesService {
         checkout: null,
       })
       .eq('id', id);
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
   }
 
   async guardarCheckout(
@@ -352,7 +353,7 @@ export class ConversacionesService {
       .update({ checkout })
       .eq('canal', canal)
       .eq('identificador_externo', identificadorExterno);
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
   }
 
   async obtenerCheckout(
@@ -366,7 +367,7 @@ export class ConversacionesService {
       .eq('canal', canal)
       .eq('identificador_externo', identificadorExterno)
       .maybeSingle<{ checkout: CheckoutWhatsapp | null }>();
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     return data?.checkout ?? null;
   }
 
@@ -393,7 +394,7 @@ export class ConversacionesService {
         estado: EstadoConversacion;
         ultima_interaccion: string | null;
       }>();
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     if (!data?.ultima_interaccion) return null;
     return {
       conversacionId: data.id,
@@ -419,7 +420,7 @@ export class ConversacionesService {
       .update({ carrito_pendiente: items })
       .eq('canal', canal)
       .eq('identificador_externo', identificadorExterno);
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
   }
 
   async obtenerCarrito(
@@ -433,7 +434,7 @@ export class ConversacionesService {
       .eq('canal', canal)
       .eq('identificador_externo', identificadorExterno)
       .maybeSingle<{ carrito_pendiente: ItemCarritoPendiente[] | null }>();
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     return data?.carrito_pendiente ?? [];
   }
 
@@ -448,7 +449,7 @@ export class ConversacionesService {
       .update({ seguimiento_etapa: etapa, seguimiento_enviado_en: new Date().toISOString() })
       .eq('canal', canal)
       .eq('identificador_externo', identificadorExterno);
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
   }
 
   async derivarAHumano(
@@ -476,7 +477,7 @@ export class ConversacionesService {
         },
         { onConflict: 'canal,identificador_externo' },
       );
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
   }
 
   /**
@@ -498,7 +499,7 @@ export class ConversacionesService {
       })
       .eq('canal', canal)
       .eq('identificador_externo', identificadorExterno);
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
   }
 
   /** La conversación con su `ctwa_clid`, o null si nunca vino de un anuncio
@@ -514,7 +515,7 @@ export class ConversacionesService {
       .eq('canal', canal)
       .eq('identificador_externo', identificadorExterno)
       .maybeSingle();
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     if (!data?.ctwa_clid) return null;
     return { id: data.id, ctwaClid: data.ctwa_clid };
   }
@@ -534,7 +535,7 @@ export class ConversacionesService {
       .insert({ canal, mensaje_id: mensajeId });
     if (!error) return false;
     if (error.code === '23505') return true;
-    throw error;
+    throw errorDeBase(error);
   }
 
   /**
@@ -557,7 +558,7 @@ export class ConversacionesService {
       .eq('canal', canal)
       .eq('identificador_externo', identificadorExterno)
       .maybeSingle();
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
 
     const ahora = new Date();
     const inicioPrevio = data?.limite_ventana_inicio ? new Date(data.limite_ventana_inicio) : null;
@@ -577,7 +578,7 @@ export class ConversacionesService {
         },
         { onConflict: 'canal,identificador_externo' },
       );
-    if (upsertError) throw upsertError;
+    if (upsertError) throw errorDeBase(upsertError);
 
     return nuevoContador <= maxMensajes;
   }

@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import { errorDeBase } from '../common/error-de-base';
 
 const SITIO_URL = 'https://pizzeriahorebs.shop';
 const MARCA = 'Pizzería Horebs';
@@ -82,7 +83,7 @@ export class CatalogService {
       .select('id, nombre, orden')
       .order('orden');
 
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     return data ?? [];
   }
 
@@ -103,7 +104,7 @@ export class CatalogService {
     }
 
     const { data, error } = await query;
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
 
     return (data ?? []).map(({ variantes_producto, ...producto }) => ({
       ...producto,
@@ -153,7 +154,7 @@ export class CatalogService {
       .eq('variantes_producto.activo', true)
       .maybeSingle();
 
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     if (!data) return null;
 
     const { variantes_producto, ...producto } = data;

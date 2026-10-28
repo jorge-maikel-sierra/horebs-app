@@ -8,6 +8,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { SupabaseService } from '../supabase/supabase.service';
 import { ROLES_KEY, Rol } from './roles.decorator';
+import { errorDeBase } from '../common/error-de-base';
 
 export interface UsuarioAutenticado {
   id: string;
@@ -58,7 +59,7 @@ export class RolesGuard implements CanActivate {
       .eq('id', userData.user.id)
       .maybeSingle();
 
-    if (perfilError) throw perfilError;
+    if (perfilError) throw errorDeBase(perfilError);
     if (!perfil || !rolesRequeridos.includes(perfil.rol as Rol)) {
       throw new ForbiddenException('No tenés permiso para esta acción.');
     }

@@ -6,6 +6,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { SupabaseService } from '../supabase/supabase.service';
 import { ConversacionesService } from './conversaciones.service';
+import { errorDeBase } from '../common/error-de-base';
 
 const TIMEOUT_MS = 10_000;
 const MONEDA = 'COP';
@@ -159,7 +160,7 @@ export class ConversionesMetaService {
       .insert({ evento: e.evento, referencia_id: e.referenciaId });
     if (claimError) {
       if (claimError.code === '23505') return; // ya enviado
-      throw claimError;
+      throw errorDeBase(claimError);
     }
 
     try {

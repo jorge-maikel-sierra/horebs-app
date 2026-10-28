@@ -1,9 +1,6 @@
-import {
-  BadRequestException,
-  Injectable,
-  ServiceUnavailableException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import { errorDeBase } from '../common/error-de-base';
 import { MENSAJE_DERIVACION } from '../mensajeria/aviso-equipo.service';
 import {
   agregarMetricasBot,
@@ -222,11 +219,7 @@ export class InformesService {
       }>,
     ): Promise<number> => {
       const { count, error } = await consulta;
-      if (error) {
-        throw new ServiceUnavailableException(
-          `No se pudo calcular una métrica del bot: ${error.message}`,
-        );
-      }
+      if (error) throw errorDeBase(error);
       return count ?? 0;
     };
 
@@ -537,11 +530,7 @@ export class InformesService {
     const resultado: T[] = [];
     for (let desde = 0; ; desde += tamanoPagina) {
       const { data, error } = await build(desde, desde + tamanoPagina - 1);
-      if (error) {
-        throw new ServiceUnavailableException(
-          `No se pudo leer la base para el informe: ${(error as { message?: string }).message ?? 'error desconocido'}`,
-        );
-      }
+      if (error) throw errorDeBase(error);
       resultado.push(...(data ?? []));
       if (!data || data.length < tamanoPagina) break;
     }
@@ -563,11 +552,7 @@ export class InformesService {
     for (let i = 0; i < telefonos.length; i += tamanoTanda) {
       const tanda = telefonos.slice(i, i + tamanoTanda);
       const { data, error } = await client.from(tabla).select(select).in('telefono', tanda);
-      if (error) {
-        throw new ServiceUnavailableException(
-          `No se pudo leer la base para el informe: ${(error as { message?: string }).message ?? 'error desconocido'}`,
-        );
-      }
+      if (error) throw errorDeBase(error);
       resultado.push(...(data ?? []));
     }
     return resultado;

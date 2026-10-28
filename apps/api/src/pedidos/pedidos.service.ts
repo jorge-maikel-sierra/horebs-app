@@ -2,9 +2,9 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
-  ServiceUnavailableException,
 } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import { errorDeBase } from '../common/error-de-base';
 import { MailService } from '../mail/mail.service';
 import { InventarioService } from '../inventario/inventario.service';
 import { PuntosService } from '../clientes/puntos.service';
@@ -235,7 +235,7 @@ export class PedidosService {
       .single();
 
     if (clienteError) {
-      throw new BadRequestException('No se pudo registrar el cliente.');
+      throw errorDeBase(clienteError);
     }
 
     const canje = input.usar_puntos
@@ -275,7 +275,7 @@ export class PedidosService {
       if (pedidoError.code === '23505' && input.idempotency_key) {
         return this.obtenerPorIdempotencyKey(input.idempotency_key);
       }
-      throw new BadRequestException('No se pudo crear el pedido.');
+      throw errorDeBase(pedidoError);
     }
 
     const { error: itemsError } = await client.from('items_pedido').insert(
@@ -288,7 +288,7 @@ export class PedidosService {
       })),
     );
     if (itemsError) {
-      throw new BadRequestException('No se pudieron registrar los productos del pedido.');
+      throw errorDeBase(itemsError);
     }
 
     await this.inventario.descontarPorVentaSeguro(
@@ -375,7 +375,7 @@ export class PedidosService {
       .eq('idempotency_key', idempotencyKey)
       .single();
     if (error) {
-      throw new BadRequestException('No se pudo recuperar el pedido.');
+      throw errorDeBase(error);
     }
     return this.obtener(data.id);
   }
@@ -391,7 +391,7 @@ export class PedidosService {
       .maybeSingle();
 
     if (error) {
-      throw new BadRequestException('No se pudo obtener el pedido.');
+      throw errorDeBase(error);
     }
     if (!pedido) throw new NotFoundException('Pedido no encontrado.');
 
@@ -447,7 +447,7 @@ export class PedidosService {
       .eq('telefono', local)
       .maybeSingle();
     if (clienteError) {
-      throw new BadRequestException('No se pudo buscar el cliente.');
+      throw errorDeBase(clienteError);
     }
     if (!cliente) return [];
 
@@ -460,7 +460,7 @@ export class PedidosService {
       .order('created_at', { ascending: false })
       .limit(3);
     if (error) {
-      throw new BadRequestException('No se pudieron obtener los pedidos.');
+      throw errorDeBase(error);
     }
 
     return (data ?? []).map((p: any) => ({
@@ -492,11 +492,7 @@ export class PedidosService {
       .select('nombre')
       .eq('telefono', local)
       .maybeSingle();
-    if (error) {
-      throw new ServiceUnavailableException(
-        `No se pudo consultar la base: ${error.message}`,
-      );
-    }
+    if (error) throw errorDeBase(error);
     return data?.nombre ?? null;
   }
 
@@ -520,11 +516,7 @@ export class PedidosService {
         direccion: string | null;
         puntos_actuales: number | null;
       }>();
-    if (error) {
-      throw new ServiceUnavailableException(
-        `No se pudo consultar la base: ${error.message}`,
-      );
-    }
+    if (error) throw errorDeBase(error);
     if (!data) return null;
     return {
       id: data.id,
@@ -557,11 +549,7 @@ export class PedidosService {
         direccion_entrega: string | null;
         items_pedido: { variante_id: string | null; cantidad: number }[];
       }>();
-    if (error) {
-      throw new ServiceUnavailableException(
-        `No se pudo consultar la base: ${error.message}`,
-      );
-    }
+    if (error) throw errorDeBase(error);
     if (!data) return null;
     const items = (data.items_pedido ?? []).flatMap((i) =>
       i.variante_id
@@ -590,11 +578,7 @@ export class PedidosService {
         direccion_entrega: string | null;
         clientes: { telefono: string | null } | null;
       }>();
-    if (error) {
-      throw new ServiceUnavailableException(
-        `No se pudo consultar la base: ${error.message}`,
-      );
-    }
+    if (error) throw errorDeBase(error);
     if (!data) return null;
     return {
       id: data.id,
@@ -637,11 +621,7 @@ export class PedidosService {
           } | null;
         }[]
       >();
-    if (error) {
-      throw new ServiceUnavailableException(
-        `No se pudo consultar la base: ${error.message}`,
-      );
-    }
+    if (error) throw errorDeBase(error);
     return (data ?? []).map((p) => ({
       id: p.id,
       canal: p.canal,
@@ -666,11 +646,7 @@ export class PedidosService {
       .eq('id', id)
       .is('recompra_enviada_en', null)
       .select('id');
-    if (error) {
-      throw new ServiceUnavailableException(
-        `No se pudo consultar la base: ${error.message}`,
-      );
-    }
+    if (error) throw errorDeBase(error);
     return (data ?? []).length > 0;
   }
 
@@ -698,11 +674,7 @@ export class PedidosService {
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle<{ id: string; total: number }>();
-    if (error) {
-      throw new ServiceUnavailableException(
-        `No se pudo consultar la base: ${error.message}`,
-      );
-    }
+    if (error) throw errorDeBase(error);
     if (!data) return null;
     const nombre = [cliente.nombre, cliente.apellido].filter(Boolean).join(' ');
     return { id: data.id, total: Number(data.total), nombre: nombre || null };
@@ -724,11 +696,7 @@ export class PedidosService {
         contentType: archivo.mime,
         upsert: true,
       });
-    if (subidaError) {
-      throw new ServiceUnavailableException(
-        `No se pudo guardar el comprobante: ${subidaError.message}`,
-      );
-    }
+    if (subidaError) throw errorDeBase(subidaError);
     const { error } = await client
       .from('pedidos')
       .update({
@@ -736,11 +704,7 @@ export class PedidosService {
         comprobante_recibido_en: new Date().toISOString(),
       })
       .eq('id', pedidoId);
-    if (error) {
-      throw new ServiceUnavailableException(
-        `No se pudo ligar el comprobante al pedido: ${error.message}`,
-      );
-    }
+    if (error) throw errorDeBase(error);
     return path;
   }
 
@@ -755,11 +719,7 @@ export class PedidosService {
       .select('comprobante_path')
       .eq('id', pedidoId)
       .maybeSingle<{ comprobante_path: string | null }>();
-    if (error) {
-      throw new ServiceUnavailableException(
-        `No se pudo consultar la base: ${error.message}`,
-      );
-    }
+    if (error) throw errorDeBase(error);
     if (!data?.comprobante_path) return null;
     return this.urlFirmada(data.comprobante_path, segundos);
   }
@@ -770,9 +730,7 @@ export class PedidosService {
       .storage.from(BUCKET_COMPROBANTES)
       .createSignedUrl(path, segundos);
     if (error || !data) {
-      throw new ServiceUnavailableException(
-        `No se pudo firmar el comprobante: ${error?.message ?? 'sin URL'}`,
-      );
+      throw errorDeBase(error ?? 'Supabase no devolvió la URL firmada.');
     }
     return data.signedUrl;
   }
@@ -791,11 +749,7 @@ export class PedidosService {
       .select('id', { count: 'exact', head: true })
       .eq('cliente_id', cliente.id)
       .gte('created_at', desde);
-    if (error) {
-      throw new ServiceUnavailableException(
-        `No se pudo consultar la base: ${error.message}`,
-      );
-    }
+    if (error) throw errorDeBase(error);
     return (count ?? 0) > 0;
   }
 

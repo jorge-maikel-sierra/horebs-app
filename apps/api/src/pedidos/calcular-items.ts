@@ -1,5 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { errorDeBase } from '../common/error-de-base';
 
 export interface ItemInput {
   variante_id: string;
@@ -41,7 +42,7 @@ export async function obtenerVariantesActivas(
     .in('id', varianteIds)
     .eq('activo', true);
 
-  if (error) throw error;
+  if (error) throw errorDeBase(error);
   if (!data || data.length !== new Set(varianteIds).size) {
     throw new BadRequestException('Uno o más productos ya no están disponibles.');
   }

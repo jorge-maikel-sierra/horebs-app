@@ -1,7 +1,12 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SupabaseService } from '../supabase/supabase.service';
 import { ConversacionesService, type DireccionMensaje } from './conversaciones.service';
+import { errorDeBase } from '../common/error-de-base';
 
 const GEMINI_INTERACTIONS_URL =
   'https://generativelanguage.googleapis.com/v1beta/interactions';
@@ -63,7 +68,7 @@ export class ImportarHistorialGeminiService {
 
   async importarTodas(dryRun: boolean): Promise<ResultadoImportacionConversacion[]> {
     if (!this.apiKey) {
-      throw new Error('GEMINI_API_KEY no configurada.');
+      throw new ServiceUnavailableException('GEMINI_API_KEY no configurada.');
     }
 
     const { data, error } = await this.supabase
@@ -71,7 +76,7 @@ export class ImportarHistorialGeminiService {
       .from('conversaciones_bot')
       .select('id, canal, identificador_externo, gemini_interaction_id, ultima_interaccion')
       .not('gemini_interaction_id', 'is', null);
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
 
     const resultados: ResultadoImportacionConversacion[] = [];
     for (const fila of data ?? []) {
@@ -101,7 +106,9 @@ export class ImportarHistorialGeminiService {
       headers: { 'x-goog-api-key': this.apiKey as string },
     });
     if (!res.ok) {
-      throw new Error(`Gemini respondió ${res.status} para ${id}`);
+      throw new ServiceUnavailableException(
+        `Gemini respondió ${res.status} para ${id}`,
+      );
     }
     return (await res.json()) as RespuestaInteraction;
   }
@@ -121,7 +128,7 @@ export class ImportarHistorialGeminiService {
       .from('mensajes_conversacion')
       .select('id', { count: 'exact', head: true })
       .eq('conversacion_id', fila.id);
-    if (countError) throw countError;
+    if (countError) throw errorDeBase(countError);
 
     if ((count ?? 0) > 0) {
       return {
