@@ -5,7 +5,7 @@ import { Injectable } from '@nestjs/common';
 /**
  * `FacturaService` es de bajo nivel — lo consume `AdminModule`, no al
  * revés. Este tipo describe solo lo que el comprobante necesita, en vez de
- * importar `PedidoAdminDto` desde `admin.service.ts` (eso invertía la
+ * importar `PedidoAdminDto` desde `admin/pedidos-admin.tipos.ts` (eso invertía la
  * dirección de dependencia). Cualquier objeto con esta forma sirve —
  * `PedidoAdminDto` la cumple de sobra.
  */

@@ -27,7 +27,7 @@ export interface VarianteActiva {
 /**
  * Trae y valida las variantes activas por id — el único paso que
  * `calcularItems` (carrito público) y `calcularItemsVenta` (POS,
- * `admin.service.ts`) comparten de verdad. El resto de cada uno diverge
+ * `admin/calcular-items-venta.ts`) comparten de verdad. El resto de cada uno diverge
  * a propósito: el POS admite precio manual e items sin `variante_id`
  * (personalizados), algo que el checkout público nunca debe aceptar.
  */
@@ -52,7 +52,7 @@ export async function obtenerVariantesActivas(
 /**
  * Recalcula precios desde la base (nunca confía en precios enviados por
  * el cliente). Checkout web — para el POS ver `calcularItemsVenta` en
- * `admin.service.ts`.
+ * `admin/calcular-items-venta.ts`.
  */
 export async function calcularItems(
   client: SupabaseClient,

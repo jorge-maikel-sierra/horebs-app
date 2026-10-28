@@ -28,7 +28,7 @@ interface RecetaComponenteFila {
 /**
  * Explota ventas (variante × cantidad) contra sus recetas y aplica los
  * movimientos de stock resultantes. Compartido entre el checkout web
- * (PedidosService) y el POS (AdminService).
+ * (PedidosService) y el POS (VentasService).
  */
 @Injectable()
 export class InventarioService {

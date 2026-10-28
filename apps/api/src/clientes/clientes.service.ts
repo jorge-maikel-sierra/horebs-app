@@ -77,7 +77,7 @@ const SELECT_CLIENTE =
   'id, nombre, apellido, telefono, direccion, correo, cedula';
 
 /**
- * Extraído de AdminService — mismo criterio que BlogService: CRUD de
+ * Extraído del antiguo servicio de admin — mismo criterio que BlogService: CRUD de
  * cliente vive en su propio módulo en vez de seguir creciendo el
  * god-service.
  */
