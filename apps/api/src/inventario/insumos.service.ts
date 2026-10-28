@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { MailService } from '../mail/mail.service';
+import { errorDeBase } from '../common/error-de-base';
 
 export type UnidadMedida = 'g' | 'ml' | 'unidad';
 
@@ -50,7 +51,7 @@ export class InsumosService {
     const client = this.supabase.getClient();
     const query = client.from('insumos').select(INSUMO_SELECT).order('nombre');
     const { data, error } = await query;
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
 
     const insumos = data ?? [];
     if (!stockBajo) return insumos;
@@ -83,7 +84,7 @@ export class InsumosService {
       })
       .select(INSUMO_SELECT)
       .single();
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     return data;
   }
 
@@ -127,7 +128,7 @@ export class InsumosService {
       .single();
     if (error) {
       if (error.code === 'PGRST116') throw new NotFoundException('Insumo no encontrado.');
-      throw error;
+      throw errorDeBase(error);
     }
     return data;
   }
@@ -169,7 +170,7 @@ export class InsumosService {
       if (rpcError.message?.includes('no existe')) {
         throw new NotFoundException('Insumo no encontrado.');
       }
-      throw rpcError;
+      throw errorDeBase(rpcError);
     }
 
     // Fire-and-forget, igual que el resto de los callers de este método —
@@ -183,7 +184,7 @@ export class InsumosService {
       .select(INSUMO_SELECT)
       .eq('id', insumoId)
       .single();
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     return data;
   }
 

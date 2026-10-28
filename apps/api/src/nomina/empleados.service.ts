@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import { errorDeBase } from '../common/error-de-base';
 
 export interface EmpleadoDto {
   id: string;
@@ -51,7 +52,7 @@ export class EmpleadosService {
     let query = client.from('empleados').select(EMPLEADO_SELECT).order('nombre');
     if (soloActivos) query = query.eq('activo', true);
     const { data, error } = await query;
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     return data ?? [];
   }
 
@@ -87,7 +88,7 @@ export class EmpleadosService {
       })
       .select(EMPLEADO_SELECT)
       .single();
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     return data;
   }
 
@@ -134,7 +135,7 @@ export class EmpleadosService {
       .single();
     if (error) {
       if (error.code === 'PGRST116') throw new NotFoundException('Trabajador no encontrado.');
-      throw error;
+      throw errorDeBase(error);
     }
     return data;
   }
@@ -153,7 +154,7 @@ export class EmpleadosService {
       .from('empleados')
       .update({ activo }, { count: 'exact' })
       .eq('id', id);
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     if (!count) throw new NotFoundException('Trabajador no encontrado.');
   }
 
@@ -164,7 +165,7 @@ export class EmpleadosService {
       .select('id, rol')
       .eq('id', usuarioId)
       .maybeSingle();
-    if (perfilError) throw perfilError;
+    if (perfilError) throw errorDeBase(perfilError);
     if (!perfil) {
       throw new BadRequestException('El usuario indicado no existe.');
     }
@@ -172,7 +173,7 @@ export class EmpleadosService {
     let query = client.from('empleados').select('id').eq('usuario_id', usuarioId);
     if (empleadoIdActual) query = query.neq('id', empleadoIdActual);
     const { data: yaVinculado, error: vinculoError } = await query.maybeSingle();
-    if (vinculoError) throw vinculoError;
+    if (vinculoError) throw errorDeBase(vinculoError);
     if (yaVinculado) {
       throw new BadRequestException('Ese usuario ya está vinculado a otro trabajador.');
     }

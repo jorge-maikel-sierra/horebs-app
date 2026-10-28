@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from '@nes
 import { SupabaseService } from '../supabase/supabase.service';
 import { METODOS_PAGO, type MetodoPago } from '../common/metodos-pago';
 import { InsumosService } from './insumos.service';
+import { errorDeBase } from '../common/error-de-base';
 
 export interface DetalleCompraInput {
   insumo_id?: string;
@@ -67,7 +68,7 @@ export class ComprasService {
       .select(COMPRA_SELECT)
       .order('fecha', { ascending: false })
       .limit(100);
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     return (data ?? []).map((c) => this.mapCompra(c));
   }
 
@@ -124,14 +125,14 @@ export class ComprasService {
         valor_unitario: linea.valor_unitario,
       })),
     });
-    if (rpcError) throw rpcError;
+    if (rpcError) throw errorDeBase(rpcError);
 
     const { data: creada, error: obtenerError } = await client
       .from('compras')
       .select(COMPRA_SELECT)
       .eq('id', compraId)
       .single();
-    if (obtenerError) throw obtenerError;
+    if (obtenerError) throw errorDeBase(obtenerError);
     return this.mapCompra(creada);
   }
 
@@ -166,7 +167,7 @@ export class ComprasService {
         throw new BadRequestException(error.message);
       }
       this.logger.error(`procesar_detalle_compra falló para ${detalleId}: ${error.message}`);
-      throw new BadRequestException('No se pudo procesar la línea de compra.');
+      throw errorDeBase(error);
     }
   }
 
@@ -177,7 +178,7 @@ export class ComprasService {
       .update({ estado_procesado: 'excluido' }, { count: 'exact' })
       .eq('id', detalleId)
       .eq('estado_procesado', 'pendiente');
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     if (!count) {
       throw new NotFoundException(
         'Línea no encontrada o ya no está pendiente.',
@@ -192,7 +193,7 @@ export class ComprasService {
       .update({ insumo_id: insumoId }, { count: 'exact' })
       .eq('id', detalleId)
       .eq('estado_procesado', 'pendiente');
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     if (!count) {
       throw new NotFoundException(
         'Línea no encontrada o ya no está pendiente.',

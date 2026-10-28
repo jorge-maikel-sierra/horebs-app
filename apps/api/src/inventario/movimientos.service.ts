@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import { errorDeBase } from '../common/error-de-base';
 
 export interface MovimientoDto {
   id: string;
@@ -51,7 +52,7 @@ export class MovimientosService {
     if (filtros.hasta) query = query.lte('created_at', filtros.hasta);
 
     const { data, error } = await query;
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
 
     return (data ?? []).map((m: any) => ({
       id: m.id,

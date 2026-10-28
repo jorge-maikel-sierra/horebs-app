@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { errorDeBase } from '../common/error-de-base';
 
 export interface TurnoDto {
   id: string;
@@ -83,7 +84,7 @@ export class TurnosService {
       .insert({ abierto_por: usuarioId, monto_inicial: montoInicial })
       .select(TURNO_SELECT)
       .single();
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     return data;
   }
 
@@ -125,7 +126,7 @@ export class TurnosService {
       .eq('id', turno.id)
       .select(TURNO_SELECT)
       .single();
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
 
     const montoEsperadoEfectivo = turno.monto_inicial + resumen.total_efectivo;
     return {
@@ -147,7 +148,7 @@ export class TurnosService {
       .select(TURNO_SELECT)
       .eq('estado', 'abierto')
       .maybeSingle();
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     return data;
   }
 
@@ -164,7 +165,7 @@ export class TurnosService {
     if (hasta) query = query.lte('created_at', hasta);
 
     const { data, error } = await query;
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
 
     const resumen: ResumenVentasDto = {
       total_efectivo: 0,

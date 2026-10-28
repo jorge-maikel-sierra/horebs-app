@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import { errorDeBase } from '../common/error-de-base';
 
 export interface InsumoAlertaDto {
   id: string;
@@ -36,9 +37,11 @@ export class ReportesService {
 
     const { data: insumos, error: errInsumos } = await client
       .from('insumos')
-      .select('id, nombre, unidad_medida, stock_actual_g, stock_minimo_g, costo_unitario_g')
+      .select(
+        'id, nombre, unidad_medida, stock_actual_g, stock_minimo_g, costo_unitario_g',
+      )
       .eq('activo', true);
-    if (errInsumos) throw errInsumos;
+    if (errInsumos) throw errorDeBase(errInsumos);
 
     const filas = insumos ?? [];
     const valorizacionTotal = filas.reduce(
@@ -52,38 +55,44 @@ export class ReportesService {
       stock_actual_g: i.stock_actual_g,
       stock_minimo_g: i.stock_minimo_g,
     });
-    const insumosStockNegativo = filas.filter((i) => i.stock_actual_g < 0).map(aDto);
+    const insumosStockNegativo = filas
+      .filter((i) => i.stock_actual_g < 0)
+      .map(aDto);
     const insumosStockBajo = filas
-      .filter((i) => i.stock_actual_g >= 0 && i.stock_actual_g <= i.stock_minimo_g)
+      .filter(
+        (i) => i.stock_actual_g >= 0 && i.stock_actual_g <= i.stock_minimo_g,
+      )
       .map(aDto);
 
     const [año, mes] = fechaHoyBogota().split('-').map(Number);
     const inicioMesActual = `${año}-${String(mes).padStart(2, '0')}-01`;
-    const mesAnteriorDate = mes === 1 ? { año: año - 1, mes: 12 } : { año, mes: mes - 1 };
+    const mesAnteriorDate =
+      mes === 1 ? { año: año - 1, mes: 12 } : { año, mes: mes - 1 };
     const inicioMesAnterior = `${mesAnteriorDate.año}-${String(mesAnteriorDate.mes).padStart(2, '0')}-01`;
 
     const { data: comprasMesActual, error: errComprasActual } = await client
       .from('compras')
       .select('subtotal, otros_cargos')
       .gte('fecha', inicioMesActual);
-    if (errComprasActual) throw errComprasActual;
+    if (errComprasActual) throw errorDeBase(errComprasActual);
 
     const { data: comprasMesAnterior, error: errComprasAnterior } = await client
       .from('compras')
       .select('subtotal, otros_cargos')
       .gte('fecha', inicioMesAnterior)
       .lt('fecha', inicioMesActual);
-    if (errComprasAnterior) throw errComprasAnterior;
+    if (errComprasAnterior) throw errorDeBase(errComprasAnterior);
 
-    const sumarGasto = (compras: { subtotal: number; otros_cargos: number }[]) =>
-      compras.reduce((acc, c) => acc + c.subtotal + c.otros_cargos, 0);
+    const sumarGasto = (
+      compras: { subtotal: number; otros_cargos: number }[],
+    ) => compras.reduce((acc, c) => acc + c.subtotal + c.otros_cargos, 0);
 
     const { count: recetasSinCostear, error: errRecetas } = await client
       .from('recetas')
       .select('id', { count: 'exact', head: true })
       .eq('activa', true)
       .eq('costo_calculado', 0);
-    if (errRecetas) throw errRecetas;
+    if (errRecetas) throw errorDeBase(errRecetas);
 
     return {
       valorizacionTotal,

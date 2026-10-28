@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { errorDeBase } from '../common/error-de-base';
 
 export interface SubrecetaComponenteInput {
   insumo_id: string;
@@ -80,7 +81,7 @@ export class RecetasService {
       .from('subrecetas')
       .select(SUBRECETA_SELECT)
       .order('nombre');
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     return (data ?? []).map((s) => this.mapSubreceta(s));
   }
 
@@ -97,7 +98,7 @@ export class RecetasService {
       })
       .select('id')
       .single();
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
 
     await this.reemplazarComponentesSubreceta(client, subreceta.id, input.componentes);
     await this.recalcularCostoSubreceta(client, subreceta.id);
@@ -119,7 +120,7 @@ export class RecetasService {
         { count: 'exact' },
       )
       .eq('id', id);
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     if (!count) throw new NotFoundException('Subreceta no encontrada.');
 
     await this.reemplazarComponentesSubreceta(client, id, input.componentes);
@@ -137,7 +138,7 @@ export class RecetasService {
       .from('recetas')
       .select(RECETA_SELECT)
       .order('nombre');
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     return (data ?? []).map((r) => this.mapReceta(r));
   }
 
@@ -156,7 +157,7 @@ export class RecetasService {
       })
       .select('id')
       .single();
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
 
     await this.reemplazarComponentesReceta(client, receta.id, input.componentes);
     await this.recalcularCostoReceta(client, receta.id);
@@ -180,7 +181,7 @@ export class RecetasService {
         { count: 'exact' },
       )
       .eq('id', id);
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     if (!count) throw new NotFoundException('Receta no encontrada.');
 
     await this.reemplazarComponentesReceta(client, id, input.componentes);
@@ -232,7 +233,7 @@ export class RecetasService {
       .from('subreceta_componentes')
       .delete()
       .eq('subreceta_id', subrecetaId);
-    if (deleteError) throw deleteError;
+    if (deleteError) throw errorDeBase(deleteError);
 
     const { error: insertError } = await client.from('subreceta_componentes').insert(
       componentes.map((c) => ({
@@ -241,7 +242,7 @@ export class RecetasService {
         cantidad_necesaria_g: c.cantidad_necesaria_g,
       })),
     );
-    if (insertError) throw insertError;
+    if (insertError) throw errorDeBase(insertError);
   }
 
   private async reemplazarComponentesReceta(
@@ -253,7 +254,7 @@ export class RecetasService {
       .from('receta_componentes')
       .delete()
       .eq('receta_id', recetaId);
-    if (deleteError) throw deleteError;
+    if (deleteError) throw errorDeBase(deleteError);
 
     const { error: insertError } = await client.from('receta_componentes').insert(
       componentes.map((c) => ({
@@ -264,7 +265,7 @@ export class RecetasService {
         cantidad_necesaria_g: c.cantidad_necesaria_g,
       })),
     );
-    if (insertError) throw insertError;
+    if (insertError) throw errorDeBase(insertError);
   }
 
   private async recalcularCostoSubreceta(client: SupabaseClient, subrecetaId: string) {
@@ -272,7 +273,7 @@ export class RecetasService {
       .from('subreceta_componentes')
       .select('cantidad_necesaria_g, insumos(costo_unitario_g)')
       .eq('subreceta_id', subrecetaId);
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
 
     const costo = (data ?? []).reduce(
       (acc: number, c: any) => acc + c.cantidad_necesaria_g * (c.insumos?.costo_unitario_g ?? 0),
@@ -282,7 +283,7 @@ export class RecetasService {
       .from('subrecetas')
       .update({ costo_calculado: costo })
       .eq('id', subrecetaId);
-    if (updateError) throw updateError;
+    if (updateError) throw errorDeBase(updateError);
   }
 
   private async recalcularCostoReceta(client: SupabaseClient, recetaId: string) {
@@ -292,7 +293,7 @@ export class RecetasService {
         'tipo_componente, cantidad_necesaria_g, insumos(costo_unitario_g), subrecetas(costo_calculado, rendimiento_g)',
       )
       .eq('receta_id', recetaId);
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
 
     const costo = (data ?? []).reduce((acc: number, c: any) => {
       if (c.tipo_componente === 'insumo') {
@@ -308,7 +309,7 @@ export class RecetasService {
       .from('recetas')
       .update({ costo_calculado: costo })
       .eq('id', recetaId);
-    if (updateError) throw updateError;
+    if (updateError) throw errorDeBase(updateError);
   }
 
   private async recalcularCostosRecetasQueUsan(client: SupabaseClient, subrecetaId: string) {
@@ -316,7 +317,7 @@ export class RecetasService {
       .from('receta_componentes')
       .select('receta_id')
       .eq('subreceta_id', subrecetaId);
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
 
     const recetaIds = [...new Set((data ?? []).map((r) => r.receta_id as string))];
     for (const recetaId of recetaIds) {
@@ -326,13 +327,13 @@ export class RecetasService {
 
   private async obtenerSubreceta(client: SupabaseClient, id: string): Promise<SubrecetaDto> {
     const { data, error } = await client.from('subrecetas').select(SUBRECETA_SELECT).eq('id', id).single();
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     return this.mapSubreceta(data);
   }
 
   private async obtenerReceta(client: SupabaseClient, id: string): Promise<RecetaDto> {
     const { data, error } = await client.from('recetas').select(RECETA_SELECT).eq('id', id).single();
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     return this.mapReceta(data);
   }
 

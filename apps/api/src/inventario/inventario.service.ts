@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { MailService } from '../mail/mail.service';
 import { InsumosService } from './insumos.service';
+import { errorDeBase } from '../common/error-de-base';
 
 export interface ItemVendido {
   variante_id: string;
@@ -59,7 +60,7 @@ export class InventarioService {
       )
       .in('variante_id', varianteIds)
       .eq('activa', true);
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
 
     const recetaPorVariante = new Map(
       (recetas ?? []).map((r: any) => [r.variante_id as string, r]),
@@ -167,7 +168,7 @@ export class InventarioService {
       p_tipo: tipo,
       p_created_by: usuarioId,
     });
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
 
     // No bloquea la venta si falla — es una alerta, no algo que deba
     // tumbar el checkout.

@@ -1,11 +1,13 @@
 import {
   BadRequestException,
   ConflictException,
+  HttpException,
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import { errorDeBase } from '../common/error-de-base';
 
 export interface BlogPostDto {
   id: string;
@@ -63,7 +65,7 @@ export class BlogService {
       .eq('estado', 'publicado')
       .order('publicado_en', { ascending: false });
 
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     return data ?? [];
   }
 
@@ -76,7 +78,7 @@ export class BlogService {
       .eq('estado', 'publicado')
       .maybeSingle();
 
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     return data ?? null;
   }
 
@@ -89,7 +91,7 @@ export class BlogService {
       .eq('estado', 'publicado')
       .maybeSingle();
 
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     if (!data) throw new NotFoundException('Artículo no encontrado.');
     return data.id;
   }
@@ -103,7 +105,7 @@ export class BlogService {
       .eq('post_id', postId)
       .order('created_at', { ascending: true });
 
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     return data ?? [];
   }
 
@@ -136,7 +138,7 @@ export class BlogService {
       .select(COMENTARIO_SELECT)
       .single();
 
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     return data;
   }
 
@@ -151,7 +153,7 @@ export class BlogService {
       .eq('id', comentarioId)
       .maybeSingle();
 
-    if (buscarError) throw buscarError;
+    if (buscarError) throw errorDeBase(buscarError);
     if (!comentario) throw new NotFoundException('Comentario no encontrado.');
 
     if (comentario.usuario_id !== usuarioId) {
@@ -172,7 +174,7 @@ export class BlogService {
       .from('comentarios_blog')
       .delete()
       .eq('id', comentarioId);
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
   }
 
   async getLikesTotal(slug: string): Promise<{ total: number }> {
@@ -183,7 +185,7 @@ export class BlogService {
       .select('id', { count: 'exact', head: true })
       .eq('post_id', postId);
 
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     return { total: count ?? 0 };
   }
 
@@ -200,7 +202,7 @@ export class BlogService {
       .eq('usuario_id', usuarioId)
       .maybeSingle();
 
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     return { meGusta: !!data };
   }
 
@@ -218,19 +220,19 @@ export class BlogService {
       .eq('usuario_id', usuarioId)
       .maybeSingle();
 
-    if (buscarError) throw buscarError;
+    if (buscarError) throw errorDeBase(buscarError);
 
     if (existente) {
       const { error } = await client
         .from('likes_blog_post')
         .delete()
         .eq('id', existente.id);
-      if (error) throw error;
+      if (error) throw errorDeBase(error);
     } else {
       const { error } = await client
         .from('likes_blog_post')
         .insert({ post_id: postId, usuario_id: usuarioId });
-      if (error) throw error;
+      if (error) throw errorDeBase(error);
     }
 
     const { total } = await this.getLikesTotal(slug);
@@ -245,7 +247,7 @@ export class BlogService {
       .select(BLOG_POST_SELECT)
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     return data ?? [];
   }
 
@@ -289,11 +291,11 @@ export class BlogService {
    * `slug` tiene restricción UNIQUE: un duplicado llegaba al cliente como un
    * 500 genérico. Se traduce a 409 con un mensaje que el admin puede accionar.
    */
-  private traducirErrorEscritura(error: { code?: string }): unknown {
+  private traducirErrorEscritura(error: { code?: string }): HttpException {
     if (error.code === '23505') {
       return new ConflictException('Ya existe un artículo con ese slug.');
     }
-    return error;
+    return errorDeBase(error);
   }
 
   async actualizarBlogPost(
@@ -306,7 +308,7 @@ export class BlogService {
       .select('estado, publicado_en')
       .eq('id', id)
       .maybeSingle();
-    if (errorActual) throw errorActual;
+    if (errorActual) throw errorDeBase(errorActual);
     if (!actual) throw new NotFoundException('Artículo no encontrado.');
 
     const payload: Record<string, unknown> = {
@@ -349,7 +351,7 @@ export class BlogService {
       .from('blog_posts')
       .delete({ count: 'exact' })
       .eq('id', id);
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     if (!count) throw new NotFoundException('Artículo no encontrado.');
   }
 }

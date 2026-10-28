@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { SupabaseService } from '../supabase/supabase.service';
 import { EMPLEADO_SELECT, EmpleadosService, type EmpleadoDto } from './empleados.service';
 import { calcularSemana, hoyBogota } from './semana-utils';
+import { errorDeBase } from '../common/error-de-base';
 
 export interface AsistenciaDiaDto {
   fecha: string;
@@ -97,7 +98,7 @@ export class NominaService {
       .select(SEMANA_SELECT)
       .eq('id', id)
       .maybeSingle();
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     if (!data) throw new NotFoundException('Semana de nómina no encontrada.');
     return this.enriquecerSemana(client, data);
   }
@@ -128,7 +129,7 @@ export class NominaService {
       },
       { onConflict: 'nomina_semana_id,fecha' },
     );
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
   }
 
   async registrarAdelanto(input: RegistrarAdelantoInput, usuarioId: string): Promise<AdelantoDto> {
@@ -145,7 +146,7 @@ export class NominaService {
       .select(EMPLEADO_SELECT)
       .eq('id', input.empleado_id)
       .maybeSingle();
-    if (empleadoError) throw empleadoError;
+    if (empleadoError) throw errorDeBase(empleadoError);
     if (!empleado) throw new NotFoundException('Trabajador no encontrado.');
 
     const semana = await this.buscarOCrearSemana(client, empleado, input.fecha);
@@ -165,7 +166,7 @@ export class NominaService {
       })
       .select('id, empleado_id, nomina_semana_id, monto, fecha, motivo')
       .single();
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     return data;
   }
 
@@ -176,7 +177,7 @@ export class NominaService {
       .select('id, nomina_semana_id')
       .eq('id', id)
       .maybeSingle();
-    if (adelantoError) throw adelantoError;
+    if (adelantoError) throw errorDeBase(adelantoError);
     if (!adelanto) throw new NotFoundException('Adelanto no encontrado.');
 
     const semana = await this.obtenerSemanaRaw(client, adelanto.nomina_semana_id);
@@ -185,7 +186,7 @@ export class NominaService {
     }
 
     const { error } = await client.from('adelantos_nomina').delete().eq('id', id);
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
   }
 
   async liquidar(semanaId: string, usuarioId: string, notas: string | undefined): Promise<SemanaNominaDto> {
@@ -203,7 +204,7 @@ export class NominaService {
         throw new BadRequestException('Esa semana ya fue liquidada.');
       }
       this.logger.error(`liquidar_semana_nomina falló para ${semanaId}: ${error.message}`);
-      throw new BadRequestException('No se pudo liquidar la semana.');
+      throw errorDeBase(error);
     }
     return this.enriquecerSemana(client, data);
   }
@@ -216,7 +217,7 @@ export class NominaService {
       .eq('empleado_id', empleadoId)
       .order('semana_inicio', { ascending: false })
       .limit(limite);
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     return Promise.all((data ?? []).map((semana) => this.enriquecerSemana(client, semana)));
   }
 
@@ -245,7 +246,7 @@ export class NominaService {
       .select(EMPLEADO_SELECT)
       .eq('usuario_id', usuarioId)
       .maybeSingle();
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     return data;
   }
 
@@ -255,7 +256,7 @@ export class NominaService {
       .select(SEMANA_SELECT)
       .eq('id', semanaId)
       .maybeSingle();
-    if (error) throw error;
+    if (error) throw errorDeBase(error);
     if (!data) throw new NotFoundException('Semana de nómina no encontrada.');
     return data;
   }
@@ -273,7 +274,7 @@ export class NominaService {
       .eq('empleado_id', empleado.id)
       .eq('semana_inicio', inicio)
       .maybeSingle();
-    if (buscarError) throw buscarError;
+    if (buscarError) throw errorDeBase(buscarError);
     if (existente) return existente;
 
     const { data: creada, error: crearError } = await client
@@ -299,10 +300,10 @@ export class NominaService {
         .eq('empleado_id', empleado.id)
         .eq('semana_inicio', inicio)
         .single();
-      if (reintentoError) throw reintentoError;
+      if (reintentoError) throw errorDeBase(reintentoError);
       return reintento;
     }
-    throw crearError;
+    throw errorDeBase(crearError);
   }
 
   private async enriquecerSemana(client: SupabaseClient, semana: SemanaRaw): Promise<SemanaNominaDto> {
@@ -319,8 +320,8 @@ export class NominaService {
           .eq('nomina_semana_id', semana.id)
           .order('fecha'),
       ]);
-    if (asistenciaError) throw asistenciaError;
-    if (adelantosError) throw adelantosError;
+    if (asistenciaError) throw errorDeBase(asistenciaError);
+    if (adelantosError) throw errorDeBase(adelantosError);
 
     let diasTrabajados = semana.dias_trabajados;
     let totalAdelantos = semana.total_adelantos;
