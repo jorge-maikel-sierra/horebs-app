@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { errorDeBase } from '../common/error-de-base';
+import { armarCambiosEmpleado } from './empleado-cambios';
 
 export interface EmpleadoDto {
   id: string;
@@ -58,17 +59,6 @@ export class EmpleadosService {
   }
 
   async crear(input: CrearEmpleadoInput): Promise<EmpleadoDto> {
-    if (!input.nombre?.trim()) {
-      throw new BadRequestException('Falta el nombre del trabajador.');
-    }
-    if (typeof input.monto_semanal !== 'number' || input.monto_semanal <= 0) {
-      throw new BadRequestException('El monto semanal debe ser mayor a cero.');
-    }
-    const diasEsperados = input.dias_esperados_semana ?? 6;
-    if (diasEsperados < 1 || diasEsperados > 7) {
-      throw new BadRequestException('Los días esperados por semana deben estar entre 1 y 7.');
-    }
-
     const client = this.supabase.getClient();
     if (input.usuario_id) {
       await this.validarUsuarioDisponible(input.usuario_id);
@@ -76,17 +66,8 @@ export class EmpleadosService {
 
     const { data, error } = await client
       .from('empleados')
-      .insert({
-        nombre: input.nombre.trim(),
-        apellido: input.apellido?.trim() || null,
-        cedula: input.cedula?.trim() || null,
-        cargo: input.cargo?.trim() || null,
-        telefono: input.telefono?.trim() || null,
-        correo: input.correo?.trim() || null,
-        usuario_id: input.usuario_id || null,
-        monto_semanal: input.monto_semanal,
-        dias_esperados_semana: diasEsperados,
-      })
+      // Lo que falte (días esperados, activo) lo completa el default de la tabla.
+      .insert(armarCambiosEmpleado(input))
       .select(EMPLEADO_SELECT)
       .single();
     if (error) throw errorDeBase(error);
@@ -94,48 +75,14 @@ export class EmpleadosService {
   }
 
   async editar(id: string, cambios: EditarEmpleadoInput): Promise<EmpleadoDto> {
-    if (cambios.nombre !== undefined && !cambios.nombre.trim()) {
-      throw new BadRequestException('El nombre no puede quedar vacío.');
-    }
-    if (
-      cambios.monto_semanal !== undefined &&
-      (typeof cambios.monto_semanal !== 'number' || cambios.monto_semanal <= 0)
-    ) {
-      throw new BadRequestException('El monto semanal debe ser mayor a cero.');
-    }
-    if (
-      cambios.dias_esperados_semana !== undefined &&
-      (cambios.dias_esperados_semana < 1 || cambios.dias_esperados_semana > 7)
-    ) {
-      throw new BadRequestException('Los días esperados por semana deben estar entre 1 y 7.');
-    }
-
-    if (cambios.activo !== undefined && typeof cambios.activo !== 'boolean') {
-      throw new BadRequestException('"activo" debe ser verdadero o falso.');
-    }
-
     const client = this.supabase.getClient();
     if (cambios.usuario_id) {
       await this.validarUsuarioDisponible(cambios.usuario_id, id);
     }
 
-    const payload: Record<string, unknown> = {};
-    if (cambios.nombre !== undefined) payload.nombre = cambios.nombre.trim();
-    if (cambios.apellido !== undefined) payload.apellido = cambios.apellido.trim() || null;
-    if (cambios.cedula !== undefined) payload.cedula = cambios.cedula.trim() || null;
-    if (cambios.cargo !== undefined) payload.cargo = cambios.cargo.trim() || null;
-    if (cambios.telefono !== undefined) payload.telefono = cambios.telefono.trim() || null;
-    if (cambios.correo !== undefined) payload.correo = cambios.correo.trim() || null;
-    if (cambios.usuario_id !== undefined) payload.usuario_id = cambios.usuario_id || null;
-    if (cambios.monto_semanal !== undefined) payload.monto_semanal = cambios.monto_semanal;
-    if (cambios.dias_esperados_semana !== undefined) {
-      payload.dias_esperados_semana = cambios.dias_esperados_semana;
-    }
-    if (cambios.activo !== undefined) payload.activo = cambios.activo;
-
     const { data, error } = await client
       .from('empleados')
-      .update(payload)
+      .update(armarCambiosEmpleado(cambios))
       .eq('id', id)
       .select(EMPLEADO_SELECT)
       .single();
@@ -144,24 +91,6 @@ export class EmpleadosService {
       throw errorDeBase(error);
     }
     return data;
-  }
-
-  async desactivar(id: string): Promise<void> {
-    await this.cambiarActivo(id, false);
-  }
-
-  async activar(id: string): Promise<void> {
-    await this.cambiarActivo(id, true);
-  }
-
-  private async cambiarActivo(id: string, activo: boolean): Promise<void> {
-    const { error, count } = await this.supabase
-      .getClient()
-      .from('empleados')
-      .update({ activo }, { count: 'exact' })
-      .eq('id', id);
-    if (error) throw errorDeBase(error);
-    if (!count) throw new NotFoundException('Trabajador no encontrado.');
   }
 
   private async validarUsuarioDisponible(usuarioId: string, empleadoIdActual?: string): Promise<void> {

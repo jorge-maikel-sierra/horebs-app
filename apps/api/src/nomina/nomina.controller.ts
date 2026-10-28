@@ -19,8 +19,11 @@ import { UuidPipe } from '../common/pipes/uuid.pipe';
 import { FechaPipe } from '../common/pipes/fecha.pipe';
 import { LimitePipe } from '../common/pipes/limite.pipe';
 import { ValidarBodyPipe } from '../common/pipes/validar-body.pipe';
-import { ESQUEMA_ASISTENCIA, ESQUEMA_LIQUIDAR_SEMANA } from './esquemas';
-import { Deprecada } from '../common/deprecacion.interceptor';
+import {
+  ESQUEMA_ASISTENCIA,
+  ESQUEMA_LIQUIDAR_SEMANA,
+  ESQUEMA_REGISTRAR_ADELANTO,
+} from './esquemas';
 
 /** Semanas de histórico que se pueden pedir de una vez (un año). */
 const LIMITE_MAX_HISTORICO = 52;
@@ -74,23 +77,11 @@ export class NominaController {
     return this.nomina.asegurarLiquidada(id, usuario.id, body.notas);
   }
 
-  @Post('semanas/:id/liquidar')
-  @HttpCode(200)
-  @Deprecada('/nomina/semanas/:id/liquidacion')
-  @Roles('admin')
-  liquidar(
-    @Param('id', UuidPipe) id: string,
-    @Body(new ValidarBodyPipe(ESQUEMA_LIQUIDAR_SEMANA))
-    body: { notas?: string },
-    @UsuarioActual() usuario: UsuarioAutenticado,
-  ) {
-    return this.nomina.liquidar(id, usuario.id, body.notas);
-  }
-
   @Post('adelantos')
   @Roles('admin')
   registrarAdelanto(
-    @Body() body: RegistrarAdelantoInput,
+    @Body(new ValidarBodyPipe(ESQUEMA_REGISTRAR_ADELANTO))
+    body: RegistrarAdelantoInput,
     @UsuarioActual() usuario: UsuarioAutenticado,
   ) {
     return this.nomina.registrarAdelanto(body, usuario.id);
@@ -126,22 +117,5 @@ export class NominaController {
     @Query('limit', new LimitePipe(LIMITE_MAX_HISTORICO)) limite?: number,
   ) {
     return this.nomina.listarMiHistorico(usuario.id, limite);
-  }
-
-  @Get('mi-semana')
-  @Deprecada('/nomina/yo/semana-actual')
-  @Roles('admin', 'empleado')
-  miSemana(@UsuarioActual() usuario: UsuarioAutenticado) {
-    return this.semanaActualDeUsuario(usuario);
-  }
-
-  @Get('mi-historico')
-  @Deprecada('/nomina/yo/historico')
-  @Roles('admin', 'empleado')
-  miHistorico(
-    @UsuarioActual() usuario: UsuarioAutenticado,
-    @Query('limit', new LimitePipe(LIMITE_MAX_HISTORICO)) limite?: number,
-  ) {
-    return this.historicoDeUsuario(usuario, limite);
   }
 }

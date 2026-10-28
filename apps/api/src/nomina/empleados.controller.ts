@@ -2,7 +2,6 @@ import {
   Body,
   Controller,
   Get,
-  HttpCode,
   Param,
   Patch,
   Post,
@@ -17,7 +16,8 @@ import {
   type EditarEmpleadoInput,
 } from './empleados.service';
 import { UuidPipe } from '../common/pipes/uuid.pipe';
-import { Deprecada } from '../common/deprecacion.interceptor';
+import { ValidarBodyPipe } from '../common/pipes/validar-body.pipe';
+import { ESQUEMA_CREAR_EMPLEADO, ESQUEMA_EDITAR_EMPLEADO } from './esquemas';
 
 @Controller('nomina/empleados')
 @UseGuards(RolesGuard)
@@ -32,29 +32,20 @@ export class EmpleadosController {
 
   @Post()
   @Roles('admin')
-  crear(@Body() body: CrearEmpleadoInput) {
+  crear(
+    @Body(new ValidarBodyPipe(ESQUEMA_CREAR_EMPLEADO))
+    body: CrearEmpleadoInput,
+  ) {
     return this.empleados.crear(body);
   }
 
   @Patch(':id')
   @Roles('admin')
-  editar(@Param('id', UuidPipe) id: string, @Body() body: EditarEmpleadoInput) {
+  editar(
+    @Param('id', UuidPipe) id: string,
+    @Body(new ValidarBodyPipe(ESQUEMA_EDITAR_EMPLEADO))
+    body: EditarEmpleadoInput,
+  ) {
     return this.empleados.editar(id, body);
-  }
-
-  @Post(':id/desactivar')
-  @HttpCode(200)
-  @Deprecada('/nomina/empleados/:id')
-  @Roles('admin')
-  desactivar(@Param('id', UuidPipe) id: string) {
-    return this.empleados.desactivar(id);
-  }
-
-  @Post(':id/activar')
-  @HttpCode(200)
-  @Deprecada('/nomina/empleados/:id')
-  @Roles('admin')
-  activar(@Param('id', UuidPipe) id: string) {
-    return this.empleados.activar(id);
   }
 }
