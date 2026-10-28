@@ -6,7 +6,13 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useRol } from '@/lib/use-rol';
 import { supabase } from '@/lib/supabase';
-import { useAlertasAdmin, type AlertasAdmin } from '@/lib/use-alertas-admin';
+import {
+  CLAVE_SONIDO_PEDIDOS,
+  marcarTituloPedidos,
+  sonidoPedidosActivo,
+  useAlertasAdmin,
+  type AlertasAdmin,
+} from '@/lib/use-alertas-admin';
 import { useModulos } from '@/lib/use-modulos';
 import type { ModuloId } from '@/lib/modulos';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -156,12 +162,105 @@ function CampanaAlertas({ total }: { total: number }) {
   );
 }
 
+/** Activa o silencia el sonido de pedido nuevo de WhatsApp. */
+function BotonSonidoPedidos() {
+  const [activo, setActivo] = useState(sonidoPedidosActivo);
+
+  function alternar() {
+    const siguiente = !activo;
+    setActivo(siguiente);
+    try {
+      localStorage.setItem(CLAVE_SONIDO_PEDIDOS, siguiente ? '1' : '0');
+    } catch {
+      // Sin localStorage la preferencia dura hasta recargar.
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={alternar}
+      aria-pressed={activo}
+      aria-label="Sonido de pedidos nuevos"
+      title={
+        activo
+          ? 'Sonido de pedidos: activado'
+          : 'Sonido de pedidos: silenciado'
+      }
+      className="btn-press flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-zinc-300 text-zinc-700 transition-colors hover:border-accent-ink hover:text-accent-ink dark:border-zinc-700 dark:text-zinc-300"
+    >
+      <svg
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M11 5 6 9H2v6h4l5 4V5Z" />
+        {activo ? (
+          <path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14" />
+        ) : (
+          <path d="m22 9-6 6M16 9l6 6" />
+        )}
+      </svg>
+    </button>
+  );
+}
+
+/** Toast "entró un pedido por WhatsApp", visible desde cualquier página del panel. */
+function AvisoPedidoNuevo({ aviso }: { aviso: AlertasAdmin['pedidoNuevo'] }) {
+  const [descartadoEn, setDescartadoEn] = useState<number | null>(null);
+  if (!aviso || aviso.en === descartadoEn) return null;
+
+  function cerrar() {
+    setDescartadoEn(aviso?.en ?? null);
+    marcarTituloPedidos(0);
+  }
+
+  return (
+    <div
+      role="status"
+      className="fixed right-4 bottom-4 z-50 flex max-w-sm items-center gap-3 rounded-2xl border border-emerald-600/30 bg-white p-4 shadow-xl dark:bg-zinc-900"
+    >
+      <span aria-hidden="true" className="text-2xl">
+        🛒
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-bold text-zinc-900 dark:text-zinc-50">
+          {aviso.cantidad > 1
+            ? `Entraron ${aviso.cantidad} pedidos por WhatsApp`
+            : 'Entró un pedido por WhatsApp'}
+        </p>
+        <Link
+          href="/admin/pedidos"
+          onClick={cerrar}
+          className="text-sm font-semibold text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-300"
+        >
+          Ver pedidos
+        </Link>
+      </div>
+      <button
+        type="button"
+        onClick={cerrar}
+        aria-label="Cerrar aviso"
+        className="btn-press flex h-8 w-8 items-center justify-center rounded-full text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+      >
+        ✕
+      </button>
+    </div>
+  );
+}
+
 type NavItem = {
   href: string;
   label: string;
   icon: () => ReactElement;
   exacto?: boolean;
-  badgeKey?: keyof AlertasAdmin;
+  badgeKey?: Exclude<keyof AlertasAdmin, 'pedidoNuevo'>;
   /** Si el módulo se apaga en Configuración, el ítem desaparece del menú. */
   modulo?: ModuloId;
 };
@@ -323,6 +422,7 @@ function SidebarContenido({
               alertas.whatsappEsperando
             }
           />
+          <BotonSonidoPedidos />
           <ThemeToggle />
         </div>
       </div>
@@ -451,6 +551,7 @@ export default function AdminSidebar() {
 
   return (
     <>
+      <AvisoPedidoNuevo aviso={alertas.pedidoNuevo} />
       <div className="sticky top-0 z-20 flex items-center justify-between border-b border-zinc-200 bg-white/90 px-4 py-3 backdrop-blur-md lg:hidden dark:border-zinc-800 dark:bg-black/90">
         <span className="text-sm font-bold text-zinc-900 dark:text-zinc-50">
           Panel
@@ -463,6 +564,7 @@ export default function AdminSidebar() {
               alertas.whatsappEsperando
             }
           />
+          <BotonSonidoPedidos />
           <ThemeToggle />
           <button
             type="button"
