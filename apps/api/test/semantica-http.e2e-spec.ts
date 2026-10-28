@@ -6,6 +6,7 @@ import {
   Get,
   HttpCode,
   INestApplication,
+  Param,
   Post,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
@@ -15,6 +16,10 @@ import {
   CacheControlInterceptor,
   CachePublica,
 } from '../src/common/cache-control.interceptor';
+import {
+  Deprecada,
+  DeprecacionInterceptor,
+} from '../src/common/deprecacion.interceptor';
 import { ProblemDetailsFilter } from '../src/common/problem-details.filter';
 import {
   Ubicacion,
@@ -54,6 +59,12 @@ class RecursosController {
   privado() {
     return [];
   }
+
+  @Post(':id/viejo')
+  @Deprecada('/recursos/:id')
+  viejo(@Param('id') id: string) {
+    return { id };
+  }
 }
 
 describe('Semántica HTTP: estados y cabeceras (e2e)', () => {
@@ -69,6 +80,7 @@ describe('Semántica HTTP: estados y cabeceras (e2e)', () => {
     app.useGlobalInterceptors(
       new CacheControlInterceptor(reflector),
       new UbicacionInterceptor(reflector),
+      new DeprecacionInterceptor(reflector),
     );
     await app.init();
   });
@@ -104,6 +116,14 @@ describe('Semántica HTTP: estados y cabeceras (e2e)', () => {
     const privado = await request(app.getHttpServer()).get('/recursos/privado');
     expect(publico.headers['cache-control']).toBe('public, max-age=60');
     expect(privado.headers['cache-control']).toBe('no-store');
+  });
+
+  it('una ruta deprecada avisa con Deprecation y Link a su sucesora', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/recursos/abc/viejo')
+      .expect(201);
+    expect(res.headers.deprecation).toBe('@1793145600');
+    expect(res.headers.link).toBe('</recursos/abc>; rel="successor-version"');
   });
 
   it('un error también sale con no-store', async () => {

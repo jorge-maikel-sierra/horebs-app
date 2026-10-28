@@ -32,7 +32,13 @@ async function bootstrap() {
     process.env.NODE_ENV === 'production'
       ? frontendUrls
       : [...frontendUrls, /^http:\/\/localhost:\d+$/];
-  app.enableCors({ origin: origenes, credentials: true });
+  // exposedHeaders: sin esto el navegador oculta Location (201) y las
+  // cabeceras de deprecación a un fetch de otro origen.
+  app.enableCors({
+    origin: origenes,
+    credentials: true,
+    exposedHeaders: ['Location', 'Deprecation', 'Link', 'Retry-After'],
+  });
 
   // Todo error sale como Problem Details (RFC 9457).
   app.useGlobalFilters(new ProblemDetailsFilter());
