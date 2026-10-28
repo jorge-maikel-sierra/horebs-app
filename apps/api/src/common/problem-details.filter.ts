@@ -87,6 +87,9 @@ export class ProblemDetailsFilter implements ExceptionFilter {
     const req = http.getRequest<Request>();
 
     const problema = this.armarProblema(error, req.originalUrl);
+    // Un error nunca va a una caché; los interceptores no lo cubren porque un
+    // 401 o un 404 sin ruta salen antes de llegar a ellos.
+    res.setHeader('Cache-Control', 'no-store');
     if (problema.status === Number(HttpStatus.SERVICE_UNAVAILABLE)) {
       res.setHeader('Retry-After', String(REINTENTO_503_SEGUNDOS));
     }

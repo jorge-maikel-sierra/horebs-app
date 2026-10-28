@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { SupabaseService } from '../supabase/supabase.service';
 import { EMPLEADO_SELECT, EmpleadosService, type EmpleadoDto } from './empleados.service';
@@ -113,7 +113,7 @@ export class NominaService {
     const client = this.supabase.getClient();
     const semana = await this.obtenerSemanaRaw(client, semanaId);
     if (semana.estado === 'liquidada') {
-      throw new BadRequestException('Esa semana ya está liquidada, no se puede editar la asistencia.');
+      throw new ConflictException('Esa semana ya está liquidada, no se puede editar la asistencia.');
     }
     if (fecha < semana.semana_inicio || fecha > semana.semana_fin) {
       throw new BadRequestException('La fecha no pertenece a esa semana.');
@@ -151,7 +151,7 @@ export class NominaService {
 
     const semana = await this.buscarOCrearSemana(client, empleado, input.fecha);
     if (semana.estado === 'liquidada') {
-      throw new BadRequestException('Esa semana ya está liquidada, no se puede registrar un adelanto.');
+      throw new ConflictException('Esa semana ya está liquidada, no se puede registrar un adelanto.');
     }
 
     const { data, error } = await client
@@ -182,7 +182,7 @@ export class NominaService {
 
     const semana = await this.obtenerSemanaRaw(client, adelanto.nomina_semana_id);
     if (semana.estado === 'liquidada') {
-      throw new BadRequestException('Esa semana ya está liquidada, no se puede eliminar el adelanto.');
+      throw new ConflictException('Esa semana ya está liquidada, no se puede eliminar el adelanto.');
     }
 
     const { error } = await client.from('adelantos_nomina').delete().eq('id', id);
@@ -201,7 +201,7 @@ export class NominaService {
         throw new NotFoundException('Semana de nómina no encontrada.');
       }
       if (error.message?.includes('ya está liquidada')) {
-        throw new BadRequestException('Esa semana ya fue liquidada.');
+        throw new ConflictException('Esa semana ya fue liquidada.');
       }
       this.logger.error(`liquidar_semana_nomina falló para ${semanaId}: ${error.message}`);
       throw errorDeBase(error);

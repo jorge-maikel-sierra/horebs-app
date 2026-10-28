@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
   Param,
   Patch,
   Post,
@@ -41,12 +42,14 @@ export class EmpleadosController {
   }
 
   @Post(':id/desactivar')
+  @HttpCode(200)
   @Roles('admin')
   desactivar(@Param('id', UuidPipe) id: string) {
     return this.empleados.desactivar(id);
   }
 
   @Post(':id/activar')
+  @HttpCode(200)
   @Roles('admin')
   activar(@Param('id', UuidPipe) id: string) {
     return this.empleados.activar(id);

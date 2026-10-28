@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   NotFoundException,
   Param,
   Post,
@@ -18,17 +19,20 @@ import type { UsuarioSupabase } from '../auth/supabase-auth.guard';
 import { UuidPipe } from '../common/pipes/uuid.pipe';
 import { ValidarBodyPipe } from '../common/pipes/validar-body.pipe';
 import { ESQUEMA_COMENTARIO } from './esquemas';
+import { CachePublica } from '../common/cache-control.interceptor';
 
 @Controller('blog')
 export class BlogController {
   constructor(private readonly blog: BlogService) {}
 
   @Get('posts')
+  @CachePublica(60)
   getPosts() {
     return this.blog.getPostsPublicados();
   }
 
   @Get('posts/:slug')
+  @CachePublica(60)
   async getPostPorSlug(@Param('slug') slug: string) {
     const post = await this.blog.getPostPublicadoPorSlug(slug);
     if (!post) throw new NotFoundException('Artículo no encontrado.');
@@ -53,6 +57,7 @@ export class BlogController {
   }
 
   @Delete('comentarios/:id')
+  @HttpCode(204)
   @UseGuards(SupabaseAuthGuard)
   eliminarComentario(
     @Param('id', UuidPipe) id: string,

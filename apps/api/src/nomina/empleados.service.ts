@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { errorDeBase } from '../common/error-de-base';
 
@@ -175,7 +175,7 @@ export class EmpleadosService {
     const { data: yaVinculado, error: vinculoError } = await query.maybeSingle();
     if (vinculoError) throw errorDeBase(vinculoError);
     if (yaVinculado) {
-      throw new BadRequestException('Ese usuario ya está vinculado a otro trabajador.');
+      throw new ConflictException('Ese usuario ya está vinculado a otro trabajador.');
     }
   }
 }

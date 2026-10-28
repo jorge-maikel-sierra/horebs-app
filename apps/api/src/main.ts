@@ -1,9 +1,11 @@
 import { setDefaultResultOrder } from 'node:dns';
-import { NestFactory } from '@nestjs/core';
+import { NestFactory, Reflector } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
 import { AppModule } from './app.module';
+import { CacheControlInterceptor } from './common/cache-control.interceptor';
 import { ContentTypeGuard } from './common/content-type.guard';
 import { ProblemDetailsFilter } from './common/problem-details.filter';
+import { UbicacionInterceptor } from './common/ubicacion.interceptor';
 
 async function bootstrap() {
   // Railway (y otros hosts sin salida IPv6) resuelven dominios como
@@ -35,6 +37,12 @@ async function bootstrap() {
   app.useGlobalFilters(new ProblemDetailsFilter());
   // 415 si un POST/PUT/PATCH trae un body que no es JSON (RFC 9110).
   app.useGlobalGuards(new ContentTypeGuard());
+  // Location en los 201 que apuntan a un recurso, y Cache-Control en todo.
+  const reflector = app.get(Reflector);
+  app.useGlobalInterceptors(
+    new CacheControlInterceptor(reflector),
+    new UbicacionInterceptor(reflector),
+  );
 
   // Railway manda SIGTERM en cada redeploy — sin esto, Nest mata el
   // proceso al toque y corta requests en curso a mitad de camino.

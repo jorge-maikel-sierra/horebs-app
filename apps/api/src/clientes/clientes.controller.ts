@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   Param,
   Patch,
   Post,
@@ -63,6 +64,7 @@ export class ClientesController {
   }
 
   @Delete(':id')
+  @HttpCode(204)
   @Roles('admin')
   eliminar(@Param('id', UuidPipe) id: string) {
     return this.clientes.eliminar(id);

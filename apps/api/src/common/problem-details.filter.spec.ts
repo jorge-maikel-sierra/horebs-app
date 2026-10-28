@@ -62,6 +62,11 @@ describe('ProblemDetailsFilter', () => {
     expect(cuerpo.detail).not.toContain('secretos');
   });
 
+  it('un error nunca se cachea', () => {
+    const { res } = ejecutar(new NotFoundException('No hay.'));
+    expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-store');
+  });
+
   it('el 503 lleva Retry-After', () => {
     const { res } = ejecutar(new ServiceUnavailableException('Caído.'));
     expect(res.setHeader).toHaveBeenCalledWith('Retry-After', '30');

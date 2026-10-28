@@ -1,4 +1,11 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { UsuarioActual } from '../auth/usuario.decorator';
@@ -29,6 +36,7 @@ export class TurnosController {
   }
 
   @Post('cerrar')
+  @HttpCode(200)
   @Roles('admin', 'empleado')
   cerrar(
     @Body(new ValidarBodyPipe(ESQUEMA_CERRAR_TURNO))

@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -215,9 +216,7 @@ export class ClientesService {
 
     if (error) {
       if (error.code === '23505') {
-        throw new BadRequestException(
-          'Ya existe otro cliente con ese teléfono.',
-        );
+        throw new ConflictException('Ya existe otro cliente con ese teléfono.');
       }
       throw errorDeBase(error);
     }

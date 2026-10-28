@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   NotFoundException,
   Param,
   Patch,
@@ -33,6 +34,7 @@ import {
   ESQUEMA_MODULO,
   ESQUEMA_SEGUIMIENTO_CONFIG,
 } from './esquemas';
+import { Ubicacion } from '../common/ubicacion.interceptor';
 
 @Controller('admin')
 @UseGuards(RolesGuard)
@@ -51,6 +53,7 @@ export class AdminController {
   }
 
   @Post('ventas')
+  @Ubicacion('/pedidos/:id')
   @Roles('admin', 'empleado')
   crearVenta(
     @Body() body: CrearVentaInput,
@@ -81,6 +84,7 @@ export class AdminController {
   }
 
   @Delete('pedidos/:id')
+  @HttpCode(204)
   @Roles('admin')
   eliminarPedido(
     @Param('id', UuidPipe) id: string,
@@ -174,6 +178,7 @@ export class AdminController {
   }
 
   @Delete('usuarios/:id')
+  @HttpCode(204)
   @Roles('admin')
   quitarRol(@Param('id', UuidPipe) id: string) {
     return this.admin.quitarRol(id);
@@ -265,6 +270,7 @@ export class AdminController {
   }
 
   @Delete('blog/:id')
+  @HttpCode(204)
   @Roles('admin')
   eliminarBlogPost(@Param('id', UuidPipe) id: string) {
     return this.blog.eliminarBlogPost(id);

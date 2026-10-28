@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   Param,
   Post,
   Put,
@@ -62,6 +63,7 @@ export class NominaController {
   }
 
   @Post('semanas/:id/liquidar')
+  @HttpCode(200)
   @Roles('admin')
   liquidar(
     @Param('id', UuidPipe) id: string,
@@ -82,6 +84,7 @@ export class NominaController {
   }
 
   @Delete('adelantos/:id')
+  @HttpCode(204)
   @Roles('admin')
   eliminarAdelanto(@Param('id', UuidPipe) id: string) {
     return this.nomina.eliminarAdelanto(id);
