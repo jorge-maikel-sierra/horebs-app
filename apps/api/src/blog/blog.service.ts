@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { errorDeBase } from '../common/error-de-base';
+import type { UsuarioSupabase } from '../auth/supabase-auth.guard';
 
 export interface BlogPostDto {
   id: string;
@@ -111,10 +112,12 @@ export class BlogService {
 
   async crearComentario(
     slug: string,
-    usuarioId: string,
-    autorNombre: string,
+    usuario: UsuarioSupabase,
     input: CrearComentarioInput,
   ): Promise<ComentarioDto> {
+    const usuarioId = usuario.id;
+    const autorNombre =
+      `${usuario.nombre} ${usuario.apellido}`.trim() || usuario.email;
     const contenido = input.contenido?.trim();
     if (!contenido) {
       throw new BadRequestException('El comentario no puede estar vacío.');
@@ -240,39 +243,6 @@ export class BlogService {
     if (error) throw errorDeBase(error);
     const { total } = await this.getLikesTotal(slug);
     return { total, meGusta: false };
-  }
-
-  async toggleLike(
-    slug: string,
-    usuarioId: string,
-  ): Promise<{ total: number; meGusta: boolean }> {
-    const postId = await this.getPostIdPublicado(slug);
-    const client = this.supabase.getClient();
-
-    const { data: existente, error: buscarError } = await client
-      .from('likes_blog_post')
-      .select('id')
-      .eq('post_id', postId)
-      .eq('usuario_id', usuarioId)
-      .maybeSingle();
-
-    if (buscarError) throw errorDeBase(buscarError);
-
-    if (existente) {
-      const { error } = await client
-        .from('likes_blog_post')
-        .delete()
-        .eq('id', existente.id);
-      if (error) throw errorDeBase(error);
-    } else {
-      const { error } = await client
-        .from('likes_blog_post')
-        .insert({ post_id: postId, usuario_id: usuarioId });
-      if (error) throw errorDeBase(error);
-    }
-
-    const { total } = await this.getLikesTotal(slug);
-    return { total, meGusta: !existente };
   }
 
   /** A diferencia de `getPostsPublicados`, incluye borradores — uso admin. */

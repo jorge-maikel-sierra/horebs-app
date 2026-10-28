@@ -21,7 +21,6 @@ import { UuidPipe } from '../common/pipes/uuid.pipe';
 import { ValidarBodyPipe } from '../common/pipes/validar-body.pipe';
 import { ESQUEMA_COMENTARIO } from './esquemas';
 import { CachePublica } from '../common/cache-control.interceptor';
-import { Deprecada } from '../common/deprecacion.interceptor';
 
 @Controller('blog')
 export class BlogController {
@@ -41,6 +40,8 @@ export class BlogController {
     return post;
   }
 
+  // Comentarios y likes sin @CachePublica: el cliente los vuelve a pedir justo
+  // después de comentar o dar like y tienen que verse al instante.
   @Get('posts/:slug/comentarios')
   getComentarios(@Param('slug') slug: string) {
     return this.blog.getComentarios(slug);
@@ -53,9 +54,7 @@ export class BlogController {
     @Body(new ValidarBodyPipe(ESQUEMA_COMENTARIO)) body: CrearComentarioInput,
     @UsuarioSupabaseActual() usuario: UsuarioSupabase,
   ) {
-    const nombre =
-      `${usuario.nombre} ${usuario.apellido}`.trim() || usuario.email;
-    return this.blog.crearComentario(slug, usuario.id, nombre, body);
+    return this.blog.crearComentario(slug, usuario, body);
   }
 
   @Delete('comentarios/:id')
@@ -101,25 +100,5 @@ export class BlogController {
     @UsuarioSupabaseActual() usuario: UsuarioSupabase,
   ) {
     return this.blog.quitarMeGusta(slug, usuario.id);
-  }
-
-  @Get('posts/:slug/likes/estado')
-  @Deprecada('/blog/posts/:slug/likes/yo')
-  @UseGuards(SupabaseAuthGuard)
-  getMeGustaDeprecada(
-    @Param('slug') slug: string,
-    @UsuarioSupabaseActual() usuario: UsuarioSupabase,
-  ) {
-    return this.blog.getMeGusta(slug, usuario.id);
-  }
-
-  @Post('posts/:slug/likes')
-  @Deprecada('/blog/posts/:slug/likes/yo')
-  @UseGuards(SupabaseAuthGuard)
-  toggleLike(
-    @Param('slug') slug: string,
-    @UsuarioSupabaseActual() usuario: UsuarioSupabase,
-  ) {
-    return this.blog.toggleLike(slug, usuario.id);
   }
 }

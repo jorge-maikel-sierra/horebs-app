@@ -16,13 +16,13 @@ import { UsuarioActual } from '../auth/usuario.decorator';
 import { ClientesDirectorioService } from './clientes-directorio.service';
 import { ClientesService } from './clientes.service';
 import { PuntosService } from './puntos.service';
+import type { AjustePuntosInput } from './puntos.service';
 import type { ConsultaDirectorio } from './clientes-directorio.service';
 import type { EditarClienteInput } from './clientes.service';
 import type { UsuarioAutenticado } from '../auth/roles.guard';
 import { UuidPipe } from '../common/pipes/uuid.pipe';
 import { ValidarBodyPipe } from '../common/pipes/validar-body.pipe';
-import { ESQUEMA_AJUSTE_PUNTOS } from './esquemas';
-import { Deprecada } from '../common/deprecacion.interceptor';
+import { ESQUEMA_AJUSTE_PUNTOS, ESQUEMA_EDITAR_CLIENTE } from './esquemas';
 
 @Controller('admin/clientes')
 @UseGuards(RolesGuard)
@@ -60,7 +60,11 @@ export class ClientesController {
 
   @Patch(':id')
   @Roles('admin', 'empleado')
-  editar(@Param('id', UuidPipe) id: string, @Body() body: EditarClienteInput) {
+  editar(
+    @Param('id', UuidPipe) id: string,
+    @Body(new ValidarBodyPipe(ESQUEMA_EDITAR_CLIENTE))
+    body: EditarClienteInput,
+  ) {
     return this.clientes.editar(id, body);
   }
 
@@ -82,21 +86,9 @@ export class ClientesController {
   ajustarPuntos(
     @Param('id', UuidPipe) id: string,
     @Body(new ValidarBodyPipe(ESQUEMA_AJUSTE_PUNTOS))
-    body: { puntos: number; motivo: string },
+    body: AjustePuntosInput,
     @UsuarioActual() usuario: UsuarioAutenticado,
   ) {
     return this.puntos.ajustarPuntos(id, body.puntos, body.motivo, usuario.id);
-  }
-
-  @Post(':id/ajuste-puntos')
-  @Deprecada('/admin/clientes/:id/movimientos-puntos')
-  @Roles('admin')
-  ajustarPuntosDeprecada(
-    @Param('id', UuidPipe) id: string,
-    @Body(new ValidarBodyPipe(ESQUEMA_AJUSTE_PUNTOS))
-    body: { puntos: number; motivo: string },
-    @UsuarioActual() usuario: UsuarioAutenticado,
-  ) {
-    return this.ajustarPuntos(id, body, usuario);
   }
 }

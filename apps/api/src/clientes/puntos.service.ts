@@ -11,6 +11,12 @@ export interface ConfiguracionPuntos {
   puntosVencimientoMeses: number;
 }
 
+/** Body de `POST /admin/clientes/:id/movimientos-puntos`. */
+export interface AjustePuntosInput {
+  puntos: number;
+  motivo: string;
+}
+
 export interface CanjeCalculado {
   puntos: number;
   descuento: number;
