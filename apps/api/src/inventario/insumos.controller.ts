@@ -21,6 +21,7 @@ import type { UsuarioAutenticado } from '../auth/roles.guard';
 import { UuidPipe } from '../common/pipes/uuid.pipe';
 import { ValidarBodyPipe } from '../common/pipes/validar-body.pipe';
 import { ESQUEMA_AJUSTE_INSUMO } from './esquemas';
+import { Deprecada } from '../common/deprecacion.interceptor';
 
 @Controller('inventario/insumos')
 @UseGuards(RolesGuard)
@@ -56,7 +57,7 @@ export class InsumosController {
     return this.insumos.editar(id, body);
   }
 
-  @Post(':id/ajuste')
+  @Post(':id/ajustes')
   @Roles('admin', 'empleado')
   ajustarStock(
     @Param('id', UuidPipe) id: string,
@@ -71,5 +72,17 @@ export class InsumosController {
       body.motivo,
       usuario.id,
     );
+  }
+
+  @Post(':id/ajuste')
+  @Deprecada('/inventario/insumos/:id/ajustes')
+  @Roles('admin', 'empleado')
+  ajustarStockDeprecada(
+    @Param('id', UuidPipe) id: string,
+    @Body(new ValidarBodyPipe(ESQUEMA_AJUSTE_INSUMO))
+    body: { tipo: TipoAjusteStock; cantidad_g: number; motivo: string },
+    @UsuarioActual() usuario: UsuarioAutenticado,
+  ) {
+    return this.ajustarStock(id, body, usuario);
   }
 }

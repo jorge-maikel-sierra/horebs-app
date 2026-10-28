@@ -4,6 +4,7 @@ import { Logger } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { CacheControlInterceptor } from './common/cache-control.interceptor';
 import { ContentTypeGuard } from './common/content-type.guard';
+import { DeprecacionInterceptor } from './common/deprecacion.interceptor';
 import { ProblemDetailsFilter } from './common/problem-details.filter';
 import { UbicacionInterceptor } from './common/ubicacion.interceptor';
 
@@ -42,6 +43,7 @@ async function bootstrap() {
   app.useGlobalInterceptors(
     new CacheControlInterceptor(reflector),
     new UbicacionInterceptor(reflector),
+    new DeprecacionInterceptor(reflector),
   );
 
   // Railway manda SIGTERM en cada redeploy — sin esto, Nest mata el

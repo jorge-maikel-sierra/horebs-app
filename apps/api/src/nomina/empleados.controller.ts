@@ -17,6 +17,7 @@ import {
   type EditarEmpleadoInput,
 } from './empleados.service';
 import { UuidPipe } from '../common/pipes/uuid.pipe';
+import { Deprecada } from '../common/deprecacion.interceptor';
 
 @Controller('nomina/empleados')
 @UseGuards(RolesGuard)
@@ -43,6 +44,7 @@ export class EmpleadosController {
 
   @Post(':id/desactivar')
   @HttpCode(200)
+  @Deprecada('/nomina/empleados/:id')
   @Roles('admin')
   desactivar(@Param('id', UuidPipe) id: string) {
     return this.empleados.desactivar(id);
@@ -50,6 +52,7 @@ export class EmpleadosController {
 
   @Post(':id/activar')
   @HttpCode(200)
+  @Deprecada('/nomina/empleados/:id')
   @Roles('admin')
   activar(@Param('id', UuidPipe) id: string) {
     return this.empleados.activar(id);

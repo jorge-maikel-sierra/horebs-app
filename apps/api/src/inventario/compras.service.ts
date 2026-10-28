@@ -137,6 +137,32 @@ export class ComprasService {
   }
 
   /** Aplica una línea pendiente al stock del insumo — ver RPC procesar_detalle_compra. */
+  /**
+   * Una sola operación para las tres acciones sobre una línea: vincular un
+   * insumo y/o pasarla a procesada o excluida. Si vienen las dos, primero se
+   * vincula (procesar necesita el insumo).
+   */
+  async actualizarLinea(
+    detalleId: string,
+    cambios: { estado?: 'procesado' | 'excluido'; insumo_id?: string },
+    usuarioId: string,
+  ): Promise<void> {
+    if (!cambios.estado && !cambios.insumo_id) {
+      throw new BadRequestException(
+        'Indica el insumo a vincular o el estado a aplicar.',
+      );
+    }
+    if (cambios.insumo_id) {
+      await this.vincularInsumo(detalleId, cambios.insumo_id);
+    }
+    if (cambios.estado === 'procesado') {
+      await this.procesarLinea(detalleId, usuarioId);
+    }
+    if (cambios.estado === 'excluido') {
+      await this.excluirLinea(detalleId);
+    }
+  }
+
   async procesarLinea(detalleId: string, procesadoPor: string): Promise<void> {
     const { data, error } = await this.supabase.getClient().rpc('procesar_detalle_compra', {
       p_detalle_id: detalleId,

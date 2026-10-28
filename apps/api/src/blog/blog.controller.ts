@@ -7,6 +7,7 @@ import {
   NotFoundException,
   Param,
   Post,
+  Put,
   UseGuards,
 } from '@nestjs/common';
 import { BlogService } from './blog.service';
@@ -20,6 +21,7 @@ import { UuidPipe } from '../common/pipes/uuid.pipe';
 import { ValidarBodyPipe } from '../common/pipes/validar-body.pipe';
 import { ESQUEMA_COMENTARIO } from './esquemas';
 import { CachePublica } from '../common/cache-control.interceptor';
+import { Deprecada } from '../common/deprecacion.interceptor';
 
 @Controller('blog')
 export class BlogController {
@@ -71,7 +73,7 @@ export class BlogController {
     return this.blog.getLikesTotal(slug);
   }
 
-  @Get('posts/:slug/likes/estado')
+  @Get('posts/:slug/likes/yo')
   @UseGuards(SupabaseAuthGuard)
   getMeGusta(
     @Param('slug') slug: string,
@@ -80,7 +82,39 @@ export class BlogController {
     return this.blog.getMeGusta(slug, usuario.id);
   }
 
+  @Put('posts/:slug/likes/yo')
+  @HttpCode(200)
+  @UseGuards(SupabaseAuthGuard)
+  darMeGusta(
+    @Param('slug') slug: string,
+    @UsuarioSupabaseActual() usuario: UsuarioSupabase,
+  ) {
+    return this.blog.darMeGusta(slug, usuario.id);
+  }
+
+  // 200 con body (y no 204): el cliente necesita el total actualizado.
+  @Delete('posts/:slug/likes/yo')
+  @HttpCode(200)
+  @UseGuards(SupabaseAuthGuard)
+  quitarMeGusta(
+    @Param('slug') slug: string,
+    @UsuarioSupabaseActual() usuario: UsuarioSupabase,
+  ) {
+    return this.blog.quitarMeGusta(slug, usuario.id);
+  }
+
+  @Get('posts/:slug/likes/estado')
+  @Deprecada('/blog/posts/:slug/likes/yo')
+  @UseGuards(SupabaseAuthGuard)
+  getMeGustaDeprecada(
+    @Param('slug') slug: string,
+    @UsuarioSupabaseActual() usuario: UsuarioSupabase,
+  ) {
+    return this.blog.getMeGusta(slug, usuario.id);
+  }
+
   @Post('posts/:slug/likes')
+  @Deprecada('/blog/posts/:slug/likes/yo')
   @UseGuards(SupabaseAuthGuard)
   toggleLike(
     @Param('slug') slug: string,

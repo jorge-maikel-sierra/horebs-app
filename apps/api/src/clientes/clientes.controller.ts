@@ -22,6 +22,7 @@ import type { UsuarioAutenticado } from '../auth/roles.guard';
 import { UuidPipe } from '../common/pipes/uuid.pipe';
 import { ValidarBodyPipe } from '../common/pipes/validar-body.pipe';
 import { ESQUEMA_AJUSTE_PUNTOS } from './esquemas';
+import { Deprecada } from '../common/deprecacion.interceptor';
 
 @Controller('admin/clientes')
 @UseGuards(RolesGuard)
@@ -76,7 +77,7 @@ export class ClientesController {
     return this.puntos.listarMovimientos(id);
   }
 
-  @Post(':id/ajuste-puntos')
+  @Post(':id/movimientos-puntos')
   @Roles('admin')
   ajustarPuntos(
     @Param('id', UuidPipe) id: string,
@@ -85,5 +86,17 @@ export class ClientesController {
     @UsuarioActual() usuario: UsuarioAutenticado,
   ) {
     return this.puntos.ajustarPuntos(id, body.puntos, body.motivo, usuario.id);
+  }
+
+  @Post(':id/ajuste-puntos')
+  @Deprecada('/admin/clientes/:id/movimientos-puntos')
+  @Roles('admin')
+  ajustarPuntosDeprecada(
+    @Param('id', UuidPipe) id: string,
+    @Body(new ValidarBodyPipe(ESQUEMA_AJUSTE_PUNTOS))
+    body: { puntos: number; motivo: string },
+    @UsuarioActual() usuario: UsuarioAutenticado,
+  ) {
+    return this.ajustarPuntos(id, body, usuario);
   }
 }

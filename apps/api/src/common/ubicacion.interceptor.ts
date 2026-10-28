@@ -37,6 +37,11 @@ export class UbicacionInterceptor implements NestInterceptor {
     if (!plantilla) return next.handle();
 
     const res = contexto.switchToHttp().getResponse<Response>();
+    // Una plantilla sin `:id` apunta a un recurso único (ej. `/turnos/actual`).
+    if (!plantilla.includes(':id')) {
+      res.setHeader('Location', plantilla);
+      return next.handle();
+    }
     return next.handle().pipe(
       tap((cuerpo) => {
         const id = (cuerpo as { id?: unknown } | null)?.id;

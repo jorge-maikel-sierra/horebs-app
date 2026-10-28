@@ -206,6 +206,42 @@ export class BlogService {
     return { meGusta: !!data };
   }
 
+  /** `PUT .../likes/yo`: idempotente — si ya había like, no hace nada. */
+  async darMeGusta(
+    slug: string,
+    usuarioId: string,
+  ): Promise<{ total: number; meGusta: boolean }> {
+    const postId = await this.getPostIdPublicado(slug);
+    const { meGusta: yaLoTenia } = await this.getMeGusta(slug, usuarioId);
+    if (!yaLoTenia) {
+      const { error } = await this.supabase
+        .getClient()
+        .from('likes_blog_post')
+        .insert({ post_id: postId, usuario_id: usuarioId });
+      // 23505: otro request del mismo usuario ganó la carrera; ya está.
+      if (error && error.code !== '23505') throw errorDeBase(error);
+    }
+    const { total } = await this.getLikesTotal(slug);
+    return { total, meGusta: true };
+  }
+
+  /** `DELETE .../likes/yo`: idempotente — si no había like, no hace nada. */
+  async quitarMeGusta(
+    slug: string,
+    usuarioId: string,
+  ): Promise<{ total: number; meGusta: boolean }> {
+    const postId = await this.getPostIdPublicado(slug);
+    const { error } = await this.supabase
+      .getClient()
+      .from('likes_blog_post')
+      .delete()
+      .eq('post_id', postId)
+      .eq('usuario_id', usuarioId);
+    if (error) throw errorDeBase(error);
+    const { total } = await this.getLikesTotal(slug);
+    return { total, meGusta: false };
+  }
+
   async toggleLike(
     slug: string,
     usuarioId: string,

@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   HttpCode,
+  Patch,
   Post,
   UseGuards,
 } from '@nestjs/common';
@@ -12,7 +13,18 @@ import { UsuarioActual } from '../auth/usuario.decorator';
 import { TurnosService } from './turnos.service';
 import type { UsuarioAutenticado } from '../auth/roles.guard';
 import { ValidarBodyPipe } from '../common/pipes/validar-body.pipe';
-import { ESQUEMA_ABRIR_TURNO, ESQUEMA_CERRAR_TURNO } from './esquemas';
+import {
+  ESQUEMA_ABRIR_TURNO,
+  ESQUEMA_CERRAR_TURNO,
+  ESQUEMA_CERRAR_TURNO_ACTUAL,
+} from './esquemas';
+import { Deprecada } from '../common/deprecacion.interceptor';
+import { Ubicacion } from '../common/ubicacion.interceptor';
+
+interface CierreTurnoBody {
+  monto_final_contado?: number;
+  notas_cierre?: string;
+}
 
 @Controller('turnos')
 @UseGuards(RolesGuard)
@@ -25,7 +37,8 @@ export class TurnosController {
     return this.turnos.obtenerActual();
   }
 
-  @Post('abrir')
+  @Post()
+  @Ubicacion('/turnos/actual')
   @Roles('admin', 'empleado')
   abrir(
     @Body(new ValidarBodyPipe(ESQUEMA_ABRIR_TURNO))
@@ -35,12 +48,11 @@ export class TurnosController {
     return this.turnos.abrir(body.monto_inicial, usuario.id);
   }
 
-  @Post('cerrar')
-  @HttpCode(200)
+  @Patch('actual')
   @Roles('admin', 'empleado')
-  cerrar(
-    @Body(new ValidarBodyPipe(ESQUEMA_CERRAR_TURNO))
-    body: { monto_final_contado?: number; notas_cierre?: string },
+  cerrarActual(
+    @Body(new ValidarBodyPipe(ESQUEMA_CERRAR_TURNO_ACTUAL))
+    body: CierreTurnoBody,
     @UsuarioActual() usuario: UsuarioAutenticado,
   ) {
     return this.turnos.cerrar(
@@ -48,5 +60,28 @@ export class TurnosController {
       body.monto_final_contado,
       body.notas_cierre,
     );
+  }
+
+  @Post('abrir')
+  @Deprecada('/turnos')
+  @Roles('admin', 'empleado')
+  abrirDeprecada(
+    @Body(new ValidarBodyPipe(ESQUEMA_ABRIR_TURNO))
+    body: { monto_inicial: number },
+    @UsuarioActual() usuario: UsuarioAutenticado,
+  ) {
+    return this.abrir(body, usuario);
+  }
+
+  @Post('cerrar')
+  @HttpCode(200)
+  @Deprecada('/turnos/actual')
+  @Roles('admin', 'empleado')
+  cerrarDeprecada(
+    @Body(new ValidarBodyPipe(ESQUEMA_CERRAR_TURNO))
+    body: CierreTurnoBody,
+    @UsuarioActual() usuario: UsuarioAutenticado,
+  ) {
+    return this.cerrarActual(body, usuario);
   }
 }

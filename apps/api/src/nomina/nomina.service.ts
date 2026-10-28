@@ -209,6 +209,25 @@ export class NominaService {
     return this.enriquecerSemana(client, data);
   }
 
+  /**
+   * `PUT .../liquidacion`: dejar la semana liquidada es idempotente. Si ya
+   * lo estaba, se devuelve la liquidación existente en vez de un 409.
+   */
+  async asegurarLiquidada(
+    semanaId: string,
+    usuarioId: string,
+    notas: string | undefined,
+  ): Promise<SemanaNominaDto> {
+    try {
+      return await this.liquidar(semanaId, usuarioId, notas);
+    } catch (error) {
+      if (error instanceof ConflictException) {
+        return this.obtenerSemana(semanaId);
+      }
+      throw error;
+    }
+  }
+
   async obtenerHistoricoEmpleado(empleadoId: string, limite = 52): Promise<SemanaNominaDto[]> {
     const client = this.supabase.getClient();
     const { data, error } = await client

@@ -38,6 +38,7 @@ export interface EditarEmpleadoInput {
   usuario_id?: string | null;
   monto_semanal?: number;
   dias_esperados_semana?: number;
+  activo?: boolean;
 }
 
 export const EMPLEADO_SELECT =
@@ -109,6 +110,10 @@ export class EmpleadosService {
       throw new BadRequestException('Los días esperados por semana deben estar entre 1 y 7.');
     }
 
+    if (cambios.activo !== undefined && typeof cambios.activo !== 'boolean') {
+      throw new BadRequestException('"activo" debe ser verdadero o falso.');
+    }
+
     const client = this.supabase.getClient();
     if (cambios.usuario_id) {
       await this.validarUsuarioDisponible(cambios.usuario_id, id);
@@ -126,6 +131,7 @@ export class EmpleadosService {
     if (cambios.dias_esperados_semana !== undefined) {
       payload.dias_esperados_semana = cambios.dias_esperados_semana;
     }
+    if (cambios.activo !== undefined) payload.activo = cambios.activo;
 
     const { data, error } = await client
       .from('empleados')
