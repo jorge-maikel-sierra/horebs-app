@@ -20,8 +20,11 @@ import type {
 import type { UsuarioAutenticado } from '../auth/roles.guard';
 import { UuidPipe } from '../common/pipes/uuid.pipe';
 import { ValidarBodyPipe } from '../common/pipes/validar-body.pipe';
-import { ESQUEMA_AJUSTE_INSUMO } from './esquemas';
-import { Deprecada } from '../common/deprecacion.interceptor';
+import {
+  ESQUEMA_AJUSTE_INSUMO,
+  ESQUEMA_CREAR_INSUMO,
+  ESQUEMA_EDITAR_INSUMO,
+} from './esquemas';
 
 @Controller('inventario/insumos')
 @UseGuards(RolesGuard)
@@ -36,7 +39,9 @@ export class InsumosController {
 
   @Post()
   @Roles('admin', 'empleado')
-  crear(@Body() body: CrearInsumoInput) {
+  crear(
+    @Body(new ValidarBodyPipe(ESQUEMA_CREAR_INSUMO)) body: CrearInsumoInput,
+  ) {
     return this.insumos.crear(body);
   }
 
@@ -44,7 +49,7 @@ export class InsumosController {
   @Roles('admin', 'empleado')
   editar(
     @Param('id', UuidPipe) id: string,
-    @Body()
+    @Body(new ValidarBodyPipe(ESQUEMA_EDITAR_INSUMO))
     body: {
       nombre?: string;
       categoria?: string;
@@ -72,17 +77,5 @@ export class InsumosController {
       body.motivo,
       usuario.id,
     );
-  }
-
-  @Post(':id/ajuste')
-  @Deprecada('/inventario/insumos/:id/ajustes')
-  @Roles('admin', 'empleado')
-  ajustarStockDeprecada(
-    @Param('id', UuidPipe) id: string,
-    @Body(new ValidarBodyPipe(ESQUEMA_AJUSTE_INSUMO))
-    body: { tipo: TipoAjusteStock; cantidad_g: number; motivo: string },
-    @UsuarioActual() usuario: UsuarioAutenticado,
-  ) {
-    return this.ajustarStock(id, body, usuario);
   }
 }
