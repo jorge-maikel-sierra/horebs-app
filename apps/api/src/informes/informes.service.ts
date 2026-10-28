@@ -1,104 +1,30 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { errorDeBase } from '../common/error-de-base';
-import { finDiaBogota, inicioDiaBogota } from '../common/horario';
 import { MENSAJE_DERIVACION } from '../mensajeria/aviso-equipo.service';
 import {
   agregarMetricasBot,
   TEXTOS_REPETIR,
-  type InformeBotDto,
 } from './metricas-bot';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { acumular, acumularProducto, serializarMapa } from './informes-agregados';
+import {
+  resolverGranularidad,
+  claveBucket,
+  serializarSerie,
+  serializarSerieClientes,
+  resolverRango,
+  contarDias,
+} from './informes-fechas';
+import {
+  type Acumulador,
+  type Granularidad,
+  type InformeClienteListaDto,
+  type InformeClientesDto,
+  MAX_LISTA_CLIENTES,
+  type InformeDto,
+} from './informes.tipos';
 
-export type Granularidad = 'dia' | 'mes';
-
-/**
- * El negocio opera en Riohacha (América/Bogotá, UTC-5 fijo, sin horario de
- * verano) pero todos los timestamps se guardan en UTC. El horario de
- * atención (4pm-11pm local) cae entre las 21:00 UTC y las 04:00 UTC del día
- * siguiente — agrupar/filtrar por fecha UTC cruda parte la noche de venta
- * por la mitad y corre pedidos de la noche al día siguiente.
- */
-const OFFSET_MS = 5 * 60 * 60 * 1000;
-
-export interface InformeDiaDto {
-  fecha: string;
-  total: number;
-  pedidos: number;
-}
-
-export interface InformeDesgloseDto {
-  clave: string;
-  total: number;
-  pedidos: number;
-}
-
-export interface InformeProductoDto {
-  nombre: string;
-  cantidad: number;
-  total: number;
-}
-
-export interface InformeCategoriaDto {
-  nombre: string;
-  cantidad: number;
-  total: number;
-}
-
-export interface InformeClienteDiaDto {
-  fecha: string;
-  nuevos: number;
-}
-
-export interface InformeClienteTopDto {
-  id: string;
-  nombre: string;
-  telefono: string | null;
-  pedidos: number;
-  total: number;
-}
-
-export interface InformeClienteListaDto extends InformeClienteTopDto {
-  primera_compra: string;
-}
-
-export interface InformeClientesDto {
-  nuevos: number;
-  recurrentes: number;
-  ticket_promedio: number;
-  serie_diaria_nuevos: InformeClienteDiaDto[];
-  top_clientes: InformeClienteTopDto[];
-  /** Los más recientes primero; recortada a MAX_LISTA_CLIENTES. */
-  lista_nuevos: InformeClienteListaDto[];
-  /** Los de mayor gasto primero; recortada a MAX_LISTA_CLIENTES. */
-  lista_recurrentes: InformeClienteListaDto[];
-}
-
-const MAX_LISTA_CLIENTES = 100;
-
-export interface InformeDto {
-  desde: string;
-  hasta: string;
-  granularidad: Granularidad;
-  resumen: {
-    ventas_brutas: number;
-    promedio_diario: number;
-    pedidos: number;
-    articulos_vendidos: number;
-    ticket_promedio: number;
-    costo_domicilio_total: number;
-  };
-  serie_diaria: InformeDiaDto[];
-  por_metodo_pago: InformeDesgloseDto[];
-  por_modalidad: InformeDesgloseDto[];
-  por_canal: InformeDesgloseDto[];
-  top_productos: InformeProductoDto[];
-  por_categoria: InformeCategoriaDto[];
-  clientes: InformeClientesDto;
-  bot: InformeBotDto & { serie_diaria: InformeDiaDto[] };
-}
-
-type Acumulador = { total: number; pedidos: number };
 
 /**
  * Los pedidos en vivo y los históricos (migrados de WooCommerce, ver
@@ -123,12 +49,12 @@ export class InformesService {
   constructor(private readonly supabase: SupabaseService) {}
 
   async generar(desdeInput?: string, hastaInput?: string): Promise<InformeDto> {
-    const { desde, hasta, desdeISO, hastaISO } = this.resolverRango(
+    const { desde, hasta, desdeISO, hastaISO } = resolverRango(
       desdeInput,
       hastaInput,
     );
     const client = this.supabase.getClient();
-    const granularidad = this.resolverGranularidad(desde, hasta);
+    const granularidad = resolverGranularidad(desde, hasta);
 
     const [pedidosVivos, pedidosHistoricos] = await Promise.all([
       this.obtenerPedidosVivos(client, desdeISO, hastaISO),
@@ -147,13 +73,13 @@ export class InformesService {
     for (const p of filas) {
       ventasBrutas += p.total;
       costoDomicilioTotal += p.costo_domicilio;
-      this.acumular(porBucket, this.claveBucket(p.creado_en, granularidad), p.total);
-      this.acumular(porMetodo, p.metodo_pago, p.total);
-      this.acumular(porModalidad, p.modalidad, p.total);
-      this.acumular(porCanal, p.canal, p.total);
+      acumular(porBucket, claveBucket(p.creado_en, granularidad), p.total);
+      acumular(porMetodo, p.metodo_pago, p.total);
+      acumular(porModalidad, p.modalidad, p.total);
+      acumular(porCanal, p.canal, p.total);
     }
 
-    const diasEnRango = this.contarDias(desde, hasta);
+    const diasEnRango = contarDias(desde, hasta);
 
     const { topProductos, porCategoria, articulosVendidos } =
       await this.calcularItems(client, desdeISO, hastaISO);
@@ -188,10 +114,10 @@ export class InformesService {
         ticket_promedio: filas.length > 0 ? ventasBrutas / filas.length : 0,
         costo_domicilio_total: costoDomicilioTotal,
       },
-      serie_diaria: this.serializarSerie(porBucket, desde, hasta, granularidad),
-      por_metodo_pago: this.serializarMapa(porMetodo),
-      por_modalidad: this.serializarMapa(porModalidad),
-      por_canal: this.serializarMapa(porCanal),
+      serie_diaria: serializarSerie(porBucket, desde, hasta, granularidad),
+      por_metodo_pago: serializarMapa(porMetodo),
+      por_modalidad: serializarMapa(porModalidad),
+      por_canal: serializarMapa(porCanal),
       top_productos: topProductos,
       por_categoria: porCategoria,
       clientes,
@@ -281,9 +207,9 @@ export class InformesService {
     const porBucket = new Map<string, Acumulador>();
     for (const p of pedidos) {
       if (p.estado === 'cancelado') continue;
-      this.acumular(
+      acumular(
         porBucket,
-        this.claveBucket(p.created_at, granularidad),
+        claveBucket(p.created_at, granularidad),
         Number(p.total),
       );
     }
@@ -301,7 +227,7 @@ export class InformesService {
         repetirToques,
         recomprasEnviadas: recompras,
       }),
-      serie_diaria: this.serializarSerie(porBucket, desde, hasta, granularidad),
+      serie_diaria: serializarSerie(porBucket, desde, hasta, granularidad),
     };
   }
 
@@ -395,7 +321,7 @@ export class InformesService {
         nuevos: 0,
         recurrentes: 0,
         ticket_promedio: 0,
-        serie_diaria_nuevos: this.serializarSerieClientes(
+        serie_diaria_nuevos: serializarSerieClientes(
           new Map(),
           desde,
           hasta,
@@ -466,7 +392,7 @@ export class InformesService {
       if (esNuevo) {
         nuevos += 1;
         listaNuevos.push(cliente);
-        const bucket = this.claveBucket(info.fecha, granularidad);
+        const bucket = claveBucket(info.fecha, granularidad);
         porBucketAltas.set(bucket, (porBucketAltas.get(bucket) ?? 0) + 1);
       } else {
         recurrentes += 1;
@@ -506,7 +432,7 @@ export class InformesService {
       recurrentes,
       ticket_promedio:
         telefonos.length > 0 ? ventasActivos / telefonos.length : 0,
-      serie_diaria_nuevos: this.serializarSerieClientes(
+      serie_diaria_nuevos: serializarSerieClientes(
         porBucketAltas,
         desde,
         hasta,
@@ -598,8 +524,8 @@ export class InformesService {
       const nombreProducto =
         producto?.nombre ?? item.nombre_personalizado ?? 'Personalizado';
       const nombreCategoria = producto?.categorias?.nombre ?? 'Personalizado';
-      this.acumularProducto(porProducto, nombreProducto, item.cantidad, item.subtotal);
-      this.acumularProducto(porCategoria, nombreCategoria, item.cantidad, item.subtotal);
+      acumularProducto(porProducto, nombreProducto, item.cantidad, item.subtotal);
+      acumularProducto(porCategoria, nombreCategoria, item.cantidad, item.subtotal);
     }
 
     for (const item of itemsHistoricos as any[]) {
@@ -607,8 +533,8 @@ export class InformesService {
       const productoCatalogo = item.variantes_producto?.productos;
       const nombreProducto = productoCatalogo?.nombre ?? item.producto_nombre;
       const nombreCategoria = productoCatalogo?.categorias?.nombre ?? 'Personalizado';
-      this.acumularProducto(porProducto, nombreProducto, item.cantidad, item.subtotal);
-      this.acumularProducto(porCategoria, nombreCategoria, item.cantidad, item.subtotal);
+      acumularProducto(porProducto, nombreProducto, item.cantidad, item.subtotal);
+      acumularProducto(porCategoria, nombreCategoria, item.cantidad, item.subtotal);
     }
 
     const topProductos = [...porProducto.entries()]
@@ -621,140 +547,5 @@ export class InformesService {
       .sort((a, b) => b.total - a.total);
 
     return { topProductos, porCategoria: porCategoriaOrdenado, articulosVendidos };
-  }
-
-  private acumular(mapa: Map<string, Acumulador>, clave: string, monto: number) {
-    const actual = mapa.get(clave) ?? { total: 0, pedidos: 0 };
-    actual.total += monto;
-    actual.pedidos += 1;
-    mapa.set(clave, actual);
-  }
-
-  private acumularProducto(
-    mapa: Map<string, { cantidad: number; total: number }>,
-    clave: string,
-    cantidad: number,
-    total: number,
-  ) {
-    const actual = mapa.get(clave) ?? { cantidad: 0, total: 0 };
-    actual.cantidad += cantidad;
-    actual.total += total;
-    mapa.set(clave, actual);
-  }
-
-  private serializarMapa(mapa: Map<string, Acumulador>): InformeDesgloseDto[] {
-    return [...mapa.entries()]
-      .map(([clave, v]) => ({ clave, ...v }))
-      .sort((a, b) => b.total - a.total);
-  }
-
-  /**
-   * Rangos largos (histórico incluido) no se pueden mostrar barra-por-día
-   * sin romper el gráfico — a partir de ~2 meses se agrupa por mes.
-   */
-  private resolverGranularidad(desde: string, hasta: string): Granularidad {
-    return this.contarDias(desde, hasta) > 62 ? 'mes' : 'dia';
-  }
-
-  private claveBucket(fechaIso: string, granularidad: Granularidad): string {
-    const local = this.aFechaLocal(fechaIso);
-    return granularidad === 'mes' ? local.slice(0, 7) : local.slice(0, 10);
-  }
-
-  private aFechaLocal(fechaIso: string): string {
-    return new Date(new Date(fechaIso).getTime() - OFFSET_MS).toISOString();
-  }
-
-  private serializarSerie(
-    porBucket: Map<string, Acumulador>,
-    desde: string,
-    hasta: string,
-    granularidad: Granularidad,
-  ): InformeDiaDto[] {
-    const resultado: InformeDiaDto[] = [];
-    if (granularidad === 'dia') {
-      let cursor = new Date(`${desde}T00:00:00`);
-      const fin = new Date(`${hasta}T00:00:00`);
-      while (cursor <= fin) {
-        const fecha = this.formatearFecha(cursor);
-        const datos = porBucket.get(fecha) ?? { total: 0, pedidos: 0 };
-        resultado.push({ fecha, ...datos });
-        cursor = new Date(cursor.getTime() + 24 * 60 * 60 * 1000);
-      }
-    } else {
-      let cursor = new Date(`${desde.slice(0, 7)}-01T00:00:00`);
-      const fin = new Date(`${hasta.slice(0, 7)}-01T00:00:00`);
-      while (cursor <= fin) {
-        const fecha = cursor.toISOString().slice(0, 7);
-        const datos = porBucket.get(fecha) ?? { total: 0, pedidos: 0 };
-        resultado.push({ fecha, ...datos });
-        cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
-      }
-    }
-    return resultado;
-  }
-
-  private serializarSerieClientes(
-    porBucket: Map<string, number>,
-    desde: string,
-    hasta: string,
-    granularidad: Granularidad,
-  ): InformeClienteDiaDto[] {
-    const resultado: InformeClienteDiaDto[] = [];
-    if (granularidad === 'dia') {
-      let cursor = new Date(`${desde}T00:00:00`);
-      const fin = new Date(`${hasta}T00:00:00`);
-      while (cursor <= fin) {
-        const fecha = this.formatearFecha(cursor);
-        resultado.push({ fecha, nuevos: porBucket.get(fecha) ?? 0 });
-        cursor = new Date(cursor.getTime() + 24 * 60 * 60 * 1000);
-      }
-    } else {
-      let cursor = new Date(`${desde.slice(0, 7)}-01T00:00:00`);
-      const fin = new Date(`${hasta.slice(0, 7)}-01T00:00:00`);
-      while (cursor <= fin) {
-        const fecha = cursor.toISOString().slice(0, 7);
-        resultado.push({ fecha, nuevos: porBucket.get(fecha) ?? 0 });
-        cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
-      }
-    }
-    return resultado;
-  }
-
-  private resolverRango(desdeInput?: string, hastaInput?: string) {
-    const hoyLocal = new Date(this.aFechaLocal(new Date().toISOString()));
-    const hastaDate = hastaInput ? new Date(`${hastaInput}T00:00:00`) : hoyLocal;
-    const desdeDate = desdeInput
-      ? new Date(`${desdeInput}T00:00:00`)
-      : new Date(hastaDate.getTime() - 6 * 24 * 60 * 60 * 1000);
-
-    if (Number.isNaN(desdeDate.getTime()) || Number.isNaN(hastaDate.getTime())) {
-      throw new BadRequestException('Rango de fechas inválido.');
-    }
-    if (desdeDate > hastaDate) {
-      throw new BadRequestException(
-        'La fecha "desde" no puede ser posterior a "hasta".',
-      );
-    }
-
-    const desde = this.formatearFecha(desdeDate);
-    const hasta = this.formatearFecha(hastaDate);
-    return {
-      desde,
-      hasta,
-      desdeISO: inicioDiaBogota(desde),
-      hastaISO: finDiaBogota(hasta),
-    };
-  }
-
-  private contarDias(desde: string, hasta: string) {
-    const ms =
-      new Date(`${hasta}T00:00:00`).getTime() -
-      new Date(`${desde}T00:00:00`).getTime();
-    return Math.floor(ms / (24 * 60 * 60 * 1000)) + 1;
-  }
-
-  private formatearFecha(d: Date) {
-    return d.toISOString().slice(0, 10);
   }
 }
