@@ -535,7 +535,23 @@ export class AdminService {
       .eq('id', id)
       .single();
     if (obtenerError) throw obtenerError;
-    return this.mapPedido(actualizado);
+    const pedido = this.mapPedido(actualizado);
+
+    // Purchase a Meta (Click-to-WhatsApp) al entregar, no al crear: un
+    // pedido del bot cancelado no es una venta. Mismo envío idempotente que
+    // las ventas del POS; si el cliente no llegó por un anuncio, no sale.
+    if (
+      cambios.estado === 'entregado' &&
+      pedidoActual.estado !== 'entregado' &&
+      pedido.canal === 'whatsapp'
+    ) {
+      this.conversionesMeta.avisarCompra({
+        telefono: pedido.cliente.telefono,
+        pedidoId: id,
+        total: pedido.total,
+      });
+    }
+    return pedido;
   }
 
   async eliminarPedido(id: string, usuarioId: string): Promise<void> {

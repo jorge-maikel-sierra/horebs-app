@@ -166,7 +166,10 @@ solo hacia conversaciones iniciadas.
 - **`Purchase`**: cuando el equipo registra una venta en el POS
   (`AdminService.crearVenta`); se liga a la conversación por teléfono
   (`3157861208` ↔ wa_id `573157861208`). Si ese cliente no llegó por un
-  anuncio, no se envía nada. Lleva valor y moneda `COP`.
+  anuncio, no se envía nada. Lleva valor y moneda `COP`. Los pedidos que
+  crea el bot (canal `whatsapp`) mandan el `Purchase` cuando el equipo los
+  marca **entregados** en `/admin/pedidos` (`AdminService.editarPedido`),
+  no al crearlos: un pedido cancelado no es una venta.
 - **Idempotencia**: Meta no deduplica eventos de mensajería, así que cada
   envío reclama `(evento, referencia_id)` en `eventos_meta_enviados` antes
   de llamar a Meta; si Meta rechaza el evento, la clave se libera.
