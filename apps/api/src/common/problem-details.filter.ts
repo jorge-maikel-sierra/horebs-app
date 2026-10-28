@@ -26,11 +26,6 @@ export interface ProblemDetails {
   detail: string;
   instance: string;
   errores?: ErrorDeCampo[];
-  /**
-   * Transitorio: el web de hoy lee `message`. Se elimina cuando el web lea
-   * `detail` (Fase 4 del plan de estandarización).
-   */
-  message: string;
 }
 
 interface CuerpoDeNest {
@@ -108,7 +103,6 @@ export class ProblemDetailsFilter implements ExceptionFilter {
         detail,
         instance,
         ...(cuerpo.errores ? { errores: cuerpo.errores } : {}),
-        message: detail,
       };
     }
 
@@ -122,7 +116,6 @@ export class ProblemDetailsFilter implements ExceptionFilter {
       status,
       detail: DETALLE_INTERNO,
       instance,
-      message: DETALLE_INTERNO,
     };
   }
 }

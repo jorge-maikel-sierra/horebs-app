@@ -31,13 +31,12 @@ describe('ProblemDetailsFilter', () => {
     );
     expect(res.status).toHaveBeenCalledWith(404);
     expect(res.type).toHaveBeenCalledWith('application/problem+json');
-    expect(cuerpo).toMatchObject({
+    expect(cuerpo).toEqual({
       type: 'https://pizzeriahorebs.shop/problemas/not-found',
       title: 'Not Found',
       status: 404,
       detail: 'Pedido no existe.',
       instance: '/admin/pedidos/abc',
-      message: 'Pedido no existe.',
     });
   });
 
