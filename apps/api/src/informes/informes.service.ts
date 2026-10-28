@@ -1,5 +1,15 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import { MENSAJE_DERIVACION } from '../mensajeria/aviso-equipo.service';
+import {
+  agregarMetricasBot,
+  TEXTOS_REPETIR,
+  type InformeBotDto,
+} from './metricas-bot';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 export type Granularidad = 'dia' | 'mes';
@@ -88,6 +98,7 @@ export interface InformeDto {
   top_productos: InformeProductoDto[];
   por_categoria: InformeCategoriaDto[];
   clientes: InformeClientesDto;
+  bot: InformeBotDto & { serie_diaria: InformeDiaDto[] };
 }
 
 type Acumulador = { total: number; pedidos: number };
@@ -150,6 +161,15 @@ export class InformesService {
     const { topProductos, porCategoria, articulosVendidos } =
       await this.calcularItems(client, desdeISO, hastaISO);
 
+    const bot = await this.calcularBot(
+      client,
+      desde,
+      hasta,
+      desdeISO,
+      hastaISO,
+      granularidad,
+    );
+
     const clientes = await this.calcularClientes(
       client,
       filas,
@@ -178,6 +198,117 @@ export class InformesService {
       top_productos: topProductos,
       por_categoria: porCategoria,
       clientes,
+      bot,
+    };
+  }
+
+  /**
+   * Métricas del bot de WhatsApp en el rango: conversaciones con mensajes
+   * del cliente, pedidos canal 'whatsapp' (incluye cancelados para el
+   * embudo), derivaciones, toques de "repetir" y recompras enviadas.
+   */
+  private async calcularBot(
+    client: SupabaseClient,
+    desde: string,
+    hasta: string,
+    desdeISO: string,
+    hastaISO: string,
+    granularidad: Granularidad,
+  ): Promise<InformeDto['bot']> {
+    const contar = async (
+      consulta: PromiseLike<{
+        count: number | null;
+        error: { message: string } | null;
+      }>,
+    ): Promise<number> => {
+      const { count, error } = await consulta;
+      if (error) {
+        throw new ServiceUnavailableException(
+          `No se pudo calcular una métrica del bot: ${error.message}`,
+        );
+      }
+      return count ?? 0;
+    };
+
+    const [pedidos, entrantes, derivaciones, repetirToques, recompras] =
+      await Promise.all([
+        this.paginarTodo<{
+          total: number;
+          estado: string;
+          created_at: string;
+          programado_para: string | null;
+          comprobante_recibido_en: string | null;
+        }>((d, h) =>
+          client
+            .from('pedidos')
+            .select(
+              'total, estado, created_at, programado_para, comprobante_recibido_en',
+            )
+            .eq('canal', 'whatsapp')
+            .gte('created_at', desdeISO)
+            .lte('created_at', hastaISO)
+            .range(d, h),
+        ),
+        this.paginarTodo<{ conversacion_id: string }>((d, h) =>
+          client
+            .from('mensajes_conversacion')
+            .select('conversacion_id')
+            .eq('direccion', 'entrante')
+            .gte('created_at', desdeISO)
+            .lte('created_at', hastaISO)
+            .range(d, h),
+        ),
+        contar(
+          client
+            .from('mensajes_conversacion')
+            .select('id', { count: 'exact', head: true })
+            .eq('direccion', 'saliente_bot')
+            .eq('texto', MENSAJE_DERIVACION)
+            .gte('created_at', desdeISO)
+            .lte('created_at', hastaISO),
+        ),
+        contar(
+          client
+            .from('mensajes_conversacion')
+            .select('id', { count: 'exact', head: true })
+            .eq('direccion', 'entrante')
+            .in('texto', TEXTOS_REPETIR)
+            .gte('created_at', desdeISO)
+            .lte('created_at', hastaISO),
+        ),
+        contar(
+          client
+            .from('pedidos')
+            .select('id', { count: 'exact', head: true })
+            .gte('recompra_enviada_en', desdeISO)
+            .lte('recompra_enviada_en', hastaISO),
+        ),
+      ]);
+
+    const porBucket = new Map<string, Acumulador>();
+    for (const p of pedidos) {
+      if (p.estado === 'cancelado') continue;
+      this.acumular(
+        porBucket,
+        this.claveBucket(p.created_at, granularidad),
+        Number(p.total),
+      );
+    }
+
+    return {
+      ...agregarMetricasBot({
+        pedidos: pedidos.map((p) => ({
+          total: Number(p.total),
+          estado: p.estado,
+          reserva: Boolean(p.programado_para),
+          comprobante: Boolean(p.comprobante_recibido_en),
+        })),
+        conversacionesConMensaje: entrantes.map((m) => m.conversacion_id),
+        derivaciones,
+        repetirToques,
+        recomprasEnviadas: recompras,
+      }),
+      serie_diaria: this.serializarSerie(porBucket, desde, hasta, granularidad),
     };
   }
 
@@ -406,7 +537,11 @@ export class InformesService {
     const resultado: T[] = [];
     for (let desde = 0; ; desde += tamanoPagina) {
       const { data, error } = await build(desde, desde + tamanoPagina - 1);
-      if (error) throw error;
+      if (error) {
+        throw new ServiceUnavailableException(
+          `No se pudo leer la base para el informe: ${(error as { message?: string }).message ?? 'error desconocido'}`,
+        );
+      }
       resultado.push(...(data ?? []));
       if (!data || data.length < tamanoPagina) break;
     }
@@ -428,7 +563,11 @@ export class InformesService {
     for (let i = 0; i < telefonos.length; i += tamanoTanda) {
       const tanda = telefonos.slice(i, i + tamanoTanda);
       const { data, error } = await client.from(tabla).select(select).in('telefono', tanda);
-      if (error) throw error;
+      if (error) {
+        throw new ServiceUnavailableException(
+          `No se pudo leer la base para el informe: ${(error as { message?: string }).message ?? 'error desconocido'}`,
+        );
+      }
       resultado.push(...(data ?? []));
     }
     return resultado;
