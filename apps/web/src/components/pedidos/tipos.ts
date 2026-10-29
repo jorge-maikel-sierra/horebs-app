@@ -31,6 +31,8 @@ export type PedidoAdmin = {
   programado_para?: string | null;
   /** El cliente mandó el comprobante de transferencia por WhatsApp. */
   tiene_comprobante?: boolean;
+  /** Lo que el bot o el cliente dejó escrito (ej. pizza mitad y mitad). */
+  notas?: string | null;
   total: number;
   created_at: string;
   items: ItemPedido[];

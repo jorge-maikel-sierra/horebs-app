@@ -88,6 +88,8 @@ export interface PedidoAdminDto {
   programado_para: string | null;
   /** El cliente mandó el comprobante de transferencia por WhatsApp. */
   tiene_comprobante: boolean;
+  /** Lo que el bot o el cliente dejó escrito en el pedido (ej. pizza mitad y mitad). */
+  notas: string | null;
   items: {
     variante_id: string | null;
     producto_nombre: string;
@@ -110,4 +112,4 @@ export const ESTADOS_PEDIDO = [
 export const MODALIDADES_VENTA = ['local', 'retiro', 'domicilio'];
 
 export const PEDIDO_ADMIN_SELECT =
-  'id, canal, modalidad, direccion_entrega, costo_domicilio, metodo_pago, estado, stock_status, total, created_at, programado_para, comprobante_path, clientes(id, nombre, apellido, telefono, direccion, correo), items_pedido(variante_id, nombre_personalizado, cantidad, precio_unitario, variantes_producto(nombre, productos(nombre)))';
+  'id, canal, modalidad, direccion_entrega, costo_domicilio, metodo_pago, estado, stock_status, total, notas, created_at, programado_para, comprobante_path, clientes(id, nombre, apellido, telefono, direccion, correo), items_pedido(variante_id, nombre_personalizado, cantidad, precio_unitario, variantes_producto(nombre, productos(nombre)))';

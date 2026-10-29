@@ -4,6 +4,7 @@ export function mapPedido(p: any): PedidoAdminDto {
   const reserva = p as {
     programado_para?: string | null;
     comprobante_path?: string | null;
+    notas?: string | null;
   };
   const cliente = p.clientes;
   const items = (p.items_pedido ?? []) as any[];
@@ -25,6 +26,7 @@ export function mapPedido(p: any): PedidoAdminDto {
     estado: p.estado,
     stock_status: p.stock_status,
     total: p.total,
+    notas: reserva.notas ?? null,
     created_at: p.created_at,
     programado_para: reserva.programado_para ?? null,
     tiene_comprobante: Boolean(reserva.comprobante_path),

@@ -193,7 +193,11 @@ function PedidosInterno() {
   useEffect(() => {
     adminFetch('/admin/pedidos')
       .then(async (res) => {
-        if (!res.ok) throw new Error('No se pudieron cargar los pedidos.');
+        if (!res.ok) {
+          throw new Error(
+            await leerErrorApi(res, 'No se pudieron cargar los pedidos.'),
+          );
+        }
         setPedidos(await res.json());
       })
       .catch((err) =>
@@ -299,7 +303,11 @@ function PedidosInterno() {
     const ventana = window.open('', '_blank');
     try {
       const res = await adminFetch(`/admin/pedidos/${p.id}/comprobante`);
-      if (!res.ok) throw new Error('No se pudo abrir el comprobante.');
+      if (!res.ok) {
+        throw new Error(
+          await leerErrorApi(res, 'No se pudo abrir el comprobante.'),
+        );
+      }
       const { url } = (await res.json()) as { url: string };
       // Si el navegador bloqueó la pestaña, se abre en la misma.
       if (ventana) ventana.location.href = url;
@@ -319,7 +327,11 @@ function PedidosInterno() {
     setDescargandoId(p.id);
     try {
       const res = await adminFetch(`/admin/pedidos/${p.id}/factura`);
-      if (!res.ok) throw new Error('No se pudo generar el comprobante.');
+      if (!res.ok) {
+        throw new Error(
+          await leerErrorApi(res, 'No se pudo generar el comprobante.'),
+        );
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -598,6 +610,12 @@ function PedidosInterno() {
                     </li>
                   )}
                 </ul>
+
+                {p.notas && (
+                  <p className="mt-2 rounded-lg bg-brand-orange/10 px-2 py-1 text-[11px] text-zinc-700 [overflow-wrap:anywhere] dark:text-zinc-300">
+                    <span className="font-semibold">Nota:</span> {p.notas}
+                  </p>
+                )}
 
                 {coincidenciasOcultas(p, terminos).map((c) => (
                   <p
