@@ -42,6 +42,9 @@ describe('Contrato HTTP del API (app real)', () => {
 
   afterAll(() => app.close());
 
+  it('la raíz responde 200 (la app arrancó con todos sus módulos)', () =>
+    request(app.getHttpServer()).get('/').expect(200).expect('Hello World!'));
+
   it('una ruta que no existe es 404 en problem+json y sin caché', async () => {
     const res = await request(app.getHttpServer())
       .get('/no-existe')
