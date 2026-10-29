@@ -37,7 +37,7 @@ export default tseslint.config(
   {
     // Clean code estricto en el código de producción (los specs quedan
     // fuera: sus describe son largos por naturaleza). Van como `warn`
-    // porque hay deuda medida (ver AGENTS.md, "Estándares de código"): el
+    // porque hay deuda medida (ver CLAUDE.md, "Convenciones de nomenclatura y estilo"): el
     // objetivo es que el conteo solo baje, y cada regla pasa a `error` cuando
     // llegue a cero. `no-explicit-any` quedó en 26 (filas de Supabase sin
     // tipar en los mappers).

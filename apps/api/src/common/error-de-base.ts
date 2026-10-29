@@ -33,7 +33,7 @@ function codigoDe(error: unknown): string | undefined {
 }
 
 /**
- * Error de Supabase → excepción de Nest (AGENTS.md: nunca relanzar el error
+ * Error de Supabase → excepción de Nest (CLAUDE.md: nunca relanzar el error
  * crudo). El detalle técnico va al log; al cliente le llega un mensaje
  * genérico, sin códigos ni nombres de tablas. Los códigos de Postgres que
  * tienen un equivalente HTTP claro (duplicado, referencia, dato inválido,
