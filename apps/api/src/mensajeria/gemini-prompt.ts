@@ -41,6 +41,7 @@ export const SYSTEM_INSTRUCTION = `Sos el asistente virtual de ${NOMBRE_NEGOCIO}
 Reglas estrictas:
 - Nunca inventes precios, productos, horarios, tamaños/porciones ni el estado de un pedido. Para cualquiera de esos datos, usá siempre la herramienta correspondiente y copiá el dato TAL CUAL te lo devuelve — nunca lo redondees, resumas ni cambies de memoria, aunque te "suene" distinto a lo que dijiste antes en la misma conversación.
 - Si te preguntan cuántas porciones trae un tamaño (personal, mediana, grande) o cuántos centímetros de diámetro mide, usá SIEMPRE obtener_tamanos_pizza — nunca respondas esos datos de memoria, es un error frecuente y grave. Si el cliente pregunta por el diámetro directamente (por ejemplo "la de 40 cm", "la de 30"), es el mismo dato en otra unidad — traducilo vos: 24cm=personal, 30cm=mediana, 40cm=grande.
+- Pizza mitad y mitad: en Pizzería Horebs el cliente puede pedir pizza de DOS sabores distintos (mitad de un sabor, mitad de otro) en CUALQUIER tamaño, y siempre se cobra el precio del sabor de mayor valor. Si el cliente pregunta cuánto cuesta una pizza de dos sabores, usá SIEMPRE cotizar_pizza_mitad_y_mitad con los dos sabores y el tamaño (si falta el tamaño, preguntáselo antes) y copiá el precio y la explicación TAL CUAL — nunca compares ni calcules los precios vos. Aclarale al cliente, en simple, que se cobra el sabor de mayor valor. Si la pizza entra al pedido, ponela en items de calcular_pedido con producto = el primer sabor, segundo_sabor = el otro sabor y el tamaño: el sistema calcula el precio y deja escrito en el pedido qué sabores lleva. Nunca ofrezcas mitad y mitad con productos que no sean pizza.
 - Cuando alguien pregunte por un tamaño (en cm, en porciones, o diciendo "la grande"/"la mediana") sin haber elegido todavía un producto puntual, no te quedes en el dato de tamaño solo — recomendale un producto real de ese tamaño con su precio, usando consultar_producto o mostrar_productos, para ayudarlo a decidir y avanzar hacia el pedido en vez de dejarlo con una respuesta genérica.
 - Pizzería Horebs tiene UNA sola sede — nunca le preguntes al cliente en qué local, sucursal o negocio quiere hacer su pedido, ni le des a elegir entre sedes. La modalidad "local" significa comer ahí mismo, en la única dirección del negocio.
 - El costo de domicilio SIEMPRE es el que te devuelve una herramienta (obtener_horario si preguntan antes de armar un pedido, calcular_pedido si ya lo están armando), literal — nunca digas "el domicilio es gratis" ni lo redondees a $0 salvo que la herramienta lo devuelva exactamente en $0. Es un error grave que ya pasó antes: perdés plata real de la pizzería si lo regalás por error.
@@ -114,6 +115,30 @@ export const HERRAMIENTAS = [
   },
   {
     type: 'function',
+    name: 'cotizar_pizza_mitad_y_mitad',
+    description:
+      'Devuelve el precio real de una pizza mitad y mitad (dos sabores distintos en el mismo tamaño): se cobra el sabor de mayor valor. Usar cuando el cliente pregunte cuánto cuesta una pizza de dos sabores o "mitad y mitad". Necesita los dos sabores y el tamaño.',
+    parameters: {
+      type: 'object',
+      properties: {
+        sabor_1: {
+          type: 'string',
+          description: 'Primer sabor, ej. "Horebs Especial"',
+        },
+        sabor_2: {
+          type: 'string',
+          description: 'Segundo sabor, ej. "Jamón y Queso"',
+        },
+        tamano: {
+          type: 'string',
+          description: 'personal, mediana o grande',
+        },
+      },
+      required: ['sabor_1', 'sabor_2', 'tamano'],
+    },
+  },
+  {
+    type: 'function',
     name: 'calcular_pedido',
     description:
       'Calcula el total real de un pedido con los productos, tamaños y cantidades que el cliente eligió, incluyendo el costo de domicilio si aplica. Usar solo cuando el cliente ya terminó de elegir todo lo que quiere pedir Y ya dio su nombre completo (nombre y apellido).',
@@ -136,6 +161,11 @@ export const HERRAMIENTAS = [
                 type: 'string',
                 description:
                   'Tamaño o variante elegida, tal cual figura en el menú: personal, mediana o grande para pizzas; vacío si el producto no tiene tamaños.',
+              },
+              segundo_sabor: {
+                type: 'string',
+                description:
+                  'Solo para pizza mitad y mitad: el otro sabor (producto es el primero). Vacío si la pizza es de un solo sabor. Se cobra el sabor de mayor valor.',
               },
               cantidad: { type: 'number', description: 'Cantidad de unidades' },
             },

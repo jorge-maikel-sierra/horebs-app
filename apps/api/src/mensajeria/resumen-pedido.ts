@@ -14,6 +14,8 @@ export interface DatosResumenPedido {
   costoDomicilio: number;
   /** "lo antes posible" o "6:30 p.m. (reserva)". */
   entrega?: string;
+  /** Nota del pedido (ej. qué sabores lleva una pizza mitad y mitad). */
+  nota?: string;
 }
 
 const ETIQUETA_MODALIDAD: Record<string, string> = {
@@ -21,7 +23,7 @@ const ETIQUETA_MODALIDAD: Record<string, string> = {
   local: 'para comer en el local',
 };
 
-function pesos(valor: number): string {
+export function pesos(valor: number): string {
   return `$${valor.toLocaleString('es-CO')}`;
 }
 
@@ -54,6 +56,7 @@ export function armarResumenPedido(datos: DatosResumenPedido): {
       ? `Domicilio a ${datos.direccion ?? 'dirección sin especificar'}: ${pesos(domicilio)}`
       : `Modalidad: ${ETIQUETA_MODALIDAD[datos.modalidad] ?? datos.modalidad}`,
     datos.entrega ? `Entrega: ${datos.entrega}` : null,
+    datos.nota ? `Nota: ${datos.nota}` : null,
     `*Total: ${pesos(total)}*`,
   ]
     .filter((l) => l !== null)

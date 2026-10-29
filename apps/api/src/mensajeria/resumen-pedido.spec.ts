@@ -56,6 +56,31 @@ describe('armarResumenPedido', () => {
     expect(texto).toContain('Entrega: 6:30 p.m. (reserva)');
   });
 
+  it('muestra la nota del pedido, como qué sabores lleva una mitad y mitad', () => {
+    const nota =
+      'Pizza Mediana mitad Pizza Horebs Especial y mitad Pizza de Jamón y Queso. Se cobra el sabor de mayor valor: Pizza Horebs Especial, $40.000.';
+    const { texto } = armarResumenPedido({
+      nombreCompleto: 'Jorge Sierra',
+      lineas: LINEAS,
+      modalidad: 'retiro',
+      direccion: null,
+      costoDomicilio: 5000,
+      nota,
+    });
+    expect(texto).toContain(`Nota: ${nota}`);
+  });
+
+  it('sin nota no agrega la línea', () => {
+    const { texto } = armarResumenPedido({
+      nombreCompleto: 'Jorge Sierra',
+      lineas: LINEAS,
+      modalidad: 'retiro',
+      direccion: null,
+      costoDomicilio: 5000,
+    });
+    expect(texto).not.toContain('Nota:');
+  });
+
   it('sin domicilio no cobra el envío', () => {
     const { texto, total } = armarResumenPedido({
       nombreCompleto: 'Jorge Sierra',

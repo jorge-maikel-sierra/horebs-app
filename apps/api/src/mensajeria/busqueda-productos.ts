@@ -136,6 +136,15 @@ export function elegirVariante(
   return unico;
 }
 
+/** true si el nombre de la variante nombra el tamaño pedido ("mediana"). */
+export function nombraTamano(
+  variante: VarianteProductoDto,
+  tamano: string,
+): boolean {
+  const pedidas = normalizar(tamano);
+  return normalizar(variante.nombre).some((w) => pedidas.includes(w));
+}
+
 // Corrida de 7 o más dígitos seguidos: un número de cuenta, Nequi o
 // teléfono. Los precios salen con puntos de miles ($39.000) y las
 // direcciones con guiones y numerales, así que no entran acá.

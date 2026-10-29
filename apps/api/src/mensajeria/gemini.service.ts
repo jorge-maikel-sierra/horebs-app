@@ -20,6 +20,13 @@ import {
   palabrasSignificativas,
 } from './busqueda-productos';
 import { armarResumenPedido, type LineaPedido } from './resumen-pedido';
+import {
+  armarMitadYMitad,
+  esPizzaPorCategoria,
+  pedidoMitadDeHerramienta,
+  pedidoMitadDeItem,
+  type MitadYMitad,
+} from './pizza-mitad';
 // Mensaje fijo para cerrar la conversación recién al derivar — antes el
 // modelo componía su propio cierre y en producción llegó a decir "tu
 // pedido ya quedó registrado" con un tiempo de entrega inventado.
@@ -120,6 +127,8 @@ type ResultadoCalculo =
         direccion?: string;
         nombre: string;
         apellido: string;
+        /** Qué lleva cada pizza mitad y mitad; queda escrito en el pedido. */
+        nota?: string;
       };
     }
   | { ok: false; texto: string };
@@ -403,6 +412,14 @@ export class GeminiService {
           return await this.textoProducto(
             String(argumentos.nombre_producto ?? ''),
           );
+        case 'cotizar_pizza_mitad_y_mitad': {
+          const mitad = await this.mitadYMitadDe(
+            pedidoMitadDeHerramienta(argumentos),
+          );
+          return mitad.ok
+            ? mitad.texto
+            : `${mitad.error} ${SIN_TOTAL_INVENTADO}`;
+        }
         case 'obtener_horario':
           return [
             `Horario del local: ${HORARIO}`,
@@ -583,6 +600,16 @@ export class GeminiService {
     return `${encontrado!.nombre}${encontrado!.descripcion ? ` — ${encontrado!.descripcion}` : ''}. Precios: ${variantes}`;
   }
 
+  private async mitadYMitadDe(
+    pedido: Parameters<typeof armarMitadYMitad>[0],
+  ): Promise<MitadYMitad> {
+    const [productos, categorias] = await Promise.all([
+      this.catalog.getProductos(),
+      this.catalog.getCategorias(),
+    ]);
+    return armarMitadYMitad(pedido, productos, esPizzaPorCategoria(categorias));
+  }
+
   /**
    * Total real del pedido. Los productos del carrito del catálogo salen
    * por id exacto de variante (guardado al recibir el carrito), sin que el
@@ -651,11 +678,32 @@ export class GeminiService {
     }));
 
     const productos = items.length > 0 ? await this.catalog.getProductos() : [];
+    const notas: string[] = [];
     for (const item of items) {
       const nombreProducto = String(item.producto ?? '');
       const cantidadCruda = Math.round(Number(item.cantidad ?? 1)) || 1;
       const cantidad = Math.min(Math.max(cantidadCruda, 1), 20);
       const tamanoBuscado = item.tamano ? String(item.tamano) : null;
+
+      if (item.segundo_sabor) {
+        const mitad = await this.mitadYMitadDe(pedidoMitadDeItem(item));
+        if (!mitad.ok) {
+          return fallo(
+            `No se pudo calcular el pedido: ${mitad.error} ${SIN_TOTAL_INVENTADO}`,
+          );
+        }
+        lineas.push({
+          cantidad,
+          productoNombre: 'Pizza mitad y mitad',
+          varianteNombre: mitad.variante.nombre,
+          precioUnitario: mitad.precio,
+        });
+        itemsPedido.push({ varianteId: mitad.variante.id, cantidad });
+        notas.push(
+          cantidad > 1 ? `${cantidad} pizzas: ${mitad.nota}` : mitad.nota,
+        );
+        continue;
+      }
 
       const {
         encontrado,
@@ -701,6 +749,7 @@ export class GeminiService {
         direccion: direccion?.trim() || undefined,
         nombre,
         apellido,
+        ...(notas.length > 0 ? { nota: notas.join(' ') } : {}),
       },
     };
   }
@@ -736,6 +785,7 @@ export class GeminiService {
           modalidad: calculo.datos.modalidad,
           direccion: calculo.datos.direccion ?? null,
           costoDomicilio: COSTO_DOMICILIO_DEFAULT,
+          nota: calculo.datos.nota,
         }).texto
       }\n\n¿Cuál va a ser tu método de pago: *efectivo*, *transferencia* o *tarjeta*?`;
       await this.metaGraph.enviarMensajeSesion(

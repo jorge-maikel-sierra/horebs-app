@@ -491,6 +491,7 @@ export class CheckoutWhatsappService {
       direccion: checkout.direccion ?? null,
       costoDomicilio: COSTO_DOMICILIO_DEFAULT,
       entrega: textoEntrega(checkout.entrega),
+      nota: checkout.nota,
     });
 
     checkout.paso = 'pago';
