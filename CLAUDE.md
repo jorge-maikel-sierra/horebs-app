@@ -74,6 +74,11 @@ pregunta; no se supone un valor razonable.
   **nunca** es gratis salvo que se decida una promoción puntual explícita.
 - Tamaños de pizza: Personal = 6 porciones, 24 cm; Mediana = 8 porciones,
   30 cm; Grande = 12 porciones, 40 cm.
+- Pizza mitad y mitad: en cualquier tamaño el cliente puede pedir una pizza
+  de dos sabores distintos, y siempre se cobra el precio del sabor de mayor
+  valor (confirmado 29 oct 2026). El bot lo explica al cliente y deja escrito
+  en el pedido qué sabores lleva (herramienta `cotizar_pizza_mitad_y_mitad`,
+  `mensajeria/pizza-mitad.ts`).
 - Descuento de la oferta de seguimiento por conversación abandonada: 10%
   (`DESCUENTO_OFERTA_PORCENTAJE` en `seguimiento.service.ts`) — se ofrece si
   el cliente no responde tras el recordatorio de las 3 horas.

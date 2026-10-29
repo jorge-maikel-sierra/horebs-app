@@ -3,6 +3,7 @@ import {
   buscarProductoUnico,
   contieneNumeroNoVerificado,
   elegirVariante,
+  nombraTamano,
 } from './busqueda-productos';
 
 function producto(
@@ -64,6 +65,19 @@ describe('elegirVariante', () => {
   it('con una sola variante no hace falta tamaño', () => {
     const unica = producto('u', 'Panzerotti', [['Única', 9000]]);
     expect(elegirVariante(unica, null)?.nombre).toBe('Única');
+  });
+});
+
+describe('nombraTamano', () => {
+  const mediana = JAMON_QUESO.variantes[1];
+
+  it('reconoce el tamaño aunque venga con artículo o mayúsculas', () => {
+    expect(nombraTamano(mediana, 'mediana')).toBe(true);
+    expect(nombraTamano(mediana, 'La MEDIANA')).toBe(true);
+  });
+
+  it('rechaza otro tamaño', () => {
+    expect(nombraTamano(mediana, 'grande')).toBe(false);
   });
 });
 
