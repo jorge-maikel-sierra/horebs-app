@@ -71,6 +71,10 @@ export const opcional =
   (valor) =>
     valor === undefined || valor === null ? null : regla(valor);
 
+/** Una lista; el contenido de cada elemento lo valida el service que la usa. */
+export const lista = (): Regla => (valor) =>
+  Array.isArray(valor) ? null : 'debe ser una lista';
+
 function esObjetoPlano(valor: unknown): valor is Record<string, unknown> {
   return typeof valor === 'object' && valor !== null && !Array.isArray(valor);
 }
