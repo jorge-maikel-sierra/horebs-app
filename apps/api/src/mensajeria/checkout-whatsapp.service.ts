@@ -11,6 +11,7 @@ import {
   franjasEntrega,
 } from '../common/horario';
 import { PedidosService } from '../pedidos/pedidos.service';
+import { PedidosConsultasService } from '../pedidos/pedidos-consultas.service';
 import {
   AvisoEquipoService,
   INICIO_CONFIRMACION_PEDIDO,
@@ -105,6 +106,7 @@ export class CheckoutWhatsappService {
     private readonly conversaciones: ConversacionesService,
     private readonly catalog: CatalogService,
     private readonly pedidos: PedidosService,
+    private readonly consultas: PedidosConsultasService,
     private readonly metaGraph: MetaGraphService,
     private readonly avisoEquipo: AvisoEquipoService,
   ) {}
@@ -314,13 +316,13 @@ export class CheckoutWhatsappService {
   async ofrecerLoMismo(ctx: ContextoCheckout): Promise<boolean> {
     // Fuera de horario responde Gemini (sabe el horario por obtener_horario).
     if (estadoAtencion(new Date()) === 'cerrado') return false;
-    const ultimo = await this.pedidos.ultimoPedidoPorTelefono(
+    const ultimo = await this.consultas.ultimoPedidoPorTelefono(
       ctx.identificadorExterno,
     );
     if (!ultimo) return false;
     const { disponibles } = await this.catalog.resolverCarrito(ultimo.items);
     if (disponibles.length === 0) return false;
-    const cliente = await this.pedidos.clientePorTelefono(
+    const cliente = await this.consultas.clientePorTelefono(
       ctx.identificadorExterno,
     );
     const subtotal = disponibles.reduce((s, i) => s + i.precio * i.cantidad, 0);
@@ -337,7 +339,7 @@ export class CheckoutWhatsappService {
   }
 
   private async repetirUltimoPedido(ctx: ContextoCheckout): Promise<void> {
-    const ultimo = await this.pedidos.ultimoPedidoPorTelefono(
+    const ultimo = await this.consultas.ultimoPedidoPorTelefono(
       ctx.identificadorExterno,
     );
     const { disponibles, noDisponibles } = await this.catalog.resolverCarrito(
@@ -352,7 +354,7 @@ export class CheckoutWhatsappService {
     checkout: CheckoutWhatsapp,
   ): Promise<void> {
     if (!checkout.nombre || !checkout.apellido) {
-      const cliente = await this.pedidos.clientePorTelefono(
+      const cliente = await this.consultas.clientePorTelefono(
         ctx.identificadorExterno,
       );
       if (cliente?.nombre && cliente.apellido) {
@@ -428,8 +430,8 @@ export class CheckoutWhatsappService {
     checkout: CheckoutWhatsapp,
   ): Promise<void> {
     const [ultimo, cliente] = await Promise.all([
-      this.pedidos.ultimoPedidoPorTelefono(ctx.identificadorExterno),
-      this.pedidos.clientePorTelefono(ctx.identificadorExterno),
+      this.consultas.ultimoPedidoPorTelefono(ctx.identificadorExterno),
+      this.consultas.clientePorTelefono(ctx.identificadorExterno),
     ]);
     const sugerida =
       (ultimo?.direccionEntrega ?? cliente?.direccion)?.trim() || null;
