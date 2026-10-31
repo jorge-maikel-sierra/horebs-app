@@ -196,12 +196,15 @@ agrupe fechas.
   API (`monto_semanal`, `dias_esperados_semana`), porque son las columnas.
 - **Archivos:** `kebab-case` con sufijo de rol: `*.module.ts`,
   `*.controller.ts`, `*.service.ts`, `*.pipe.ts`, `*.interceptor.ts`,
-  `esquemas.ts` (uno por módulo), `*.spec.ts`.
+  `esquemas.ts` (uno por módulo), `*.tipos.ts` (interfaces que comparten
+  varios archivos de un módulo cuando se parte un service, ej.
+  `pedidos.tipos.ts`), `*.spec.ts`.
 - **Rutas HTTP:** sustantivos en plural, sin verbos (`/turnos`,
   `/inventario/insumos/:id/ajustes`).
 - **Tipos de entrada/salida:** interfaces TypeScript declaradas arriba del
   archivo del service que las usa (`CrearEmpleadoInput`, `EmpleadoDto`). Un
-  controller no declara interfaces propias.
+  controller no declara interfaces propias. Si un service se parte en varios
+  y los tipos los usan todos, pasan a un `*.tipos.ts` del módulo.
 
 ### Formato
 
