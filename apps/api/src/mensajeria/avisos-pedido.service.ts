@@ -1,8 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import {
-  PedidosService,
-  type PedidoParaAvisoDto,
-} from '../pedidos/pedidos.service';
+import { PedidosConsultasService } from '../pedidos/pedidos-consultas.service';
+import type { PedidoParaAvisoDto } from '../pedidos/pedidos.tipos';
 import { PuntosService } from '../clientes/puntos.service';
 import {
   dentroDeLaVentana,
@@ -34,7 +32,7 @@ export class AvisosPedidoService {
   private readonly logger = new Logger(AvisosPedidoService.name);
 
   constructor(
-    private readonly pedidos: PedidosService,
+    private readonly pedidos: PedidosConsultasService,
     private readonly conversaciones: ConversacionesService,
     private readonly metaGraph: MetaGraphService,
     private readonly puntos: PuntosService,

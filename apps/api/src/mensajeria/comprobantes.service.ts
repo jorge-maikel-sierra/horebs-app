@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { MailService } from '../mail/mail.service';
-import { PedidosService } from '../pedidos/pedidos.service';
+import { PedidosComprobantesService } from '../pedidos/pedidos-comprobantes.service';
 import {
   armarAvisoComprobante,
   esComprobanteValido,
@@ -10,6 +10,13 @@ import { ConversacionesService } from './conversaciones.service';
 import { MetaGraphService } from './meta-graph.service';
 
 const SIETE_DIAS = 7 * 24 * 60 * 60;
+
+export interface ProcesarComprobanteInput {
+  identificadorExterno: string;
+  conversacionId: string;
+  mensajeId: string;
+  mediaId: string;
+}
 
 /**
  * Foto o PDF del comprobante de transferencia que manda el cliente por
@@ -22,7 +29,7 @@ export class ComprobantesService {
   private readonly logger = new Logger(ComprobantesService.name);
 
   constructor(
-    private readonly pedidos: PedidosService,
+    private readonly pedidos: PedidosComprobantesService,
     private readonly conversaciones: ConversacionesService,
     private readonly metaGraph: MetaGraphService,
     private readonly mail: MailService,
@@ -32,12 +39,7 @@ export class ComprobantesService {
    * true si la imagen/PDF quedó como comprobante de un pedido. false si el
    * cliente no tiene un pedido esperando comprobante (quien llama responde).
    */
-  async procesar(datos: {
-    identificadorExterno: string;
-    conversacionId: string;
-    mensajeId: string;
-    mediaId: string;
-  }): Promise<boolean> {
+  async procesar(datos: ProcesarComprobanteInput): Promise<boolean> {
     const pedido = await this.pedidos.pedidoEsperandoComprobante(
       datos.identificadorExterno,
     );
