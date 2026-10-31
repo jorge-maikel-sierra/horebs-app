@@ -6,10 +6,10 @@ type Fila = { post_id: string; usuario_id: string };
 function servicio(likes: Fila[]) {
   const svc = Object.create(BlogService.prototype) as BlogService;
   jest
-    .spyOn(svc as never, 'getPostIdPublicado')
+    .spyOn(svc as never, 'obtenerIdPostPublicado')
     .mockResolvedValue('p1' as never);
   jest
-    .spyOn(svc, 'getLikesTotal')
+    .spyOn(svc, 'obtenerTotalMeGusta')
     .mockImplementation(() => Promise.resolve({ total: likes.length }));
   const supabase = {
     getClient: () => ({
@@ -39,7 +39,7 @@ describe('likes idempotentes', () => {
     const likes: Fila[] = [];
     const svc = servicio(likes);
     jest
-      .spyOn(svc, 'getMeGusta')
+      .spyOn(svc, 'obtenerMeGusta')
       .mockImplementation(() =>
         Promise.resolve({ meGusta: likes.some((l) => l.usuario_id === 'u1') }),
       );

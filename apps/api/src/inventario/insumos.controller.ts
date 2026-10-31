@@ -14,8 +14,8 @@ import { UsuarioActual } from '../auth/usuario.decorator';
 import { InsumosService } from './insumos.service';
 import type {
   CrearInsumoInput,
+  EditarInsumoInput,
   TipoAjusteStock,
-  UnidadMedida,
 } from './insumos.service';
 import type { UsuarioAutenticado } from '../auth/roles.guard';
 import { UuidPipe } from '../common/pipes/uuid.pipe';
@@ -50,14 +50,7 @@ export class InsumosController {
   editar(
     @Param('id', UuidPipe) id: string,
     @Body(new ValidarBodyPipe(ESQUEMA_EDITAR_INSUMO))
-    body: {
-      nombre?: string;
-      categoria?: string;
-      unidad_medida?: UnidadMedida;
-      stock_minimo_g?: number;
-      proveedor_principal?: string;
-      activo?: boolean;
-    },
+    body: EditarInsumoInput,
   ) {
     return this.insumos.editar(id, body);
   }

@@ -28,6 +28,15 @@ export interface CrearInsumoInput {
   proveedor_principal?: string;
 }
 
+export interface EditarInsumoInput {
+  nombre?: string;
+  categoria?: string;
+  unidad_medida?: UnidadMedida;
+  stock_minimo_g?: number;
+  proveedor_principal?: string;
+  activo?: boolean;
+}
+
 export type TipoAjusteStock = 'ajuste' | 'merma';
 
 const INSUMO_SELECT =
@@ -88,17 +97,7 @@ export class InsumosService {
     return data;
   }
 
-  async editar(
-    id: string,
-    cambios: {
-      nombre?: string;
-      categoria?: string;
-      unidad_medida?: UnidadMedida;
-      stock_minimo_g?: number;
-      proveedor_principal?: string;
-      activo?: boolean;
-    },
-  ): Promise<InsumoDto> {
+  async editar(id: string, cambios: EditarInsumoInput): Promise<InsumoDto> {
     if (cambios.nombre !== undefined && !cambios.nombre.trim()) {
       throw new BadRequestException('El nombre no puede quedar vacío.');
     }

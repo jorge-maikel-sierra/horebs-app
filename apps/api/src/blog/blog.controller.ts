@@ -28,14 +28,14 @@ export class BlogController {
 
   @Get('posts')
   @CachePublica(60)
-  getPosts() {
-    return this.blog.getPostsPublicados();
+  listarPosts() {
+    return this.blog.obtenerPostsPublicados();
   }
 
   @Get('posts/:slug')
   @CachePublica(60)
-  async getPostPorSlug(@Param('slug') slug: string) {
-    const post = await this.blog.getPostPublicadoPorSlug(slug);
+  async obtenerPostPorSlug(@Param('slug') slug: string) {
+    const post = await this.blog.obtenerPostPublicadoPorSlug(slug);
     if (!post) throw new NotFoundException('Artículo no encontrado.');
     return post;
   }
@@ -43,8 +43,8 @@ export class BlogController {
   // Comentarios y likes sin @CachePublica: el cliente los vuelve a pedir justo
   // después de comentar o dar like y tienen que verse al instante.
   @Get('posts/:slug/comentarios')
-  getComentarios(@Param('slug') slug: string) {
-    return this.blog.getComentarios(slug);
+  obtenerComentarios(@Param('slug') slug: string) {
+    return this.blog.obtenerComentarios(slug);
   }
 
   @Post('posts/:slug/comentarios')
@@ -68,17 +68,17 @@ export class BlogController {
   }
 
   @Get('posts/:slug/likes')
-  getLikes(@Param('slug') slug: string) {
-    return this.blog.getLikesTotal(slug);
+  obtenerTotalDeMeGusta(@Param('slug') slug: string) {
+    return this.blog.obtenerTotalMeGusta(slug);
   }
 
   @Get('posts/:slug/likes/yo')
   @UseGuards(SupabaseAuthGuard)
-  getMeGusta(
+  obtenerMeGusta(
     @Param('slug') slug: string,
     @UsuarioSupabaseActual() usuario: UsuarioSupabase,
   ) {
-    return this.blog.getMeGusta(slug, usuario.id);
+    return this.blog.obtenerMeGusta(slug, usuario.id);
   }
 
   @Put('posts/:slug/likes/yo')

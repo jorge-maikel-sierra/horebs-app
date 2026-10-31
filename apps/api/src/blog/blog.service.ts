@@ -58,7 +58,7 @@ export const MAX_LARGO_COMENTARIO = 2000;
 export class BlogService {
   constructor(private readonly supabase: SupabaseService) {}
 
-  async getPostsPublicados(): Promise<BlogPostDto[]> {
+  async obtenerPostsPublicados(): Promise<BlogPostDto[]> {
     const { data, error } = await this.supabase
       .getClient()
       .from('blog_posts')
@@ -70,7 +70,7 @@ export class BlogService {
     return data ?? [];
   }
 
-  async getPostPublicadoPorSlug(slug: string): Promise<BlogPostDto | null> {
+  async obtenerPostPublicadoPorSlug(slug: string): Promise<BlogPostDto | null> {
     const { data, error } = await this.supabase
       .getClient()
       .from('blog_posts')
@@ -83,7 +83,7 @@ export class BlogService {
     return data ?? null;
   }
 
-  private async getPostIdPublicado(slug: string): Promise<string> {
+  private async obtenerIdPostPublicado(slug: string): Promise<string> {
     const { data, error } = await this.supabase
       .getClient()
       .from('blog_posts')
@@ -97,8 +97,8 @@ export class BlogService {
     return data.id;
   }
 
-  async getComentarios(slug: string): Promise<ComentarioDto[]> {
-    const postId = await this.getPostIdPublicado(slug);
+  async obtenerComentarios(slug: string): Promise<ComentarioDto[]> {
+    const postId = await this.obtenerIdPostPublicado(slug);
     const { data, error } = await this.supabase
       .getClient()
       .from('comentarios_blog')
@@ -128,7 +128,7 @@ export class BlogService {
       );
     }
 
-    const postId = await this.getPostIdPublicado(slug);
+    const postId = await this.obtenerIdPostPublicado(slug);
     const { data, error } = await this.supabase
       .getClient()
       .from('comentarios_blog')
@@ -180,8 +180,8 @@ export class BlogService {
     if (error) throw errorDeBase(error);
   }
 
-  async getLikesTotal(slug: string): Promise<{ total: number }> {
-    const postId = await this.getPostIdPublicado(slug);
+  async obtenerTotalMeGusta(slug: string): Promise<{ total: number }> {
+    const postId = await this.obtenerIdPostPublicado(slug);
     const { count, error } = await this.supabase
       .getClient()
       .from('likes_blog_post')
@@ -192,11 +192,11 @@ export class BlogService {
     return { total: count ?? 0 };
   }
 
-  async getMeGusta(
+  async obtenerMeGusta(
     slug: string,
     usuarioId: string,
   ): Promise<{ meGusta: boolean }> {
-    const postId = await this.getPostIdPublicado(slug);
+    const postId = await this.obtenerIdPostPublicado(slug);
     const { data, error } = await this.supabase
       .getClient()
       .from('likes_blog_post')
@@ -214,8 +214,8 @@ export class BlogService {
     slug: string,
     usuarioId: string,
   ): Promise<{ total: number; meGusta: boolean }> {
-    const postId = await this.getPostIdPublicado(slug);
-    const { meGusta: yaLoTenia } = await this.getMeGusta(slug, usuarioId);
+    const postId = await this.obtenerIdPostPublicado(slug);
+    const { meGusta: yaLoTenia } = await this.obtenerMeGusta(slug, usuarioId);
     if (!yaLoTenia) {
       const { error } = await this.supabase
         .getClient()
@@ -224,7 +224,7 @@ export class BlogService {
       // 23505: otro request del mismo usuario ganó la carrera; ya está.
       if (error && error.code !== '23505') throw errorDeBase(error);
     }
-    const { total } = await this.getLikesTotal(slug);
+    const { total } = await this.obtenerTotalMeGusta(slug);
     return { total, meGusta: true };
   }
 
@@ -233,7 +233,7 @@ export class BlogService {
     slug: string,
     usuarioId: string,
   ): Promise<{ total: number; meGusta: boolean }> {
-    const postId = await this.getPostIdPublicado(slug);
+    const postId = await this.obtenerIdPostPublicado(slug);
     const { error } = await this.supabase
       .getClient()
       .from('likes_blog_post')
@@ -241,11 +241,11 @@ export class BlogService {
       .eq('post_id', postId)
       .eq('usuario_id', usuarioId);
     if (error) throw errorDeBase(error);
-    const { total } = await this.getLikesTotal(slug);
+    const { total } = await this.obtenerTotalMeGusta(slug);
     return { total, meGusta: false };
   }
 
-  /** A diferencia de `getPostsPublicados`, incluye borradores — uso admin. */
+  /** A diferencia de `obtenerPostsPublicados`, incluye borradores — uso admin. */
   async listarBlogPosts(): Promise<BlogPostDto[]> {
     const { data, error } = await this.supabase
       .getClient()
