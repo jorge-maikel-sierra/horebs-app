@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/require-await -- mocks de jest y fetch */
+import { MetaGraphService } from './meta-graph.service';
 import {
-  MetaGraphService,
   recortarListaProductos,
   type ListaProductos,
-} from './meta-graph.service';
+} from './mensajes-interactivos';
 
 function crearServicio(opciones: { conCatalogo?: boolean } = {}) {
   const { conCatalogo = true } = opciones;

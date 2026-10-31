@@ -38,7 +38,8 @@ import {
   type CheckoutWhatsapp,
   type ItemCarritoPendiente,
 } from './conversaciones.service';
-import { MetaGraphService, type BotonRespuesta } from './meta-graph.service';
+import { MetaGraphService } from './meta-graph.service';
+import type { BotonRespuesta } from './mensajes-interactivos';
 import { armarResumenPedido, type LineaPedido } from './resumen-pedido';
 
 const URL_CATALOGO = 'https://pizzeriahorebs.shop/catalogo';
