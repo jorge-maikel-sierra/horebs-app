@@ -52,7 +52,6 @@ function dosDigitos(n: number): string {
   return String(n).padStart(2, '0');
 }
 
-/** 1110 → "6:30 p.m." */
 /** Primer instante del día `AAAA-MM-DD` en Bogotá, como ISO con offset. */
 export function inicioDiaBogota(fecha: string): string {
   return `${fecha}T00:00:00.000${OFFSET_BOGOTA}`;
@@ -63,6 +62,16 @@ export function finDiaBogota(fecha: string): string {
   return `${fecha}T23:59:59.999${OFFSET_BOGOTA}`;
 }
 
+const MINUTOS_POR_HORA = 60;
+const MS_POR_MINUTO = 60_000;
+const MS_POR_HORA = MINUTOS_POR_HORA * MS_POR_MINUTO;
+
+/** Instante (ISO) de hace `horas` horas: para filtrar "lo reciente" en la base. */
+export function haceHoras(horas: number, ahora: Date = new Date()): string {
+  return new Date(ahora.getTime() - horas * MS_POR_HORA).toISOString();
+}
+
+/** 1110 → "6:30 p.m." */
 export function etiquetaMinutos(minutos: number): string {
   const h24 = Math.floor(minutos / 60);
   const h12 = h24 % 12 === 0 ? 12 : h24 % 12;

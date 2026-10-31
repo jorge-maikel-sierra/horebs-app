@@ -5,6 +5,7 @@ import {
   finDiaBogota,
   franjasEntrega,
   inicioDiaBogota,
+  haceHoras,
 } from './horario';
 
 /** Hora de Bogotá → Date (Colombia es UTC-5 todo el año). */
@@ -79,5 +80,18 @@ describe('inicioDiaBogota y finDiaBogota', () => {
     expect(venta).toBeLessThanOrEqual(
       new Date(finDiaBogota('2026-10-27')).getTime(),
     );
+  });
+});
+
+describe('haceHoras', () => {
+  const ahora = new Date('2026-10-31T12:00:00.000Z');
+
+  it('resta las horas al instante dado', () => {
+    expect(haceHoras(48, ahora)).toBe('2026-10-29T12:00:00.000Z');
+    expect(haceHoras(1, ahora)).toBe('2026-10-31T11:00:00.000Z');
+  });
+
+  it('con 0 horas devuelve el mismo instante', () => {
+    expect(haceHoras(0, ahora)).toBe(ahora.toISOString());
   });
 });
