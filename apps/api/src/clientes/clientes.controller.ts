@@ -20,6 +20,7 @@ import type { AjustePuntosInput } from './puntos.service';
 import type { ConsultaDirectorio } from './clientes-directorio.service';
 import type { EditarClienteInput } from './clientes.service';
 import type { UsuarioAutenticado } from '../auth/roles.guard';
+import { Deprecada } from '../common/deprecacion.interceptor';
 import { UuidPipe } from '../common/pipes/uuid.pipe';
 import { ValidarBodyPipe } from '../common/pipes/validar-body.pipe';
 import { ESQUEMA_AJUSTE_PUNTOS, ESQUEMA_EDITAR_CLIENTE } from './esquemas';
@@ -35,12 +36,16 @@ export class ClientesController {
 
   @Get()
   @Roles('admin', 'empleado')
-  listarOBuscar(@Query('q') q?: string) {
-    return q?.trim() ? this.clientes.buscar(q) : this.clientes.listar();
+  listarOBuscar(@Query() query: ConsultaDirectorio) {
+    if (query.vista === 'directorio') return this.directorio.consultar(query);
+    return query.q?.trim()
+      ? this.clientes.buscar(query.q)
+      : this.clientes.listar();
   }
 
   // Declarada antes de ':id' para que "directorio" no se tome como un id.
   @Get('directorio')
+  @Deprecada('/admin/clientes?vista=directorio')
   @Roles('admin', 'empleado')
   consultarDirectorio(@Query() query: ConsultaDirectorio) {
     return this.directorio.consultar(query);

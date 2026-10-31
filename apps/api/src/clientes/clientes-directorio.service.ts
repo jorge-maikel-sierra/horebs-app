@@ -42,6 +42,8 @@ export interface DirectorioClientesDto {
 }
 
 export interface ConsultaDirectorio {
+  /** `directorio` pide la vista con segmentos, orden y paginación. */
+  vista?: string;
   q?: string;
   segmento?: string;
   orden?: string;

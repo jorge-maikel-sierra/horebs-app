@@ -50,7 +50,8 @@ export default function AdminClientesPage() {
     { q: q.trim(), segmento, orden, pagina, version },
     250,
   );
-  const ruta = `/admin/clientes/directorio?${new URLSearchParams({
+  const ruta = `/admin/clientes?${new URLSearchParams({
+    vista: 'directorio',
     q: aplicados.q,
     segmento: aplicados.segmento,
     orden: aplicados.orden,
