@@ -31,7 +31,7 @@ export default tseslint.config(
       // Una promesa sin esperar es un error que nadie ve: en cero, por eso error.
       '@typescript-eslint/no-floating-promises': 'error',
       '@typescript-eslint/no-unsafe-argument': 'warn',
-      "prettier/prettier": ["error", { endOfLine: "auto" }],
+      'prettier/prettier': ['error', { endOfLine: 'auto' }],
     },
   },
   {
@@ -39,8 +39,7 @@ export default tseslint.config(
     // fuera: sus describe son largos por naturaleza). Van como `warn`
     // porque hay deuda medida (ver CLAUDE.md, "Convenciones de nomenclatura y estilo"): el
     // objetivo es que el conteo solo baje, y cada regla pasa a `error` cuando
-    // llegue a cero. `no-explicit-any` quedó en 26 (filas de Supabase sin
-    // tipar en los mappers).
+    // llegue a cero. Conteo al 2026-10-31 en CLAUDE.md.
     files: ['src/**/*.ts'],
     ignores: ['src/**/*.spec.ts'],
     rules: {
@@ -50,6 +49,26 @@ export default tseslint.config(
       complexity: ['warn', 10],
       'max-params': ['warn', 4],
       'max-depth': ['warn', 3],
+      // Un número suelto en la lógica es una regla de negocio escondida:
+      // va a una constante con nombre (0, 1, -1 y 100 no cuentan).
+      'no-magic-numbers': [
+        'warn',
+        {
+          ignore: [0, 1, -1, 100],
+          ignoreArrayIndexes: true,
+          ignoreDefaultValues: true,
+          enforceConst: true,
+        },
+      ],
+      // El contrato de cada función a la vista, sin leerla por dentro.
+      '@typescript-eslint/explicit-function-return-type': [
+        'warn',
+        {
+          allowExpressions: true,
+          allowTypedFunctionExpressions: true,
+          allowHigherOrderFunctions: true,
+        },
+      ],
     },
   },
 );
