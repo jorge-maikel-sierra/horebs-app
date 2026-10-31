@@ -1,10 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { estadoAtencion } from '../common/horario';
-import { PedidosService } from '../pedidos/pedidos.service';
+import { PedidosConsultasService } from '../pedidos/pedidos-consultas.service';
 import {
   ConversacionesService,
   type ConversacionParaSeguimiento,
+  type EtapaSeguimiento,
 } from './conversaciones.service';
 import { MetaGraphService } from './meta-graph.service';
 import { AvisosPedidoService } from './avisos-pedido.service';
@@ -16,13 +17,16 @@ import { AvisosPedidoService } from './avisos-pedido.service';
 // 24h de WhatsApp (mensajes de sesión) — pasado ese límite, reenganchar a
 // un cliente requiere una plantilla paga aprobada por Meta, que este
 // módulo no implementa a propósito (ver README).
-const DESCUENTO_OFERTA_PORCENTAJE = 10; // ajustable acá, no viene de CLAUDE.md
+// Descuento confirmado por el dueño (CLAUDE.md, sección 2): no se cambia sin su decisión.
+const DESCUENTO_OFERTA_PORCENTAJE = 10;
+
+/** Quien compró en este plazo no abandonó nada. */
+const HORAS_YA_COMPRO = 24;
 
 const TEXTO_RECORDATORIO =
   '¡Hola! 🍕 Vimos que estabas armando algo con nosotros y quedó ahí colgado. ¿Seguís interesado? Escribinos y seguimos donde quedamos.';
 
-const TEXTO_OFERTA =
-  `¡Todavía estás a tiempo! Si retomás tu pedido ahora te dejamos un ${DESCUENTO_OFERTA_PORCENTAJE}% de descuento en cualquier pizza personal 🍕. Escribinos y te ayudamos a cerrarlo.`;
+const TEXTO_OFERTA = `¡Todavía estás a tiempo! Si retomás tu pedido ahora te dejamos un ${DESCUENTO_OFERTA_PORCENTAJE}% de descuento en cualquier pizza personal 🍕. Escribinos y te ayudamos a cerrarlo.`;
 
 /**
  * Seguimiento automático de conversaciones "abandonadas" — el cliente
@@ -45,7 +49,7 @@ export class SeguimientoService {
   constructor(
     private readonly conversaciones: ConversacionesService,
     private readonly metaGraph: MetaGraphService,
-    private readonly pedidos: PedidosService,
+    private readonly pedidos: PedidosConsultasService,
     private readonly avisosPedido: AvisosPedidoService,
   ) {}
 
@@ -76,26 +80,15 @@ export class SeguimientoService {
   }
 
   private async enviarRecordatorios(minutosInactividad: number): Promise<void> {
-    const candidatas = await this.conversaciones.buscarInactivasSinSeguimiento(
-      minutosInactividad,
-    );
-    for (const c of candidatas) {
-      try {
-        if (await this.yaCompro(c)) continue;
-        await this.metaGraph.enviarMensajeSesion(c.canal, c.identificador_externo, TEXTO_RECORDATORIO);
-        await this.conversaciones.registrarMensaje(c.id, 'saliente_bot', TEXTO_RECORDATORIO);
-        await this.conversaciones.marcarSeguimientoEnviado(
-          c.canal,
-          c.identificador_externo,
-          'recordatorio_enviado',
-        );
-        this.logger.log(`Recordatorio enviado — canal=${c.canal} id=${c.identificador_externo}`);
-      } catch (err) {
-        this.logger.error(
-          `Error mandando recordatorio a ${c.canal}/${c.identificador_externo}: ${(err as Error).message}`,
-        );
-      }
-    }
+    const candidatas =
+      await this.conversaciones.buscarInactivasSinSeguimiento(
+        minutosInactividad,
+      );
+    await this.enviarSeguimiento(candidatas, {
+      nombre: 'Recordatorio',
+      texto: TEXTO_RECORDATORIO,
+      marca: 'recordatorio_enviado',
+    });
   }
 
   /**
@@ -108,7 +101,7 @@ export class SeguimientoService {
     if (c.canal !== 'whatsapp') return false;
     const compro = await this.pedidos.tienePedidoReciente(
       c.identificador_externo,
-      24,
+      HORAS_YA_COMPRO,
     );
     if (!compro) return false;
     await this.conversaciones.marcarSeguimientoEnviado(
@@ -123,20 +116,42 @@ export class SeguimientoService {
     const candidatas = await this.conversaciones.buscarConRecordatorioVencido(
       minutosDesdeRecordatorio,
     );
+    await this.enviarSeguimiento(candidatas, {
+      nombre: 'Oferta',
+      texto: TEXTO_OFERTA,
+      marca: 'oferta_enviada',
+    });
+  }
+
+  /** Manda el mismo mensaje fijo a cada candidata, registra y marca el envío. */
+  private async enviarSeguimiento(
+    candidatas: ConversacionParaSeguimiento[],
+    envio: { nombre: string; texto: string; marca: EtapaSeguimiento },
+  ): Promise<void> {
     for (const c of candidatas) {
       try {
         if (await this.yaCompro(c)) continue;
-        await this.metaGraph.enviarMensajeSesion(c.canal, c.identificador_externo, TEXTO_OFERTA);
-        await this.conversaciones.registrarMensaje(c.id, 'saliente_bot', TEXTO_OFERTA);
+        await this.metaGraph.enviarMensajeSesion(
+          c.canal,
+          c.identificador_externo,
+          envio.texto,
+        );
+        await this.conversaciones.registrarMensaje(
+          c.id,
+          'saliente_bot',
+          envio.texto,
+        );
         await this.conversaciones.marcarSeguimientoEnviado(
           c.canal,
           c.identificador_externo,
-          'oferta_enviada',
+          envio.marca,
         );
-        this.logger.log(`Oferta enviada — canal=${c.canal} id=${c.identificador_externo}`);
+        this.logger.log(
+          `${envio.nombre} enviado — canal=${c.canal} id=${c.identificador_externo}`,
+        );
       } catch (err) {
         this.logger.error(
-          `Error mandando oferta a ${c.canal}/${c.identificador_externo}: ${(err as Error).message}`,
+          `Error mandando ${envio.nombre.toLowerCase()} a ${c.canal}/${c.identificador_externo}: ${(err as Error).message}`,
         );
       }
     }
