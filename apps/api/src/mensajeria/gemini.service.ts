@@ -8,7 +8,7 @@ import {
   CatalogService,
   entraEnCatalogoMeta,
 } from '../catalog/catalog.service';
-import { PedidosService } from '../pedidos/pedidos.service';
+import { PedidosConsultasService } from '../pedidos/pedidos-consultas.service';
 import { MetaGraphService } from './meta-graph.service';
 import { ConversionesMetaService } from './conversiones-meta.service';
 import { COSTO_DOMICILIO_DEFAULT } from '../common/costos';
@@ -150,7 +150,7 @@ export class GeminiService {
   constructor(
     private readonly config: ConfigService,
     private readonly catalog: CatalogService,
-    private readonly pedidos: PedidosService,
+    private readonly pedidos: PedidosConsultasService,
     private readonly conversaciones: ConversacionesService,
     private readonly metaGraph: MetaGraphService,
     private readonly conversionesMeta: ConversionesMetaService,
