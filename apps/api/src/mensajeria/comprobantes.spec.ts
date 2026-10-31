@@ -3,7 +3,7 @@ import {
   esComprobanteValido,
   nombreArchivoComprobante,
 } from './comprobantes';
-import { mediaDe } from './webhooks.service';
+import { mediaDe } from './parseo-webhook';
 
 describe('comprobantes', () => {
   it('acepta fotos y PDF, no audios ni otros', () => {

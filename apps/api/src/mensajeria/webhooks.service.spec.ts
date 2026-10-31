@@ -2,7 +2,7 @@ import {
   carritoDesdeOrden,
   entradaCheckoutDe,
   textoCarritoCatalogo,
-} from './webhooks.service';
+} from './parseo-webhook';
 
 const HAWAIANA_GRANDE = {
   varianteId: 'var-1',
