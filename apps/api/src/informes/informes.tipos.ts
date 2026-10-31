@@ -83,3 +83,21 @@ export interface InformeDto {
 
 /** Total vendido y cantidad de pedidos de un grupo (día, mes, método de pago…). */
 export type Acumulador = { total: number; pedidos: number };
+
+/**
+ * Los pedidos en vivo y los históricos (migrados de WooCommerce, ver
+ * historico_pedidos) viven en tablas separadas con columnas distintas.
+ * Se normalizan a esta forma común una sola vez para poder reusar toda
+ * la lógica de agregación sin duplicarla por origen.
+ */
+export interface PedidoUnificado {
+  id: string;
+  total: number;
+  costo_domicilio: number;
+  metodo_pago: string;
+  modalidad: string;
+  canal: string;
+  creado_en: string;
+  telefono: string | null;
+  nombre_cliente: string | null;
+}
