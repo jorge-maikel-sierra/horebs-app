@@ -99,6 +99,13 @@ export interface PedidoAdminDto {
   }[];
 }
 
+/** Body de `PATCH /admin/pedidos/:id`: método de pago, estado y/o líneas. */
+export interface EditarPedidoInput {
+  metodo_pago?: string;
+  estado?: string;
+  items?: ItemVentaInput[];
+}
+
 export const ESTADOS_PEDIDO = [
   'pendiente',
   'confirmado',
