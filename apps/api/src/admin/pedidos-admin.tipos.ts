@@ -65,6 +65,27 @@ export interface VentaDto {
   puntos_ganados: number;
 }
 
+/** El cliente de una venta del POS tal como queda guardado. */
+export interface FilaClienteVenta {
+  id: string;
+  nombre: string;
+  apellido: string | null;
+  telefono: string | null;
+  correo: string | null;
+  cedula: string | null;
+}
+
+/** El pedido recién creado por una venta del POS. */
+export interface FilaPedidoVenta {
+  id: string;
+  modalidad: string;
+  direccion_entrega: string | null;
+  costo_domicilio: number;
+  metodo_pago: string;
+  total: number;
+  created_at: string;
+}
+
 export interface PedidoAdminDto {
   id: string;
   canal: string;
