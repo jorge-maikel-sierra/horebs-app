@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { errorDeBase } from '../common/error-de-base';
 import { armarCambiosEmpleado } from './empleado-cambios';
@@ -51,7 +56,10 @@ export class EmpleadosService {
 
   async listar(soloActivos = false): Promise<EmpleadoDto[]> {
     const client = this.supabase.getClient();
-    let query = client.from('empleados').select(EMPLEADO_SELECT).order('nombre');
+    let query = client
+      .from('empleados')
+      .select(EMPLEADO_SELECT)
+      .order('nombre');
     if (soloActivos) query = query.eq('activo', true);
     const { data, error } = await query;
     if (error) throw errorDeBase(error);
@@ -87,13 +95,17 @@ export class EmpleadosService {
       .select(EMPLEADO_SELECT)
       .single();
     if (error) {
-      if (error.code === 'PGRST116') throw new NotFoundException('Trabajador no encontrado.');
+      if (error.code === 'PGRST116')
+        throw new NotFoundException('Trabajador no encontrado.');
       throw errorDeBase(error);
     }
     return data;
   }
 
-  private async validarUsuarioDisponible(usuarioId: string, empleadoIdActual?: string): Promise<void> {
+  private async validarUsuarioDisponible(
+    usuarioId: string,
+    empleadoIdActual?: string,
+  ): Promise<void> {
     const client = this.supabase.getClient();
     const { data: perfil, error: perfilError } = await client
       .from('perfiles_staff')
@@ -105,12 +117,18 @@ export class EmpleadosService {
       throw new BadRequestException('El usuario indicado no existe.');
     }
 
-    let query = client.from('empleados').select('id').eq('usuario_id', usuarioId);
+    let query = client
+      .from('empleados')
+      .select('id')
+      .eq('usuario_id', usuarioId);
     if (empleadoIdActual) query = query.neq('id', empleadoIdActual);
-    const { data: yaVinculado, error: vinculoError } = await query.maybeSingle();
+    const { data: yaVinculado, error: vinculoError } =
+      await query.maybeSingle();
     if (vinculoError) throw errorDeBase(vinculoError);
     if (yaVinculado) {
-      throw new ConflictException('Ese usuario ya está vinculado a otro trabajador.');
+      throw new ConflictException(
+        'Ese usuario ya está vinculado a otro trabajador.',
+      );
     }
   }
 }

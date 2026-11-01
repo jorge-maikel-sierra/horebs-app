@@ -44,7 +44,9 @@ export async function obtenerVariantesActivas(
 
   if (error) throw errorDeBase(error);
   if (!data || data.length !== new Set(varianteIds).size) {
-    throw new BadRequestException('Uno o más productos ya no están disponibles.');
+    throw new BadRequestException(
+      'Uno o más productos ya no están disponibles.',
+    );
   }
   return new Map(data.map((v) => [v.id, v as unknown as VarianteActiva]));
 }
@@ -62,7 +64,11 @@ export async function calcularItems(
     throw new BadRequestException('El carrito está vacío.');
   }
   for (const item of items) {
-    if (!item.variante_id || !Number.isInteger(item.cantidad) || item.cantidad <= 0) {
+    if (
+      !item.variante_id ||
+      !Number.isInteger(item.cantidad) ||
+      item.cantidad <= 0
+    ) {
       throw new BadRequestException('Item de pedido inválido.');
     }
   }

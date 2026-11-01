@@ -101,8 +101,13 @@ export class WebhooksController {
     if (!req.rawBody) {
       throw new BadRequestException('Falta el body crudo de la request.');
     }
-    const firmaHeader = req.headers['x-hub-signature-256'] as string | undefined;
-    const valida = this.webhooks.verificarFirma(appSecret, req.rawBody, firmaHeader);
+    const firmaHeader = req.headers['x-hub-signature-256'] as
+      string | undefined;
+    const valida = this.webhooks.verificarFirma(
+      appSecret,
+      req.rawBody,
+      firmaHeader,
+    );
     if (!valida) {
       throw new ForbiddenException('Firma inválida.');
     }

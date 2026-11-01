@@ -55,6 +55,10 @@ const TURNO_SELECT =
  * fecha sobre pedidos con canal='pos', sin necesidad de enlazar cada
  * pedido a su turno.
  */
+function esMontoValido(monto: unknown): monto is number {
+  return typeof monto === 'number' && Number.isFinite(monto) && monto >= 0;
+}
+
 @Injectable()
 export class TurnosService {
   constructor(private readonly supabase: SupabaseService) {}
@@ -69,11 +73,7 @@ export class TurnosService {
   }
 
   async abrir(montoInicial: number, usuarioId: string): Promise<TurnoDto> {
-    if (
-      typeof montoInicial !== 'number' ||
-      !Number.isFinite(montoInicial) ||
-      montoInicial < 0
-    ) {
+    if (!esMontoValido(montoInicial)) {
       throw new BadRequestException('El monto inicial en caja no es válido.');
     }
 
@@ -99,21 +99,21 @@ export class TurnosService {
     montoFinalContado: number | undefined,
     notasCierre: string | undefined,
   ): Promise<TurnoCerradoDto> {
-    if (
-      montoFinalContado !== undefined &&
-      (typeof montoFinalContado !== 'number' ||
-        !Number.isFinite(montoFinalContado) ||
-        montoFinalContado < 0)
-    ) {
+    if (montoFinalContado !== undefined && !esMontoValido(montoFinalContado)) {
       throw new BadRequestException('El monto contado no es válido.');
     }
 
     const client = this.supabase.getClient();
     const turno = await this.buscarTurnoAbierto(client);
-    if (!turno) throw new NotFoundException('No hay un turno abierto para cerrar.');
+    if (!turno)
+      throw new NotFoundException('No hay un turno abierto para cerrar.');
 
     const cerradoEn = new Date().toISOString();
-    const resumen = await this.calcularResumen(client, turno.abierto_en, cerradoEn);
+    const resumen = await this.calcularResumen(
+      client,
+      turno.abierto_en,
+      cerradoEn,
+    );
 
     const { data: actualizado, error } = await client
       .from('turnos')
@@ -182,7 +182,8 @@ export class TurnosService {
     };
     for (const pedido of data ?? []) {
       resumen.total_ventas += pedido.total;
-      if (pedido.metodo_pago === 'efectivo') resumen.total_efectivo += pedido.total;
+      if (pedido.metodo_pago === 'efectivo')
+        resumen.total_efectivo += pedido.total;
       else if (pedido.metodo_pago === 'transferencia')
         resumen.total_transferencia += pedido.total;
       else if (pedido.metodo_pago === 'tarjeta')
