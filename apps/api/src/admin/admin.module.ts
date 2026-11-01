@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AvisosCambioPedidoService } from './avisos-cambio-pedido.service';
 import { ConfiguracionAdminController } from './configuracion-admin.controller';
 import { ConfiguracionAdminService } from './configuracion-admin.service';
 import { ModulosController } from './modulos.controller';
@@ -40,6 +41,7 @@ import { PedidosModule } from '../pedidos/pedidos.module';
   providers: [
     VentasService,
     PedidosAdminService,
+    AvisosCambioPedidoService,
     UsuariosAdminService,
     ConfiguracionAdminService,
     SeguimientoAdminService,
