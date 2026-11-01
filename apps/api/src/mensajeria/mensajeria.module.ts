@@ -16,6 +16,9 @@ import { ConversionesMetaService } from './conversiones-meta.service';
 import { SeguimientoService } from './seguimiento.service';
 import { AvisoEquipoService } from './aviso-equipo.service';
 import { CheckoutWhatsappService } from './checkout-whatsapp.service';
+import { CheckoutEnviosService } from './checkout-envios.service';
+import { CheckoutPedidoService } from './checkout-pedido.service';
+import { CheckoutPreguntasService } from './checkout-preguntas.service';
 import { AvisosPedidoService } from './avisos-pedido.service';
 import { ComprobantesService } from './comprobantes.service';
 
@@ -35,6 +38,9 @@ import { ComprobantesService } from './comprobantes.service';
     SeguimientoService,
     AvisoEquipoService,
     CheckoutWhatsappService,
+    CheckoutEnviosService,
+    CheckoutPedidoService,
+    CheckoutPreguntasService,
     AvisosPedidoService,
     ComprobantesService,
   ],

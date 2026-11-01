@@ -1,8 +1,24 @@
+import type { ItemCarritoResuelto } from '../catalog/catalog.service';
 import type {
   CheckoutWhatsapp,
   ModalidadPedido,
   PasoCheckout,
-} from './conversaciones.service';
+} from './conversaciones.tipos';
+import type { LineaPedido } from './resumen-pedido';
+
+// Horario del bot: 11:00 a.m. a 11:00 p.m. (ver common/horario.ts).
+export const MENSAJE_CERRADO =
+  'Estamos cerrados 😴 Tomamos pedidos de 11:00 a.m. a 11:00 p.m. (el local abre a las 4:00 p.m.). Escribinos desde las 11 y te lo dejamos reservado 🍕';
+
+export interface ContextoCheckout {
+  /** wa_id del cliente — en WhatsApp es también su teléfono. */
+  identificadorExterno: string;
+  conversacionId: string;
+  /** wamid del mensaje que disparó el paso — idempotencia del pedido. */
+  mensajeId: string | null;
+}
+
+const HORAS_MEDIO_DIA = 12;
 
 export type MetodoPagoBot = 'efectivo' | 'transferencia' | 'tarjeta';
 
@@ -180,4 +196,31 @@ export function esSaludoOIntencionDePedir(texto: string): boolean {
       t,
     )
   );
+}
+
+export function lineasDeCarrito(items: ItemCarritoResuelto[]): LineaPedido[] {
+  return items.map((i) => ({
+    cantidad: i.cantidad,
+    productoNombre: i.productoNombre,
+    varianteNombre: i.conTamanos ? i.varianteNombre : null,
+    precioUnitario: i.precio,
+  }));
+}
+
+/** 'ya' → "lo antes posible"; 'HH:MM' → "6:30 p.m. (reserva)". */
+export function textoEntrega(entrega: string | undefined): string | undefined {
+  if (!entrega) return undefined;
+  if (entrega === 'ya') return 'lo antes posible';
+  const [h, m] = entrega.split(':').map(Number);
+  const h12 = h % HORAS_MEDIO_DIA === 0 ? HORAS_MEDIO_DIA : h % HORAS_MEDIO_DIA;
+  return `${h12}:${String(m).padStart(2, '0')} ${h < HORAS_MEDIO_DIA ? 'a.m.' : 'p.m.'} (reserva)`;
+}
+
+export function listaItems(items: ItemCarritoResuelto[]): string {
+  return items
+    .map(
+      (i) =>
+        `• ${i.cantidad}x ${i.productoNombre}${i.conTamanos ? ` (${i.varianteNombre})` : ''}`,
+    )
+    .join('\n');
 }
