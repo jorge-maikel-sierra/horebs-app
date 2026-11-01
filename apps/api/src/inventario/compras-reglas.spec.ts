@@ -139,7 +139,7 @@ describe('clasificarErrorProcesado', () => {
     [
       'la línea ya no está pendiente',
       'La línea no está pendiente',
-      'de_negocio',
+      'conflicto',
     ],
     [
       'la línea no tiene insumo',

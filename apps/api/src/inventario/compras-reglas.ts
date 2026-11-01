@@ -76,24 +76,21 @@ export function paramsCrearCompra(
   };
 }
 
-export type ClaseErrorProcesado = 'no_existe' | 'de_negocio' | 'otro';
+export type ClaseErrorProcesado =
+  'no_existe' | 'conflicto' | 'de_negocio' | 'otro';
 
 /**
- * Los mensajes que arma `procesar_detalle_compra()` para una línea que no
- * existe, no está pendiente o no tiene insumo son de negocio y seguros de
- * mostrar. Cualquier otro error de Postgres (constraint, tipo, conexión) no
- * se expone crudo al cliente.
+ * Los mensajes que arma `procesar_detalle_compra()` son de negocio y seguros
+ * de mostrar: la línea no existe (404), ya no está pendiente (409, conflicto
+ * de estado) o no tiene insumo asignado (400). Cualquier otro error de
+ * Postgres (constraint, tipo, conexión) no se expone crudo al cliente.
  */
 export function clasificarErrorProcesado(
   mensaje: string | undefined,
 ): ClaseErrorProcesado {
   if (mensaje?.includes('no existe')) return 'no_existe';
-  if (
-    mensaje?.includes('no está pendiente') ||
-    mensaje?.includes('no tiene insumo asignado')
-  ) {
-    return 'de_negocio';
-  }
+  if (mensaje?.includes('no está pendiente')) return 'conflicto';
+  if (mensaje?.includes('no tiene insumo asignado')) return 'de_negocio';
   return 'otro';
 }
 
