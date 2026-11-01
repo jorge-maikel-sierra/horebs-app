@@ -54,6 +54,17 @@ export interface MarcarAsistenciaInput {
   usuarioId: string;
 }
 
+/** Body de `PUT /nomina/semanas/:id/asistencia/:fecha`. */
+export interface AsistenciaBody {
+  trabajo: boolean;
+  motivo?: string;
+}
+
+/** Body de `PUT /nomina/semanas/:id/liquidacion`. */
+export interface LiquidarSemanaBody {
+  notas?: string;
+}
+
 /** La fila de `nomina_semanas` tal como sale de `SEMANA_SELECT`. */
 export interface SemanaRaw {
   id: string;

@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   HttpCode,
+  HttpStatus,
   Param,
   Post,
   Put,
@@ -14,7 +15,15 @@ import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { UsuarioActual } from '../auth/usuario.decorator';
 import type { UsuarioAutenticado } from '../auth/roles.guard';
-import { NominaService, type RegistrarAdelantoInput } from './nomina.service';
+import { NominaService } from './nomina.service';
+import type {
+  AdelantoDto,
+  AsistenciaBody,
+  LiquidarSemanaBody,
+  RegistrarAdelantoInput,
+  SemanaNominaDto,
+  TableroFilaDto,
+} from './nomina.tipos';
 import { UuidPipe } from '../common/pipes/uuid.pipe';
 import { FechaPipe } from '../common/pipes/fecha.pipe';
 import { LimitePipe } from '../common/pipes/limite.pipe';
@@ -38,13 +47,13 @@ export class NominaController {
   tablero(
     @Query('semana_inicio', new FechaPipe('semana_inicio'))
     semanaInicio?: string,
-  ) {
+  ): Promise<TableroFilaDto[]> {
     return this.nomina.listarTableroSemanaActual(semanaInicio);
   }
 
   @Get('semanas/:id')
   @Roles('admin')
-  obtenerSemana(@Param('id', UuidPipe) id: string) {
+  obtenerSemana(@Param('id', UuidPipe) id: string): Promise<SemanaNominaDto> {
     return this.nomina.obtenerSemana(id);
   }
 
@@ -54,16 +63,16 @@ export class NominaController {
     @Param('id', UuidPipe) id: string,
     @Param('fecha', new FechaPipe('fecha')) fecha: string,
     @Body(new ValidarBodyPipe(ESQUEMA_ASISTENCIA))
-    body: { trabajo: boolean; motivo?: string },
+    body: AsistenciaBody,
     @UsuarioActual() usuario: UsuarioAutenticado,
-  ) {
-    return this.nomina.marcarAsistencia(
-      id,
+  ): Promise<void> {
+    return this.nomina.marcarAsistencia({
+      semanaId: id,
       fecha,
-      body.trabajo,
-      body.motivo,
-      usuario.id,
-    );
+      trabajo: body.trabajo,
+      motivo: body.motivo,
+      usuarioId: usuario.id,
+    });
   }
 
   @Put('semanas/:id/liquidacion')
@@ -71,9 +80,9 @@ export class NominaController {
   liquidacion(
     @Param('id', UuidPipe) id: string,
     @Body(new ValidarBodyPipe(ESQUEMA_LIQUIDAR_SEMANA))
-    body: { notas?: string },
+    body: LiquidarSemanaBody,
     @UsuarioActual() usuario: UsuarioAutenticado,
-  ) {
+  ): Promise<SemanaNominaDto> {
     return this.nomina.asegurarLiquidada(id, usuario.id, body.notas);
   }
 
@@ -83,26 +92,30 @@ export class NominaController {
     @Body(new ValidarBodyPipe(ESQUEMA_REGISTRAR_ADELANTO))
     body: RegistrarAdelantoInput,
     @UsuarioActual() usuario: UsuarioAutenticado,
-  ) {
+  ): Promise<AdelantoDto> {
     return this.nomina.registrarAdelanto(body, usuario.id);
   }
 
   @Delete('adelantos/:id')
-  @HttpCode(204)
+  @HttpCode(HttpStatus.NO_CONTENT)
   @Roles('admin')
-  eliminarAdelanto(@Param('id', UuidPipe) id: string) {
+  eliminarAdelanto(@Param('id', UuidPipe) id: string): Promise<void> {
     return this.nomina.eliminarAdelanto(id);
   }
 
   @Get('empleados/:id/historico')
   @Roles('admin')
-  historicoEmpleado(@Param('id', UuidPipe) id: string) {
+  historicoEmpleado(
+    @Param('id', UuidPipe) id: string,
+  ): Promise<SemanaNominaDto[]> {
     return this.nomina.obtenerHistoricoEmpleado(id);
   }
 
   @Get('yo/semana-actual')
   @Roles('admin', 'empleado')
-  async semanaActualDeUsuario(@UsuarioActual() usuario: UsuarioAutenticado) {
+  async semanaActualDeUsuario(
+    @UsuarioActual() usuario: UsuarioAutenticado,
+  ): Promise<{ semana: SemanaNominaDto | null }> {
     // Nest/Express devuelven body vacío (no "null") cuando el handler
     // retorna null directo — se envuelve en un objeto para que el
     // cliente siempre reciba JSON válido, sin trabajador vinculado o con él.
@@ -115,7 +128,7 @@ export class NominaController {
   historicoDeUsuario(
     @UsuarioActual() usuario: UsuarioAutenticado,
     @Query('limit', new LimitePipe(LIMITE_MAX_HISTORICO)) limite?: number,
-  ) {
+  ): Promise<SemanaNominaDto[]> {
     return this.nomina.listarMiHistorico(usuario.id, limite);
   }
 }
