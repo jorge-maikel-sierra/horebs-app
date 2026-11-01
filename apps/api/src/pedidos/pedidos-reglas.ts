@@ -183,16 +183,18 @@ export function armarPedidoDto(registrado: PedidoRegistrado): PedidoDto {
   };
 }
 
+const CLIENTE_VACIO: PedidoDto['cliente'] = {
+  nombre: '',
+  apellido: null,
+  telefono: '',
+  correo: null,
+  direccion: null,
+};
+
 function clienteDeFila(
   cliente: FilaPedidoCompleto['clientes'],
 ): PedidoDto['cliente'] {
-  return {
-    nombre: cliente?.nombre ?? '',
-    apellido: cliente?.apellido ?? null,
-    telefono: cliente?.telefono ?? '',
-    correo: cliente?.correo ?? null,
-    direccion: cliente?.direccion ?? null,
-  };
+  return { ...CLIENTE_VACIO, ...cliente };
 }
 
 function itemDeFila(i: FilaItemPedido): PedidoItemDto {
