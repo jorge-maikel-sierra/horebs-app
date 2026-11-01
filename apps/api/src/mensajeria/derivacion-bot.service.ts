@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { AvisoEquipoService, MENSAJE_DERIVACION } from './aviso-equipo.service';
 import { ConversacionesService } from './conversaciones.service';
 import { ConversionesMetaService } from './conversiones-meta.service';
-import type { ContextoHerramienta } from './herramientas-bot.service';
+import type { ContextoHerramienta } from './herramientas-bot.tipos';
 
 /**
  * Pasa la conversación a una persona: deja el hilo derivado, avisa al

@@ -6,8 +6,8 @@ import { PedidosConsultasService } from '../pedidos/pedidos-consultas.service';
 import { buscarProductoUnico } from './busqueda-productos';
 import { CalculoPedidoBotService } from './calculo-pedido-bot.service';
 import { textoDe } from './datos-pedido-bot';
-import type { CanalMensajeria } from './conversaciones.service';
 import { DerivacionBotService } from './derivacion-bot.service';
+import type { ContextoHerramienta } from './herramientas-bot.tipos';
 import {
   DIRECCION,
   ESTADO_ATENCION_TEXTO,
@@ -22,14 +22,6 @@ import { textoDetalleProducto } from './seleccion-productos';
 
 const SIN_TELEFONO =
   'No se pudo identificar el número de teléfono del cliente en este canal.';
-
-/** De qué conversación viene la llamada a la herramienta. */
-export interface ContextoHerramienta {
-  canal: CanalMensajeria;
-  identificadorExterno: string;
-  telefono: string | null;
-  conversacionId: string;
-}
 
 /**
  * Las herramientas de consulta y de derivación que el modelo puede llamar.

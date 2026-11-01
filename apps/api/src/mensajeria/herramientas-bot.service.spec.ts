@@ -2,10 +2,8 @@ import type { CatalogService, ProductoDto } from '../catalog/catalog.service';
 import type { PedidosConsultasService } from '../pedidos/pedidos-consultas.service';
 import type { CalculoPedidoBotService } from './calculo-pedido-bot.service';
 import type { DerivacionBotService } from './derivacion-bot.service';
-import {
-  HerramientasBotService,
-  type ContextoHerramienta,
-} from './herramientas-bot.service';
+import { HerramientasBotService } from './herramientas-bot.service';
+import type { ContextoHerramienta } from './herramientas-bot.tipos';
 
 const HAWAIANA: ProductoDto = {
   id: 'hw',
