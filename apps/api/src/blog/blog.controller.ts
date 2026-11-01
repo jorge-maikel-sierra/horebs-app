@@ -12,11 +12,9 @@ import {
 } from '@nestjs/common';
 import { BlogService } from './blog.service';
 import type { CrearComentarioInput } from './blog.service';
-import {
-  SupabaseAuthGuard,
-  UsuarioSupabaseActual,
-} from '../auth/supabase-auth.guard';
+import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
 import type { UsuarioSupabase } from '../auth/supabase-auth.guard';
+import { UsuarioSupabaseActual } from '../auth/usuario.decorator';
 import { UuidPipe } from '../common/pipes/uuid.pipe';
 import { ValidarBodyPipe } from '../common/pipes/validar-body.pipe';
 import { ESQUEMA_COMENTARIO } from './esquemas';

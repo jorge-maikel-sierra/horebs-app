@@ -1,17 +1,17 @@
-import {
-  CanActivate,
-  ExecutionContext,
-  Injectable,
-  UnauthorizedException,
-  createParamDecorator,
-} from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import type { RequestConUsuario } from './request-con-usuario';
+import { usuarioDelToken } from './validar-token';
 
 export interface UsuarioSupabase {
   id: string;
   email: string;
   nombre: string;
   apellido: string;
+}
+
+function textoDe(valor: unknown): string {
+  return typeof valor === 'string' ? valor : '';
 }
 
 /**
@@ -24,39 +24,23 @@ export class SupabaseAuthGuard implements CanActivate {
   constructor(private readonly supabase: SupabaseService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest();
-    const authHeader: string | undefined = request.headers.authorization;
-    const token = authHeader?.startsWith('Bearer ')
-      ? authHeader.slice('Bearer '.length)
-      : undefined;
+    const request = context
+      .switchToHttp()
+      .getRequest<RequestConUsuario<UsuarioSupabase>>();
+    const user = await usuarioDelToken(
+      this.supabase.getClient(),
+      request.headers.authorization,
+    );
 
-    if (!token) {
-      throw new UnauthorizedException('Falta el token de autenticación.');
-    }
-
-    const { data, error } = await this.supabase
-      .getClient()
-      .auth.getUser(token);
-    if (error || !data.user) {
-      throw new UnauthorizedException('Token inválido o expirado.');
-    }
-
-    const meta = data.user.user_metadata ?? {};
+    const meta: Record<string, unknown> = user.user_metadata ?? {};
     const usuario: UsuarioSupabase = {
-      id: data.user.id,
-      email: data.user.email ?? '',
-      nombre: meta.nombre ?? '',
-      apellido: meta.apellido ?? '',
+      id: user.id,
+      email: user.email ?? '',
+      nombre: textoDe(meta.nombre),
+      apellido: textoDe(meta.apellido),
     };
     request.usuario = usuario;
 
     return true;
   }
 }
-
-export const UsuarioSupabaseActual = createParamDecorator(
-  (_data: unknown, ctx: ExecutionContext): UsuarioSupabase => {
-    const request = ctx.switchToHttp().getRequest();
-    return request.usuario;
-  },
-);

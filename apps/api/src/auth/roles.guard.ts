@@ -3,12 +3,13 @@ import {
   ExecutionContext,
   ForbiddenException,
   Injectable,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { SupabaseService } from '../supabase/supabase.service';
 import { ROLES_KEY, Rol } from './roles.decorator';
 import { errorDeBase } from '../common/error-de-base';
+import type { RequestConUsuario } from './request-con-usuario';
+import { usuarioDelToken } from './validar-token';
 
 export interface UsuarioAutenticado {
   id: string;
@@ -36,27 +37,16 @@ export class RolesGuard implements CanActivate {
     );
     if (!rolesRequeridos || rolesRequeridos.length === 0) return true;
 
-    const request = context.switchToHttp().getRequest();
-    const authHeader: string | undefined = request.headers.authorization;
-    const token = authHeader?.startsWith('Bearer ')
-      ? authHeader.slice('Bearer '.length)
-      : undefined;
-
-    if (!token) {
-      throw new UnauthorizedException('Falta el token de autenticación.');
-    }
-
+    const request = context
+      .switchToHttp()
+      .getRequest<RequestConUsuario<UsuarioAutenticado>>();
     const client = this.supabase.getClient();
-    const { data: userData, error: userError } =
-      await client.auth.getUser(token);
-    if (userError || !userData.user) {
-      throw new UnauthorizedException('Token inválido o expirado.');
-    }
+    const user = await usuarioDelToken(client, request.headers.authorization);
 
     const { data: perfil, error: perfilError } = await client
       .from('perfiles_staff')
       .select('rol')
-      .eq('id', userData.user.id)
+      .eq('id', user.id)
       .maybeSingle();
 
     if (perfilError) throw errorDeBase(perfilError);
@@ -65,8 +55,8 @@ export class RolesGuard implements CanActivate {
     }
 
     const usuario: UsuarioAutenticado = {
-      id: userData.user.id,
-      email: userData.user.email ?? '',
+      id: user.id,
+      email: user.email ?? '',
       rol: perfil.rol as Rol,
     };
     request.usuario = usuario;

@@ -10,7 +10,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 @Injectable()
 export class SupabaseService implements OnModuleInit {
   private readonly logger = new Logger(SupabaseService.name);
-  private client: SupabaseClient;
+  private client: ReturnType<typeof createClient>;
 
   constructor(private readonly config: ConfigService) {
     const url = this.config.get<string>('SUPABASE_URL');
@@ -43,7 +43,10 @@ export class SupabaseService implements OnModuleInit {
    */
   async ping(): Promise<{ ok: boolean; error?: string }> {
     try {
-      const { error } = await this.client.from('configuracion').select('clave').limit(1);
+      const { error } = await this.client
+        .from('configuracion')
+        .select('clave')
+        .limit(1);
       if (error) return { ok: false, error: error.message };
       return { ok: true };
     } catch (err) {
