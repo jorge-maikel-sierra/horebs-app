@@ -1,57 +1,59 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
-import { SupabaseService } from '../supabase/supabase.service';
-import { MailService } from '../mail/mail.service';
-import { InventarioService } from '../inventario/inventario.service';
-import { ConversionesMetaService } from '../mensajeria/conversiones-meta.service';
+import { Injectable } from '@nestjs/common';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { PuntosService } from '../clientes/puntos.service';
-import { METODOS_PAGO } from '../common/metodos-pago';
-import { COSTO_DOMICILIO_DEFAULT } from '../common/costos';
 import { errorDeBase } from '../common/error-de-base';
+import { InventarioService } from '../inventario/inventario.service';
+import { SupabaseService } from '../supabase/supabase.service';
+import { AvisosVentaService } from './avisos-venta.service';
 import { calcularItemsVenta } from './calcular-items-venta';
 import { itemsConVariante } from './items-stock';
-import {
-  MODALIDADES_VENTA,
-  type CrearVentaInput,
-  type VentaDto,
+import type {
+  CrearVentaInput,
+  FilaClienteVenta,
+  FilaPedidoVenta,
+  ItemVentaCalculado,
+  VentaDto,
 } from './pedidos-admin.tipos';
+import {
+  armarVentaDto,
+  costoDomicilioDeVenta,
+  datosClienteDeVenta,
+  validarVenta,
+  type CanjeDeVenta,
+  type DatosClienteVenta,
+} from './venta-reglas';
+
+const CLIENTE_SELECT = 'id, nombre, apellido, telefono, correo, cedula';
+const PEDIDO_VENTA_SELECT =
+  'id, modalidad, direccion_entrega, costo_domicilio, metodo_pago, total, created_at';
+const SIN_CANJE: CanjeDeVenta = { puntos: 0, descuento: 0 };
+
+/** Lo que `registrarPedido` necesita para insertar el pedido de la venta. */
+interface PedidoPorRegistrar {
+  input: CrearVentaInput;
+  clienteId: string;
+  costoDomicilio: number;
+  total: number;
+  canje: CanjeDeVenta;
+  registradoPor: string;
+}
 
 /** Venta de mostrador (POS): cliente, pedido, ítems, stock, puntos y avisos. */
 @Injectable()
 export class VentasService {
   constructor(
     private readonly supabase: SupabaseService,
-    private readonly mail: MailService,
     private readonly inventario: InventarioService,
-    private readonly conversionesMeta: ConversionesMetaService,
     private readonly puntos: PuntosService,
+    private readonly avisos: AvisosVentaService,
   ) {}
 
   async crearVenta(
     input: CrearVentaInput,
     registradoPor: string,
   ): Promise<VentaDto> {
-    if (!input.cliente?.nombre?.trim()) {
-      throw new BadRequestException('Falta el nombre del cliente.');
-    }
-    if (!METODOS_PAGO.includes(input.metodo_pago)) {
-      throw new BadRequestException('Método de pago inválido.');
-    }
-    if (!MODALIDADES_VENTA.includes(input.modalidad)) {
-      throw new BadRequestException('Modalidad inválida.');
-    }
-    if (input.modalidad === 'domicilio' && !input.direccion_entrega?.trim()) {
-      throw new BadRequestException('Falta la dirección de entrega.');
-    }
-
-    const costoDomicilio =
-      input.modalidad === 'domicilio'
-        ? (input.costo_domicilio ?? COSTO_DOMICILIO_DEFAULT)
-        : 0;
-    if (costoDomicilio < 0) {
-      throw new BadRequestException(
-        'El costo de domicilio no puede ser negativo.',
-      );
-    }
+    validarVenta(input);
+    const costoDomicilio = costoDomicilioDeVenta(input);
 
     const client = this.supabase.getClient();
     const { itemsCalculados, total: totalItems } = await calcularItemsVenta(
@@ -60,72 +62,117 @@ export class VentasService {
     );
     const subtotal = totalItems + costoDomicilio;
 
-    // A diferencia de los pedidos web, una venta sin teléfono no se
-    // puede "upsertear" (no hay clave para reconocer al mismo cliente)
-    // — cada visita sin teléfono queda como su propio registro, y eso
-    // está bien para una venta rápida de local. Tampoco puede acumular
-    // ni canjear puntos: sin teléfono no hay forma de reconocer al mismo
-    // cliente en la próxima visita.
-    const telefono = input.cliente.telefono?.trim();
-    const apellido = input.cliente.apellido?.trim() || null;
-    const correo = input.cliente.correo?.trim() || null;
-    const cedula = input.cliente.cedula?.trim() || null;
-    const { data: cliente, error: clienteError } = telefono
-      ? await client
-          .from('clientes')
-          .upsert(
-            {
-              nombre: input.cliente.nombre,
-              apellido,
-              telefono,
-              correo,
-              cedula,
-            },
-            { onConflict: 'telefono' },
-          )
-          .select('id, nombre, apellido, telefono, correo, cedula')
-          .single()
-      : await client
-          .from('clientes')
-          .insert({ nombre: input.cliente.nombre, apellido, correo, cedula })
-          .select('id, nombre, apellido, telefono, correo, cedula')
-          .single();
+    const datosCliente = datosClienteDeVenta(input.cliente);
+    const cliente = await this.guardarCliente(client, datosCliente);
 
-    if (clienteError) throw errorDeBase(clienteError);
-
-    const canje =
-      telefono && input.usar_puntos
-        ? await this.puntos.calcularCanjeMaximo(cliente.id, subtotal)
-        : { puntos: 0, descuento: 0 };
+    // Sin teléfono no hay forma de reconocer al mismo cliente en la próxima
+    // visita: esa venta no puede acumular ni canjear puntos.
+    const reconocible = Boolean(datosCliente.telefono);
+    const canje = await this.calcularCanje(cliente.id, subtotal, {
+      quiereUsar: reconocible && Boolean(input.usar_puntos),
+    });
     const total = subtotal - canje.descuento;
 
-    const { data: pedido, error: pedidoError } = await client
+    const pedido = await this.registrarPedido(client, {
+      input,
+      clienteId: cliente.id,
+      costoDomicilio,
+      total,
+      canje,
+      registradoPor,
+    });
+    await this.registrarItems(client, pedido.id, itemsCalculados);
+    await this.inventario.descontarPorVentaSeguro(
+      itemsConVariante(itemsCalculados),
+      pedido.id,
+      registradoPor,
+    );
+
+    const puntosGanados = reconocible
+      ? await this.moverPuntos(cliente.id, pedido.id, { canje, total })
+      : 0;
+    this.avisos.avisar({
+      pedido,
+      cliente,
+      items: itemsCalculados,
+      notas: input.notas ?? null,
+    });
+
+    return armarVentaDto({
+      pedido,
+      cliente,
+      items: itemsCalculados,
+      canje,
+      puntosGanados,
+    });
+  }
+
+  /**
+   * A diferencia de los pedidos web, una venta sin teléfono no se puede
+   * "upsertear": cada visita sin teléfono queda como su propio registro, y
+   * está bien para una venta rápida de local.
+   */
+  private async guardarCliente(
+    client: SupabaseClient,
+    datos: DatosClienteVenta,
+  ): Promise<FilaClienteVenta> {
+    const { telefono, ...base } = datos;
+    const tabla = client.from('clientes');
+    const consulta = telefono
+      ? tabla.upsert({ ...base, telefono }, { onConflict: 'telefono' })
+      : tabla.insert(base);
+    const { data, error } = await consulta
+      .select(CLIENTE_SELECT)
+      .single<FilaClienteVenta>();
+    if (error) throw errorDeBase(error);
+    return data;
+  }
+
+  private async calcularCanje(
+    clienteId: string,
+    subtotal: number,
+    opciones: { quiereUsar: boolean },
+  ): Promise<CanjeDeVenta> {
+    if (!opciones.quiereUsar) return SIN_CANJE;
+    return this.puntos.calcularCanjeMaximo(clienteId, subtotal);
+  }
+
+  private async registrarPedido(
+    client: SupabaseClient,
+    venta: PedidoPorRegistrar,
+  ): Promise<FilaPedidoVenta> {
+    const { input, canje } = venta;
+    const { data, error } = await client
       .from('pedidos')
       .insert({
-        cliente_id: cliente.id,
+        cliente_id: venta.clienteId,
         modalidad: input.modalidad,
         direccion_entrega:
           input.modalidad === 'domicilio' ? input.direccion_entrega : null,
-        costo_domicilio: costoDomicilio,
+        costo_domicilio: venta.costoDomicilio,
         metodo_pago: input.metodo_pago,
         estado: 'entregado',
         canal: 'pos',
-        registrado_por: registradoPor,
-        total,
+        registrado_por: venta.registradoPor,
+        total: venta.total,
         notas: input.notas ?? null,
         puntos_canjeados: canje.puntos,
         descuento_puntos: canje.descuento,
       })
-      .select(
-        'id, modalidad, direccion_entrega, costo_domicilio, metodo_pago, total, created_at',
-      )
-      .single();
+      .select(PEDIDO_VENTA_SELECT)
+      .single<FilaPedidoVenta>();
+    if (error) throw errorDeBase(error);
+    return data;
+  }
 
-    if (pedidoError) throw errorDeBase(pedidoError);
-
-    const { error: itemsError } = await client.from('items_pedido').insert(
-      itemsCalculados.map((i) => ({
-        pedido_id: pedido.id,
+  private async registrarItems(
+    client: SupabaseClient,
+    pedidoId: string,
+    items: ItemVentaCalculado[],
+  ): Promise<void> {
+    const { error } = await client.from('items_pedido').insert(
+      items.map((i) => ({
+        pedido_id: pedidoId,
         variante_id: i.variante_id,
         nombre_personalizado: i.nombre_personalizado,
         cantidad: i.cantidad,
@@ -133,86 +180,36 @@ export class VentasService {
         subtotal: i.subtotal,
       })),
     );
-    if (itemsError) throw errorDeBase(itemsError);
+    if (error) throw errorDeBase(error);
+  }
 
-    // Si el cliente llegó por un anuncio Click-to-WhatsApp, Meta se entera
-    // de la venta (atribuida por teléfono). No espera ni puede fallar la venta.
-    this.conversionesMeta.avisarCompra({
-      telefono: cliente.telefono,
-      pedidoId: pedido.id,
-      total: Number(pedido.total),
-    });
-
-    await this.inventario.descontarPorVentaSeguro(
-      itemsConVariante(itemsCalculados),
-      pedido.id,
-      registradoPor,
-    );
-
-    let puntosGanados = 0;
-    if (telefono) {
-      if (canje.puntos > 0) {
-        try {
-          await this.puntos.registrarCanje(cliente.id, canje.puntos, pedido.id);
-        } catch (err) {
-          await this.puntos.marcarCanjePendiente(
-            pedido.id,
-            (err as Error).message,
-          );
-        }
+  /**
+   * Descuenta el canje (si falla, el pedido queda marcado para revisión a
+   * mano) y otorga los puntos ganados. Devuelve los puntos ganados.
+   */
+  private async moverPuntos(
+    clienteId: string,
+    pedidoId: string,
+    venta: { canje: CanjeDeVenta; total: number },
+  ): Promise<number> {
+    if (venta.canje.puntos > 0) {
+      try {
+        await this.puntos.registrarCanje(
+          clienteId,
+          venta.canje.puntos,
+          pedidoId,
+        );
+      } catch (err) {
+        await this.puntos.marcarCanjePendiente(
+          pedidoId,
+          (err as Error).message,
+        );
       }
-      puntosGanados = await this.puntos.otorgarPuntosPorCompraSeguro(
-        cliente.id,
-        total,
-        pedido.id,
-      );
     }
-
-    if (pedido.modalidad === 'domicilio' && pedido.direccion_entrega) {
-      this.mail.enviarNotificacionDomicilio({
-        pedidoId: pedido.id,
-        clienteNombre: cliente.nombre,
-        clienteTelefono: cliente.telefono,
-        direccionEntrega: pedido.direccion_entrega,
-        items: itemsCalculados.map((i) => ({
-          cantidad: i.cantidad,
-          nombre: i.variante_nombre
-            ? `${i.producto_nombre} (${i.variante_nombre})`
-            : i.producto_nombre,
-          precioUnitario: i.precio_unitario,
-        })),
-        costoDomicilio: pedido.costo_domicilio,
-        metodoPago: pedido.metodo_pago,
-        total: pedido.total,
-        notas: input.notas ?? null,
-      });
-    }
-
-    return {
-      id: pedido.id,
-      cliente: {
-        nombre: cliente.nombre,
-        apellido: cliente.apellido,
-        telefono: cliente.telefono,
-        correo: cliente.correo,
-        cedula: cliente.cedula,
-      },
-      modalidad: pedido.modalidad,
-      direccion_entrega: pedido.direccion_entrega,
-      costo_domicilio: pedido.costo_domicilio,
-      metodo_pago: pedido.metodo_pago,
-      total: pedido.total,
-      created_at: pedido.created_at,
-      items: itemsCalculados.map((i) => ({
-        producto_nombre: i.producto_nombre,
-        variante_nombre: i.variante_nombre,
-        cantidad: i.cantidad,
-        precio_unitario: i.precio_unitario,
-        subtotal: i.subtotal,
-      })),
-      puntos_canjeados: canje.puntos,
-      descuento_puntos: canje.descuento,
-      puntos_ganados: puntosGanados,
-    };
+    return this.puntos.otorgarPuntosPorCompraSeguro(
+      clienteId,
+      venta.total,
+      pedidoId,
+    );
   }
 }
