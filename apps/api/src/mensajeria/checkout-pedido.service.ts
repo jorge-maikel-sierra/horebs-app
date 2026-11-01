@@ -126,12 +126,23 @@ export class CheckoutPedidoService {
     this.logger.log(
       `id=${ctx.identificadorExterno} pedido ${pedido.id} creado por el bot — total=${pedido.total} pago=${metodo}`,
     );
+    this.avisarAlEquipo(ctx, {
+      id: pedido.id,
+      total: pedido.total,
+      metodoPago: metodo,
+    });
+  }
+
+  private avisarAlEquipo(
+    ctx: ContextoCheckout,
+    pedido?: { id: string; total: number; metodoPago: MetodoPagoBot },
+  ): void {
     this.avisoEquipo.notificar({
       canal: 'whatsapp',
       identificadorExterno: ctx.identificadorExterno,
       telefono: ctx.identificadorExterno,
       conversacionId: ctx.conversacionId,
-      pedido: { id: pedido.id, total: pedido.total, metodoPago: metodo },
+      ...(pedido ? { pedido } : {}),
     });
   }
 
@@ -150,11 +161,6 @@ export class CheckoutPedidoService {
       ctx,
       'No pude registrar tu pedido 😕 Ya le avisé al equipo y una persona te escribe por acá en un momento.',
     );
-    this.avisoEquipo.notificar({
-      canal: 'whatsapp',
-      identificadorExterno: ctx.identificadorExterno,
-      telefono: ctx.identificadorExterno,
-      conversacionId: ctx.conversacionId,
-    });
+    this.avisarAlEquipo(ctx);
   }
 }
