@@ -125,3 +125,55 @@ export interface PedidoResumenDto {
     cantidad: number;
   }[];
 }
+
+/** El cliente tal como lo devuelve el upsert del checkout. */
+export interface FilaClientePedido {
+  id: string;
+  nombre: string;
+  apellido: string | null;
+  telefono: string;
+  correo: string | null;
+  direccion: string | null;
+}
+
+/** El pedido recién insertado, con las columnas de `PEDIDO_CREADO_SELECT`. */
+export interface FilaPedidoCreado {
+  id: string;
+  modalidad: string;
+  direccion_entrega: string | null;
+  costo_domicilio: number;
+  metodo_pago: string;
+  estado: string;
+  total: number;
+  notas: string | null;
+  created_at: string;
+}
+
+export interface FilaItemPedido {
+  variante_id: string | null;
+  cantidad: number;
+  precio_unitario: number;
+  subtotal: number;
+  variantes_producto: {
+    nombre: string;
+    productos: { nombre: string } | null;
+  } | null;
+}
+
+/** Un pedido con su cliente e ítems, con las columnas de `PEDIDO_COMPLETO_SELECT`. */
+export interface FilaPedidoCompleto extends FilaPedidoCreado {
+  puntos_canjeados: number;
+  descuento_puntos: number;
+  puntos_ganados: number;
+  clientes: Omit<FilaClientePedido, 'id'> | null;
+  items_pedido: FilaItemPedido[] | null;
+}
+
+export const CLIENTE_PEDIDO_SELECT =
+  'id, nombre, apellido, telefono, correo, direccion';
+
+export const PEDIDO_CREADO_SELECT =
+  'id, modalidad, direccion_entrega, costo_domicilio, metodo_pago, estado, total, notas, created_at';
+
+export const PEDIDO_COMPLETO_SELECT =
+  'id, modalidad, direccion_entrega, costo_domicilio, metodo_pago, estado, total, notas, created_at, puntos_canjeados, descuento_puntos, puntos_ganados, clientes(nombre, apellido, telefono, correo, direccion), items_pedido(variante_id, cantidad, precio_unitario, subtotal, variantes_producto(nombre, productos(nombre)))';
