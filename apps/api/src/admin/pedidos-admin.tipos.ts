@@ -99,6 +99,51 @@ export interface PedidoAdminDto {
   }[];
 }
 
+/** La fila que devuelve `PEDIDO_ADMIN_SELECT`, con sus joins. */
+export interface FilaPedidoAdmin {
+  id: string;
+  canal: string;
+  modalidad: string;
+  direccion_entrega: string | null;
+  costo_domicilio: number;
+  metodo_pago: string;
+  estado: string;
+  stock_status: string;
+  total: number;
+  notas?: string | null;
+  created_at: string;
+  programado_para?: string | null;
+  comprobante_path?: string | null;
+  clientes?: {
+    id: string;
+    nombre: string;
+    apellido?: string | null;
+    telefono?: string | null;
+    direccion?: string | null;
+    correo?: string | null;
+  } | null;
+  items_pedido?:
+    | {
+        variante_id: string | null;
+        nombre_personalizado?: string | null;
+        cantidad: number;
+        precio_unitario: number;
+        variantes_producto?: {
+          nombre: string;
+          productos?: { nombre: string } | null;
+        } | null;
+      }[]
+    | null;
+}
+
+/** Lo que `editarPedido` lee del pedido antes de cambiarlo. */
+export interface FilaPedidoParaEditar {
+  id: string;
+  costo_domicilio: number | null;
+  estado: string;
+  items_pedido: { variante_id: string | null; cantidad: number }[] | null;
+}
+
 /** Body de `PATCH /admin/pedidos/:id`: método de pago, estado y/o líneas. */
 export interface EditarPedidoInput {
   metodo_pago?: string;

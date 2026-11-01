@@ -1,13 +1,7 @@
-import type { PedidoAdminDto } from './pedidos-admin.tipos';
+import type { FilaPedidoAdmin, PedidoAdminDto } from './pedidos-admin.tipos';
 
-export function mapPedido(p: any): PedidoAdminDto {
-  const reserva = p as {
-    programado_para?: string | null;
-    comprobante_path?: string | null;
-    notas?: string | null;
-  };
+export function mapPedido(p: FilaPedidoAdmin): PedidoAdminDto {
   const cliente = p.clientes;
-  const items = (p.items_pedido ?? []) as any[];
   return {
     id: p.id,
     canal: p.canal,
@@ -26,11 +20,11 @@ export function mapPedido(p: any): PedidoAdminDto {
     estado: p.estado,
     stock_status: p.stock_status,
     total: p.total,
-    notas: reserva.notas ?? null,
+    notas: p.notas ?? null,
     created_at: p.created_at,
-    programado_para: reserva.programado_para ?? null,
-    tiene_comprobante: Boolean(reserva.comprobante_path),
-    items: items.map((i) => ({
+    programado_para: p.programado_para ?? null,
+    tiene_comprobante: Boolean(p.comprobante_path),
+    items: (p.items_pedido ?? []).map((i) => ({
       variante_id: i.variante_id,
       producto_nombre:
         i.variantes_producto?.productos?.nombre ?? i.nombre_personalizado ?? '',
