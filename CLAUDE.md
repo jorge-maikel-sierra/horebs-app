@@ -95,6 +95,16 @@ pregunta; no se supone un valor razonable.
   retiró por orden del dueño y hubo que restaurarla el mismo día, porque el web
   desplegado (Vercel) todavía la llamaba. Se vuelve a quitar solo cuando el
   bundle de producción de `horebs-web` ya use `/admin/clientes?vista=directorio`.
+- Dirección de entrega del bot: solo escrita (calle o carrera, barrio y una
+  referencia). El pin de ubicación de WhatsApp se rechaza porque es el GPS del
+  teléfono y puede quedar a cuadras de la casa (decisión del dueño, 2 nov 2026).
+- Adicionales (el cliente los puede pedir en cualquier momento, se cobran según
+  el tamaño de la pizza): Personal $5.000, Mediana $9.000, Grande $12.000.
+  Son: borde de queso, jamón, pimentón verde, cebolla blanca, pepperoni,
+  ranchera, piña y champiñón (decisión del dueño, 2 nov 2026). Viven en el
+  catálogo como la categoría `Adicionales`: un producto "Adicional: <nombre>"
+  por adicional, con una variante por tamaño (`mensajeria/adicionales.ts`).
+  "Pizza Borde de Queso" es otra pizza, no el adicional.
 - El bot de WhatsApp/Messenger/Instagram nunca inventa precios ni suma
   totales por su cuenta — siempre pasa por una tool que consulta Supabase.
 
