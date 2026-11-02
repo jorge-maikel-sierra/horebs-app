@@ -5,7 +5,24 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConversacionesService } from '../mensajeria/conversaciones.service';
+import type {
+  ConversacionCompleta,
+  EstadoConversacion,
+  MensajeConversacion,
+} from '../mensajeria/conversaciones.tipos';
 import { MetaGraphService } from '../mensajeria/meta-graph.service';
+
+const LIMITE_MENSAJE = 4096;
+
+export interface ConfiguracionSeguimientoDto {
+  recordatorio_minutos: number;
+  oferta_minutos: number;
+}
+
+export interface EstadoConversacionDto {
+  id: string;
+  estado: EstadoConversacion;
+}
 
 /** Seguimiento del bot desde el panel: configuración, conversaciones y mensajes. */
 @Injectable()
@@ -17,7 +34,7 @@ export class SeguimientoAdminService {
     private readonly metaGraph: MetaGraphService,
   ) {}
 
-  async obtenerConfiguracionSeguimiento() {
+  async obtenerConfiguracionSeguimiento(): Promise<ConfiguracionSeguimientoDto> {
     const { recordatorioMinutos, ofertaMinutos } =
       await this.conversaciones.obtenerConfiguracionSeguimiento();
     return {
@@ -29,7 +46,7 @@ export class SeguimientoAdminService {
   async actualizarConfiguracionSeguimiento(
     recordatorioMinutos: number,
     ofertaMinutos: number,
-  ) {
+  ): Promise<ConfiguracionSeguimientoDto> {
     if (
       !Number.isInteger(recordatorioMinutos) ||
       !Number.isInteger(ofertaMinutos) ||
@@ -48,11 +65,14 @@ export class SeguimientoAdminService {
     };
   }
 
-  async listarConversacionesBot() {
+  async listarConversacionesBot(): Promise<ConversacionCompleta[]> {
     return this.conversaciones.listar();
   }
 
-  async actualizarEstadoConversacion(id: string, estado: string) {
+  async actualizarEstadoConversacion(
+    id: string,
+    estado: string,
+  ): Promise<EstadoConversacionDto> {
     if (estado !== 'bot' && estado !== 'derivado') {
       throw new BadRequestException(
         'Estado inválido — debe ser "bot" o "derivado".',
@@ -62,7 +82,7 @@ export class SeguimientoAdminService {
     return { id, estado };
   }
 
-  async listarMensajesConversacion(id: string) {
+  async listarMensajesConversacion(id: string): Promise<MensajeConversacion[]> {
     const conversacion = await this.conversaciones.obtenerPorId(id);
     if (!conversacion) {
       throw new NotFoundException('Conversación no encontrada.');
@@ -74,14 +94,18 @@ export class SeguimientoAdminService {
    * canal/identificador_externo sin que el frontend tenga que conocerlos,
    * manda el mensaje real vía Graph API, y lo deja registrado como
    * `saliente_humano` con quién lo mandó. */
-  async enviarMensajeHumano(id: string, texto: string, usuarioId: string) {
+  async enviarMensajeHumano(
+    id: string,
+    texto: string,
+    usuarioId: string,
+  ): Promise<MensajeConversacion> {
     const textoLimpio = texto?.trim() ?? '';
     if (!textoLimpio) {
       throw new BadRequestException('El mensaje no puede estar vacío.');
     }
-    if (textoLimpio.length > 4096) {
+    if (textoLimpio.length > LIMITE_MENSAJE) {
       throw new BadRequestException(
-        'El mensaje no puede superar los 4096 caracteres.',
+        `El mensaje no puede superar los ${LIMITE_MENSAJE} caracteres.`,
       );
     }
 

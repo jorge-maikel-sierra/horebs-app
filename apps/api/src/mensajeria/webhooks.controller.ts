@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   Get,
   HttpCode,
+  HttpStatus,
   Post,
   Query,
   Req,
@@ -12,6 +13,10 @@ import { ConfigService } from '@nestjs/config';
 import { SkipThrottle } from '@nestjs/throttler';
 import type { RawBodyRequest } from '@nestjs/common';
 import type { Request } from 'express';
+import type {
+  MessengerWebhookPayload,
+  WhatsappWebhookPayload,
+} from './parseo-webhook';
 import { WebhooksService } from './webhooks.service';
 
 /**
@@ -35,41 +40,41 @@ export class WebhooksController {
   ) {}
 
   @Get('whatsapp')
-  verificarWhatsapp(@Query() query: Record<string, string>) {
+  verificarWhatsapp(@Query() query: Record<string, string>): string {
     return this.verificarHandshake(query);
   }
 
   @Get('messenger')
-  verificarMessenger(@Query() query: Record<string, string>) {
+  verificarMessenger(@Query() query: Record<string, string>): string {
     return this.verificarHandshake(query);
   }
 
   @Get('instagram')
-  verificarInstagram(@Query() query: Record<string, string>) {
+  verificarInstagram(@Query() query: Record<string, string>): string {
     return this.verificarHandshake(query);
   }
 
   @Post('whatsapp')
-  @HttpCode(200)
-  recibirWhatsapp(@Req() req: RawBodyRequest<Request>) {
+  @HttpCode(HttpStatus.OK)
+  recibirWhatsapp(@Req() req: RawBodyRequest<Request>): { ok: boolean } {
     this.verificarFirmaOFallar(req);
-    this.webhooks.procesarWhatsapp(req.body);
+    this.webhooks.procesarWhatsapp(req.body as WhatsappWebhookPayload);
     return { ok: true };
   }
 
   @Post('messenger')
-  @HttpCode(200)
-  recibirMessenger(@Req() req: RawBodyRequest<Request>) {
+  @HttpCode(HttpStatus.OK)
+  recibirMessenger(@Req() req: RawBodyRequest<Request>): { ok: boolean } {
     this.verificarFirmaOFallar(req);
-    this.webhooks.procesarMessenger(req.body);
+    this.webhooks.procesarMessenger(req.body as MessengerWebhookPayload);
     return { ok: true };
   }
 
   @Post('instagram')
-  @HttpCode(200)
-  recibirInstagram(@Req() req: RawBodyRequest<Request>) {
+  @HttpCode(HttpStatus.OK)
+  recibirInstagram(@Req() req: RawBodyRequest<Request>): { ok: boolean } {
     this.verificarFirmaOFallar(req);
-    this.webhooks.procesarInstagram(req.body);
+    this.webhooks.procesarInstagram(req.body as MessengerWebhookPayload);
     return { ok: true };
   }
 
@@ -77,7 +82,7 @@ export class WebhooksController {
    * hub.mode/hub.verify_token/hub.challenge — Meta lo llama una vez al
    * guardar la configuración del webhook en el App Dashboard.
    */
-  private verificarHandshake(query: Record<string, string>) {
+  private verificarHandshake(query: Record<string, string>): string {
     const verifyToken = this.config.get<string>('META_WEBHOOK_VERIFY_TOKEN');
     const modo = query['hub.mode'];
     const token = query['hub.verify_token'];

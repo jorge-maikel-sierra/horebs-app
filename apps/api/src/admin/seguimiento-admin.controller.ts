@@ -19,6 +19,14 @@ import {
   ESQUEMA_SEGUIMIENTO_CONFIG,
 } from './esquemas';
 import { SeguimientoAdminService } from './seguimiento-admin.service';
+import type {
+  ConfiguracionSeguimientoDto,
+  EstadoConversacionDto,
+} from './seguimiento-admin.service';
+import type {
+  ConversacionCompleta,
+  MensajeConversacion,
+} from '../mensajeria/conversaciones.tipos';
 
 @Controller('admin/seguimiento')
 @UseGuards(RolesGuard)
@@ -27,7 +35,7 @@ export class SeguimientoAdminController {
 
   @Get('configuracion')
   @Roles('admin', 'empleado')
-  obtenerConfiguracion() {
+  obtenerConfiguracion(): Promise<ConfiguracionSeguimientoDto> {
     return this.seguimiento.obtenerConfiguracionSeguimiento();
   }
 
@@ -39,7 +47,7 @@ export class SeguimientoAdminController {
       recordatorio_minutos: number;
       oferta_minutos: number;
     },
-  ) {
+  ): Promise<ConfiguracionSeguimientoDto> {
     return this.seguimiento.actualizarConfiguracionSeguimiento(
       Number(body.recordatorio_minutos),
       Number(body.oferta_minutos),
@@ -48,7 +56,7 @@ export class SeguimientoAdminController {
 
   @Get('conversaciones')
   @Roles('admin', 'empleado')
-  listarConversaciones() {
+  listarConversaciones(): Promise<ConversacionCompleta[]> {
     return this.seguimiento.listarConversacionesBot();
   }
 
@@ -58,13 +66,15 @@ export class SeguimientoAdminController {
     @Param('id', UuidPipe) id: string,
     @Body(new ValidarBodyPipe(ESQUEMA_ESTADO_CONVERSACION))
     body: { estado: string },
-  ) {
+  ): Promise<EstadoConversacionDto> {
     return this.seguimiento.actualizarEstadoConversacion(id, body.estado);
   }
 
   @Get('conversaciones/:id/mensajes')
   @Roles('admin', 'empleado')
-  listarMensajes(@Param('id', UuidPipe) id: string) {
+  listarMensajes(
+    @Param('id', UuidPipe) id: string,
+  ): Promise<MensajeConversacion[]> {
     return this.seguimiento.listarMensajesConversacion(id);
   }
 
@@ -75,7 +85,7 @@ export class SeguimientoAdminController {
     @Body(new ValidarBodyPipe(ESQUEMA_MENSAJE_CONVERSACION))
     body: { texto: string },
     @UsuarioActual() usuario: UsuarioAutenticado,
-  ) {
+  ): Promise<MensajeConversacion> {
     return this.seguimiento.enviarMensajeHumano(id, body.texto, usuario.id);
   }
 }
