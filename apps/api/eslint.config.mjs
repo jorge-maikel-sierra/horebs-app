@@ -30,7 +30,7 @@ export default tseslint.config(
     rules: {
       // Una promesa sin esperar es un error que nadie ve: en cero, por eso error.
       '@typescript-eslint/no-floating-promises': 'error',
-      '@typescript-eslint/no-unsafe-argument': 'warn',
+      '@typescript-eslint/no-unsafe-argument': 'error',
       'prettier/prettier': ['error', { endOfLine: 'auto' }],
     },
   },
@@ -39,8 +39,9 @@ export default tseslint.config(
     // fuera: sus describe son largos por naturaleza). Van como `warn`
     // porque hay deuda medida (ver CLAUDE.md, "Convenciones de nomenclatura y estilo"): el
     // objetivo es que el conteo solo baje, y cada regla pasa a `error` cuando
-    // llegue a cero (`no-explicit-any`, `max-lines` y `max-depth` ya lo
-    // están). Conteo al 2026-11-02 en CLAUDE.md.
+    // llegue a cero (`no-explicit-any`, `max-lines`, `max-depth` y
+    // `explicit-function-return-type` ya lo están). Conteo al 2026-11-02 en
+    // CLAUDE.md.
     files: ['src/**/*.ts'],
     ignores: ['src/**/*.spec.ts'],
     rules: {
@@ -63,7 +64,7 @@ export default tseslint.config(
       ],
       // El contrato de cada función a la vista, sin leerla por dentro.
       '@typescript-eslint/explicit-function-return-type': [
-        'warn',
+        'error',
         {
           allowExpressions: true,
           allowTypedFunctionExpressions: true,

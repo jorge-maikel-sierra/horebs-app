@@ -233,12 +233,12 @@ Aplican a `src/**` sin specs:
 | `no-floating-promises` | `error` |
 
 Cada regla pasa a `error` cuando su conteo llega a cero. Ya lo son
-`no-floating-promises`, `max-lines`, `max-depth` y `no-explicit-any`. El resto
-va como `warn` porque todavía hay deuda medida: **el conteo solo puede bajar**
-y no se acepta código nuevo que agregue advertencias. Conteo al 2026-11-02
-(`src` y `test`): `no-magic-numbers` 93, `explicit-function-return-type` 60,
-`complexity` 11, `max-lines-per-function` 8, `max-params` 5,
-`security/detect-object-injection` 3, `no-unsafe-argument` 3.
+`no-floating-promises`, `max-lines`, `max-depth`, `no-explicit-any`,
+`explicit-function-return-type` y `no-unsafe-argument`. El resto va como
+`warn` porque todavía hay deuda medida: **el conteo solo puede bajar** y no se
+acepta código nuevo que agregue advertencias. Conteo al 2026-11-02 (`src` y
+`test`): `no-magic-numbers` 75, `complexity` 9, `max-lines-per-function` 6,
+`max-params` 5, `security/detect-object-injection` 3.
 
 `npx eslint "{src,test}/**/*.ts"` (el `npm run lint` lleva `--fix`, no usarlo
 para medir) da 0 errores. Las filas de Supabase se tipan con `.returns<T[]>()`,
