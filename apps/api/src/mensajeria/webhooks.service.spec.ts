@@ -1,164 +1,205 @@
-import {
-  carritoDesdeOrden,
-  entradaCheckoutDe,
-  textoCarritoCatalogo,
-} from './parseo-webhook';
+import { createHmac } from 'crypto';
+import type { CatalogService } from '../catalog/catalog.service';
+import type { ConversacionesService } from './conversaciones.service';
+import type { ConversacionCompleta } from './conversaciones.tipos';
+import type { MediaEntranteService } from './media-entrante.service';
+import type { EventoEntrante } from './parseo-webhook';
+import type { RespuestaBotService } from './respuesta-bot.service';
+import { WebhooksService } from './webhooks.service';
 
-const HAWAIANA_GRANDE = {
-  varianteId: 'var-1',
-  productoNombre: 'Pizza Hawaiana',
-  varianteNombre: 'Grande',
-  conTamanos: true,
-  cantidad: 2,
-  precio: 42000,
-};
+const CONVERSACION = { id: 'cv-1', estado: 'bot' } as ConversacionCompleta;
 
-describe('carritoDesdeOrden', () => {
-  it('toma el id de la variante y la cantidad, y nunca el precio', () => {
-    const carrito = carritoDesdeOrden({
-      catalog_id: 'cat-1',
-      product_items: [
-        {
-          product_retailer_id: 'var-1',
-          quantity: 2,
-          item_price: 1,
-          currency: 'COP',
-        } as never,
-      ],
-    });
-    expect(carrito).toEqual({
-      items: [{ varianteId: 'var-1', cantidad: 2 }],
-      nota: null,
-    });
+function evento(extra: Partial<EventoEntrante> = {}): EventoEntrante {
+  return {
+    canal: 'whatsapp',
+    identificadorExterno: '573157861208',
+    telefono: '573157861208',
+    texto: 'hola',
+    procedenciaAnuncio: null,
+    mensajeId: 'wamid.1',
+    ...extra,
+  };
+}
+
+interface Opciones {
+  duplicado?: boolean;
+  falloDuplicado?: boolean;
+  estado?: 'bot' | 'derivado';
+  archivoAtendido?: boolean;
+}
+
+function crearServicio(opciones: Opciones = {}) {
+  const llamadas: string[] = [];
+  const registrados: string[] = [];
+  const ctwa: string[] = [];
+  const conversaciones = {
+    yaProcesado: () => {
+      llamadas.push('yaProcesado');
+      if (opciones.falloDuplicado) return Promise.reject(new Error('tabla'));
+      return Promise.resolve(opciones.duplicado ?? false);
+    },
+    registrarInteraccion: () => {
+      llamadas.push('registrarInteraccion');
+      return Promise.resolve({
+        ...CONVERSACION,
+        estado: opciones.estado ?? 'bot',
+      });
+    },
+    guardarCtwaClid: (_c: string, _id: string, clid: string) => {
+      ctwa.push(clid);
+      return Promise.resolve();
+    },
+    registrarMensaje: (_id: string, _dir: string, texto: string) => {
+      llamadas.push('registrarMensaje');
+      registrados.push(texto);
+      return Promise.resolve();
+    },
+  };
+  const catalog = {
+    resolverCarrito: () =>
+      Promise.resolve({ disponibles: [], noDisponibles: 2 }),
+  };
+  const medios = {
+    transcribirNota: (e: EventoEntrante) => {
+      llamadas.push('transcribirNota');
+      return Promise.resolve(e.texto);
+    },
+    atenderArchivo: () => {
+      llamadas.push('atenderArchivo');
+      return Promise.resolve(opciones.archivoAtendido ?? false);
+    },
+  };
+  const respuestas: unknown[] = [];
+  const respuesta = {
+    responder: (_e: EventoEntrante, _c: unknown, carrito: unknown) => {
+      llamadas.push('responder');
+      respuestas.push(carrito);
+      return Promise.resolve();
+    },
+  };
+  const servicio = new WebhooksService(
+    conversaciones as unknown as ConversacionesService,
+    catalog as unknown as CatalogService,
+    medios as unknown as MediaEntranteService,
+    respuesta as unknown as RespuestaBotService,
+  );
+  return { servicio, llamadas, registrados, ctwa, respuestas };
+}
+
+describe('WebhooksService.verificarFirma', () => {
+  const { servicio } = crearServicio();
+  const cuerpo = Buffer.from('{"a":1}');
+  const firma = (secreto: string): string =>
+    `sha256=${createHmac('sha256', secreto).update(cuerpo).digest('hex')}`;
+
+  it('acepta la firma HMAC correcta', () => {
+    expect(servicio.verificarFirma('secreto', cuerpo, firma('secreto'))).toBe(
+      true,
+    );
   });
 
-  it('acota la cantidad entre 1 y 20', () => {
-    const { items } = carritoDesdeOrden({
-      product_items: [
-        { product_retailer_id: 'a', quantity: 500 },
-        { product_retailer_id: 'b', quantity: 0 },
-        { product_retailer_id: 'c', quantity: -3 },
-      ],
-    });
-    expect(items.map((i) => i.cantidad)).toEqual([20, 1, 1]);
+  it('rechaza una firma de otro secreto, sin prefijo o ausente', () => {
+    expect(servicio.verificarFirma('secreto', cuerpo, firma('otro'))).toBe(
+      false,
+    );
+    expect(servicio.verificarFirma('secreto', cuerpo, 'abc')).toBe(false);
+    expect(servicio.verificarFirma('secreto', cuerpo, undefined)).toBe(false);
   });
 
-  it('descarta ítems sin id y conserva la nota del cliente', () => {
-    const carrito = carritoDesdeOrden({
-      text: '  sin cebolla  ',
-      product_items: [{ quantity: 1 }, { product_retailer_id: 'a' }],
-    });
-    expect(carrito.items).toEqual([{ varianteId: 'a', cantidad: 1 }]);
-    expect(carrito.nota).toBe('sin cebolla');
+  it('rechaza una firma de distinto largo', () => {
+    expect(servicio.verificarFirma('secreto', cuerpo, 'sha256=abcd')).toBe(
+      false,
+    );
   });
 });
 
-describe('textoCarritoCatalogo', () => {
-  it('arma el pedido con tamaño solo cuando el producto tiene tamaños', () => {
-    const texto = textoCarritoCatalogo(
-      [
-        HAWAIANA_GRANDE,
-        {
-          varianteId: 'var-2',
-          productoNombre: 'Coca-Cola',
-          varianteNombre: 'Única',
-          conTamanos: false,
-          cantidad: 1,
-          precio: 4000,
-        },
-      ],
-      0,
-      null,
-    );
-    expect(texto).toBe(
-      'Envié mi carrito del catálogo: 2x Pizza Hawaiana (Grande), 1x Coca-Cola.',
-    );
+describe('WebhooksService.manejarEvento', () => {
+  it('un mensaje nuevo se registra y le responde el bot', async () => {
+    const { servicio, llamadas, registrados } = crearServicio();
+
+    await servicio.manejarEvento(evento());
+
+    expect(llamadas).toEqual([
+      'yaProcesado',
+      'transcribirNota',
+      'registrarInteraccion',
+      'registrarMensaje',
+      'atenderArchivo',
+      'responder',
+    ]);
+    expect(registrados).toEqual(['hola']);
   });
 
-  it('avisa cuántos productos ya no están disponibles y agrega la nota', () => {
-    const texto = textoCarritoCatalogo([HAWAIANA_GRANDE], 1, 'sin cebolla');
-    expect(texto).toContain(
-      '(1 producto(s) del carrito ya no están disponibles.)',
-    );
-    expect(texto).toContain('Nota: sin cebolla');
+  it('un reenvío de Meta (mismo mensaje) se ignora sin tocar nada más', async () => {
+    const { servicio, llamadas } = crearServicio({ duplicado: true });
+
+    await servicio.manejarEvento(evento());
+
+    expect(llamadas).toEqual(['yaProcesado']);
   });
 
-  it('si nada está disponible lo dice sin inventar productos', () => {
-    expect(textoCarritoCatalogo([], 2, null)).toContain(
+  it('si no se puede verificar el duplicado, se procesa igual', async () => {
+    const { servicio, llamadas } = crearServicio({ falloDuplicado: true });
+
+    await servicio.manejarEvento(evento());
+
+    expect(llamadas).toContain('responder');
+  });
+
+  it('un evento sin id de mensaje no consulta duplicados', async () => {
+    const { servicio, llamadas } = crearServicio();
+
+    await servicio.manejarEvento(evento({ mensajeId: null }));
+
+    expect(llamadas).not.toContain('yaProcesado');
+  });
+
+  it('el carrito del catálogo se cruza con la base y arma el texto', async () => {
+    const { servicio, registrados, respuestas } = crearServicio();
+
+    await servicio.manejarEvento(
+      evento({
+        carrito: { items: [{ varianteId: 'v-1', cantidad: 1 }], nota: null },
+      }),
+    );
+
+    expect(registrados[0]).toContain(
       'ninguno de esos productos está disponible',
     );
-  });
-});
-
-describe('entradaCheckoutDe', () => {
-  it('un toque ck:* va al checkout con su título como texto', () => {
-    expect(
-      entradaCheckoutDe({
-        type: 'interactive',
-        from: '573001112233',
-        interactive: {
-          type: 'button_reply',
-          button_reply: { id: 'ck:mod:domicilio', title: '🛵 Domicilio' },
-        },
-      }),
-    ).toEqual({
-      entrada: { tipo: 'boton', id: 'ck:mod:domicilio' },
-      texto: '🛵 Domicilio',
-    });
+    expect(respuestas[0]).toEqual({ disponibles: [], noDisponibles: 2 });
   });
 
-  it('una fila de la lista de franjas también va al checkout', () => {
-    expect(
-      entradaCheckoutDe({
-        type: 'interactive',
-        from: '573001112233',
-        interactive: {
-          type: 'list_reply',
-          list_reply: { id: 'ck:hora:18:30', title: '6:30 p.m.' },
-        },
-      }),
-    ).toEqual({
-      entrada: { tipo: 'boton', id: 'ck:hora:18:30' },
-      texto: '6:30 p.m.',
-    });
+  it('si el archivo ya quedó atendido, el bot no responde', async () => {
+    const { servicio, llamadas } = crearServicio({ archivoAtendido: true });
+
+    await servicio.manejarEvento(evento());
+
+    expect(llamadas).toContain('atenderArchivo');
+    expect(llamadas).not.toContain('responder');
   });
 
-  it('el botón "Agregar al pedido" de las tarjetas no es del checkout', () => {
-    expect(
-      entradaCheckoutDe({
-        type: 'interactive',
-        from: '573001112233',
-        interactive: {
-          type: 'button_reply',
-          button_reply: { id: 'pedir:Pizza Hawaiana', title: 'Agregar' },
-        },
-      }),
-    ).toBeNull();
+  it('una conversación derivada guarda el mensaje pero no se auto-responde', async () => {
+    const { servicio, llamadas, registrados } = crearServicio({
+      estado: 'derivado',
+    });
+
+    await servicio.manejarEvento(evento());
+
+    expect(registrados).toEqual(['hola']);
+    expect(llamadas).not.toContain('responder');
   });
 
-  it('una ubicación compartida se vuelve dirección con mapa', () => {
-    const resultado = entradaCheckoutDe({
-      type: 'location',
-      from: '573001112233',
-      location: { latitude: 11.54, longitude: -72.9, address: 'Cra 7 # 33-66' },
-    });
-    expect(resultado?.entrada).toMatchObject({
-      tipo: 'ubicacion',
-      latitud: 11.54,
-      longitud: -72.9,
-    });
-    expect(resultado?.texto).toContain(
-      'https://maps.google.com/?q=11.54,-72.9',
+  it('guarda el ctwa_clid solo en WhatsApp con clic en anuncio', async () => {
+    const wa = crearServicio();
+    const messenger = crearServicio();
+    const anuncio = { esAnuncio: true, ctwaClid: 'clid-1' };
+
+    await wa.servicio.manejarEvento(evento({ procedenciaAnuncio: anuncio }));
+    await messenger.servicio.manejarEvento(
+      evento({ canal: 'messenger', procedenciaAnuncio: anuncio }),
     );
-  });
 
-  it('el texto común no es una entrada de checkout', () => {
-    expect(
-      entradaCheckoutDe({
-        type: 'text',
-        from: '573001112233',
-        text: { body: 'hola' },
-      }),
-    ).toBeNull();
+    expect(wa.ctwa).toEqual(['clid-1']);
+    expect(messenger.ctwa).toEqual([]);
   });
 });
