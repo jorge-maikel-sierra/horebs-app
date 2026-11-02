@@ -6,11 +6,13 @@ import {
   adicionalesDeCatalogo,
   adicionalMencionado,
   esAdicional,
+  esPreguntaDeAdicionales,
   nombreCortoAdicional,
   pizzasDelCarrito,
   respuestaEsNo,
   respuestaEsSi,
   sumarAlCarrito,
+  textoAdicionales,
   varianteParaTamano,
 } from './adicionales';
 
@@ -149,5 +151,65 @@ describe('adicionales', () => {
     expect(respuestaEsNo('sí quiero')).toBe(false);
     expect(respuestaEsSi('Sí, dale')).toBe(true);
     expect(respuestaEsSi('no')).toBe(false);
+  });
+});
+
+describe('esPreguntaDeAdicionales', () => {
+  it.each([
+    '¿Cuánto cuesta el borde de queso?',
+    'Qué adicionales tienen?',
+    'precio de los adicionales',
+    'cuanto vale un extra de pepperoni',
+    'Y el borde cuánto es',
+  ])('"%s" es una pregunta por adicionales', (texto) => {
+    expect(esPreguntaDeAdicionales(texto)).toBe(true);
+  });
+
+  it.each([
+    'Me das precio',
+    'cuánto cuesta la pizza borde de queso',
+    'Me das una pizza especial con borde de queso mediana',
+    'con borde de queso',
+    'cuánto cuesta la ranchera',
+    'hola',
+  ])('"%s" no se contesta con la lista de adicionales', (texto) => {
+    expect(esPreguntaDeAdicionales(texto)).toBe(false);
+  });
+});
+
+describe('textoAdicionales', () => {
+  it('con un solo precio por tamaño lo dice una vez, con los precios de la base', () => {
+    const texto = textoAdicionales([
+      producto('a', 'Adicional: Borde de queso'),
+      producto('b', 'Adicional: Piña'),
+      producto('c', 'Pizza Hawaiana'),
+    ]);
+
+    expect(texto).toContain('Personal $5.000, Mediana $9.000, Grande $12.000');
+    expect(texto).toContain('Tenemos: borde de queso, piña');
+    expect(texto).not.toMatch(/aproximad|suele|entre \$/i);
+  });
+
+  it('si un precio cambia en la base, el texto lo refleja', () => {
+    const caro = producto('a', 'Adicional: Borde de queso');
+    caro.variantes[1].precio = 10000;
+
+    const texto = textoAdicionales([caro]);
+
+    expect(texto).toContain('Mediana $10.000');
+  });
+
+  it('si los precios difieren entre adicionales los lista por separado', () => {
+    const caro = producto('a', 'Adicional: Borde de queso');
+    caro.variantes[1].precio = 10000;
+
+    const texto = textoAdicionales([caro, producto('b', 'Adicional: Piña')]);
+
+    expect(texto).toContain('Borde de queso: Personal $5.000, Mediana $10.000');
+    expect(texto).toContain('Piña: Personal $5.000, Mediana $9.000');
+  });
+
+  it('sin adicionales cargados devuelve null', () => {
+    expect(textoAdicionales([producto('c', 'Pizza Hawaiana')])).toBeNull();
   });
 });

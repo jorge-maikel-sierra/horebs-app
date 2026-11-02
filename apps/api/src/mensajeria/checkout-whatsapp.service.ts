@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { ItemCarritoResuelto } from '../catalog/catalog.service';
 import { estadoAtencion, franjaVigente } from '../common/horario';
+import { esPreguntaDeAdicionales } from './adicionales';
 import { CheckoutEnviosService } from './checkout-envios.service';
 import { CheckoutHistorialService } from './checkout-historial.service';
 import { CheckoutPedidoService } from './checkout-pedido.service';
@@ -100,12 +101,7 @@ export class CheckoutWhatsappService {
     ctx: ContextoCheckout,
     entrada: EntradaCheckout,
   ): Promise<boolean> {
-    if (
-      entrada.tipo === 'boton' &&
-      (await this.botonSinPaso(ctx, entrada.id))
-    ) {
-      return true;
-    }
+    if (await this.respuestaSinPaso(ctx, entrada)) return true;
 
     const checkout = await this.envios.obtener(ctx);
     if (!checkout) {
@@ -146,6 +142,19 @@ export class CheckoutWhatsappService {
     return (
       checkout.paso !== 'adicionales' &&
       (await this.preguntas.adicionalEscrito(ctx, checkout, texto))
+    );
+  }
+
+  /** Lo que se contesta aunque no haya checkout: botones del saludo y precios de adicionales. */
+  private async respuestaSinPaso(
+    ctx: ContextoCheckout,
+    entrada: EntradaCheckout,
+  ): Promise<boolean> {
+    if (entrada.tipo === 'boton') return this.botonSinPaso(ctx, entrada.id);
+    return (
+      entrada.tipo === 'texto' &&
+      esPreguntaDeAdicionales(entrada.texto) &&
+      (await this.preguntas.infoAdicionales(ctx))
     );
   }
 

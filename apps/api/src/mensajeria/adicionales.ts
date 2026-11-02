@@ -110,3 +110,77 @@ export function respuestaEsNo(texto: string): boolean {
 export function respuestaEsSi(texto: string): boolean {
   return /^(si|sii|claro|dale|ok|quiero|agregar)\b/.test(normalizar(texto));
 }
+
+const MENCIONA_ADICIONAL = /\b(adicional(es)?|extras?|borde)\b/;
+const PIDE_PRECIO_O_LISTA =
+  /\b(precio|precios|cuanto|cuesta|cuestan|vale|valen|valor|costo|cobran|cobra|que|cuales|tienen|manejan|hay|venden|ofrecen)\b/;
+
+/**
+ * El cliente pregunta por los adicionales o por lo que cuestan ("¿cuánto vale
+ * el borde de queso?", "¿qué adicionales tienen?"). Se contesta con una
+ * respuesta fija armada con los precios de la base: el modelo ya inventó un
+ * rango ("entre $6.000 y $8.000") cuando se le dejó contestar. Con la palabra
+ * "pizza" es un pedido y sigue su camino normal.
+ */
+export function esPreguntaDeAdicionales(texto: string): boolean {
+  const t = normalizar(texto);
+  return (
+    !/\bpizza\b/.test(t) &&
+    MENCIONA_ADICIONAL.test(t) &&
+    PIDE_PRECIO_O_LISTA.test(t)
+  );
+}
+
+function precioDe(variante: VarianteProductoDto): number {
+  return variante.precio_oferta ?? variante.precio;
+}
+
+function pesosCO(valor: number): string {
+  return `$${valor.toLocaleString('es-CO')}`;
+}
+
+/** Tamaño → precio, si todos los adicionales cuestan lo mismo en ese tamaño. */
+function preciosPorTamano(
+  adicionales: ProductoDto[],
+): Map<string, number> | null {
+  const porTamano = new Map<string, Set<number>>();
+  for (const a of adicionales) {
+    for (const v of a.variantes) {
+      porTamano.set(
+        v.nombre,
+        (porTamano.get(v.nombre) ?? new Set<number>()).add(precioDe(v)),
+      );
+    }
+  }
+  if ([...porTamano.values()].some((precios) => precios.size > 1)) return null;
+  return new Map(
+    [...porTamano].map(([tamano, precios]) => [tamano, [...precios][0]]),
+  );
+}
+
+/**
+ * Qué adicionales hay y cuánto cuestan según el tamaño de la pizza, con los
+ * precios de la base. null si no hay adicionales cargados.
+ */
+export function textoAdicionales(productos: ProductoDto[]): string | null {
+  const adicionales = adicionalesDeCatalogo(productos);
+  if (adicionales.length === 0) return null;
+  const nombres = adicionales
+    .map((a) => nombreCortoAdicional(a.nombre).toLowerCase())
+    .join(', ');
+  const unicos = preciosPorTamano(adicionales);
+  const precios = unicos
+    ? [...unicos]
+        .sort(([, a], [, b]) => a - b)
+        .map(([tamano, precio]) => `${tamano} ${pesosCO(precio)}`)
+        .join(', ')
+    : adicionales
+        .map(
+          (a) =>
+            `${nombreCortoAdicional(a.nombre)}: ${a.variantes
+              .map((v) => `${v.nombre} ${pesosCO(precioDe(v))}`)
+              .join(', ')}`,
+        )
+        .join('. ');
+  return `Los adicionales se cobran según el tamaño de la pizza: ${precios}. Tenemos: ${nombres}. Dime cuál quieres y se lo agrego a tu pizza 🍕`;
+}

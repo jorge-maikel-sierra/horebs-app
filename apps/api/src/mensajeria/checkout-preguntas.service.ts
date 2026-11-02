@@ -15,6 +15,7 @@ import {
   respuestaEsNo,
   respuestaEsSi,
   sumarAlCarrito,
+  textoAdicionales,
   varianteParaTamano,
 } from './adicionales';
 import {
@@ -132,6 +133,14 @@ export class CheckoutPreguntasService {
       ctx.identificadorExterno,
     );
     return (await this.catalog.resolverCarrito(carrito)).disponibles;
+  }
+
+  /** Responde con los precios reales de la base. false si no hay adicionales cargados. */
+  async infoAdicionales(ctx: ContextoCheckout): Promise<boolean> {
+    const texto = textoAdicionales(await this.catalog.getProductos());
+    if (!texto) return false;
+    await this.envios.texto(ctx, texto);
+    return true;
   }
 
   /** Pregunta por adicionales solo si hay una pizza a la que pegárselos. */

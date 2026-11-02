@@ -3,6 +3,7 @@ import { CatalogService } from '../catalog/catalog.service';
 import { COSTO_DOMICILIO_DEFAULT } from '../common/costos';
 import { estadoAtencion } from '../common/horario';
 import { PedidosConsultasService } from '../pedidos/pedidos-consultas.service';
+import { textoAdicionales } from './adicionales';
 import { buscarProductoUnico } from './busqueda-productos';
 import { CalculoPedidoBotService } from './calculo-pedido-bot.service';
 import { textoDe } from './datos-pedido-bot';
@@ -64,6 +65,8 @@ export class HerramientasBotService {
         return this.textoProducto(textoDe(argumentos.nombre_producto));
       case 'cotizar_pizza_mitad_y_mitad':
         return this.textoMitadYMitad(argumentos);
+      case 'consultar_adicionales':
+        return this.textoAdicionales();
       case 'obtener_horario':
         return this.textoHorario();
       case 'obtener_categorias':
@@ -91,6 +94,13 @@ export class HerramientasBotService {
       pedidoMitadDeHerramienta(argumentos),
     );
     return mitad.ok ? mitad.texto : `${mitad.error} ${SIN_TOTAL_INVENTADO}`;
+  }
+
+  private async textoAdicionales(): Promise<string> {
+    return (
+      textoAdicionales(await this.catalog.getProductos()) ??
+      'Por ahora no hay adicionales cargados en el menú.'
+    );
   }
 
   private textoHorario(): string {

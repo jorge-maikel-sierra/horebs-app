@@ -170,6 +170,20 @@ describe('CheckoutPreguntasService · adicionales', () => {
     return { servicio, envios };
   }
 
+  it('infoAdicionales contesta con los precios de la base y no toca el carrito', async () => {
+    const { servicio, envios } = crear([HAWAIANA]);
+
+    await expect(servicio.infoAdicionales(CTX)).resolves.toBe(true);
+
+    expect(envios.texto).toHaveBeenCalledWith(
+      CTX,
+      expect.stringContaining(
+        'Personal $5.000, Mediana $9.000, Grande $12.000',
+      ),
+    );
+    expect(envios.guardarCarrito).not.toHaveBeenCalled();
+  });
+
   it('ofrece los adicionales con botones cuando hay una pizza', async () => {
     const { servicio, envios } = crear([HAWAIANA]);
     const checkout: CheckoutWhatsapp = { paso: 'modalidad' };

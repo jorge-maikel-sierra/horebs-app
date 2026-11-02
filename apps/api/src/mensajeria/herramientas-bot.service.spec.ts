@@ -178,4 +178,32 @@ describe('HerramientasBotService.ejecutar', () => {
       servicio.ejecutar('obtener_categorias', {}, CTX),
     ).resolves.toBe('No se pudo obtener esta información en este momento.');
   });
+
+  it('consultar_adicionales devuelve los precios de la base, sin estimar', async () => {
+    const { servicio, catalog } = crearServicio();
+    catalog.getProductos.mockResolvedValue([
+      {
+        ...HAWAIANA,
+        id: 'ad',
+        nombre: 'Adicional: Borde de queso',
+        variantes: [
+          { id: 'a1', nombre: 'Personal', precio: 5000, precio_oferta: null },
+          { id: 'a2', nombre: 'Mediana', precio: 9000, precio_oferta: null },
+        ],
+      },
+    ]);
+
+    const texto = await servicio.ejecutar('consultar_adicionales', {}, CTX);
+
+    expect(texto).toContain('Personal $5.000, Mediana $9.000');
+    expect(texto).not.toMatch(/aproximad|suele/i);
+  });
+
+  it('consultar_adicionales sin adicionales cargados lo dice', async () => {
+    const { servicio } = crearServicio();
+
+    await expect(
+      servicio.ejecutar('consultar_adicionales', {}, CTX),
+    ).resolves.toContain('no hay adicionales');
+  });
 });

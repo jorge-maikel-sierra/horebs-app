@@ -51,6 +51,7 @@ function crearServicio(checkout: CheckoutWhatsapp | null) {
     pedirDireccion: jest.fn().mockResolvedValue(undefined),
     pago: jest.fn().mockResolvedValue('resumen'),
     ofrecerAdicionales: jest.fn().mockResolvedValue(false),
+    infoAdicionales: jest.fn().mockResolvedValue(true),
     adicionalEscrito: jest.fn().mockResolvedValue(false),
     responderAdicionales: jest.fn().mockResolvedValue('esperando'),
   };
@@ -83,6 +84,25 @@ describe('CheckoutWhatsappService', () => {
         servicio.manejar(CTX, texto('¿tienen gaseosas?')),
       ).resolves.toBe(false);
       expect(envios.texto).not.toHaveBeenCalled();
+    });
+
+    it('la pregunta por el precio de un adicional se contesta fija, sin pasar por Gemini', async () => {
+      const { servicio, preguntas } = crearServicio(null);
+
+      await expect(
+        servicio.manejar(CTX, texto('¿Cuánto cuesta el borde de queso?')),
+      ).resolves.toBe(true);
+
+      expect(preguntas.infoAdicionales).toHaveBeenCalledWith(CTX);
+    });
+
+    it('si no hay adicionales cargados deja que conteste Gemini', async () => {
+      const { servicio, preguntas } = crearServicio(null);
+      preguntas.infoAdicionales.mockResolvedValue(false);
+
+      await expect(
+        servicio.manejar(CTX, texto('¿Qué adicionales tienen?')),
+      ).resolves.toBe(false);
     });
 
     it('un botón viejo avisa que ese pedido ya no está en curso', async () => {
