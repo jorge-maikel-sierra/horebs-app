@@ -6,6 +6,14 @@ export const ESQUEMA_AJUSTE_PUNTOS: Esquema = {
   motivo: texto({ max: 300 }),
 };
 
+/** `PATCH /admin/puntos/configuracion`: todo es opcional, nunca negativo. */
+export const ESQUEMA_CONFIGURACION_PUNTOS: Esquema = {
+  puntosPor1000Pesos: opcional(numero({ min: 0 })),
+  valorPuntoPesos: opcional(numero({ min: 0 })),
+  puntosMinimoCanje: opcional(numero({ min: 0 })),
+  puntosVencimientoMeses: opcional(numero({ min: 0 })),
+};
+
 /** Cadena vacía borra un dato (el service la vuelve null); `nombre` no se puede vaciar. */
 const TEXTO_BORRABLE = opcional(texto({ min: 0, max: 200 }));
 

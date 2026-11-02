@@ -1,61 +1,39 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { SupabaseService } from '../supabase/supabase.service';
 import { MailService } from '../mail/mail.service';
 import { errorDeBase } from '../common/error-de-base';
+import {
+  CLAVES_PUNTOS,
+  canjeMaximo,
+  configuracionDeFilas,
+  errorDeAjuste,
+  filasDeConfiguracion,
+  limiteDeVencimiento,
+  paramsMovimientoPuntos,
+  puntosPorMonto,
+  validarAjustePuntos,
+} from './puntos-reglas';
+import {
+  LIMITE_MOVIMIENTOS_DEFECTO,
+  MOVIMIENTO_PUNTOS_SELECT,
+  type CanjeCalculado,
+  type ConfiguracionPuntos,
+  type FilaConfiguracion,
+  type FilaPuntosCliente,
+  type FilaSaldoCliente,
+  type MovimientoPuntosDto,
+  type MovimientoPuntosInput,
+  type SaldoPuntosDto,
+} from './puntos.tipos';
 
-export interface ConfiguracionPuntos {
-  puntosPor1000Pesos: number;
-  valorPuntoPesos: number;
-  puntosMinimoCanje: number;
-  puntosVencimientoMeses: number;
+export type * from './puntos.tipos';
+export { puntosPorMonto };
+
+interface RespuestaMovimiento {
+  data: unknown;
+  error: { message: string } | null;
 }
-
-/** Body de `POST /admin/clientes/:id/movimientos-puntos`. */
-export interface AjustePuntosInput {
-  puntos: number;
-  motivo: string;
-}
-
-export interface CanjeCalculado {
-  puntos: number;
-  descuento: number;
-}
-
-/**
- * Puntos que gana una compra — la misma fórmula que se otorga al registrar
- * el pedido; el bot la usa para anticiparlos en el resumen.
- */
-export function puntosPorMonto(
-  montoPagado: number,
-  config: Pick<ConfiguracionPuntos, 'puntosPor1000Pesos'>,
-): number {
-  return Math.floor(montoPagado / 1000) * config.puntosPor1000Pesos;
-}
-
-export interface MovimientoPuntosDto {
-  id: string;
-  tipo: 'ganado' | 'canjeado' | 'vencido' | 'ajuste';
-  puntos: number;
-  referencia_tipo: string | null;
-  referencia_id: string | null;
-  motivo: string | null;
-  created_at: string;
-}
-
-const CLAVE_PUNTOS_POR_1000 = 'puntos_por_1000_pesos';
-const CLAVE_VALOR_PUNTO = 'valor_punto_pesos';
-const CLAVE_MINIMO_CANJE = 'puntos_minimo_canje';
-const CLAVE_VENCIMIENTO_MESES = 'puntos_vencimiento_meses';
-
-// Mismos valores que trae la migración — solo entran en juego si por algún
-// motivo las filas de configuracion no existen.
-const DEFECTOS: ConfiguracionPuntos = {
-  puntosPor1000Pesos: 1,
-  valorPuntoPesos: 50,
-  puntosMinimoCanje: 100,
-  puntosVencimientoMeses: 12,
-};
 
 /**
  * Programa de fidelidad: puntos por dinero gastado, canjeables por
@@ -79,70 +57,16 @@ export class PuntosService {
       .getClient()
       .from('configuracion')
       .select('clave, valor')
-      .in('clave', [
-        CLAVE_PUNTOS_POR_1000,
-        CLAVE_VALOR_PUNTO,
-        CLAVE_MINIMO_CANJE,
-        CLAVE_VENCIMIENTO_MESES,
-      ]);
+      .in('clave', CLAVES_PUNTOS)
+      .returns<FilaConfiguracion[]>();
     if (error) throw errorDeBase(error);
-
-    const mapa = new Map((data ?? []).map((f) => [f.clave, f.valor]));
-    const num = (clave: string, defecto: number) => {
-      const v = Number(mapa.get(clave));
-      return Number.isFinite(v) && v >= 0 ? v : defecto;
-    };
-
-    return {
-      puntosPor1000Pesos: num(
-        CLAVE_PUNTOS_POR_1000,
-        DEFECTOS.puntosPor1000Pesos,
-      ),
-      valorPuntoPesos: num(CLAVE_VALOR_PUNTO, DEFECTOS.valorPuntoPesos),
-      puntosMinimoCanje: num(CLAVE_MINIMO_CANJE, DEFECTOS.puntosMinimoCanje),
-      puntosVencimientoMeses: num(
-        CLAVE_VENCIMIENTO_MESES,
-        DEFECTOS.puntosVencimientoMeses,
-      ),
-    };
+    return configuracionDeFilas(data ?? []);
   }
 
   async actualizarConfiguracion(
     cambios: Partial<ConfiguracionPuntos>,
   ): Promise<void> {
-    const filas: { clave: string; valor: string }[] = [];
-    if (cambios.puntosPor1000Pesos !== undefined) {
-      if (cambios.puntosPor1000Pesos < 0)
-        throw new BadRequestException('Valor inválido.');
-      filas.push({
-        clave: CLAVE_PUNTOS_POR_1000,
-        valor: String(cambios.puntosPor1000Pesos),
-      });
-    }
-    if (cambios.valorPuntoPesos !== undefined) {
-      if (cambios.valorPuntoPesos < 0)
-        throw new BadRequestException('Valor inválido.');
-      filas.push({
-        clave: CLAVE_VALOR_PUNTO,
-        valor: String(cambios.valorPuntoPesos),
-      });
-    }
-    if (cambios.puntosMinimoCanje !== undefined) {
-      if (cambios.puntosMinimoCanje < 0)
-        throw new BadRequestException('Valor inválido.');
-      filas.push({
-        clave: CLAVE_MINIMO_CANJE,
-        valor: String(cambios.puntosMinimoCanje),
-      });
-    }
-    if (cambios.puntosVencimientoMeses !== undefined) {
-      if (cambios.puntosVencimientoMeses < 0)
-        throw new BadRequestException('Valor inválido.');
-      filas.push({
-        clave: CLAVE_VENCIMIENTO_MESES,
-        valor: String(cambios.puntosVencimientoMeses),
-      });
-    }
+    const filas = filasDeConfiguracion(cambios);
     if (filas.length === 0) return;
 
     const { error } = await this.supabase
@@ -152,18 +76,15 @@ export class PuntosService {
     if (error) throw errorDeBase(error);
   }
 
-  async obtenerSaldoPorTelefono(telefono: string): Promise<{
-    nombre: string;
-    puntos: number;
-    valorPuntoPesos: number;
-    puntosMinimoCanje: number;
-  } | null> {
+  async obtenerSaldoPorTelefono(
+    telefono: string,
+  ): Promise<SaldoPuntosDto | null> {
     const { data, error } = await this.supabase
       .getClient()
       .from('clientes')
       .select('nombre, puntos_actuales')
       .eq('telefono', telefono)
-      .maybeSingle();
+      .maybeSingle<FilaSaldoCliente>();
     if (error) throw errorDeBase(error);
     if (!data) return null;
 
@@ -191,16 +112,11 @@ export class PuntosService {
       .from('clientes')
       .select('puntos_actuales')
       .eq('id', clienteId)
-      .single();
+      .single<Pick<FilaPuntosCliente, 'puntos_actuales'>>();
     if (error) throw errorDeBase(error);
 
     const config = await this.obtenerConfiguracion();
-    const saldo = data.puntos_actuales;
-    if (saldo < config.puntosMinimoCanje) return { puntos: 0, descuento: 0 };
-
-    const maxPorMonto = Math.floor(montoDisponible / config.valorPuntoPesos);
-    const puntos = Math.max(0, Math.min(saldo, maxPorMonto));
-    return { puntos, descuento: puntos * config.valorPuntoPesos };
+    return canjeMaximo(data.puntos_actuales, montoDisponible, config);
   }
 
   /**
@@ -216,18 +132,16 @@ export class PuntosService {
     pedidoId: string,
   ): Promise<void> {
     if (puntos <= 0) return;
-    const { error } = await this.supabase
-      .getClient()
-      .rpc('aplicar_movimiento_puntos', {
-        p_cliente_id: clienteId,
-        p_tipo: 'canjeado',
-        p_puntos: -puntos,
-        p_referencia_tipo: 'pedido',
-        p_referencia_id: pedidoId,
-        p_motivo: null,
-        p_created_by: null,
-        p_actualizar_actividad: false,
-      });
+    const { error } = await this.aplicarMovimiento({
+      clienteId,
+      tipo: 'canjeado',
+      puntos: -puntos,
+      referenciaTipo: 'pedido',
+      referenciaId: pedidoId,
+      motivo: null,
+      creadoPor: null,
+      actualizarActividad: false,
+    });
     if (error) throw errorDeBase(error);
   }
 
@@ -245,18 +159,16 @@ export class PuntosService {
       const puntos = puntosPorMonto(montoPagado, config);
       if (puntos <= 0) return 0;
 
-      const { error } = await this.supabase
-        .getClient()
-        .rpc('aplicar_movimiento_puntos', {
-          p_cliente_id: clienteId,
-          p_tipo: 'ganado',
-          p_puntos: puntos,
-          p_referencia_tipo: 'pedido',
-          p_referencia_id: pedidoId,
-          p_motivo: null,
-          p_created_by: null,
-          p_actualizar_actividad: true,
-        });
+      const { error } = await this.aplicarMovimiento({
+        clienteId,
+        tipo: 'ganado',
+        puntos,
+        referenciaTipo: 'pedido',
+        referenciaId: pedidoId,
+        motivo: null,
+        creadoPor: null,
+        actualizarActividad: true,
+      });
       if (error) throw errorDeBase(error);
 
       // Se guarda en el pedido solo para trazabilidad histórica — la
@@ -302,59 +214,44 @@ export class PuntosService {
     this.mail.enviarAlertaPuntosPendientes({ pedidoId, motivoError });
   }
 
+  /** Devuelve el saldo de puntos que queda tras el ajuste. */
   async ajustarPuntos(
     clienteId: string,
     puntos: number,
     motivo: string,
     usuarioId: string,
   ): Promise<number> {
-    if (!Number.isFinite(puntos) || puntos === 0) {
-      throw new BadRequestException(
-        'La cantidad del ajuste no puede ser cero.',
+    validarAjustePuntos({ puntos, motivo });
+    const respuesta = await this.aplicarMovimiento({
+      clienteId,
+      tipo: 'ajuste',
+      puntos: Math.round(puntos),
+      referenciaTipo: 'ajuste_manual',
+      referenciaId: null,
+      motivo: motivo.trim(),
+      creadoPor: usuarioId,
+      actualizarActividad: false,
+    });
+    if (respuesta.error) {
+      throw (
+        errorDeAjuste(respuesta.error.message) ?? errorDeBase(respuesta.error)
       );
     }
-    if (!motivo?.trim()) {
-      throw new BadRequestException('Falta el motivo del ajuste.');
-    }
-    const { data, error } = await this.supabase
-      .getClient()
-      .rpc('aplicar_movimiento_puntos', {
-        p_cliente_id: clienteId,
-        p_tipo: 'ajuste',
-        p_puntos: Math.round(puntos),
-        p_referencia_tipo: 'ajuste_manual',
-        p_referencia_id: null,
-        p_motivo: motivo.trim(),
-        p_created_by: usuarioId,
-        p_actualizar_actividad: false,
-      });
-    if (error) {
-      if (error.message?.includes('no existe')) {
-        throw new BadRequestException('Cliente no encontrado.');
-      }
-      if (error.message?.includes('negativo')) {
-        throw new BadRequestException(
-          'El ajuste dejaría el saldo de puntos en negativo.',
-        );
-      }
-      throw errorDeBase(error);
-    }
-    return data as number;
+    return respuesta.data as number;
   }
 
   async listarMovimientos(
     clienteId: string,
-    limit = 50,
+    limit = LIMITE_MOVIMIENTOS_DEFECTO,
   ): Promise<MovimientoPuntosDto[]> {
     const { data, error } = await this.supabase
       .getClient()
       .from('movimientos_puntos')
-      .select(
-        'id, tipo, puntos, referencia_tipo, referencia_id, motivo, created_at',
-      )
+      .select(MOVIMIENTO_PUNTOS_SELECT)
       .eq('cliente_id', clienteId)
       .order('created_at', { ascending: false })
-      .limit(limit);
+      .limit(limit)
+      .returns<MovimientoPuntosDto[]>();
     if (error) throw errorDeBase(error);
     return data ?? [];
   }
@@ -383,40 +280,52 @@ export class PuntosService {
   }
 
   private async vencerPuntosInactivosInterno(): Promise<number> {
-    const config = await this.obtenerConfiguracion();
-    const limite = new Date();
-    limite.setMonth(limite.getMonth() - config.puntosVencimientoMeses);
+    const { puntosVencimientoMeses } = await this.obtenerConfiguracion();
+    const limite = limiteDeVencimiento(new Date(), puntosVencimientoMeses);
 
     const { data, error } = await this.supabase
       .getClient()
       .from('clientes')
       .select('id, puntos_actuales')
       .gt('puntos_actuales', 0)
-      .lt('puntos_ultima_actividad', limite.toISOString());
+      .lt('puntos_ultima_actividad', limite.toISOString())
+      .returns<FilaPuntosCliente[]>();
     if (error) throw errorDeBase(error);
 
     let vencidos = 0;
     for (const cliente of data ?? []) {
-      const { error: rpcError } = await this.supabase
-        .getClient()
-        .rpc('aplicar_movimiento_puntos', {
-          p_cliente_id: cliente.id,
-          p_tipo: 'vencido',
-          p_puntos: -cliente.puntos_actuales,
-          p_referencia_tipo: 'vencimiento',
-          p_referencia_id: null,
-          p_motivo: `Vencimiento por ${config.puntosVencimientoMeses} meses de inactividad`,
-          p_created_by: null,
-          p_actualizar_actividad: false,
-        });
-      if (rpcError) {
-        this.logger.error(
-          `No se pudo vencer puntos del cliente ${cliente.id}: ${rpcError.message}`,
-        );
-        continue;
-      }
-      vencidos++;
+      if (await this.vencerCliente(cliente, puntosVencimientoMeses)) vencidos++;
     }
     return vencidos;
+  }
+
+  private async vencerCliente(
+    cliente: FilaPuntosCliente,
+    meses: number,
+  ): Promise<boolean> {
+    const { error } = await this.aplicarMovimiento({
+      clienteId: cliente.id,
+      tipo: 'vencido',
+      puntos: -cliente.puntos_actuales,
+      referenciaTipo: 'vencimiento',
+      referenciaId: null,
+      motivo: `Vencimiento por ${meses} meses de inactividad`,
+      creadoPor: null,
+      actualizarActividad: false,
+    });
+    if (error) {
+      this.logger.error(
+        `No se pudo vencer puntos del cliente ${cliente.id}: ${error.message}`,
+      );
+    }
+    return !error;
+  }
+
+  private async aplicarMovimiento(
+    mov: MovimientoPuntosInput,
+  ): Promise<RespuestaMovimiento> {
+    return await this.supabase
+      .getClient()
+      .rpc('aplicar_movimiento_puntos', paramsMovimientoPuntos(mov));
   }
 }

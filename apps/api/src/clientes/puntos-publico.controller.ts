@@ -1,5 +1,6 @@
 import { Controller, Get, NotFoundException, Query } from '@nestjs/common';
 import { PuntosService } from './puntos.service';
+import type { SaldoPuntosDto } from './puntos.tipos';
 
 /**
  * Sin guard, igual que PedidosController/CatalogController — el checkout
@@ -11,7 +12,9 @@ export class PuntosPublicoController {
   constructor(private readonly puntos: PuntosService) {}
 
   @Get('saldo')
-  async obtenerSaldo(@Query('telefono') telefono?: string) {
+  async obtenerSaldo(
+    @Query('telefono') telefono?: string,
+  ): Promise<SaldoPuntosDto> {
     const saldo = telefono?.trim()
       ? await this.puntos.obtenerSaldoPorTelefono(telefono.trim())
       : null;
