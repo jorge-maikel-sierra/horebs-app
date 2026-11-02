@@ -21,7 +21,7 @@ import type { AjustePuntosInput, MovimientoPuntosDto } from './puntos.tipos';
 import type {
   ConsultaDirectorio,
   DirectorioClientesDto,
-} from './clientes-directorio.service';
+} from './clientes-directorio.tipos';
 import type {
   ClienteDetalleDto,
   ClienteDto,
