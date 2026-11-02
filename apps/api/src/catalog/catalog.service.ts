@@ -1,26 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { errorDeBase } from '../common/error-de-base';
-
-const SITIO_URL = 'https://pizzeriahorebs.shop';
-const MARCA = 'Pizzería Horebs';
-const MONEDA = 'COP';
-
-const COLUMNAS_FEED = [
-  'id',
-  'title',
-  'description',
-  'availability',
-  'condition',
-  'price',
-  'link',
-  'image_link',
-  'brand',
-  'item_group_id',
-  'sale_price',
-  'status',
-  'custom_label_0',
-] as const;
+import { csvDeFilas, filasDeProducto } from './catalogo-feed';
 
 export interface VarianteProductoDto {
   id: string;
@@ -188,49 +169,9 @@ export class CatalogService {
         continue;
       }
 
-      const esGrupoDeVariantes = producto.variantes.length > 1;
-      const link = `${SITIO_URL}/menu/${producto.slug}`;
-      const descripcion =
-        producto.descripcion?.trim() ||
-        `${producto.nombre} — Pizzería Horebs, Riohacha.`;
-
-      for (const variante of producto.variantes) {
-        const title = esGrupoDeVariantes
-          ? `${producto.nombre} - ${variante.nombre}`
-          : producto.nombre;
-        const tieneOferta =
-          variante.precio_oferta != null &&
-          variante.precio_oferta < variante.precio;
-
-        filas.push([
-          variante.id,
-          title,
-          descripcion,
-          'in stock',
-          'new',
-          `${variante.precio.toFixed(2)} ${MONEDA}`,
-          link,
-          producto.imagen_url,
-          MARCA,
-          esGrupoDeVariantes ? producto.id : '',
-          tieneOferta ? `${variante.precio_oferta!.toFixed(2)} ${MONEDA}` : '',
-          'active',
-          nombreCategoria.get(producto.categoria_id) ?? '',
-        ]);
-      }
+      filas.push(...filasDeProducto(producto, nombreCategoria));
     }
 
-    const lineas = [
-      COLUMNAS_FEED.join(','),
-      ...filas.map((fila) => fila.map(escaparCampoCsv).join(',')),
-    ];
-    return lineas.join('\n');
+    return csvDeFilas(filas);
   }
-}
-
-function escaparCampoCsv(valor: string): string {
-  if (/[",\n]/.test(valor)) {
-    return `"${valor.replace(/"/g, '""')}"`;
-  }
-  return valor;
 }
