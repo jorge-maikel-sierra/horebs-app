@@ -20,6 +20,11 @@ export const ESQUEMA_ASIGNAR_ROL: Esquema = {
   cedula: opcional(texto({ max: 20 })),
 };
 
+export const ESQUEMA_CONFIGURACION_CORREOS: Esquema = {
+  correo_domiciliario: opcional(texto({ max: 254 })),
+  correo_avisos_bot: opcional(texto({ max: 254 })),
+};
+
 export const ESQUEMA_SEGUIMIENTO_CONFIG: Esquema = {
   recordatorio_minutos: numero({ min: 1, entero: true }),
   oferta_minutos: numero({ min: 1, entero: true }),
