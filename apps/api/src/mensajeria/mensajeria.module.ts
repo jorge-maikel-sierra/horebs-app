@@ -21,6 +21,8 @@ import { CheckoutPedidoService } from './checkout-pedido.service';
 import { CheckoutPreguntasService } from './checkout-preguntas.service';
 import { AvisosPedidoService } from './avisos-pedido.service';
 import { ComprobantesService } from './comprobantes.service';
+import { MediaEntranteService } from './media-entrante.service';
+import { RespuestaBotService } from './respuesta-bot.service';
 
 @Module({
   imports: [CatalogModule, ClientesModule, MailModule, PedidosModule],
@@ -43,6 +45,8 @@ import { ComprobantesService } from './comprobantes.service';
     CheckoutPreguntasService,
     AvisosPedidoService,
     ComprobantesService,
+    MediaEntranteService,
+    RespuestaBotService,
   ],
   exports: [
     AvisosPedidoService,
