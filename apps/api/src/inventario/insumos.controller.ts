@@ -13,10 +13,11 @@ import { Roles } from '../auth/roles.decorator';
 import { UsuarioActual } from '../auth/usuario.decorator';
 import { InsumosService } from './insumos.service';
 import type {
+  AjusteStockInput,
   CrearInsumoInput,
   EditarInsumoInput,
-  TipoAjusteStock,
-} from './insumos.service';
+  InsumoDto,
+} from './insumos.tipos';
 import type { UsuarioAutenticado } from '../auth/roles.guard';
 import { UuidPipe } from '../common/pipes/uuid.pipe';
 import { ValidarBodyPipe } from '../common/pipes/validar-body.pipe';
@@ -33,7 +34,7 @@ export class InsumosController {
 
   @Get()
   @Roles('admin', 'empleado')
-  listar(@Query('stockBajo') stockBajo?: string) {
+  listar(@Query('stockBajo') stockBajo?: string): Promise<InsumoDto[]> {
     return this.insumos.listar(stockBajo === 'true');
   }
 
@@ -41,7 +42,7 @@ export class InsumosController {
   @Roles('admin', 'empleado')
   crear(
     @Body(new ValidarBodyPipe(ESQUEMA_CREAR_INSUMO)) body: CrearInsumoInput,
-  ) {
+  ): Promise<InsumoDto> {
     return this.insumos.crear(body);
   }
 
@@ -51,7 +52,7 @@ export class InsumosController {
     @Param('id', UuidPipe) id: string,
     @Body(new ValidarBodyPipe(ESQUEMA_EDITAR_INSUMO))
     body: EditarInsumoInput,
-  ) {
+  ): Promise<InsumoDto> {
     return this.insumos.editar(id, body);
   }
 
@@ -59,16 +60,9 @@ export class InsumosController {
   @Roles('admin', 'empleado')
   ajustarStock(
     @Param('id', UuidPipe) id: string,
-    @Body(new ValidarBodyPipe(ESQUEMA_AJUSTE_INSUMO))
-    body: { tipo: TipoAjusteStock; cantidad_g: number; motivo: string },
+    @Body(new ValidarBodyPipe(ESQUEMA_AJUSTE_INSUMO)) body: AjusteStockInput,
     @UsuarioActual() usuario: UsuarioAutenticado,
-  ) {
-    return this.insumos.ajustarStock(
-      id,
-      body.tipo,
-      body.cantidad_g,
-      body.motivo,
-      usuario.id,
-    );
+  ): Promise<InsumoDto> {
+    return this.insumos.ajustarStock(id, body, usuario.id);
   }
 }
