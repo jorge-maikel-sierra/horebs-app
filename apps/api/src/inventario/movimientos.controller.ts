@@ -1,10 +1,9 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
-import { MAX_LIMITE, MovimientosService } from './movimientos.service';
-import { UuidOpcionalPipe } from '../common/pipes/uuid.pipe';
-import { FechaPipe } from '../common/pipes/fecha.pipe';
-import { LimitePipe } from '../common/pipes/limite.pipe';
+import { ConsultaMovimientosPipe } from './consulta-movimientos.pipe';
+import { MovimientosService } from './movimientos.service';
+import type { FiltrosMovimientos, MovimientoDto } from './movimientos.tipos';
 
 @Controller('inventario/movimientos')
 @UseGuards(RolesGuard)
@@ -14,18 +13,8 @@ export class MovimientosController {
   @Get()
   @Roles('admin', 'empleado')
   listar(
-    @Query('insumoId', UuidOpcionalPipe) insumoId?: string,
-    @Query('tipo') tipo?: string,
-    @Query('desde', new FechaPipe('desde')) desde?: string,
-    @Query('hasta', new FechaPipe('hasta')) hasta?: string,
-    @Query('limit', new LimitePipe(MAX_LIMITE)) limit?: number,
-  ) {
-    return this.movimientos.listar({
-      insumoId,
-      tipo,
-      desde,
-      hasta,
-      limit,
-    });
+    @Query(ConsultaMovimientosPipe) filtros: FiltrosMovimientos,
+  ): Promise<MovimientoDto[]> {
+    return this.movimientos.listar(filtros);
   }
 }
