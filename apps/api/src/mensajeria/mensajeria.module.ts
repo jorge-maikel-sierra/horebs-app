@@ -1,8 +1,12 @@
 import { Module } from '@nestjs/common';
 import { CatalogModule } from '../catalog/catalog.module';
 import { ClientesModule } from '../clientes/clientes.module';
+import { BoldModule } from '../bold/bold.module';
 import { MailModule } from '../mail/mail.module';
 import { PedidosModule } from '../pedidos/pedidos.module';
+import { BoldWebhookController } from './bold-webhook.controller';
+import { ConfirmacionPedidoService } from './confirmacion-pedido.service';
+import { PagoBoldService } from './pago-bold.service';
 import { WebhooksController } from './webhooks.controller';
 import { WebhooksService } from './webhooks.service';
 import { MetaGraphService } from './meta-graph.service';
@@ -29,8 +33,14 @@ import { MediaEntranteService } from './media-entrante.service';
 import { RespuestaBotService } from './respuesta-bot.service';
 
 @Module({
-  imports: [CatalogModule, ClientesModule, MailModule, PedidosModule],
-  controllers: [WebhooksController],
+  imports: [
+    BoldModule,
+    CatalogModule,
+    ClientesModule,
+    MailModule,
+    PedidosModule,
+  ],
+  controllers: [WebhooksController, BoldWebhookController],
   providers: [
     WebhooksService,
     MetaGraphService,
@@ -55,6 +65,8 @@ import { RespuestaBotService } from './respuesta-bot.service';
     ComprobantesService,
     MediaEntranteService,
     RespuestaBotService,
+    PagoBoldService,
+    ConfirmacionPedidoService,
   ],
   exports: [
     AvisosPedidoService,

@@ -1,10 +1,12 @@
 import type { PedidosService } from '../pedidos/pedidos.service';
 import type { AvisoEquipoService } from './aviso-equipo.service';
 import type { CheckoutEnviosService } from './checkout-envios.service';
+import { textoConfirmacionPedido } from './confirmacion-pedido';
+import { ConfirmacionPedidoService } from './confirmacion-pedido.service';
+import type { PagoBoldService } from './pago-bold.service';
 import {
   CheckoutPedidoService,
   datosPedidoWhatsapp,
-  textoConfirmacionPedido,
   type FranjaElegida,
 } from './checkout-pedido.service';
 import type { ContextoCheckout } from './checkout-whatsapp';
@@ -102,6 +104,23 @@ describe('textoConfirmacionPedido', () => {
     expect(texto).toContain('*1118843420*');
   });
 
+  it('con tarjeta y link de Bold manda el enlace de pago', () => {
+    const texto = textoConfirmacionPedido({
+      ...base,
+      metodo: 'tarjeta',
+      enlacePago: 'https://checkout.bold.co/LNK_1',
+    });
+    expect(texto).toContain('https://checkout.bold.co/LNK_1');
+    expect(texto).toContain('paga con tarjeta');
+    expect(texto).not.toContain('Te aviso por acá cuando lo confirmemos');
+  });
+
+  it('con tarjeta y sin link avisa que el equipo enviará el enlace', () => {
+    const texto = textoConfirmacionPedido({ ...base, metodo: 'tarjeta' });
+    expect(texto).toContain('con el enlace para pagar con tarjeta');
+    expect(texto).not.toContain('http');
+  });
+
   it('una reserva dice para qué hora quedó', () => {
     const texto = textoConfirmacionPedido({
       ...base,
@@ -112,8 +131,19 @@ describe('textoConfirmacionPedido', () => {
   });
 });
 
+/** El `metodoPago` con el que se avisó al equipo en la primera llamada. */
+function metodoDelAviso(notificar: jest.Mock): string {
+  const [aviso] = notificar.mock.calls[0] as [
+    { pedido: { metodoPago: string } },
+  ];
+  return aviso.pedido.metodoPago;
+}
+
 describe('CheckoutPedidoService.crear', () => {
-  function crearServicio(crearDesdeWhatsapp: jest.Mock) {
+  function crearServicio(
+    crearDesdeWhatsapp: jest.Mock,
+    enlacePago: string | null = null,
+  ) {
     const pedidos = { crearDesdeWhatsapp };
     const conversaciones = {
       obtenerCarrito: jest.fn().mockResolvedValue(CARRITO),
@@ -124,13 +154,17 @@ describe('CheckoutPedidoService.crear', () => {
       texto: jest.fn().mockResolvedValue(undefined),
       limpiar: jest.fn().mockResolvedValue(undefined),
     };
+    const pagoBold = { iniciarCobro: jest.fn().mockResolvedValue(enlacePago) };
     const servicio = new CheckoutPedidoService(
       pedidos as unknown as PedidosService,
       conversaciones as unknown as ConversacionesService,
       avisoEquipo as unknown as AvisoEquipoService,
-      envios as unknown as CheckoutEnviosService,
+      new ConfirmacionPedidoService(
+        envios as unknown as CheckoutEnviosService,
+        pagoBold as unknown as PagoBoldService,
+      ),
     );
-    return { servicio, conversaciones, avisoEquipo, envios };
+    return { servicio, conversaciones, avisoEquipo, envios, pagoBold };
   }
 
   beforeEach(() => {
@@ -166,6 +200,57 @@ describe('CheckoutPedidoService.crear', () => {
         },
       }),
     );
+  });
+
+  it('con tarjeta genera el cobro, manda el enlace y avisa al equipo que el pago está pendiente', async () => {
+    const crear = jest
+      .fn()
+      .mockResolvedValue({ id: 'abcdef12-3456', total: 33000 });
+    const { servicio, avisoEquipo, envios, pagoBold } = crearServicio(
+      crear,
+      'https://checkout.bold.co/LNK_1',
+    );
+
+    await servicio.crear(CTX, CHECKOUT, 'tarjeta', YA);
+
+    expect(pagoBold.iniciarCobro).toHaveBeenCalledWith({
+      id: 'abcdef12-3456',
+      total: 33000,
+    });
+    expect(envios.texto).toHaveBeenCalledWith(
+      CTX,
+      expect.stringContaining('https://checkout.bold.co/LNK_1'),
+    );
+    expect(metodoDelAviso(avisoEquipo.notificar)).toBe(
+      'tarjeta (pago pendiente)',
+    );
+  });
+
+  it('con efectivo o transferencia no se toca Bold', async () => {
+    const crear = jest
+      .fn()
+      .mockResolvedValue({ id: 'abcdef12-3456', total: 33000 });
+    const { servicio, pagoBold } = crearServicio(crear);
+
+    await servicio.crear(CTX, CHECKOUT, 'efectivo', YA);
+    await servicio.crear(CTX, CHECKOUT, 'transferencia', YA);
+
+    expect(pagoBold.iniciarCobro).not.toHaveBeenCalled();
+  });
+
+  it('con tarjeta y Bold apagado, confirma igual y el aviso no dice pendiente', async () => {
+    const crear = jest
+      .fn()
+      .mockResolvedValue({ id: 'abcdef12-3456', total: 33000 });
+    const { servicio, avisoEquipo, envios } = crearServicio(crear, null);
+
+    await servicio.crear(CTX, CHECKOUT, 'tarjeta', YA);
+
+    expect(envios.texto).toHaveBeenCalledWith(
+      CTX,
+      expect.stringContaining('te escribe por acá con el enlace'),
+    );
+    expect(metodoDelAviso(avisoEquipo.notificar)).toBe('tarjeta');
   });
 
   it('si no se puede registrar, deriva a una persona y no deja al cliente sin respuesta', async () => {

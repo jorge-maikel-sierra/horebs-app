@@ -1,48 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { etiquetaHora, type franjaVigente } from '../common/horario';
+import { type franjaVigente } from '../common/horario';
 import { PedidosService } from '../pedidos/pedidos.service';
-import {
-  AvisoEquipoService,
-  INICIO_CONFIRMACION_PEDIDO,
-} from './aviso-equipo.service';
-import { CheckoutEnviosService } from './checkout-envios.service';
+import { AvisoEquipoService } from './aviso-equipo.service';
+import { ConfirmacionPedidoService } from './confirmacion-pedido.service';
 import type { ContextoCheckout, MetodoPagoBot } from './checkout-whatsapp';
 import {
   ConversacionesService,
   type CheckoutWhatsapp,
   type ItemCarritoPendiente,
 } from './conversaciones.service';
-import { pesos } from './resumen-pedido';
-
-// Dato confirmado en CLAUDE.md — el mismo que muestra el sitio web en la
-// confirmación de un pedido con transferencia (apps/web/src/lib/negocio.ts).
-const TRANSFERENCIA = { banco: 'Nu', llave: '1118843420' };
-const LARGO_CODIGO_PEDIDO = 8;
 
 /** La franja de entrega ya validada (`franjaVigente` devolvió algo). */
 export type FranjaElegida = NonNullable<ReturnType<typeof franjaVigente>>;
-
-/** Mensaje de confirmación al cliente; con transferencia incluye la llave. */
-export function textoConfirmacionPedido(datos: {
-  nombre: string | undefined;
-  pedido: { id: string; total: number };
-  programadoPara: string | null | undefined;
-  metodo: MetodoPagoBot;
-}): string {
-  const { nombre, pedido, programadoPara, metodo } = datos;
-  return [
-    `${INICIO_CONFIRMACION_PEDIDO} ${nombre}! Recibimos tu pedido *#${pedido.id.slice(0, LARGO_CODIGO_PEDIDO)}* por *${pesos(pedido.total)}*.`,
-    programadoPara
-      ? `🕒 Quedó reservado para las *${etiquetaHora(programadoPara)}*.`
-      : null,
-    'Te aviso por acá cuando lo confirmemos y cuando vaya en camino 🍕',
-    metodo === 'transferencia'
-      ? `\nPara transferir: *Banco ${TRANSFERENCIA.banco}*, llave *${TRANSFERENCIA.llave}*. Mandanos el comprobante por acá.`
-      : null,
-  ]
-    .filter((l) => l !== null)
-    .join('\n');
-}
 
 /** Lo que recibe `PedidosService.crearDesdeWhatsapp` a partir del checkout terminado. */
 export function datosPedidoWhatsapp(entrada: {
@@ -90,7 +59,7 @@ export class CheckoutPedidoService {
     private readonly pedidos: PedidosService,
     private readonly conversaciones: ConversacionesService,
     private readonly avisoEquipo: AvisoEquipoService,
-    private readonly envios: CheckoutEnviosService,
+    private readonly confirmacion: ConfirmacionPedidoService,
   ) {}
 
   async crear(
@@ -113,29 +82,25 @@ export class CheckoutPedidoService {
       return;
     }
 
-    await this.envios.limpiar(ctx);
-    await this.envios.texto(
-      ctx,
-      textoConfirmacionPedido({
-        nombre: checkout.nombre,
-        pedido,
-        programadoPara: franja.programadoPara,
-        metodo,
-      }),
-    );
+    const pendienteDePago = await this.confirmacion.confirmar(ctx, {
+      nombre: checkout.nombre,
+      pedido,
+      programadoPara: franja.programadoPara,
+      metodo,
+    });
     this.logger.log(
       `id=${ctx.identificadorExterno} pedido ${pedido.id} creado por el bot — total=${pedido.total} pago=${metodo}`,
     );
     this.avisarAlEquipo(ctx, {
       id: pedido.id,
       total: pedido.total,
-      metodoPago: metodo,
+      metodoPago: pendienteDePago ? 'tarjeta (pago pendiente)' : metodo,
     });
   }
 
   private avisarAlEquipo(
     ctx: ContextoCheckout,
-    pedido?: { id: string; total: number; metodoPago: MetodoPagoBot },
+    pedido?: { id: string; total: number; metodoPago: string },
   ): void {
     this.avisoEquipo.notificar({
       canal: 'whatsapp',
@@ -157,10 +122,7 @@ export class CheckoutPedidoService {
       'whatsapp',
       ctx.identificadorExterno,
     );
-    await this.envios.texto(
-      ctx,
-      'No pude registrar tu pedido 😕 Ya le avisé al equipo y una persona te escribe por acá en un momento.',
-    );
+    await this.confirmacion.noSePudoRegistrar(ctx);
     this.avisarAlEquipo(ctx);
   }
 }

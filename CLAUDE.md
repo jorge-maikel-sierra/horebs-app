@@ -65,6 +65,13 @@ pregunta; no se supone un valor razonable.
   casa") y **Pizza Hawaiana** — presencia destacada en el catálogo, por
   encima del resto del menú.
 - Catálogo actual: 17 productos publicados en el sitio viejo.
+- Pago con tarjeta por Bold (Link de pagos): con `BOLD_API_KEY` y
+  `BOLD_SECRET_KEY` en Railway, el bot genera un enlace de un solo uso por
+  pedido y lo manda en la confirmación; el webhook marca el pedido `pagado`
+  (`pedidos.pago_estado`) y avisa al cliente y a la cocina. Sin las llaves, la
+  tarjeta solo se registra y el equipo cobra a mano. Las llaves nunca van en
+  el repo ni en el chat. La unidad de `expiration_date` del link no está clara
+  en la documentación de Bold: no se envía hasta probarla en el sandbox.
 - Métodos de pago históricos: ~77% efectivo, ~22% transferencia bancaria,
   <1% tarjeta — priorizar efectivo/transferencia en el checkout; tarjeta es
   opcional y está pendiente de decisión.
@@ -178,7 +185,9 @@ gigante.
   `@Roles('admin')` o `@Roles('admin', 'empleado')` por endpoint.
 - **Webhooks de Meta:** contrato propio de Meta (200 siempre, verificación
   por GET, firma HMAC sobre el body crudo, por eso `rawBody: true`). No se
-  les aplica el contrato REST normal. Igual excepción para
+  les aplica el contrato REST normal. `POST /webhooks/bold` sigue el mismo
+  patrón: firma `x-bold-signature` (HMAC-SHA256 de base64 del body crudo con
+  `BOLD_SECRET_KEY`), 403 si no calza y procesamiento idempotente aparte. Igual excepción para
   `GET /catalogo/feed.csv` y `GET /health`.
 
 ### Zona horaria — bug recurrente a vigilar

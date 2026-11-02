@@ -81,6 +81,7 @@ POST /nomina/adelantos
 POST /nomina/empleados
 POST /pedidos
 POST /turnos
+POST /webhooks/bold
 POST /webhooks/instagram
 POST /webhooks/messenger
 POST /webhooks/whatsapp
