@@ -1,4 +1,5 @@
 import {
+  CustomDecorator,
   CallHandler,
   ExecutionContext,
   Injectable,
@@ -24,7 +25,7 @@ const DEPRECADA_DESDE = 1793145600;
  * para que el cliente migre. `:param` de la sucesora se rellena con los
  * params de la request. Uso: `@Deprecada('/turnos/actual')`.
  */
-export const Deprecada = (sucesora: string) =>
+export const Deprecada = (sucesora: string): CustomDecorator =>
   SetMetadata(DEPRECADA_KEY, sucesora);
 
 @Injectable()

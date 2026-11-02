@@ -1,4 +1,5 @@
 import {
+  CustomDecorator,
   CallHandler,
   ExecutionContext,
   Injectable,
@@ -19,7 +20,7 @@ const UBICACION_KEY = 'ubicacion';
  *
  * Uso: `@Ubicacion('/pedidos/:id')`.
  */
-export const Ubicacion = (plantilla: string) =>
+export const Ubicacion = (plantilla: string): CustomDecorator =>
   SetMetadata(UBICACION_KEY, plantilla);
 
 @Injectable()

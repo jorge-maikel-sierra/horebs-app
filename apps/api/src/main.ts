@@ -4,7 +4,7 @@ import { Logger } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { configurarApp } from './configurar-app';
 
-async function bootstrap() {
+async function bootstrap(): Promise<void> {
   // Railway (y otros hosts sin salida IPv6) resuelven dominios como
   // smtp.gmail.com con la dirección IPv6 primero por defecto en Node,
   // lo que cuelga la conexión (ENETUNREACH) hasta expirar el timeout.
