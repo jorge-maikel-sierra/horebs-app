@@ -7,17 +7,20 @@ import {
 
 function crearServicio(opciones: { conCatalogo?: boolean } = {}) {
   const { conCatalogo = true } = opciones;
-  const valores: Record<string, string> = {
-    WHATSAPP_ACCESS_TOKEN: 'tok',
-    WHATSAPP_PHONE_NUMBER_ID: 'phone-1',
-    ...(conCatalogo ? { WHATSAPP_CATALOG_ID: 'cat-1' } : {}),
-  };
-  const config = { get: (k: string) => valores[k] };
+  const valores = new Map(
+    Object.entries({
+      WHATSAPP_ACCESS_TOKEN: 'tok',
+      WHATSAPP_PHONE_NUMBER_ID: 'phone-1',
+      ...(conCatalogo ? { WHATSAPP_CATALOG_ID: 'cat-1' } : {}),
+    }),
+  );
+  const config = { get: (k: string) => valores.get(k) };
   return new MetaGraphService(config as never);
 }
 
 function cuerpoEnviado(fetchMock: jest.Mock, llamada = 0) {
-  return JSON.parse(fetchMock.mock.calls[llamada][1].body as string);
+  const llamadas = fetchMock.mock.calls as [string, { body: string }][];
+  return JSON.parse(llamadas.at(llamada)?.[1].body ?? '');
 }
 
 function lista(secciones: number, itemsPorSeccion: number): ListaProductos {

@@ -10,3 +10,4 @@ export const MS_POR_DIA = 86_400_000;
 // Largo de 'AAAA-MM' y de 'AAAA-MM-DD'.
 export const LARGO_MES = 7;
 export const LARGO_FECHA = 10;
+export const SEGUNDOS_POR_MINUTO = 60;

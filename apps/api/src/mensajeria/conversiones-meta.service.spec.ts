@@ -42,14 +42,16 @@ function crearServicio(
   };
   const supabase = { getClient: () => ({ from: () => tabla }) };
   const conversaciones = { obtenerCtwa: jest.fn().mockResolvedValue(ctwa) };
-  const valores: Record<string, string> = configurado
-    ? {
-        META_CAPI_ACCESS_TOKEN: 'tok',
-        META_DATASET_ID: 'ds-1',
-        WHATSAPP_BUSINESS_ACCOUNT_ID: 'waba-1',
-      }
-    : {};
-  const config = { get: (k: string) => valores[k] };
+  const valores = new Map(
+    configurado
+      ? Object.entries({
+          META_CAPI_ACCESS_TOKEN: 'tok',
+          META_DATASET_ID: 'ds-1',
+          WHATSAPP_BUSINESS_ACCOUNT_ID: 'waba-1',
+        })
+      : [],
+  );
+  const config = { get: (k: string) => valores.get(k) };
 
   const servicio = new ConversionesMetaService(
     config as never,

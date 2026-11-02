@@ -7,8 +7,11 @@ import { ConfigService } from '@nestjs/config';
 import { SupabaseService } from '../supabase/supabase.service';
 import { ConversacionesService } from './conversaciones.service';
 import { errorDeBase } from '../common/error-de-base';
+import { MS_POR_SEGUNDO } from '../common/tiempo';
 
 const TIMEOUT_MS = 10_000;
+const LARGO_MAX_ERROR_GRAPH = 300;
+const DIGITOS_TELEFONO_COLOMBIA = 10;
 const MONEDA = 'COP';
 
 type EventoMensajeria = 'LeadSubmitted' | 'Purchase';
@@ -181,7 +184,7 @@ export class ConversionesMetaService {
   private async enviar(e: EventoParaEnviar): Promise<void> {
     const evento: Record<string, unknown> = {
       event_name: e.evento,
-      event_time: Math.floor(Date.now() / 1000),
+      event_time: Math.floor(Date.now() / MS_POR_SEGUNDO),
       action_source: 'business_messaging',
       messaging_channel: 'whatsapp',
       user_data: {
@@ -209,7 +212,7 @@ export class ConversionesMetaService {
     if (!res.ok) {
       const cuerpo = await res.text().catch(() => '');
       throw new ServiceUnavailableException(
-        `Graph API ${res.status}: ${cuerpo.slice(0, 300)}`,
+        `Graph API ${res.status}: ${cuerpo.slice(0, LARGO_MAX_ERROR_GRAPH)}`,
       );
     }
   }
@@ -224,6 +227,6 @@ export function waIdColombia(
   telefono: string | null | undefined,
 ): string | null {
   const digitos = (telefono ?? '').replace(/\D/g, '');
-  if (digitos.length < 10) return null;
-  return `57${digitos.slice(-10)}`;
+  if (digitos.length < DIGITOS_TELEFONO_COLOMBIA) return null;
+  return `57${digitos.slice(-DIGITOS_TELEFONO_COLOMBIA)}`;
 }

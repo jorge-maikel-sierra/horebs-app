@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   HttpCode,
+  HttpStatus,
   NotFoundException,
   Param,
   Patch,
@@ -19,12 +20,15 @@ import { UsuarioActual } from '../auth/usuario.decorator';
 import { UuidPipe } from '../common/pipes/uuid.pipe';
 import { PedidosComprobantesService } from '../pedidos/pedidos-comprobantes.service';
 import { PedidosAdminService } from './pedidos-admin.service';
+import { SEGUNDOS_POR_MINUTO } from '../common/tiempo';
 import { ValidarBodyPipe } from '../common/pipes/validar-body.pipe';
 import { ESQUEMA_EDITAR_PEDIDO } from './esquemas';
 import type { EditarPedidoInput, PedidoAdminDto } from './pedidos-admin.tipos';
 
 /** Vigencia del link firmado al comprobante, en segundos (10 min). */
-const VIGENCIA_COMPROBANTE_S = 10 * 60;
+const MINUTOS_VIGENCIA_COMPROBANTE = 10;
+const VIGENCIA_COMPROBANTE_S =
+  MINUTOS_VIGENCIA_COMPROBANTE * SEGUNDOS_POR_MINUTO;
 
 @Controller('admin/pedidos')
 @UseGuards(RolesGuard)
@@ -52,7 +56,7 @@ export class PedidosAdminController {
   }
 
   @Delete(':id')
-  @HttpCode(204)
+  @HttpCode(HttpStatus.NO_CONTENT)
   @Roles('admin')
   eliminar(
     @Param('id', UuidPipe) id: string,
