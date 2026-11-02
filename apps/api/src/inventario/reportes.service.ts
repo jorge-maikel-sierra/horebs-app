@@ -1,32 +1,23 @@
 import { Injectable } from '@nestjs/common';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { SupabaseService } from '../supabase/supabase.service';
 import { errorDeBase } from '../common/error-de-base';
+import { fechaBogota } from '../common/horario';
+import {
+  gastoDeCompras,
+  insumosEnStockBajo,
+  insumosEnStockNegativo,
+  rangoDeMeses,
+  valorizacionTotal,
+} from './reportes-reglas';
+import {
+  INSUMO_REPORTE_SELECT,
+  type FilaGastoCompra,
+  type FilaInsumoReporte,
+  type ReporteInventarioDto,
+} from './reportes.tipos';
 
-export interface InsumoAlertaDto {
-  id: string;
-  nombre: string;
-  unidad_medida: string;
-  stock_actual_g: number;
-  stock_minimo_g: number;
-}
-
-export interface ReporteInventarioDto {
-  valorizacionTotal: number;
-  insumosStockNegativo: InsumoAlertaDto[];
-  insumosStockBajo: InsumoAlertaDto[];
-  gastoComprasMesActual: number;
-  gastoComprasMesAnterior: number;
-  recetasSinCostear: number;
-}
-
-// Riohacha es UTC-5 fijo (sin horario de verano) — mismo offset manual
-// que ya usa informes.service.ts en el backend, en vez de Intl.DateTimeFormat
-// (eso queda para el frontend).
-const OFFSET_MS = 5 * 60 * 60 * 1000;
-
-function fechaHoyBogota(): string {
-  return new Date(Date.now() - OFFSET_MS).toISOString().slice(0, 10);
-}
+export type * from './reportes.tipos';
 
 @Injectable()
 export class ReportesService {
@@ -34,73 +25,66 @@ export class ReportesService {
 
   async obtenerReporte(): Promise<ReporteInventarioDto> {
     const client = this.supabase.getClient();
-
-    const { data: insumos, error: errInsumos } = await client
-      .from('insumos')
-      .select(
-        'id, nombre, unidad_medida, stock_actual_g, stock_minimo_g, costo_unitario_g',
-      )
-      .eq('activo', true);
-    if (errInsumos) throw errorDeBase(errInsumos);
-
-    const filas = insumos ?? [];
-    const valorizacionTotal = filas.reduce(
-      (acc, i) => acc + i.stock_actual_g * i.costo_unitario_g,
-      0,
+    const { inicioMesActual, inicioMesAnterior } = rangoDeMeses(
+      fechaBogota(new Date()),
     );
-    const aDto = (i: (typeof filas)[number]): InsumoAlertaDto => ({
-      id: i.id,
-      nombre: i.nombre,
-      unidad_medida: i.unidad_medida,
-      stock_actual_g: i.stock_actual_g,
-      stock_minimo_g: i.stock_minimo_g,
-    });
-    const insumosStockNegativo = filas
-      .filter((i) => i.stock_actual_g < 0)
-      .map(aDto);
-    const insumosStockBajo = filas
-      .filter(
-        (i) => i.stock_actual_g >= 0 && i.stock_actual_g <= i.stock_minimo_g,
-      )
-      .map(aDto);
 
-    const [año, mes] = fechaHoyBogota().split('-').map(Number);
-    const inicioMesActual = `${año}-${String(mes).padStart(2, '0')}-01`;
-    const mesAnteriorDate =
-      mes === 1 ? { año: año - 1, mes: 12 } : { año, mes: mes - 1 };
-    const inicioMesAnterior = `${mesAnteriorDate.año}-${String(mesAnteriorDate.mes).padStart(2, '0')}-01`;
+    const insumos = await this.leerInsumos(client);
+    const gastoActual = await this.leerGasto(client, inicioMesActual);
+    const gastoAnterior = await this.leerGasto(
+      client,
+      inicioMesAnterior,
+      inicioMesActual,
+    );
 
-    const { data: comprasMesActual, error: errComprasActual } = await client
+    return {
+      valorizacionTotal: valorizacionTotal(insumos),
+      insumosStockNegativo: insumosEnStockNegativo(insumos),
+      insumosStockBajo: insumosEnStockBajo(insumos),
+      gastoComprasMesActual: gastoActual,
+      gastoComprasMesAnterior: gastoAnterior,
+      recetasSinCostear: await this.contarRecetasSinCostear(client),
+    };
+  }
+
+  private async leerInsumos(
+    client: SupabaseClient,
+  ): Promise<FilaInsumoReporte[]> {
+    const { data, error } = await client
+      .from('insumos')
+      .select(INSUMO_REPORTE_SELECT)
+      .eq('activo', true)
+      .returns<FilaInsumoReporte[]>();
+    if (error) throw errorDeBase(error);
+    return data ?? [];
+  }
+
+  /** Gasto de las compras desde `desde` (incluida) hasta `hasta` (excluida, si se da). */
+  private async leerGasto(
+    client: SupabaseClient,
+    desde: string,
+    hasta?: string,
+  ): Promise<number> {
+    let query = client
       .from('compras')
       .select('subtotal, otros_cargos')
-      .gte('fecha', inicioMesActual);
-    if (errComprasActual) throw errorDeBase(errComprasActual);
+      .gte('fecha', desde);
+    if (hasta) query = query.lt('fecha', hasta);
 
-    const { data: comprasMesAnterior, error: errComprasAnterior } = await client
-      .from('compras')
-      .select('subtotal, otros_cargos')
-      .gte('fecha', inicioMesAnterior)
-      .lt('fecha', inicioMesActual);
-    if (errComprasAnterior) throw errorDeBase(errComprasAnterior);
+    const { data, error } = await query.returns<FilaGastoCompra[]>();
+    if (error) throw errorDeBase(error);
+    return gastoDeCompras(data ?? []);
+  }
 
-    const sumarGasto = (
-      compras: { subtotal: number; otros_cargos: number }[],
-    ) => compras.reduce((acc, c) => acc + c.subtotal + c.otros_cargos, 0);
-
-    const { count: recetasSinCostear, error: errRecetas } = await client
+  private async contarRecetasSinCostear(
+    client: SupabaseClient,
+  ): Promise<number> {
+    const { count, error } = await client
       .from('recetas')
       .select('id', { count: 'exact', head: true })
       .eq('activa', true)
       .eq('costo_calculado', 0);
-    if (errRecetas) throw errorDeBase(errRecetas);
-
-    return {
-      valorizacionTotal,
-      insumosStockNegativo,
-      insumosStockBajo,
-      gastoComprasMesActual: sumarGasto(comprasMesActual ?? []),
-      gastoComprasMesAnterior: sumarGasto(comprasMesAnterior ?? []),
-      recetasSinCostear: recetasSinCostear ?? 0,
-    };
+    if (error) throw errorDeBase(error);
+    return count ?? 0;
   }
 }
