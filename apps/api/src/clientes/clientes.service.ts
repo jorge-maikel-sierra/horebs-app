@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -7,74 +6,34 @@ import {
 import { SupabaseService } from '../supabase/supabase.service';
 import { ClientesDirectorioService } from './clientes-directorio.service';
 import { errorDeBase } from '../common/error-de-base';
+import {
+  cambiosDeCliente,
+  detalleConPedidos,
+  filtroDeBusqueda,
+  mapPedidoCliente,
+  textoDeBusqueda,
+  validarEdicionCliente,
+} from './clientes-reglas';
+import {
+  LIMITE_BUSQUEDA,
+  LIMITE_LISTADO,
+  MAX_PEDIDOS_CLIENTE,
+  SELECT_CLIENTE,
+  SELECT_CLIENTE_DETALLE,
+  SELECT_PEDIDO_CLIENTE,
+  type ClienteDetalleDto,
+  type ClienteDto,
+  type EditarClienteInput,
+  type FilaCliente,
+  type FilaClienteDetalle,
+  type FilaPedidoCliente,
+  type FilaPedidoResumen,
+  type PedidoClienteDto,
+} from './clientes.tipos';
 
-export interface ClienteDto {
-  id: string;
-  nombre: string;
-  apellido: string | null;
-  telefono: string | null;
-  direccion: string | null;
-  correo: string | null;
-  cedula: string | null;
-}
+export type * from './clientes.tipos';
 
-export interface ClienteDetalleDto extends ClienteDto {
-  created_at: string;
-  puntos_actuales: number;
-  puntos_ultima_actividad: string | null;
-  total_pedidos: number;
-  total_gastado: number;
-  ultimo_pedido: string | null;
-}
-
-export interface PedidoClienteDto {
-  id: string;
-  canal: string;
-  modalidad: string;
-  metodo_pago: string;
-  estado: string;
-  total: number;
-  costo_domicilio: number;
-  created_at: string;
-  /** Una línea por producto: "Pizza Hawaiana (Grande)" × cantidad. */
-  items: { nombre: string; cantidad: number }[];
-}
-
-interface FilaPedidoCliente {
-  id: string;
-  canal: string;
-  modalidad: string;
-  metodo_pago: string;
-  estado: string;
-  total: number;
-  costo_domicilio: number;
-  created_at: string;
-  items_pedido:
-    | {
-        nombre_personalizado: string | null;
-        cantidad: number;
-        variantes_producto: {
-          nombre: string;
-          productos: { nombre: string } | null;
-        } | null;
-      }[]
-    | null;
-}
-
-// Tope de seguridad: el total real sale de obtenerDetalle, esto es solo el historial.
-const MAX_PEDIDOS_CLIENTE = 200;
-
-export interface EditarClienteInput {
-  nombre?: string;
-  apellido?: string;
-  telefono?: string;
-  direccion?: string;
-  correo?: string;
-  cedula?: string;
-}
-
-const SELECT_CLIENTE =
-  'id, nombre, apellido, telefono, direccion, correo, cedula';
+const POSTGRES_UNIQUE_VIOLATION = '23505';
 
 /**
  * Extraído del antiguo servicio de admin — mismo criterio que BlogService: CRUD de
@@ -89,16 +48,17 @@ export class ClientesService {
   ) {}
 
   async buscar(query: string): Promise<ClienteDto[]> {
-    const q = query.trim().replace(/[,()%]/g, '');
-    if (!q) return [];
+    const texto = textoDeBusqueda(query);
+    if (!texto) return [];
 
     const { data, error } = await this.supabase
       .getClient()
       .from('clientes')
       .select(SELECT_CLIENTE)
-      .or(`nombre.ilike.%${q}%,apellido.ilike.%${q}%,telefono.ilike.%${q}%`)
+      .or(filtroDeBusqueda(texto))
       .order('nombre')
-      .limit(10);
+      .limit(LIMITE_BUSQUEDA)
+      .returns<FilaCliente[]>();
 
     if (error) throw errorDeBase(error);
     return data ?? [];
@@ -115,107 +75,60 @@ export class ClientesService {
       .from('clientes')
       .select(SELECT_CLIENTE)
       .order('created_at', { ascending: false })
-      .limit(100);
+      .limit(LIMITE_LISTADO)
+      .returns<FilaCliente[]>();
 
     if (error) throw errorDeBase(error);
     return data ?? [];
   }
 
   async obtenerDetalle(id: string): Promise<ClienteDetalleDto> {
-    const { data: cliente, error } = await this.supabase
-      .getClient()
+    const client = this.supabase.getClient();
+    const { data: cliente, error } = await client
       .from('clientes')
-      .select(
-        `${SELECT_CLIENTE}, created_at, puntos_actuales, puntos_ultima_actividad`,
-      )
+      .select(SELECT_CLIENTE_DETALLE)
       .eq('id', id)
-      .single();
+      .single<FilaClienteDetalle>();
     if (error) throw errorDeBase(error);
 
-    const { data: pedidos, error: pedidosError } = await this.supabase
-      .getClient()
+    const { data: pedidos, error: pedidosError } = await client
       .from('pedidos')
       .select('total, created_at')
       .eq('cliente_id', id)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .returns<FilaPedidoResumen[]>();
     if (pedidosError) throw errorDeBase(pedidosError);
 
-    const lista = pedidos ?? [];
-    return {
-      ...cliente,
-      total_pedidos: lista.length,
-      total_gastado: lista.reduce((acc, p) => acc + p.total, 0),
-      ultimo_pedido: lista[0]?.created_at ?? null,
-    };
+    return detalleConPedidos(cliente, pedidos ?? []);
   }
 
   async listarPedidos(id: string): Promise<PedidoClienteDto[]> {
     const { data, error } = await this.supabase
       .getClient()
       .from('pedidos')
-      .select(
-        'id, canal, modalidad, metodo_pago, estado, total, costo_domicilio, created_at, items_pedido(nombre_personalizado, cantidad, variantes_producto(nombre, productos(nombre)))',
-      )
+      .select(SELECT_PEDIDO_CLIENTE)
       .eq('cliente_id', id)
       .order('created_at', { ascending: false })
-      .limit(MAX_PEDIDOS_CLIENTE);
+      .limit(MAX_PEDIDOS_CLIENTE)
+      .returns<FilaPedidoCliente[]>();
     if (error) throw errorDeBase(error);
 
-    return ((data ?? []) as unknown as FilaPedidoCliente[]).map((p) => ({
-      id: p.id,
-      canal: p.canal,
-      modalidad: p.modalidad,
-      metodo_pago: p.metodo_pago,
-      estado: p.estado,
-      total: p.total,
-      costo_domicilio: p.costo_domicilio,
-      created_at: p.created_at,
-      items: (p.items_pedido ?? []).map((i) => {
-        const producto = i.variantes_producto?.productos?.nombre;
-        const variante = i.variantes_producto?.nombre;
-        const nombre = producto
-          ? variante
-            ? `${producto} (${variante})`
-            : producto
-          : (i.nombre_personalizado ?? 'Producto');
-        return { nombre, cantidad: i.cantidad };
-      }),
-    }));
+    return (data ?? []).map(mapPedidoCliente);
   }
 
   async editar(id: string, cambios: EditarClienteInput): Promise<ClienteDto> {
-    if (cambios.nombre !== undefined && !cambios.nombre.trim()) {
-      throw new BadRequestException('El nombre no puede quedar vacío.');
-    }
-
-    const payload: Record<string, string | null> = {};
-    if (cambios.nombre !== undefined) payload.nombre = cambios.nombre.trim();
-    if (cambios.apellido !== undefined) {
-      payload.apellido = cambios.apellido.trim() || null;
-    }
-    if (cambios.telefono !== undefined) {
-      payload.telefono = cambios.telefono.trim() || null;
-    }
-    if (cambios.direccion !== undefined) {
-      payload.direccion = cambios.direccion.trim() || null;
-    }
-    if (cambios.correo !== undefined) {
-      payload.correo = cambios.correo.trim() || null;
-    }
-    if (cambios.cedula !== undefined) {
-      payload.cedula = cambios.cedula.trim() || null;
-    }
+    validarEdicionCliente(cambios);
 
     const { data, error } = await this.supabase
       .getClient()
       .from('clientes')
-      .update(payload)
+      .update(cambiosDeCliente(cambios))
       .eq('id', id)
       .select(SELECT_CLIENTE)
-      .single();
+      .single<FilaCliente>();
 
     if (error) {
-      if (error.code === '23505') {
+      if (error.code === POSTGRES_UNIQUE_VIOLATION) {
         throw new ConflictException('Ya existe otro cliente con ese teléfono.');
       }
       throw errorDeBase(error);

@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   HttpCode,
+  HttpStatus,
   Param,
   Patch,
   Post,
@@ -16,9 +17,17 @@ import { UsuarioActual } from '../auth/usuario.decorator';
 import { ClientesDirectorioService } from './clientes-directorio.service';
 import { ClientesService } from './clientes.service';
 import { PuntosService } from './puntos.service';
-import type { AjustePuntosInput } from './puntos.service';
-import type { ConsultaDirectorio } from './clientes-directorio.service';
-import type { EditarClienteInput } from './clientes.service';
+import type { AjustePuntosInput, MovimientoPuntosDto } from './puntos.tipos';
+import type {
+  ConsultaDirectorio,
+  DirectorioClientesDto,
+} from './clientes-directorio.service';
+import type {
+  ClienteDetalleDto,
+  ClienteDto,
+  EditarClienteInput,
+  PedidoClienteDto,
+} from './clientes.tipos';
 import type { UsuarioAutenticado } from '../auth/roles.guard';
 import { Deprecada } from '../common/deprecacion.interceptor';
 import { UuidPipe } from '../common/pipes/uuid.pipe';
@@ -36,7 +45,9 @@ export class ClientesController {
 
   @Get()
   @Roles('admin', 'empleado')
-  listarOBuscar(@Query() query: ConsultaDirectorio) {
+  listarOBuscar(
+    @Query() query: ConsultaDirectorio,
+  ): Promise<DirectorioClientesDto | ClienteDto[]> {
     if (query.vista === 'directorio') return this.directorio.consultar(query);
     return query.q?.trim()
       ? this.clientes.buscar(query.q)
@@ -47,19 +58,25 @@ export class ClientesController {
   @Get('directorio')
   @Deprecada('/admin/clientes?vista=directorio')
   @Roles('admin', 'empleado')
-  consultarDirectorio(@Query() query: ConsultaDirectorio) {
+  consultarDirectorio(
+    @Query() query: ConsultaDirectorio,
+  ): Promise<DirectorioClientesDto> {
     return this.directorio.consultar(query);
   }
 
   @Get(':id')
   @Roles('admin', 'empleado')
-  obtenerDetalle(@Param('id', UuidPipe) id: string) {
+  obtenerDetalle(
+    @Param('id', UuidPipe) id: string,
+  ): Promise<ClienteDetalleDto> {
     return this.clientes.obtenerDetalle(id);
   }
 
   @Get(':id/pedidos')
   @Roles('admin', 'empleado')
-  listarPedidos(@Param('id', UuidPipe) id: string) {
+  listarPedidos(
+    @Param('id', UuidPipe) id: string,
+  ): Promise<PedidoClienteDto[]> {
     return this.clientes.listarPedidos(id);
   }
 
@@ -69,20 +86,22 @@ export class ClientesController {
     @Param('id', UuidPipe) id: string,
     @Body(new ValidarBodyPipe(ESQUEMA_EDITAR_CLIENTE))
     body: EditarClienteInput,
-  ) {
+  ): Promise<ClienteDto> {
     return this.clientes.editar(id, body);
   }
 
   @Delete(':id')
-  @HttpCode(204)
+  @HttpCode(HttpStatus.NO_CONTENT)
   @Roles('admin')
-  eliminar(@Param('id', UuidPipe) id: string) {
+  eliminar(@Param('id', UuidPipe) id: string): Promise<void> {
     return this.clientes.eliminar(id);
   }
 
   @Get(':id/movimientos-puntos')
   @Roles('admin', 'empleado')
-  listarMovimientosPuntos(@Param('id', UuidPipe) id: string) {
+  listarMovimientosPuntos(
+    @Param('id', UuidPipe) id: string,
+  ): Promise<MovimientoPuntosDto[]> {
     return this.puntos.listarMovimientos(id);
   }
 
@@ -93,7 +112,7 @@ export class ClientesController {
     @Body(new ValidarBodyPipe(ESQUEMA_AJUSTE_PUNTOS))
     body: AjustePuntosInput,
     @UsuarioActual() usuario: UsuarioAutenticado,
-  ) {
+  ): Promise<number> {
     return this.puntos.ajustarPuntos(id, body.puntos, body.motivo, usuario.id);
   }
 }
