@@ -10,6 +10,7 @@ import {
   METODO_PAGO_LABEL,
   type NotificacionDomicilio,
 } from './plantilla-domicilio';
+import { idCortoPedido } from '../common/pedido-numero';
 
 const RESEND_API_URL = 'https://api.resend.com/emails';
 /** Clave de `configuracion` con el correo que recibe los avisos del bot. */
@@ -242,7 +243,7 @@ export class MailService {
 
     await this.enviarPorResend({
       to: destino,
-      subject: `⚠️ Revisar stock del pedido #${datos.pedidoId.slice(0, 8)}`,
+      subject: `⚠️ Revisar stock del pedido #${idCortoPedido(datos.pedidoId)}`,
       text: [
         `El pedido ${datos.pedidoId} se registró correctamente, pero el descuento automático de stock falló.`,
         '',
@@ -264,7 +265,7 @@ export class MailService {
 
     await this.enviarPorResend({
       to: destino,
-      subject: `⚠️ Revisar puntos del pedido #${datos.pedidoId.slice(0, 8)}`,
+      subject: `⚠️ Revisar puntos del pedido #${idCortoPedido(datos.pedidoId)}`,
       text: [
         `El pedido ${datos.pedidoId} se registró correctamente, pero el canje de puntos de fidelidad falló.`,
         '',
@@ -291,7 +292,7 @@ export class MailService {
 
     await this.enviarPorResend({
       to: destino,
-      subject: `🛵 Nuevo domicilio #${datos.pedidoId.slice(0, 8)} — ${datos.clienteNombre}`,
+      subject: `🛵 Nuevo domicilio #${idCortoPedido(datos.pedidoId)} — ${datos.clienteNombre}`,
       text: [
         `Cliente: ${datos.clienteNombre}`,
         datos.clienteTelefono ? `Teléfono: ${datos.clienteTelefono}` : null,

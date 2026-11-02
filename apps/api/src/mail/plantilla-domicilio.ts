@@ -1,3 +1,5 @@
+import { idCortoPedido } from '../common/pedido-numero';
+
 /** Correo de aviso de domicilio: datos que recibe y HTML que arma. */
 
 export interface NotificacionDomicilio {
@@ -208,7 +210,7 @@ function bloquePie(pedidoId: string): string {
   return `
             <tr>
               <td style="padding:16px 32px 24px;">
-                <p style="margin:0;font-size:12px;color:#aaa;text-align:center;">Pedido #${pedidoId.slice(0, 8)} · Pizzería Horebs</p>
+                <p style="margin:0;font-size:12px;color:#aaa;text-align:center;">Pedido #${idCortoPedido(pedidoId)} · Pizzería Horebs</p>
               </td>
             </tr>`;
 }
