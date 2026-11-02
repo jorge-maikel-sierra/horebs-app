@@ -11,7 +11,6 @@ GET /admin/clientes
 GET /admin/clientes/:id
 GET /admin/clientes/:id/movimientos-puntos
 GET /admin/clientes/:id/pedidos
-GET /admin/clientes/directorio
 GET /admin/configuracion
 GET /admin/modulos
 GET /admin/pedidos
