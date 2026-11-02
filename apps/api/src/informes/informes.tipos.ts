@@ -109,3 +109,22 @@ export interface RangoInforme {
   desdeISO: string;
   hastaISO: string;
 }
+
+/** Pedido del canal WhatsApp, con lo justo para el embudo del bot. */
+export interface PedidoBotFila {
+  total: number;
+  estado: string;
+  created_at: string;
+  programado_para: string | null;
+  comprobante_recibido_en: string | null;
+}
+
+/** Lo que suma un rango de pedidos: por grupo y los dos totales del resumen. */
+export interface TotalesPedidos {
+  porBucket: Map<string, Acumulador>;
+  porMetodo: Map<string, Acumulador>;
+  porModalidad: Map<string, Acumulador>;
+  porCanal: Map<string, Acumulador>;
+  ventasBrutas: number;
+  costoDomicilioTotal: number;
+}

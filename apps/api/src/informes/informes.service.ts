@@ -4,7 +4,12 @@ import { errorDeBase } from '../common/error-de-base';
 import { MENSAJE_DERIVACION } from '../mensajeria/aviso-equipo.service';
 import { agregarMetricasBot, TEXTOS_REPETIR } from './metricas-bot';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { acumular, serializarMapa } from './informes-agregados';
+import {
+  armarResumen,
+  serieVentasBot,
+  serializarMapa,
+  totalizarPedidos,
+} from './informes-agregados';
 import { armarInformeClientes, type ClienteFila } from './informes-clientes';
 import {
   unificarPedidoHistorico,
@@ -20,17 +25,17 @@ import {
 } from './informes-items';
 import {
   resolverGranularidad,
-  claveBucket,
   serializarSerie,
   resolverRango,
   contarDias,
 } from './informes-fechas';
 import {
-  type Acumulador,
   type Granularidad,
   type InformeClientesDto,
   type InformeDto,
+  type PedidoBotFila,
   type PedidoUnificado,
+  type RangoInforme,
 } from './informes.tipos';
 
 // PostgREST devuelve hasta 1000 filas por request; la URL de un .in() aguanta ~200 teléfonos.
@@ -56,10 +61,8 @@ export class InformesService {
   constructor(private readonly supabase: SupabaseService) {}
 
   async generar(desdeInput?: string, hastaInput?: string): Promise<InformeDto> {
-    const { desde, hasta, desdeISO, hastaISO } = resolverRango(
-      desdeInput,
-      hastaInput,
-    );
+    const rango = resolverRango(desdeInput, hastaInput);
+    const { desde, hasta, desdeISO, hastaISO } = rango;
     const client = this.supabase.getClient();
     const granularidad = resolverGranularidad(desde, hasta);
 
@@ -68,42 +71,14 @@ export class InformesService {
       this.obtenerPedidosHistoricos(client, desdeISO, hastaISO),
     ]);
     const filas = [...pedidosVivos, ...pedidosHistoricos];
+    const totales = totalizarPedidos(filas, granularidad);
 
-    const porBucket = new Map<string, Acumulador>();
-    const porMetodo = new Map<string, Acumulador>();
-    const porModalidad = new Map<string, Acumulador>();
-    const porCanal = new Map<string, Acumulador>();
-
-    let ventasBrutas = 0;
-    let costoDomicilioTotal = 0;
-
-    for (const p of filas) {
-      ventasBrutas += p.total;
-      costoDomicilioTotal += p.costo_domicilio;
-      acumular(porBucket, claveBucket(p.creado_en, granularidad), p.total);
-      acumular(porMetodo, p.metodo_pago, p.total);
-      acumular(porModalidad, p.modalidad, p.total);
-      acumular(porCanal, p.canal, p.total);
-    }
-
-    const diasEnRango = contarDias(desde, hasta);
-
-    const { topProductos, porCategoria, articulosVendidos } =
-      await this.calcularItems(client, desdeISO, hastaISO);
-
-    const bot = await this.calcularBot(
-      client,
-      desde,
-      hasta,
-      desdeISO,
-      hastaISO,
-      granularidad,
-    );
-
+    const items = await this.calcularItems(client, desdeISO, hastaISO);
+    const bot = await this.calcularBot(client, rango, granularidad);
     const clientes = await this.calcularClientes(
       client,
       filas,
-      { desde, hasta, desdeISO },
+      rango,
       granularidad,
     );
 
@@ -111,20 +86,23 @@ export class InformesService {
       desde,
       hasta,
       granularidad,
-      resumen: {
-        ventas_brutas: ventasBrutas,
-        promedio_diario: diasEnRango > 0 ? ventasBrutas / diasEnRango : 0,
-        pedidos: filas.length,
-        articulos_vendidos: articulosVendidos,
-        ticket_promedio: filas.length > 0 ? ventasBrutas / filas.length : 0,
-        costo_domicilio_total: costoDomicilioTotal,
-      },
-      serie_diaria: serializarSerie(porBucket, desde, hasta, granularidad),
-      por_metodo_pago: serializarMapa(porMetodo),
-      por_modalidad: serializarMapa(porModalidad),
-      por_canal: serializarMapa(porCanal),
-      top_productos: topProductos,
-      por_categoria: porCategoria,
+      resumen: armarResumen(
+        totales,
+        filas.length,
+        items.articulosVendidos,
+        contarDias(desde, hasta),
+      ),
+      serie_diaria: serializarSerie(
+        totales.porBucket,
+        desde,
+        hasta,
+        granularidad,
+      ),
+      por_metodo_pago: serializarMapa(totales.porMetodo),
+      por_modalidad: serializarMapa(totales.porModalidad),
+      por_canal: serializarMapa(totales.porCanal),
+      top_productos: items.topProductos,
+      por_categoria: items.porCategoria,
       clientes,
       bot,
     };
@@ -137,87 +115,23 @@ export class InformesService {
    */
   private async calcularBot(
     client: SupabaseClient,
-    desde: string,
-    hasta: string,
-    desdeISO: string,
-    hastaISO: string,
+    rango: RangoInforme,
     granularidad: Granularidad,
   ): Promise<InformeDto['bot']> {
-    const contar = async (
-      consulta: PromiseLike<{
-        count: number | null;
-        error: { message: string } | null;
-      }>,
-    ): Promise<number> => {
-      const { count, error } = await consulta;
-      if (error) throw errorDeBase(error);
-      return count ?? 0;
-    };
-
     const [pedidos, entrantes, derivaciones, repetirToques, recompras] =
       await Promise.all([
-        this.paginarTodo<{
-          total: number;
-          estado: string;
-          created_at: string;
-          programado_para: string | null;
-          comprobante_recibido_en: string | null;
-        }>((d, h) =>
-          client
-            .from('pedidos')
-            .select(
-              'total, estado, created_at, programado_para, comprobante_recibido_en',
-            )
-            .eq('canal', 'whatsapp')
-            .gte('created_at', desdeISO)
-            .lte('created_at', hastaISO)
-            .range(d, h),
-        ),
-        this.paginarTodo<{ conversacion_id: string }>((d, h) =>
-          client
-            .from('mensajes_conversacion')
-            .select('conversacion_id')
-            .eq('direccion', 'entrante')
-            .gte('created_at', desdeISO)
-            .lte('created_at', hastaISO)
-            .range(d, h),
-        ),
-        contar(
-          client
-            .from('mensajes_conversacion')
-            .select('id', { count: 'exact', head: true })
-            .eq('direccion', 'saliente_bot')
-            .eq('texto', MENSAJE_DERIVACION)
-            .gte('created_at', desdeISO)
-            .lte('created_at', hastaISO),
-        ),
-        contar(
-          client
-            .from('mensajes_conversacion')
-            .select('id', { count: 'exact', head: true })
-            .eq('direccion', 'entrante')
-            .in('texto', TEXTOS_REPETIR)
-            .gte('created_at', desdeISO)
-            .lte('created_at', hastaISO),
-        ),
-        contar(
+        this.pedidosWhatsapp(client, rango),
+        this.mensajesEntrantes(client, rango),
+        this.contarMensajes(client, rango, 'saliente_bot', MENSAJE_DERIVACION),
+        this.contarMensajes(client, rango, 'entrante', TEXTOS_REPETIR),
+        this.contar(
           client
             .from('pedidos')
             .select('id', { count: 'exact', head: true })
-            .gte('recompra_enviada_en', desdeISO)
-            .lte('recompra_enviada_en', hastaISO),
+            .gte('recompra_enviada_en', rango.desdeISO)
+            .lte('recompra_enviada_en', rango.hastaISO),
         ),
       ]);
-
-    const porBucket = new Map<string, Acumulador>();
-    for (const p of pedidos) {
-      if (p.estado === 'cancelado') continue;
-      acumular(
-        porBucket,
-        claveBucket(p.created_at, granularidad),
-        Number(p.total),
-      );
-    }
 
     return {
       ...agregarMetricasBot({
@@ -232,8 +146,77 @@ export class InformesService {
         repetirToques,
         recomprasEnviadas: recompras,
       }),
-      serie_diaria: serializarSerie(porBucket, desde, hasta, granularidad),
+      serie_diaria: serializarSerie(
+        serieVentasBot(pedidos, granularidad),
+        rango.desde,
+        rango.hasta,
+        granularidad,
+      ),
     };
+  }
+
+  /** Pedidos del canal WhatsApp (los cancelados cuentan para el embudo). */
+  private pedidosWhatsapp(
+    client: SupabaseClient,
+    { desdeISO, hastaISO }: RangoInforme,
+  ): Promise<PedidoBotFila[]> {
+    return this.paginarTodo<PedidoBotFila>((d, h) =>
+      client
+        .from('pedidos')
+        .select(
+          'total, estado, created_at, programado_para, comprobante_recibido_en',
+        )
+        .eq('canal', 'whatsapp')
+        .gte('created_at', desdeISO)
+        .lte('created_at', hastaISO)
+        .range(d, h),
+    );
+  }
+
+  private mensajesEntrantes(
+    client: SupabaseClient,
+    { desdeISO, hastaISO }: RangoInforme,
+  ): Promise<{ conversacion_id: string }[]> {
+    return this.paginarTodo<{ conversacion_id: string }>((d, h) =>
+      client
+        .from('mensajes_conversacion')
+        .select('conversacion_id')
+        .eq('direccion', 'entrante')
+        .gte('created_at', desdeISO)
+        .lte('created_at', hastaISO)
+        .range(d, h),
+    );
+  }
+
+  /** Mensajes del rango en esa dirección con ese texto (o con uno de esos textos). */
+  private contarMensajes(
+    client: SupabaseClient,
+    { desdeISO, hastaISO }: RangoInforme,
+    direccion: string,
+    texto: string | readonly string[],
+  ): Promise<number> {
+    const base = client
+      .from('mensajes_conversacion')
+      .select('id', { count: 'exact', head: true })
+      .eq('direccion', direccion)
+      .gte('created_at', desdeISO)
+      .lte('created_at', hastaISO);
+    return this.contar(
+      typeof texto === 'string'
+        ? base.eq('texto', texto)
+        : base.in('texto', [...texto]),
+    );
+  }
+
+  private async contar(
+    consulta: PromiseLike<{
+      count: number | null;
+      error: { message: string } | null;
+    }>,
+  ): Promise<number> {
+    const { count, error } = await consulta;
+    if (error) throw errorDeBase(error);
+    return count ?? 0;
   }
 
   private async obtenerPedidosVivos(
