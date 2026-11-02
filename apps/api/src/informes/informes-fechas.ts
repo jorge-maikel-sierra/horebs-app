@@ -1,6 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { finDiaBogota, inicioDiaBogota } from '../common/horario';
 import type {
+  RangoInforme,
   Acumulador,
   Granularidad,
   InformeClienteDiaDto,
@@ -92,7 +93,10 @@ export function serializarSerieClientes(
   }));
 }
 
-export function resolverRango(desdeInput?: string, hastaInput?: string) {
+export function resolverRango(
+  desdeInput?: string,
+  hastaInput?: string,
+): RangoInforme {
   const hoyLocal = new Date(aFechaLocal(new Date().toISOString()));
   const hastaDate = hastaInput ? new Date(`${hastaInput}T00:00:00`) : hoyLocal;
   const desdeDate = desdeInput
@@ -118,13 +122,13 @@ export function resolverRango(desdeInput?: string, hastaInput?: string) {
   };
 }
 
-export function contarDias(desde: string, hasta: string) {
+export function contarDias(desde: string, hasta: string): number {
   const ms =
     new Date(`${hasta}T00:00:00`).getTime() -
     new Date(`${desde}T00:00:00`).getTime();
   return Math.floor(ms / (24 * 60 * 60 * 1000)) + 1;
 }
 
-export function formatearFecha(d: Date) {
+export function formatearFecha(d: Date): string {
   return d.toISOString().slice(0, 10);
 }

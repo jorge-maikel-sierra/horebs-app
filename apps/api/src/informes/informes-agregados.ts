@@ -4,7 +4,7 @@ export function acumular(
   mapa: Map<string, Acumulador>,
   clave: string,
   monto: number,
-) {
+): void {
   const actual = mapa.get(clave) ?? { total: 0, pedidos: 0 };
   actual.total += monto;
   actual.pedidos += 1;
@@ -16,7 +16,7 @@ export function acumularProducto(
   clave: string,
   cantidad: number,
   total: number,
-) {
+): void {
   const actual = mapa.get(clave) ?? { cantidad: 0, total: 0 };
   actual.cantidad += cantidad;
   actual.total += total;

@@ -101,3 +101,11 @@ export interface PedidoUnificado {
   telefono: string | null;
   nombre_cliente: string | null;
 }
+
+/** Rango ya resuelto: fechas locales y sus límites en UTC (hora de Bogotá). */
+export interface RangoInforme {
+  desde: string;
+  hasta: string;
+  desdeISO: string;
+  hastaISO: string;
+}
