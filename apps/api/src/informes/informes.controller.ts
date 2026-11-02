@@ -3,6 +3,7 @@ import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { InformesService } from './informes.service';
 import { FechaPipe } from '../common/pipes/fecha.pipe';
+import type { InformeDto } from './informes.tipos';
 
 @Controller('informes')
 @UseGuards(RolesGuard)
@@ -14,7 +15,7 @@ export class InformesController {
   generar(
     @Query('desde', new FechaPipe('desde')) desde?: string,
     @Query('hasta', new FechaPipe('hasta')) hasta?: string,
-  ) {
+  ): Promise<InformeDto> {
     return this.informes.generar(desde, hasta);
   }
 }

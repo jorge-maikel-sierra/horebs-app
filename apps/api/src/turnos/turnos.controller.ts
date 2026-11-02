@@ -3,7 +3,12 @@ import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { UsuarioActual } from '../auth/usuario.decorator';
 import { TurnosService } from './turnos.service';
-import type { CierreTurnoInput } from './turnos.service';
+import type {
+  CierreTurnoInput,
+  TurnoActualDto,
+  TurnoCerradoDto,
+  TurnoDto,
+} from './turnos.service';
 import type { UsuarioAutenticado } from '../auth/roles.guard';
 import { ValidarBodyPipe } from '../common/pipes/validar-body.pipe';
 import { ESQUEMA_ABRIR_TURNO, ESQUEMA_CERRAR_TURNO_ACTUAL } from './esquemas';
@@ -16,7 +21,7 @@ export class TurnosController {
 
   @Get('actual')
   @Roles('admin', 'empleado')
-  obtenerActual() {
+  obtenerActual(): Promise<TurnoActualDto> {
     return this.turnos.obtenerActual();
   }
 
@@ -27,7 +32,7 @@ export class TurnosController {
     @Body(new ValidarBodyPipe(ESQUEMA_ABRIR_TURNO))
     body: { monto_inicial: number },
     @UsuarioActual() usuario: UsuarioAutenticado,
-  ) {
+  ): Promise<TurnoDto> {
     return this.turnos.abrir(body.monto_inicial, usuario.id);
   }
 
@@ -37,7 +42,7 @@ export class TurnosController {
     @Body(new ValidarBodyPipe(ESQUEMA_CERRAR_TURNO_ACTUAL))
     body: CierreTurnoInput,
     @UsuarioActual() usuario: UsuarioAutenticado,
-  ) {
+  ): Promise<TurnoCerradoDto> {
     return this.turnos.cerrar(
       usuario.id,
       body.monto_final_contado,

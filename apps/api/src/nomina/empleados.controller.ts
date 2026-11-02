@@ -13,6 +13,7 @@ import { Roles } from '../auth/roles.decorator';
 import {
   EmpleadosService,
   type CrearEmpleadoInput,
+  type EmpleadoDto,
   type EditarEmpleadoInput,
 } from './empleados.service';
 import { UuidPipe } from '../common/pipes/uuid.pipe';
@@ -26,7 +27,7 @@ export class EmpleadosController {
 
   @Get()
   @Roles('admin')
-  listar(@Query('activos') activos?: string) {
+  listar(@Query('activos') activos?: string): Promise<EmpleadoDto[]> {
     return this.empleados.listar(activos === 'true');
   }
 
@@ -35,7 +36,7 @@ export class EmpleadosController {
   crear(
     @Body(new ValidarBodyPipe(ESQUEMA_CREAR_EMPLEADO))
     body: CrearEmpleadoInput,
-  ) {
+  ): Promise<EmpleadoDto> {
     return this.empleados.crear(body);
   }
 
@@ -45,7 +46,7 @@ export class EmpleadosController {
     @Param('id', UuidPipe) id: string,
     @Body(new ValidarBodyPipe(ESQUEMA_EDITAR_EMPLEADO))
     body: EditarEmpleadoInput,
-  ) {
+  ): Promise<EmpleadoDto> {
     return this.empleados.editar(id, body);
   }
 }
