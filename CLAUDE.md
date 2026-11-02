@@ -232,16 +232,17 @@ Aplican a `src/**` sin specs:
 | `explicit-function-return-type` | tipo de retorno declarado |
 | `no-floating-promises` | `error` |
 
-Van como `warn` porque hay deuda medida. **El conteo solo puede bajar** y no
-se acepta código nuevo que agregue advertencias. Cada regla pasa a `error`
-cuando llega a cero (`no-floating-promises` ya lo es). Conteo al 2026-10-31:
-`max-lines` 7, `max-lines-per-function` 23, `complexity` 38, `max-params` 15,
-`max-depth` 3, `no-explicit-any` 26 (filas de Supabase sin tipar en los
-mappers), `no-magic-numbers` 161, `explicit-function-return-type` 127.
+Cada regla pasa a `error` cuando su conteo llega a cero. Ya lo son
+`no-floating-promises`, `max-lines`, `max-depth` y `no-explicit-any`. El resto
+va como `warn` porque todavía hay deuda medida: **el conteo solo puede bajar**
+y no se acepta código nuevo que agregue advertencias. Conteo al 2026-11-02
+(`src` y `test`): `no-magic-numbers` 93, `explicit-function-return-type` 60,
+`complexity` 11, `max-lines-per-function` 8, `max-params` 5,
+`security/detect-object-injection` 3, `no-unsafe-argument` 3.
 
-`npm run lint` global no está limpio hoy: unos 650 errores heredados
-(`no-unsafe-assignment` y `no-unsafe-member-access` por las filas de Supabase
-sin tipar, y formato de Prettier en archivos viejos). La regla práctica: **los archivos
+`npx eslint "{src,test}/**/*.ts"` (el `npm run lint` lleva `--fix`, no usarlo
+para medir) da 0 errores. Las filas de Supabase se tipan con `.returns<T[]>()`,
+`.maybeSingle<T>()` y `.single<T>()`, con las interfaces en `*.tipos.ts`. La regla práctica: **los archivos
 que tocas no pueden tener más errores ni advertencias que antes**.
 
 ### Reglas de código backend
