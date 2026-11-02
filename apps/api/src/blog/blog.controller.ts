@@ -26,9 +26,10 @@ import { UsuarioSupabaseActual } from '../auth/usuario.decorator';
 import { UuidPipe } from '../common/pipes/uuid.pipe';
 import { ValidarBodyPipe } from '../common/pipes/validar-body.pipe';
 import { ESQUEMA_COMENTARIO } from './esquemas';
-import { CachePublica } from '../common/cache-control.interceptor';
-
-const CACHE_PUBLICA_SEGUNDOS = 60;
+import {
+  CACHE_PUBLICA_SEGUNDOS,
+  CachePublica,
+} from '../common/cache-control.interceptor';
 
 @Controller('blog')
 export class BlogController {

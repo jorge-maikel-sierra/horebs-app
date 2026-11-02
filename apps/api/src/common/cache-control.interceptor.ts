@@ -1,5 +1,6 @@
 import {
   CallHandler,
+  CustomDecorator,
   ExecutionContext,
   Injectable,
   NestInterceptor,
@@ -11,13 +12,16 @@ import { Observable } from 'rxjs';
 
 const CACHE_PUBLICA_KEY = 'cache-publica-segundos';
 
+/** Cuánto vive en caché compartida un GET público (catálogo, artículos). */
+export const CACHE_PUBLICA_SEGUNDOS = 60;
+
 /**
  * Marca un GET público e idéntico para todos (catálogo, artículos): se puede
  * guardar en caché compartida durante `segundos`. Todo lo demás sale con
  * `no-store` (RFC 9111): respuestas del panel o de una sesión nunca deben
  * quedar en una caché intermedia.
  */
-export const CachePublica = (segundos: number) =>
+export const CachePublica = (segundos: number): CustomDecorator =>
   SetMetadata(CACHE_PUBLICA_KEY, segundos);
 
 @Injectable()
