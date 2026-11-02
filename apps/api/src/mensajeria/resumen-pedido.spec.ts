@@ -112,6 +112,52 @@ describe('armarResumenPedido', () => {
     expect(texto).toContain('- 1x Panzerotti: $9.000');
   });
 
+  it('separa lo que valen los adicionales y el total los suma', () => {
+    const { texto, total } = armarResumenPedido({
+      nombreCompleto: 'Jorge Sierra',
+      lineas: [
+        {
+          cantidad: 1,
+          productoNombre: 'Pizza Hawaiana',
+          varianteNombre: 'Mediana',
+          precioUnitario: 35000,
+        },
+        {
+          cantidad: 1,
+          productoNombre: 'Adicional: Borde de queso',
+          varianteNombre: 'Mediana',
+          precioUnitario: 9000,
+        },
+        {
+          cantidad: 2,
+          productoNombre: 'Adicional: Pepperoni',
+          varianteNombre: 'Mediana',
+          precioUnitario: 9000,
+        },
+      ],
+      modalidad: 'domicilio',
+      direccion: 'Calle 1',
+      costoDomicilio: 5000,
+    });
+
+    expect(texto).toContain('- 1x Adicional: Borde de queso (Mediana): $9.000');
+    expect(texto).toContain('Adicionales: $27.000');
+    expect(texto).toContain('*Total: $67.000*');
+    expect(total).toBe(67000);
+  });
+
+  it('sin adicionales no agrega la línea', () => {
+    const { texto } = armarResumenPedido({
+      nombreCompleto: 'Jorge Sierra',
+      lineas: LINEAS,
+      modalidad: 'domicilio',
+      direccion: 'Calle 1',
+      costoDomicilio: 5000,
+    });
+
+    expect(texto).not.toContain('Adicionales:');
+  });
+
   it('nunca incluye datos de pago', () => {
     const { texto } = armarResumenPedido({
       nombreCompleto: 'Jorge Sierra',

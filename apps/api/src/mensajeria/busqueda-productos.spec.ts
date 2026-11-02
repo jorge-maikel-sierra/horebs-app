@@ -42,6 +42,29 @@ const BEBIDAS = producto('beb', 'Bebidas', [
 ]);
 const CATALOGO = [JAMON_QUESO, HAWAIANA, BEBIDAS];
 
+describe('buscarProductoUnico con adicionales en el catálogo', () => {
+  const PEPPERONI = producto('pep', 'Pizza Pepperoni', TAMANOS);
+  const ADICIONAL_PEPPERONI = producto('ad-pep', 'Adicional: Pepperoni', [
+    ['Personal', 5000],
+    ['Mediana', 9000],
+    ['Grande', 12000],
+  ]);
+  const CON_ADICIONALES = [PEPPERONI, ADICIONAL_PEPPERONI, HAWAIANA];
+
+  it('"pepperoni" es la pizza, no es ambiguo con el adicional', () => {
+    expect(
+      buscarProductoUnico('pepperoni', CON_ADICIONALES).encontrado?.id,
+    ).toBe('pep');
+  });
+
+  it('el adicional se encuentra cuando el cliente dice "adicional"', () => {
+    expect(
+      buscarProductoUnico('Adicional: Pepperoni', CON_ADICIONALES).encontrado
+        ?.id,
+    ).toBe('ad-pep');
+  });
+});
+
 describe('elegirVariante', () => {
   // Bug real: "mediana" estaba entre las palabras ignoradas y ningún
   // tamaño de pizza se podía resolver — calcular_pedido siempre fallaba.

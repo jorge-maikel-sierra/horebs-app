@@ -1,3 +1,5 @@
+import { esAdicional } from './adicionales';
+
 export interface LineaPedido {
   cantidad: number;
   productoNombre: string;
@@ -44,6 +46,9 @@ export function armarResumenPedido(datos: DatosResumenPedido): {
   const esDomicilio = datos.modalidad === 'domicilio';
   const domicilio = esDomicilio ? datos.costoDomicilio : 0;
   const total = subtotal + domicilio;
+  const adicionales = datos.lineas
+    .filter((l) => esAdicional(l.productoNombre))
+    .reduce((suma, l) => suma + l.precioUnitario * l.cantidad, 0);
 
   const texto = [
     '*Resumen de tu pedido*',
@@ -52,6 +57,7 @@ export function armarResumenPedido(datos: DatosResumenPedido): {
       (l) =>
         `- ${l.cantidad}x ${l.productoNombre}${l.varianteNombre ? ` (${l.varianteNombre})` : ''}: ${pesos(l.precioUnitario * l.cantidad)}`,
     ),
+    adicionales > 0 ? `Adicionales: ${pesos(adicionales)}` : null,
     esDomicilio
       ? `Domicilio a ${datos.direccion ?? 'dirección sin especificar'}: ${pesos(domicilio)}`
       : `Modalidad: ${ETIQUETA_MODALIDAD[datos.modalidad] ?? datos.modalidad}`,

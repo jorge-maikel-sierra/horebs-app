@@ -2,6 +2,7 @@ import type {
   ProductoDto,
   VarianteProductoDto,
 } from '../catalog/catalog.service';
+import { esAdicional } from './adicionales';
 
 // Tamaños y conectores no distinguen un producto de otro — se ignoran al
 // comparar NOMBRES DE PRODUCTO. "pizza personal hawaiana" tiene que
@@ -74,11 +75,15 @@ export function buscarProductoUnico(
   if (buscadas.length === 0) {
     return { error: `No se pudo identificar el producto "${nombreBuscado}".` };
   }
+  // "pepperoni" es la pizza; el adicional solo si el cliente dice "adicional".
+  const candidatos = buscadas.includes('adicional')
+    ? productos
+    : productos.filter((p) => !esAdicional(p.nombre));
   const coincidencias = (texto: string): number =>
     palabrasSignificativas(texto).filter((w) => buscadas.includes(w)).length;
 
   const porProducto = mejorUnico(
-    productos.map((p) => ({ item: p, puntaje: coincidencias(p.nombre) })),
+    candidatos.map((p) => ({ item: p, puntaje: coincidencias(p.nombre) })),
   );
   if (porProducto.unico) return { encontrado: porProducto.unico };
   if (porProducto.empatados.length > 1) {
@@ -89,7 +94,7 @@ export function buscarProductoUnico(
   }
 
   const porVariante = mejorUnico(
-    productos.flatMap((p) =>
+    candidatos.flatMap((p) =>
       p.variantes.map((v) => ({
         item: { producto: p, variante: v },
         puntaje: coincidencias(v.nombre),
