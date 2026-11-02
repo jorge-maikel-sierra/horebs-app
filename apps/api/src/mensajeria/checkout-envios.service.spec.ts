@@ -21,6 +21,7 @@ function crearServicio() {
     registrarMensaje: jest.fn().mockResolvedValue(undefined),
     guardarCheckout: jest.fn().mockResolvedValue(undefined),
     guardarCarrito: jest.fn().mockResolvedValue(undefined),
+    obtenerCheckout: jest.fn().mockResolvedValue({ paso: 'pago' }),
   };
   const metaGraph = {
     enviarMensajeSesion: jest.fn().mockResolvedValue(undefined),
@@ -148,6 +149,29 @@ describe('CheckoutEnviosService', () => {
       'whatsapp',
       '573157861208',
       null,
+    );
+  });
+
+  it('obtener lee el checkout en curso del cliente', async () => {
+    const { servicio, conversaciones } = crearServicio();
+
+    await expect(servicio.obtener(CTX)).resolves.toEqual({ paso: 'pago' });
+    expect(conversaciones.obtenerCheckout).toHaveBeenCalledWith(
+      'whatsapp',
+      '573157861208',
+    );
+  });
+
+  it('guardarCarrito deja los ítems pendientes del cliente', async () => {
+    const { servicio, conversaciones } = crearServicio();
+    const items = [{ varianteId: 'v-1', cantidad: 2 }];
+
+    await servicio.guardarCarrito(CTX, items);
+
+    expect(conversaciones.guardarCarrito).toHaveBeenCalledWith(
+      'whatsapp',
+      '573157861208',
+      items,
     );
   });
 });

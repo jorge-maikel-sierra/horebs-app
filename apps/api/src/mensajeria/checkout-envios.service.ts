@@ -3,6 +3,7 @@ import type { ContextoCheckout } from './checkout-whatsapp';
 import {
   ConversacionesService,
   type CheckoutWhatsapp,
+  type ItemCarritoPendiente,
 } from './conversaciones.service';
 import type { BotonRespuesta } from './mensajes-interactivos';
 import { MetaGraphService } from './meta-graph.service';
@@ -67,6 +68,25 @@ export class CheckoutEnviosService {
       urlFallback,
     );
     await this.registrar(ctx, 'Menú enviado como catálogo de WhatsApp.');
+  }
+
+  /** El checkout en curso del cliente, o null si no tiene uno. */
+  obtener(ctx: ContextoCheckout): Promise<CheckoutWhatsapp | null> {
+    return this.conversaciones.obtenerCheckout(
+      'whatsapp',
+      ctx.identificadorExterno,
+    );
+  }
+
+  async guardarCarrito(
+    ctx: ContextoCheckout,
+    items: ItemCarritoPendiente[],
+  ): Promise<void> {
+    await this.conversaciones.guardarCarrito(
+      'whatsapp',
+      ctx.identificadorExterno,
+      items,
+    );
   }
 
   async guardar(

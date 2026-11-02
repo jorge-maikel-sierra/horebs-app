@@ -17,6 +17,7 @@ import { SeguimientoService } from './seguimiento.service';
 import { AvisoEquipoService } from './aviso-equipo.service';
 import { CheckoutWhatsappService } from './checkout-whatsapp.service';
 import { CheckoutEnviosService } from './checkout-envios.service';
+import { CheckoutHistorialService } from './checkout-historial.service';
 import { CheckoutPedidoService } from './checkout-pedido.service';
 import { CheckoutPreguntasService } from './checkout-preguntas.service';
 import { AvisosPedidoService } from './avisos-pedido.service';
@@ -41,6 +42,7 @@ import { RespuestaBotService } from './respuesta-bot.service';
     AvisoEquipoService,
     CheckoutWhatsappService,
     CheckoutEnviosService,
+    CheckoutHistorialService,
     CheckoutPedidoService,
     CheckoutPreguntasService,
     AvisosPedidoService,
