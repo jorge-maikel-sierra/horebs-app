@@ -4,7 +4,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { adminFetch } from '@/lib/admin-fetch';
-import { formatPrecio, formatHora } from '@/lib/formato';
+import { formatPrecio, formatHora, formatFecha } from '@/lib/formato';
 import CargandoSkeleton from '@/components/CargandoSkeleton';
 import { leerErrorApi } from '@/lib/error-api';
 import { NEGOCIO } from '@/lib/negocio';
@@ -313,6 +313,7 @@ function PosInterno() {
 
   const [turno, setTurno] = useState<TurnoDto | null>(null);
   const [resumenTurno, setResumenTurno] = useState<ResumenVentas | null>(null);
+  const [diasTurnoAbierto, setDiasTurnoAbierto] = useState(0);
   const [cargandoTurno, setCargandoTurno] = useState(true);
   const [errorTurno, setErrorTurno] = useState<string | null>(null);
   const [montoInicial, setMontoInicial] = useState('');
@@ -345,6 +346,7 @@ function PosInterno() {
       const data = await res.json();
       setTurno(data.turno);
       setResumenTurno(data.resumen);
+      setDiasTurnoAbierto(data.dias_abierto ?? 0);
     }
     setCargandoTurno(false);
   }
@@ -688,13 +690,39 @@ function PosInterno() {
             Punto de venta
           </h1>
           {turno && (
-            <p className="mt-2 inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300">
+            <p
+              className={`mt-2 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${
+                diasTurnoAbierto > 0
+                  ? 'bg-amber-500/15 text-amber-800 dark:bg-amber-400/10 dark:text-amber-300'
+                  : 'bg-emerald-500/10 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300'
+              }`}
+            >
               <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60 motion-safe:animate-ping" />
-                <span className="relative h-2 w-2 rounded-full bg-emerald-500" />
+                <span
+                  className={`absolute inline-flex h-full w-full rounded-full opacity-60 motion-safe:animate-ping ${
+                    diasTurnoAbierto > 0 ? 'bg-amber-400' : 'bg-emerald-400'
+                  }`}
+                />
+                <span
+                  className={`relative h-2 w-2 rounded-full ${
+                    diasTurnoAbierto > 0 ? 'bg-amber-500' : 'bg-emerald-500'
+                  }`}
+                />
               </span>
-              Turno abierto · {formatHora(turno.abierto_en)} · caja inicial{' '}
+              Turno abierto ·{' '}
+              {diasTurnoAbierto > 0 && `${formatFecha(turno.abierto_en)}, `}
+              {formatHora(turno.abierto_en)} · caja inicial{' '}
               {formatPrecio(turno.monto_inicial)}
+            </p>
+          )}
+          {turno && diasTurnoAbierto > 0 && (
+            <p
+              role="alert"
+              className="mt-2 max-w-xl text-sm font-medium text-amber-800 dark:text-amber-300"
+            >
+              Este turno es de hace {diasTurnoAbierto}{' '}
+              {diasTurnoAbierto === 1 ? 'día' : 'días'}. Ciérralo antes de
+              vender para que el cierre no mezcle ventas de otras jornadas.
             </p>
           )}
         </div>
