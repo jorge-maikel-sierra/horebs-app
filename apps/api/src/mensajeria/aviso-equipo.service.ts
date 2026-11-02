@@ -7,6 +7,10 @@ import {
   type CanalMensajeria,
 } from './conversaciones.service';
 import { MetaGraphService } from './meta-graph.service';
+import { idCortoPedido } from '../common/pedido-numero';
+import { pesos } from './resumen-pedido';
+
+const URL_PANEL_PEDIDOS = 'https://pizzeriahorebs.shop/admin/pedidos';
 
 // Mismo formato que espera el "to" de la Graph API (código de país sin "+",
 // ej. 573157861208) — PERSONAL_COCINA_WHATSAPP se carga en formato local
@@ -65,6 +69,36 @@ export class AvisoEquipoService {
     );
   }
 
+  /** Un pago con tarjeta se acreditó (o falló): correo y WhatsApp a la cocina. */
+  notificarPago(datos: {
+    pedidoId: string;
+    total: number;
+    pagado: boolean;
+  }): void {
+    const codigo = idCortoPedido(datos.pedidoId);
+    const estado = datos.pagado ? 'PAGADO con tarjeta' : 'pago RECHAZADO';
+    const texto = `Pedido #${codigo} por ${pesos(datos.total)}: ${estado}.`;
+    this.mail.enviarAvisoEquipo({
+      asunto: `Pedido #${codigo}: ${estado}`,
+      texto,
+      html: `<p>${texto}</p><p><a href="${URL_PANEL_PEDIDOS}">Ver pedidos</a></p>`,
+    });
+    this.avisarCocinaPorWhatsapp(texto);
+  }
+
+  /** Fire-and-forget: solo llega si ese número le escribió al bot en las últimas 24h. */
+  private avisarCocinaPorWhatsapp(texto: string): void {
+    for (const numero of this.numerosCocina) {
+      this.metaGraph
+        .enviarMensajeSesion('whatsapp', numero, texto)
+        .catch((err) =>
+          this.logger.warn(
+            `No se pudo avisar por WhatsApp a ${numero} (¿sin mensajes al bot en 24h?): ${(err as Error).message}`,
+          ),
+        );
+    }
+  }
+
   private async avisar(datos: {
     canal: CanalMensajeria;
     identificadorExterno: string;
@@ -95,14 +129,6 @@ export class AvisoEquipoService {
     });
 
     this.mail.enviarAvisoEquipo(aviso);
-    for (const numero of this.numerosCocina) {
-      this.metaGraph
-        .enviarMensajeSesion('whatsapp', numero, aviso.textoWhatsapp)
-        .catch((err) =>
-          this.logger.warn(
-            `No se pudo avisar por WhatsApp a ${numero} (¿sin mensajes al bot en 24h?): ${(err as Error).message}`,
-          ),
-        );
-    }
+    this.avisarCocinaPorWhatsapp(aviso.textoWhatsapp);
   }
 }
