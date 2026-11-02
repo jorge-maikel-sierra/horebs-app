@@ -77,17 +77,20 @@ export class CheckoutWhatsappService {
         cantidad: i.cantidad,
       })),
     );
-    await this.envios.guardar(ctx, {
+    const checkout: CheckoutWhatsapp = {
       paso: 'modalidad',
       ...(nota ? { nota } : {}),
-    });
+    };
+    await this.envios.guardar(ctx, checkout);
     const aviso =
       noDisponibles > 0
         ? `\n(${noDisponibles} producto(s) ya no están disponibles y los saqué.)`
         : '';
+    const anotado = `¡Anotado! 🍕\n${listaItems(disponibles)}${aviso}`;
+    if (await this.preguntas.ofrecerAdicionales(ctx, checkout, anotado)) return;
     await this.envios.botones(
       ctx,
-      `¡Anotado! 🍕\n${listaItems(disponibles)}${aviso}\n\n¿Cómo lo querés?`,
+      `${anotado}\n\n¿Cómo lo querés?`,
       BOTONES_MODALIDAD,
     );
   }
@@ -117,7 +120,22 @@ export class CheckoutWhatsappService {
       return false;
     }
 
-    if (entrada.tipo === 'texto' && esCancelar(entrada.texto)) {
+    if (
+      entrada.tipo === 'texto' &&
+      (await this.textoLibre(ctx, checkout, entrada.texto))
+    ) {
+      return true;
+    }
+    return this.manejarPaso(ctx, checkout, entrada);
+  }
+
+  /** Lo que vale en cualquier paso si el cliente lo escribe: cancelar o un adicional. */
+  private async textoLibre(
+    ctx: ContextoCheckout,
+    checkout: CheckoutWhatsapp,
+    texto: string,
+  ): Promise<boolean> {
+    if (esCancelar(texto)) {
       await this.envios.limpiar(ctx);
       await this.envios.texto(
         ctx,
@@ -125,7 +143,10 @@ export class CheckoutWhatsappService {
       );
       return true;
     }
-    return this.manejarPaso(ctx, checkout, entrada);
+    return (
+      checkout.paso !== 'adicionales' &&
+      (await this.preguntas.adicionalEscrito(ctx, checkout, texto))
+    );
   }
 
   /**
@@ -154,6 +175,8 @@ export class CheckoutWhatsappService {
     entrada: EntradaCheckout,
   ): Promise<boolean> {
     switch (checkout.paso) {
+      case 'adicionales':
+        return this.manejarAdicionales(ctx, checkout, entrada);
       case 'modalidad': {
         const modalidad = modalidadDe(entrada);
         if (!modalidad) return false;
@@ -178,6 +201,21 @@ export class CheckoutWhatsappService {
       }
     }
     await this.avanzar(ctx, checkout);
+    return true;
+  }
+
+  private async manejarAdicionales(
+    ctx: ContextoCheckout,
+    checkout: CheckoutWhatsapp,
+    entrada: EntradaCheckout,
+  ): Promise<boolean> {
+    const respuesta = await this.preguntas.responderAdicionales(
+      ctx,
+      checkout,
+      entrada,
+    );
+    if (respuesta === 'ignorar') return false;
+    if (respuesta === 'listo') await this.avanzar(ctx, checkout);
     return true;
   }
 

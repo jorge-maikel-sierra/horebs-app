@@ -29,7 +29,7 @@ export interface ItemCarritoPendiente {
 
 export type ModalidadPedido = 'domicilio' | 'retiro' | 'local';
 export type PasoCheckout =
-  'modalidad' | 'direccion' | 'nombre' | 'hora' | 'pago';
+  'adicionales' | 'modalidad' | 'direccion' | 'nombre' | 'hora' | 'pago';
 
 /** `conversaciones_bot.checkout` (jsonb) — en qué paso del checkout con botones va el cliente. */
 export interface CheckoutWhatsapp {
@@ -44,6 +44,8 @@ export interface CheckoutWhatsapp {
   nota?: string;
   /** Franja elegida: 'ya' (lo antes posible) o 'HH:MM' en hora de Bogotá. */
   entrega?: string;
+  /** Paso `adicionales`: el adicional ya elegido (id del producto) mientras se elige la pizza. */
+  adicionalProductoId?: string;
 }
 
 export interface MensajeConversacion {

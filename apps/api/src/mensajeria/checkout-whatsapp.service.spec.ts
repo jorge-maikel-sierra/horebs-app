@@ -50,6 +50,9 @@ function crearServicio(checkout: CheckoutWhatsapp | null) {
     direccion: jest.fn().mockResolvedValue(undefined),
     pedirDireccion: jest.fn().mockResolvedValue(undefined),
     pago: jest.fn().mockResolvedValue('resumen'),
+    ofrecerAdicionales: jest.fn().mockResolvedValue(false),
+    adicionalEscrito: jest.fn().mockResolvedValue(false),
+    responderAdicionales: jest.fn().mockResolvedValue('esperando'),
   };
   const servicio = new CheckoutWhatsappService(
     historial as unknown as CheckoutHistorialService,
@@ -137,6 +140,20 @@ describe('CheckoutWhatsappService', () => {
       );
     });
 
+    it('si hay pizza y adicionales, ofrece los adicionales antes de la modalidad', async () => {
+      const { servicio, preguntas, envios } = crearServicio(null);
+      preguntas.ofrecerAdicionales.mockResolvedValue(true);
+
+      await servicio.iniciar(CTX, [item], 0, null);
+
+      expect(preguntas.ofrecerAdicionales).toHaveBeenCalledWith(
+        CTX,
+        { paso: 'modalidad' },
+        expect.stringContaining('¡Anotado!'),
+      );
+      expect(envios.botones).not.toHaveBeenCalled();
+    });
+
     it('guarda el carrito con ids exactos, el paso y la nota, y pregunta la modalidad', async () => {
       const { servicio, envios } = crearServicio(null);
       await servicio.iniciar(CTX, [item], 1, 'sin cebolla');
@@ -182,6 +199,52 @@ describe('CheckoutWhatsappService', () => {
         servicio.manejar(CTX, texto('¿cuánto cuesta la hawaiana?')),
       ).resolves.toBe(false);
       expect(preguntas.direccion).not.toHaveBeenCalled();
+    });
+
+    it('un adicional escrito en cualquier paso lo toma el checkout y no avanza el paso', async () => {
+      const checkout: CheckoutWhatsapp = {
+        paso: 'nombre',
+        modalidad: 'retiro',
+      };
+      const { servicio, preguntas } = crearServicio(checkout);
+      preguntas.adicionalEscrito.mockResolvedValue(true);
+
+      await expect(
+        servicio.manejar(CTX, texto('con borde de queso')),
+      ).resolves.toBe(true);
+
+      expect(preguntas.adicionalEscrito).toHaveBeenCalledWith(
+        CTX,
+        checkout,
+        'con borde de queso',
+      );
+      expect(checkout.nombre).toBeUndefined();
+    });
+
+    it('en el paso de adicionales, "No, seguir" sigue con la modalidad', async () => {
+      const checkout: CheckoutWhatsapp = { paso: 'adicionales' };
+      const { servicio, preguntas, envios } = crearServicio(checkout);
+      preguntas.responderAdicionales.mockResolvedValue('listo');
+
+      await expect(
+        servicio.manejar(CTX, boton(BOTON.adicionalesNo)),
+      ).resolves.toBe(true);
+
+      expect(checkout.paso).toBe('modalidad');
+      expect(envios.botones).toHaveBeenCalledWith(
+        CTX,
+        '¿Cómo lo querés?',
+        expect.any(Array),
+      );
+    });
+
+    it('en el paso de adicionales, lo que no es del paso lo contesta Gemini', async () => {
+      const { servicio, preguntas } = crearServicio({ paso: 'adicionales' });
+      preguntas.responderAdicionales.mockResolvedValue('ignorar');
+
+      await expect(
+        servicio.manejar(CTX, texto('¿a qué hora abren?')),
+      ).resolves.toBe(false);
     });
 
     it('"Otra dirección" pide la dirección escrita', async () => {

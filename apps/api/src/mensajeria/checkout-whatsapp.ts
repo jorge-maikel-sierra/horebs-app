@@ -50,7 +50,13 @@ export const BOTON = {
   loMismo: 'ck:lomismo:si',
   verMenu: 'ck:lomismo:menu',
   otraCosa: 'ck:lomismo:otro',
+  adicionalesSi: 'ck:ad:si',
+  adicionalesNo: 'ck:ad:no',
 } as const;
+
+/** Filas de las listas de adicionales: ck:ad:p:<producto> y ck:ad:z:<variante de la pizza>. */
+export const PREFIJO_ADICIONAL_PRODUCTO = 'ck:ad:p:';
+export const PREFIJO_ADICIONAL_PIZZA = 'ck:ad:z:';
 
 /** Prefijo de las filas de la lista de franjas: ck:hora:ya / ck:hora:18:30. */
 export const PREFIJO_HORA = 'ck:hora:';
