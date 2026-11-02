@@ -7,6 +7,7 @@ import {
 import { SupabaseService } from '../supabase/supabase.service';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { errorDeBase } from '../common/error-de-base';
+import { estadoVencimiento, type EstadoVencimiento } from './turno-reglas';
 
 export interface TurnoDto {
   id: string;
@@ -28,7 +29,7 @@ export interface ResumenVentasDto {
   cantidad_ventas: number;
 }
 
-export interface TurnoActualDto {
+export interface TurnoActualDto extends EstadoVencimiento {
   turno: TurnoDto | null;
   resumen: ResumenVentasDto | null;
 }
@@ -66,10 +67,16 @@ export class TurnosService {
   async obtenerActual(): Promise<TurnoActualDto> {
     const client = this.supabase.getClient();
     const turno = await this.buscarTurnoAbierto(client);
-    if (!turno) return { turno: null, resumen: null };
+    if (!turno) {
+      return { turno: null, resumen: null, vencido: false, dias_abierto: 0 };
+    }
 
     const resumen = await this.calcularResumen(client, turno.abierto_en, null);
-    return { turno, resumen };
+    return {
+      turno,
+      resumen,
+      ...estadoVencimiento(turno.abierto_en, new Date()),
+    };
   }
 
   async abrir(montoInicial: number, usuarioId: string): Promise<TurnoDto> {
