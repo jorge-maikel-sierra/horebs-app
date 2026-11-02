@@ -1,7 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import type { User } from '@supabase/supabase-js';
 import { SupabaseService } from '../supabase/supabase.service';
 import { errorDeBase } from '../common/error-de-base';
 import type { Rol } from '../auth/roles.decorator';
+
+const MAX_PAGINAS_USUARIOS = 5;
+const USUARIOS_POR_PAGINA = 200;
 
 export interface UsuarioStaffDto {
   id: string;
@@ -9,6 +13,12 @@ export interface UsuarioStaffDto {
   rol: Rol;
   cedula: string | null;
   created_at: string;
+}
+
+export interface AsignarRolInput {
+  email: string;
+  rol: Rol;
+  cedula?: string;
 }
 
 /** Personal con acceso al panel: quién tiene qué rol. */
@@ -21,17 +31,18 @@ export class UsuariosAdminService {
       .getClient()
       .from('perfiles_staff')
       .select('id, email, rol, cedula, created_at')
-      .order('created_at');
+      .order('created_at')
+      .returns<UsuarioStaffDto[]>();
 
     if (error) throw errorDeBase(error);
     return data ?? [];
   }
 
-  async asignarRol(
-    email: string,
-    rol: Rol,
-    cedula?: string,
-  ): Promise<UsuarioStaffDto> {
+  async asignarRol({
+    email,
+    rol,
+    cedula,
+  }: AsignarRolInput): Promise<UsuarioStaffDto> {
     const client = this.supabase.getClient();
     const emailNormalizado = email.trim().toLowerCase();
 
@@ -55,7 +66,7 @@ export class UsuariosAdminService {
       .from('perfiles_staff')
       .upsert(payload, { onConflict: 'id' })
       .select('id, email, rol, cedula, created_at')
-      .single();
+      .single<UsuarioStaffDto>();
 
     if (error) throw errorDeBase(error);
     return data;
@@ -70,14 +81,12 @@ export class UsuariosAdminService {
     if (error) throw errorDeBase(error);
   }
 
-  private async buscarUsuarioPorEmail(email: string) {
+  private async buscarUsuarioPorEmail(email: string): Promise<User | null> {
     const client = this.supabase.getClient();
-    const maxPaginas = 5;
-
-    for (let page = 1; page <= maxPaginas; page++) {
+    for (let page = 1; page <= MAX_PAGINAS_USUARIOS; page++) {
       const { data, error } = await client.auth.admin.listUsers({
         page,
-        perPage: 200,
+        perPage: USUARIOS_POR_PAGINA,
       });
       if (error) throw errorDeBase(error);
 
@@ -85,7 +94,7 @@ export class UsuariosAdminService {
         (u) => u.email?.toLowerCase() === email,
       );
       if (encontrado) return encontrado;
-      if (data.users.length < 200) break;
+      if (data.users.length < USUARIOS_POR_PAGINA) break;
     }
 
     return null;
