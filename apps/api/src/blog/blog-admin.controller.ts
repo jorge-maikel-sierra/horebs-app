@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   HttpCode,
+  HttpStatus,
   Param,
   Patch,
   Post,
@@ -12,8 +13,10 @@ import {
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { UuidPipe } from '../common/pipes/uuid.pipe';
+import { ValidarBodyPipe } from '../common/pipes/validar-body.pipe';
 import { BlogService } from './blog.service';
-import type { CrearBlogPostInput } from './blog.service';
+import type { BlogPostDto, CrearBlogPostInput } from './blog.tipos';
+import { ESQUEMA_CREAR_POST, ESQUEMA_EDITAR_POST } from './esquemas';
 
 /** Gestión de artículos desde el panel (incluye borradores). */
 @Controller('admin/blog')
@@ -23,13 +26,15 @@ export class BlogAdminController {
 
   @Get()
   @Roles('admin')
-  listar() {
+  listar(): Promise<BlogPostDto[]> {
     return this.blog.listarBlogPosts();
   }
 
   @Post()
   @Roles('admin')
-  crear(@Body() body: CrearBlogPostInput) {
+  crear(
+    @Body(new ValidarBodyPipe(ESQUEMA_CREAR_POST)) body: CrearBlogPostInput,
+  ): Promise<BlogPostDto> {
     return this.blog.crearBlogPost(body);
   }
 
@@ -37,15 +42,16 @@ export class BlogAdminController {
   @Roles('admin')
   actualizar(
     @Param('id', UuidPipe) id: string,
-    @Body() body: Partial<CrearBlogPostInput>,
-  ) {
+    @Body(new ValidarBodyPipe(ESQUEMA_EDITAR_POST))
+    body: Partial<CrearBlogPostInput>,
+  ): Promise<BlogPostDto> {
     return this.blog.actualizarBlogPost(id, body);
   }
 
   @Delete(':id')
-  @HttpCode(204)
+  @HttpCode(HttpStatus.NO_CONTENT)
   @Roles('admin')
-  eliminar(@Param('id', UuidPipe) id: string) {
+  eliminar(@Param('id', UuidPipe) id: string): Promise<void> {
     return this.blog.eliminarBlogPost(id);
   }
 }

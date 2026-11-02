@@ -1,58 +1,39 @@
 import {
-  BadRequestException,
   ConflictException,
-  HttpException,
   ForbiddenException,
+  HttpException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import type { PostgrestError } from '@supabase/supabase-js';
 import { SupabaseService } from '../supabase/supabase.service';
 import { errorDeBase } from '../common/error-de-base';
 import type { UsuarioSupabase } from '../auth/supabase-auth.guard';
+import {
+  cambiosDePost,
+  comentarioValido,
+  esAdmin,
+  filaNuevoPost,
+  nombreDeAutor,
+  validarNuevoPost,
+} from './blog-reglas';
+import {
+  BLOG_POST_SELECT,
+  COMENTARIO_SELECT,
+  type BlogPostDto,
+  type ComentarioDto,
+  type CrearBlogPostInput,
+  type CrearComentarioInput,
+  type EstadoMeGustaDto,
+  type FilaAutorComentario,
+  type FilaIdPost,
+  type FilaPerfilStaff,
+  type FilaPostActual,
+  type MeGustaDto,
+  type TotalMeGustaDto,
+} from './blog.tipos';
 
-export interface BlogPostDto {
-  id: string;
-  titulo: string;
-  slug: string;
-  resumen: string;
-  contenido: string;
-  palabra_clave: string | null;
-  imagen_url: string | null;
-  etiqueta: string | null;
-  estado: 'borrador' | 'publicado';
-  publicado_en: string | null;
-  created_at: string;
-}
-
-export interface ComentarioDto {
-  id: string;
-  usuario_id: string;
-  autor_nombre: string;
-  contenido: string;
-  created_at: string;
-}
-
-export interface CrearComentarioInput {
-  contenido: string;
-}
-
-export interface CrearBlogPostInput {
-  titulo: string;
-  slug: string;
-  resumen: string;
-  contenido: string;
-  palabra_clave?: string;
-  imagen_url?: string;
-  etiqueta?: string;
-  estado?: 'borrador' | 'publicado';
-}
-
-const BLOG_POST_SELECT =
-  'id, titulo, slug, resumen, contenido, palabra_clave, imagen_url, etiqueta, estado, publicado_en, created_at';
-
-const COMENTARIO_SELECT = 'id, usuario_id, autor_nombre, contenido, created_at';
-
-export const MAX_LARGO_COMENTARIO = 2000;
+const POSTGRES_UNIQUE_VIOLATION = '23505';
 
 @Injectable()
 export class BlogService {
@@ -64,7 +45,8 @@ export class BlogService {
       .from('blog_posts')
       .select(BLOG_POST_SELECT)
       .eq('estado', 'publicado')
-      .order('publicado_en', { ascending: false });
+      .order('publicado_en', { ascending: false })
+      .returns<BlogPostDto[]>();
 
     if (error) throw errorDeBase(error);
     return data ?? [];
@@ -77,24 +59,10 @@ export class BlogService {
       .select(BLOG_POST_SELECT)
       .eq('slug', slug)
       .eq('estado', 'publicado')
-      .maybeSingle();
+      .maybeSingle<BlogPostDto>();
 
     if (error) throw errorDeBase(error);
     return data ?? null;
-  }
-
-  private async obtenerIdPostPublicado(slug: string): Promise<string> {
-    const { data, error } = await this.supabase
-      .getClient()
-      .from('blog_posts')
-      .select('id')
-      .eq('slug', slug)
-      .eq('estado', 'publicado')
-      .maybeSingle();
-
-    if (error) throw errorDeBase(error);
-    if (!data) throw new NotFoundException('Artículo no encontrado.');
-    return data.id;
   }
 
   async obtenerComentarios(slug: string): Promise<ComentarioDto[]> {
@@ -104,7 +72,8 @@ export class BlogService {
       .from('comentarios_blog')
       .select(COMENTARIO_SELECT)
       .eq('post_id', postId)
-      .order('created_at', { ascending: true });
+      .order('created_at', { ascending: true })
+      .returns<ComentarioDto[]>();
 
     if (error) throw errorDeBase(error);
     return data ?? [];
@@ -115,18 +84,7 @@ export class BlogService {
     usuario: UsuarioSupabase,
     input: CrearComentarioInput,
   ): Promise<ComentarioDto> {
-    const usuarioId = usuario.id;
-    const autorNombre =
-      `${usuario.nombre} ${usuario.apellido}`.trim() || usuario.email;
-    const contenido = input.contenido?.trim();
-    if (!contenido) {
-      throw new BadRequestException('El comentario no puede estar vacío.');
-    }
-    if (contenido.length > MAX_LARGO_COMENTARIO) {
-      throw new BadRequestException(
-        `El comentario es demasiado largo (máximo ${MAX_LARGO_COMENTARIO} caracteres).`,
-      );
-    }
+    const contenido = comentarioValido(input.contenido);
 
     const postId = await this.obtenerIdPostPublicado(slug);
     const { data, error } = await this.supabase
@@ -134,12 +92,12 @@ export class BlogService {
       .from('comentarios_blog')
       .insert({
         post_id: postId,
-        usuario_id: usuarioId,
-        autor_nombre: autorNombre || 'Cliente',
+        usuario_id: usuario.id,
+        autor_nombre: nombreDeAutor(usuario) || 'Cliente',
         contenido,
       })
       .select(COMENTARIO_SELECT)
-      .single();
+      .single<ComentarioDto>();
 
     if (error) throw errorDeBase(error);
     return data;
@@ -154,7 +112,7 @@ export class BlogService {
       .from('comentarios_blog')
       .select('id, usuario_id')
       .eq('id', comentarioId)
-      .maybeSingle();
+      .maybeSingle<FilaAutorComentario>();
 
     if (buscarError) throw errorDeBase(buscarError);
     if (!comentario) throw new NotFoundException('Comentario no encontrado.');
@@ -164,9 +122,9 @@ export class BlogService {
         .from('perfiles_staff')
         .select('rol')
         .eq('id', usuarioId)
-        .maybeSingle();
+        .maybeSingle<FilaPerfilStaff>();
 
-      if (!perfil || perfil.rol !== 'admin') {
+      if (!esAdmin(perfil)) {
         throw new ForbiddenException(
           'No podés borrar el comentario de otra persona.',
         );
@@ -180,59 +138,37 @@ export class BlogService {
     if (error) throw errorDeBase(error);
   }
 
-  async obtenerTotalMeGusta(slug: string): Promise<{ total: number }> {
+  async obtenerTotalMeGusta(slug: string): Promise<TotalMeGustaDto> {
     const postId = await this.obtenerIdPostPublicado(slug);
-    const { count, error } = await this.supabase
-      .getClient()
-      .from('likes_blog_post')
-      .select('id', { count: 'exact', head: true })
-      .eq('post_id', postId);
-
-    if (error) throw errorDeBase(error);
-    return { total: count ?? 0 };
+    return { total: await this.contarMeGusta(postId) };
   }
 
-  async obtenerMeGusta(
-    slug: string,
-    usuarioId: string,
-  ): Promise<{ meGusta: boolean }> {
+  async obtenerMeGusta(slug: string, usuarioId: string): Promise<MeGustaDto> {
     const postId = await this.obtenerIdPostPublicado(slug);
-    const { data, error } = await this.supabase
-      .getClient()
-      .from('likes_blog_post')
-      .select('id')
-      .eq('post_id', postId)
-      .eq('usuario_id', usuarioId)
-      .maybeSingle();
-
-    if (error) throw errorDeBase(error);
-    return { meGusta: !!data };
+    return { meGusta: await this.tieneMeGusta(postId, usuarioId) };
   }
 
   /** `PUT .../likes/yo`: idempotente — si ya había like, no hace nada. */
-  async darMeGusta(
-    slug: string,
-    usuarioId: string,
-  ): Promise<{ total: number; meGusta: boolean }> {
+  async darMeGusta(slug: string, usuarioId: string): Promise<EstadoMeGustaDto> {
     const postId = await this.obtenerIdPostPublicado(slug);
-    const { meGusta: yaLoTenia } = await this.obtenerMeGusta(slug, usuarioId);
-    if (!yaLoTenia) {
+    if (!(await this.tieneMeGusta(postId, usuarioId))) {
       const { error } = await this.supabase
         .getClient()
         .from('likes_blog_post')
         .insert({ post_id: postId, usuario_id: usuarioId });
       // 23505: otro request del mismo usuario ganó la carrera; ya está.
-      if (error && error.code !== '23505') throw errorDeBase(error);
+      if (error && error.code !== POSTGRES_UNIQUE_VIOLATION) {
+        throw errorDeBase(error);
+      }
     }
-    const { total } = await this.obtenerTotalMeGusta(slug);
-    return { total, meGusta: true };
+    return { total: await this.contarMeGusta(postId), meGusta: true };
   }
 
   /** `DELETE .../likes/yo`: idempotente — si no había like, no hace nada. */
   async quitarMeGusta(
     slug: string,
     usuarioId: string,
-  ): Promise<{ total: number; meGusta: boolean }> {
+  ): Promise<EstadoMeGustaDto> {
     const postId = await this.obtenerIdPostPublicado(slug);
     const { error } = await this.supabase
       .getClient()
@@ -241,8 +177,7 @@ export class BlogService {
       .eq('post_id', postId)
       .eq('usuario_id', usuarioId);
     if (error) throw errorDeBase(error);
-    const { total } = await this.obtenerTotalMeGusta(slug);
-    return { total, meGusta: false };
+    return { total: await this.contarMeGusta(postId), meGusta: false };
   }
 
   /** A diferencia de `obtenerPostsPublicados`, incluye borradores — uso admin. */
@@ -251,57 +186,25 @@ export class BlogService {
       .getClient()
       .from('blog_posts')
       .select(BLOG_POST_SELECT)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .returns<BlogPostDto[]>();
 
     if (error) throw errorDeBase(error);
     return data ?? [];
   }
 
   async crearBlogPost(input: CrearBlogPostInput): Promise<BlogPostDto> {
-    if (!input.titulo?.trim()) {
-      throw new BadRequestException('El título es obligatorio.');
-    }
-    if (!input.slug?.trim()) {
-      throw new BadRequestException('El slug es obligatorio.');
-    }
-    if (!input.resumen?.trim()) {
-      throw new BadRequestException('El resumen es obligatorio.');
-    }
-    if (!input.contenido?.trim()) {
-      throw new BadRequestException('El contenido es obligatorio.');
-    }
+    validarNuevoPost(input);
 
-    const estado = input.estado ?? 'borrador';
     const { data, error } = await this.supabase
       .getClient()
       .from('blog_posts')
-      .insert({
-        titulo: input.titulo.trim(),
-        slug: input.slug.trim(),
-        resumen: input.resumen.trim(),
-        contenido: input.contenido,
-        palabra_clave: input.palabra_clave?.trim() || null,
-        imagen_url: input.imagen_url?.trim() || null,
-        etiqueta: input.etiqueta?.trim() || null,
-        estado,
-        publicado_en: estado === 'publicado' ? new Date().toISOString() : null,
-      })
+      .insert(filaNuevoPost(input, new Date().toISOString()))
       .select(BLOG_POST_SELECT)
-      .single();
+      .single<BlogPostDto>();
 
     if (error) throw this.traducirErrorEscritura(error);
     return data;
-  }
-
-  /**
-   * `slug` tiene restricción UNIQUE: un duplicado llegaba al cliente como un
-   * 500 genérico. Se traduce a 409 con un mensaje que el admin puede accionar.
-   */
-  private traducirErrorEscritura(error: { code?: string }): HttpException {
-    if (error.code === '23505') {
-      return new ConflictException('Ya existe un artículo con ese slug.');
-    }
-    return errorDeBase(error);
   }
 
   async actualizarBlogPost(
@@ -313,39 +216,16 @@ export class BlogService {
       .from('blog_posts')
       .select('estado, publicado_en')
       .eq('id', id)
-      .maybeSingle();
+      .maybeSingle<FilaPostActual>();
     if (errorActual) throw errorDeBase(errorActual);
     if (!actual) throw new NotFoundException('Artículo no encontrado.');
 
-    const payload: Record<string, unknown> = {
-      updated_at: new Date().toISOString(),
-    };
-    if (input.titulo !== undefined) payload.titulo = input.titulo.trim();
-    if (input.slug !== undefined) payload.slug = input.slug.trim();
-    if (input.resumen !== undefined) payload.resumen = input.resumen.trim();
-    if (input.contenido !== undefined) payload.contenido = input.contenido;
-    if (input.palabra_clave !== undefined) {
-      payload.palabra_clave = input.palabra_clave?.trim() || null;
-    }
-    if (input.imagen_url !== undefined) {
-      payload.imagen_url = input.imagen_url?.trim() || null;
-    }
-    if (input.etiqueta !== undefined) {
-      payload.etiqueta = input.etiqueta?.trim() || null;
-    }
-    if (input.estado !== undefined) {
-      payload.estado = input.estado;
-      if (input.estado === 'publicado' && !actual.publicado_en) {
-        payload.publicado_en = new Date().toISOString();
-      }
-    }
-
     const { data, error } = await client
       .from('blog_posts')
-      .update(payload)
+      .update(cambiosDePost(input, actual, new Date().toISOString()))
       .eq('id', id)
       .select(BLOG_POST_SELECT)
-      .single();
+      .single<BlogPostDto>();
 
     if (error) throw this.traducirErrorEscritura(error);
     return data;
@@ -359,5 +239,57 @@ export class BlogService {
       .eq('id', id);
     if (error) throw errorDeBase(error);
     if (!count) throw new NotFoundException('Artículo no encontrado.');
+  }
+
+  private async obtenerIdPostPublicado(slug: string): Promise<string> {
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('blog_posts')
+      .select('id')
+      .eq('slug', slug)
+      .eq('estado', 'publicado')
+      .maybeSingle<FilaIdPost>();
+
+    if (error) throw errorDeBase(error);
+    if (!data) throw new NotFoundException('Artículo no encontrado.');
+    return data.id;
+  }
+
+  private async contarMeGusta(postId: string): Promise<number> {
+    const { count, error } = await this.supabase
+      .getClient()
+      .from('likes_blog_post')
+      .select('id', { count: 'exact', head: true })
+      .eq('post_id', postId);
+
+    if (error) throw errorDeBase(error);
+    return count ?? 0;
+  }
+
+  private async tieneMeGusta(
+    postId: string,
+    usuarioId: string,
+  ): Promise<boolean> {
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('likes_blog_post')
+      .select('id')
+      .eq('post_id', postId)
+      .eq('usuario_id', usuarioId)
+      .maybeSingle<FilaIdPost>();
+
+    if (error) throw errorDeBase(error);
+    return !!data;
+  }
+
+  /**
+   * `slug` tiene restricción UNIQUE: un duplicado llegaba al cliente como un
+   * 500 genérico. Se traduce a 409 con un mensaje que el admin puede accionar.
+   */
+  private traducirErrorEscritura(error: PostgrestError): HttpException {
+    if (error.code === POSTGRES_UNIQUE_VIOLATION) {
+      return new ConflictException('Ya existe un artículo con ese slug.');
+    }
+    return errorDeBase(error);
   }
 }
