@@ -1,9 +1,11 @@
-const HORA_MS = 60 * 60 * 1000;
+import { idCortoPedido } from '../common/pedido-numero';
+import { HORAS_POR_DIA, MS_POR_HORA } from '../common/tiempo';
+
 /** Ventana gratis de WhatsApp para mensajes de sesión. */
-export const VENTANA_SESION_MS = 24 * HORA_MS;
+export const VENTANA_SESION_MS = HORAS_POR_DIA * MS_POR_HORA;
 // La invitación a repetir sale en la última hora de la ventana: sin
 // plantilla paga, después de las 24h ya no se le puede escribir.
-const INICIO_RECOMPRA_MS = 23 * HORA_MS;
+const INICIO_RECOMPRA_MS = (HORAS_POR_DIA - 1) * MS_POR_HORA;
 
 export interface PuntosRecompra {
   /** Puntos que sumó el pedido entregado. */
@@ -50,7 +52,7 @@ export interface PedidoParaAviso {
  * sin aviso (pendiente: el cliente ya recibió la confirmación del pedido).
  */
 export function textoAvisoEstado(p: PedidoParaAviso): string | null {
-  const numero = `#${p.id.slice(0, 8)}`;
+  const numero = `#${idCortoPedido(p.id)}`;
   switch (p.estado) {
     case 'confirmado':
       return `✅ ¡Confirmamos tu pedido *${numero}*! Ya lo estamos preparando.`;

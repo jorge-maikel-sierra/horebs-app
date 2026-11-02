@@ -2,6 +2,7 @@ import type {
   CanalMensajeria,
   DireccionMensaje,
 } from './conversaciones.service';
+import { idCortoPedido } from '../common/pedido-numero';
 
 export interface DatosAvisoDerivacion {
   canal: CanalMensajeria;
@@ -84,7 +85,7 @@ export function armarAvisoDerivacion(
     : null;
   const quien = nombre ?? contacto;
   const pedido = datos.pedido;
-  const numeroPedido = pedido ? `#${pedido.id.slice(0, 8)}` : null;
+  const numeroPedido = pedido ? `#${idCortoPedido(pedido.id)}` : null;
   const urlPanel = pedido ? URL_PANEL_PEDIDOS : URL_PANEL_SEGUIMIENTO;
 
   const asunto = pedido

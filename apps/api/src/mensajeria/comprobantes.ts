@@ -1,3 +1,7 @@
+import { idCortoPedido } from '../common/pedido-numero';
+
+const LARGO_MAX_ID_MENSAJE = 40;
+
 const EXTENSIONES: Record<string, string> = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
@@ -16,7 +20,8 @@ export function nombreArchivoComprobante(
   mime: string,
 ): string {
   const base =
-    mensajeId.replace(/[^A-Za-z0-9_-]/g, '').slice(-40) || 'comprobante';
+    mensajeId.replace(/[^A-Za-z0-9_-]/g, '').slice(-LARGO_MAX_ID_MENSAJE) ||
+    'comprobante';
   // mime viene de la Graph API y solo se usa para buscar en un mapa fijo.
   // eslint-disable-next-line security/detect-object-injection
   return `${base}.${EXTENSIONES[mime] ?? 'bin'}`;
@@ -38,7 +43,7 @@ export function armarAvisoComprobante(datos: {
   telefono: string;
   url: string;
 }): { asunto: string; texto: string; html: string } {
-  const numero = `#${datos.pedidoId.slice(0, 8)}`;
+  const numero = `#${idCortoPedido(datos.pedidoId)}`;
   const total = `$${datos.total.toLocaleString('es-CO')}`;
   const quien = datos.nombre ?? `+${datos.telefono}`;
   const asunto = `💸 Comprobante del pedido ${numero} — ${quien} — ${total}`;

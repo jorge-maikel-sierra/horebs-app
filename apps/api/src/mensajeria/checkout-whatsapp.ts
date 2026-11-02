@@ -6,6 +6,7 @@ import type {
   PasoCheckout,
 } from './conversaciones.tipos';
 import type { LineaPedido } from './resumen-pedido';
+import { dosDigitos } from '../common/horario';
 
 // Horario del bot: 11:00 a.m. a 11:00 p.m. (ver common/horario.ts).
 export const MENSAJE_CERRADO =
@@ -20,6 +21,7 @@ export interface ContextoCheckout {
 }
 
 const HORAS_MEDIO_DIA = 12;
+const LARGO_MAX_SALUDO = 40;
 
 export type MetodoPagoBot = 'efectivo' | 'transferencia' | 'tarjeta';
 
@@ -194,7 +196,7 @@ export function siguientePaso(checkout: CheckoutWhatsapp): PasoCheckout {
 export function esSaludoOIntencionDePedir(texto: string): boolean {
   const t = normalizar(texto);
   return (
-    t.length <= 40 &&
+    t.length <= LARGO_MAX_SALUDO &&
     /^(hola|buenas|buenos|buen dia|hey|ola|que mas|menu|quiero pedir|quiero|pedir|un pedido|hacer un pedido)\b/.test(
       t,
     )
@@ -216,7 +218,7 @@ export function textoEntrega(entrega: string | undefined): string | undefined {
   if (entrega === 'ya') return 'lo antes posible';
   const [h, m] = entrega.split(':').map(Number);
   const h12 = h % HORAS_MEDIO_DIA === 0 ? HORAS_MEDIO_DIA : h % HORAS_MEDIO_DIA;
-  return `${h12}:${String(m).padStart(2, '0')} ${h < HORAS_MEDIO_DIA ? 'a.m.' : 'p.m.'} (reserva)`;
+  return `${h12}:${dosDigitos(m)} ${h < HORAS_MEDIO_DIA ? 'a.m.' : 'p.m.'} (reserva)`;
 }
 
 export function listaItems(items: ItemCarritoResuelto[]): string {

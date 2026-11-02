@@ -8,8 +8,10 @@ import {
 } from './comprobantes';
 import { ConversacionesService } from './conversaciones.service';
 import { MetaGraphService } from './meta-graph.service';
+import { idCortoPedido } from '../common/pedido-numero';
+import { DIAS_POR_SEMANA, MS_POR_DIA, MS_POR_SEGUNDO } from '../common/tiempo';
 
-const SIETE_DIAS = 7 * 24 * 60 * 60;
+const SIETE_DIAS_SEGUNDOS = (DIAS_POR_SEMANA * MS_POR_DIA) / MS_POR_SEGUNDO;
 
 export interface ProcesarComprobanteInput {
   identificadorExterno: string;
@@ -52,7 +54,7 @@ export class ComprobantesService {
       nombre: nombreArchivoComprobante(datos.mensajeId, archivo.mime),
     });
 
-    const respuesta = `¡Recibido el comprobante del pedido *#${pedido.id.slice(0, 8)}*! 🙌 Lo revisamos y te confirmamos por acá.`;
+    const respuesta = `¡Recibido el comprobante del pedido *#${idCortoPedido(pedido.id)}*! 🙌 Lo revisamos y te confirmamos por acá.`;
     await this.metaGraph.enviarMensajeSesion(
       'whatsapp',
       datos.identificadorExterno,
@@ -65,7 +67,7 @@ export class ComprobantesService {
     );
     this.logger.log(`Comprobante guardado para el pedido ${pedido.id}`);
 
-    const url = await this.pedidos.urlFirmada(path, SIETE_DIAS);
+    const url = await this.pedidos.urlFirmada(path, SIETE_DIAS_SEGUNDOS);
     this.mail.enviarAvisoEquipo(
       armarAvisoComprobante({
         pedidoId: pedido.id,
