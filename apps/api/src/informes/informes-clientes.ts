@@ -4,6 +4,7 @@ import {
   type Granularidad,
   type InformeClienteListaDto,
   type InformeClientesDto,
+  type InformeDto,
   type PedidoUnificado,
 } from './informes.tipos';
 
@@ -80,27 +81,28 @@ function actividadPorTelefono(
 
 const SIN_ACTIVIDAD: Actividad = { pedidos: 0, total: 0 };
 
-/**
- * "Nuevo" vs "recurrente" se define contra la fecha real de primera compra
- * de cada teléfono: es nuevo quien compró por primera vez dentro del rango.
- */
-export function armarInformeClientes(
-  entrada: EntradaInformeClientes,
-): InformeClientesDto {
-  const { filas, desde, hasta, desdeISO, granularidad } = entrada;
-  const telefonos = [
-    ...new Set(filas.map((p) => p.telefono).filter((t): t is string => !!t)),
-  ];
-  const primeraCompra = primeraCompraPorTelefono(
-    entrada.clientesVivos,
-    entrada.clientesHistoricos,
-  );
-  const actividad = actividadPorTelefono(filas);
-  const desdeMs = new Date(desdeISO).getTime();
+interface Clasificacion {
+  altasPorBucket: Map<string, number>;
+  nuevos: InformeClienteListaDto[];
+  recurrentes: InformeClienteListaDto[];
+}
 
-  const altasPorBucket = new Map<string, number>();
-  const listaNuevos: InformeClienteListaDto[] = [];
-  const listaRecurrentes: InformeClienteListaDto[] = [];
+/** Nuevo = su primera compra cae dentro del rango; recurrente = ya compraba antes. */
+function clasificarClientes(
+  telefonos: string[],
+  primeraCompra: Map<string, PrimeraCompra>,
+  actividad: Map<string, Actividad>,
+  {
+    desdeISO,
+    granularidad,
+  }: Pick<EntradaInformeClientes, 'desdeISO' | 'granularidad'>,
+): Clasificacion {
+  const desdeMs = new Date(desdeISO).getTime();
+  const resultado: Clasificacion = {
+    altasPorBucket: new Map(),
+    nuevos: [],
+    recurrentes: [],
+  };
   for (const telefono of telefonos) {
     const info = primeraCompra.get(telefono);
     if (!info) continue;
@@ -113,27 +115,27 @@ export function armarInformeClientes(
       total: stats.total,
       primera_compra: info.fecha,
     };
-    if (new Date(info.fecha).getTime() >= desdeMs) {
-      listaNuevos.push(cliente);
-      const bucket = claveBucket(info.fecha, granularidad);
-      altasPorBucket.set(bucket, (altasPorBucket.get(bucket) ?? 0) + 1);
-    } else {
-      listaRecurrentes.push(cliente);
+    const esNuevo = new Date(info.fecha).getTime() >= desdeMs;
+    if (!esNuevo) {
+      resultado.recurrentes.push(cliente);
+      continue;
     }
+    resultado.nuevos.push(cliente);
+    const bucket = claveBucket(info.fecha, granularidad);
+    resultado.altasPorBucket.set(
+      bucket,
+      (resultado.altasPorBucket.get(bucket) ?? 0) + 1,
+    );
   }
+  return resultado;
+}
 
-  listaNuevos.sort(
-    (a, b) =>
-      new Date(b.primera_compra).getTime() -
-      new Date(a.primera_compra).getTime(),
-  );
-  listaRecurrentes.sort((a, b) => b.total - a.total);
-
-  const ventasActivos = [...actividad.values()].reduce(
-    (suma, v) => suma + v.total,
-    0,
-  );
-  const topClientes = telefonos
+function mejoresClientes(
+  telefonos: string[],
+  primeraCompra: Map<string, PrimeraCompra>,
+  actividad: Map<string, Actividad>,
+): InformeDto['clientes']['top_clientes'] {
+  return telefonos
     .map((telefono) => {
       const stats = actividad.get(telefono) ?? SIN_ACTIVIDAD;
       return {
@@ -146,10 +148,45 @@ export function armarInformeClientes(
     })
     .sort((a, b) => b.total - a.total)
     .slice(0, MAX_TOP_CLIENTES);
+}
 
+/**
+ * "Nuevo" vs "recurrente" se define contra la fecha real de primera compra
+ * de cada teléfono: es nuevo quien compró por primera vez dentro del rango.
+ */
+export function armarInformeClientes(
+  entrada: EntradaInformeClientes,
+): InformeClientesDto {
+  const { filas, desde, hasta, granularidad } = entrada;
+  const telefonos = [
+    ...new Set(filas.map((p) => p.telefono).filter((t): t is string => !!t)),
+  ];
+  const primeraCompra = primeraCompraPorTelefono(
+    entrada.clientesVivos,
+    entrada.clientesHistoricos,
+  );
+  const actividad = actividadPorTelefono(filas);
+  const { altasPorBucket, nuevos, recurrentes } = clasificarClientes(
+    telefonos,
+    primeraCompra,
+    actividad,
+    entrada,
+  );
+
+  nuevos.sort(
+    (a, b) =>
+      new Date(b.primera_compra).getTime() -
+      new Date(a.primera_compra).getTime(),
+  );
+  recurrentes.sort((a, b) => b.total - a.total);
+
+  const ventasActivos = [...actividad.values()].reduce(
+    (suma, v) => suma + v.total,
+    0,
+  );
   return {
-    nuevos: listaNuevos.length,
-    recurrentes: listaRecurrentes.length,
+    nuevos: nuevos.length,
+    recurrentes: recurrentes.length,
     ticket_promedio:
       telefonos.length > 0 ? ventasActivos / telefonos.length : 0,
     serie_diaria_nuevos: serializarSerieClientes(
@@ -158,8 +195,8 @@ export function armarInformeClientes(
       hasta,
       granularidad,
     ),
-    top_clientes: topClientes,
-    lista_nuevos: listaNuevos.slice(0, MAX_LISTA_CLIENTES),
-    lista_recurrentes: listaRecurrentes.slice(0, MAX_LISTA_CLIENTES),
+    top_clientes: mejoresClientes(telefonos, primeraCompra, actividad),
+    lista_nuevos: nuevos.slice(0, MAX_LISTA_CLIENTES),
+    lista_recurrentes: recurrentes.slice(0, MAX_LISTA_CLIENTES),
   };
 }

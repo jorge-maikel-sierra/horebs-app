@@ -3,6 +3,7 @@ import type { InformeCategoriaDto, InformeProductoDto } from './informes.tipos';
 
 const MAX_TOP_PRODUCTOS = 8;
 const SIN_CATEGORIA = 'Personalizado';
+const SIN_PRODUCTO = 'Personalizado';
 
 interface ProductoAnidado {
   nombre?: string;
@@ -38,6 +39,31 @@ const ordenadoPorTotal = (mapa: Totales): InformeProductoDto[] =>
     .map(([nombre, v]) => ({ nombre, ...v }))
     .sort((a, b) => b.total - a.total);
 
+interface NombresItem {
+  producto: string;
+  categoria: string;
+}
+
+function categoriaDe(producto: ProductoAnidado | null | undefined): string {
+  return producto?.categorias?.nombre ?? SIN_CATEGORIA;
+}
+
+function nombresDeVivo(item: ItemVivoFila): NombresItem {
+  const producto = item.variantes_producto?.productos;
+  return {
+    producto: producto?.nombre ?? item.nombre_personalizado ?? SIN_PRODUCTO,
+    categoria: categoriaDe(producto),
+  };
+}
+
+function nombresDeHistorico(item: ItemHistoricoFila): NombresItem {
+  const producto = item.variantes_producto?.productos;
+  return {
+    producto: producto?.nombre ?? item.producto_nombre,
+    categoria: categoriaDe(producto),
+  };
+}
+
 /**
  * Totales por producto y por categoría de los ítems vendidos en vivo y de
  * los migrados. Un ítem sin producto de catálogo cae en "Personalizado".
@@ -62,22 +88,12 @@ export function agregarItems(
   };
 
   for (const item of vivos) {
-    const producto = item.variantes_producto?.productos;
-    sumar(
-      producto?.nombre ?? item.nombre_personalizado ?? 'Personalizado',
-      producto?.categorias?.nombre ?? SIN_CATEGORIA,
-      item.cantidad,
-      item.subtotal,
-    );
+    const { producto, categoria } = nombresDeVivo(item);
+    sumar(producto, categoria, item.cantidad, item.subtotal);
   }
   for (const item of historicos) {
-    const producto = item.variantes_producto?.productos;
-    sumar(
-      producto?.nombre ?? item.producto_nombre,
-      producto?.categorias?.nombre ?? SIN_CATEGORIA,
-      item.cantidad,
-      item.subtotal,
-    );
+    const { producto, categoria } = nombresDeHistorico(item);
+    sumar(producto, categoria, item.cantidad, item.subtotal);
   }
 
   return {
