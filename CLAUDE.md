@@ -91,10 +91,10 @@ pregunta; no se supone un valor razonable.
   desde `admin/clientes` (tabla `configuracion`, servicio `PuntosService`).
   Aplica tanto en el checkout web como en el POS. No se migró histórico de
   WooCommerce — todos los clientes arrancaron en 0 puntos.
-- Rutas retiradas por decisión del dueño: `GET /admin/clientes/directorio`
-  (reemplazada por `GET /admin/clientes?vista=directorio`) se quitó el
-  2026-11-02, por orden expresa de Jorge Sierra en el chat de trabajo, sin
-  esperar más ventana de gracia; el web ya usaba la ruta nueva.
+- `GET /admin/clientes/directorio` sigue viva y `@Deprecada`: el 2026-11-02 se
+  retiró por orden del dueño y hubo que restaurarla el mismo día, porque el web
+  desplegado (Vercel) todavía la llamaba. Se vuelve a quitar solo cuando el
+  bundle de producción de `horebs-web` ya use `/admin/clientes?vista=directorio`.
 - El bot de WhatsApp/Messenger/Instagram nunca inventa precios ni suma
   totales por su cuenta — siempre pasa por una tool que consulta Supabase.
 

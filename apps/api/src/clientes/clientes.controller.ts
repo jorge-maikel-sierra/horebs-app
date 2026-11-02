@@ -29,6 +29,7 @@ import type {
   PedidoClienteDto,
 } from './clientes.tipos';
 import type { UsuarioAutenticado } from '../auth/roles.guard';
+import { Deprecada } from '../common/deprecacion.interceptor';
 import { UuidPipe } from '../common/pipes/uuid.pipe';
 import { ValidarBodyPipe } from '../common/pipes/validar-body.pipe';
 import { ESQUEMA_AJUSTE_PUNTOS, ESQUEMA_EDITAR_CLIENTE } from './esquemas';
@@ -51,6 +52,16 @@ export class ClientesController {
     return query.q?.trim()
       ? this.clientes.buscar(query.q)
       : this.clientes.listar();
+  }
+
+  // Declarada antes de ':id' para que "directorio" no se tome como un id.
+  @Get('directorio')
+  @Deprecada('/admin/clientes?vista=directorio')
+  @Roles('admin', 'empleado')
+  consultarDirectorio(
+    @Query() query: ConsultaDirectorio,
+  ): Promise<DirectorioClientesDto> {
+    return this.directorio.consultar(query);
   }
 
   @Get(':id')
