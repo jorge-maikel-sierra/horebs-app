@@ -1,5 +1,5 @@
 import { validarObjeto } from '../common/validacion';
-import { ESQUEMA_CONFIGURACION_CORREOS } from './esquemas';
+import { ESQUEMA_CONFIGURACION_CORREOS, ESQUEMA_VENTA } from './esquemas';
 
 describe('ESQUEMA_CONFIGURACION_CORREOS', () => {
   const campos = (cuerpo: object) =>
@@ -29,5 +29,53 @@ describe('ESQUEMA_CONFIGURACION_CORREOS', () => {
     expect(campos({ correo_cliente: 'x@correo.co' })).toEqual([
       'correo_cliente',
     ]);
+  });
+});
+
+describe('ESQUEMA_VENTA', () => {
+  const campos = (cuerpo: object) =>
+    validarObjeto(ESQUEMA_VENTA, cuerpo).map((e) => e.campo);
+  const VENTA = {
+    cliente: { nombre: 'Ana' },
+    modalidad: 'domicilio',
+    metodo_pago: 'efectivo',
+    items: [],
+  };
+
+  it('acepta el body del punto de venta, con opcionales', () => {
+    expect(campos(VENTA)).toEqual([]);
+    expect(
+      campos({
+        ...VENTA,
+        direccion_entrega: 'Carrera 7',
+        costo_domicilio: 5000,
+        notas: 'sin cebolla',
+        usar_puntos: true,
+      }),
+    ).toEqual([]);
+  });
+
+  it('exige cliente, modalidad, método de pago e items', () => {
+    expect(campos({})).toEqual([
+      'cliente',
+      'modalidad',
+      'metodo_pago',
+      'items',
+    ]);
+  });
+
+  it('una modalidad inventada, un costo negativo o items que no son lista es error', () => {
+    expect(
+      campos({
+        ...VENTA,
+        modalidad: 'volando',
+        costo_domicilio: -1,
+        items: 'x',
+      }),
+    ).toEqual(['modalidad', 'costo_domicilio', 'items']);
+  });
+
+  it('un campo desconocido es error', () => {
+    expect(campos({ ...VENTA, descuento: 50 })).toEqual(['descuento']);
   });
 });

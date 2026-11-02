@@ -4,7 +4,9 @@ import type { UsuarioAutenticado } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { UsuarioActual } from '../auth/usuario.decorator';
 import { Ubicacion } from '../common/ubicacion.interceptor';
-import type { CrearVentaInput } from './pedidos-admin.tipos';
+import { ValidarBodyPipe } from '../common/pipes/validar-body.pipe';
+import { ESQUEMA_VENTA } from './esquemas';
+import type { CrearVentaInput, VentaDto } from './pedidos-admin.tipos';
 import { VentasService } from './ventas.service';
 
 @Controller('admin/ventas')
@@ -16,9 +18,10 @@ export class VentasController {
   @Ubicacion('/pedidos/:id')
   @Roles('admin', 'empleado')
   crear(
-    @Body() body: CrearVentaInput,
+    // `cliente` e `items` son anidados: el service los valida campo por campo.
+    @Body(new ValidarBodyPipe(ESQUEMA_VENTA)) body: CrearVentaInput,
     @UsuarioActual() usuario: UsuarioAutenticado,
-  ) {
+  ): Promise<VentaDto> {
     return this.ventas.crearVenta(body, usuario.id);
   }
 }

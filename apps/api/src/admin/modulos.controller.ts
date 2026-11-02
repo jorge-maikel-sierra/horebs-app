@@ -4,6 +4,7 @@ import { Roles } from '../auth/roles.decorator';
 import { ValidarBodyPipe } from '../common/pipes/validar-body.pipe';
 import { ESQUEMA_MODULO } from './esquemas';
 import { ModulosService } from './modulos.service';
+import type { ModuloEstadoDto } from './modulos.service';
 
 @Controller('admin/modulos')
 @UseGuards(RolesGuard)
@@ -14,7 +15,7 @@ export class ModulosController {
   // solo el admin puede encender o apagar un módulo.
   @Get()
   @Roles('admin', 'empleado')
-  listar() {
+  listar(): Promise<ModuloEstadoDto[]> {
     return this.modulos.listar();
   }
 
@@ -24,7 +25,7 @@ export class ModulosController {
   cambiar(
     @Param('id') id: string,
     @Body(new ValidarBodyPipe(ESQUEMA_MODULO)) body: { activo?: unknown },
-  ) {
+  ): Promise<ModuloEstadoDto> {
     return this.modulos.cambiar(id, body?.activo);
   }
 }

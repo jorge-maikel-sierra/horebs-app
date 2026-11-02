@@ -5,10 +5,23 @@ import {
   enumerado,
   lista,
   numero,
+  objeto,
   opcional,
   texto,
 } from '../common/validacion';
-import { ESTADOS_PEDIDO } from './pedidos-admin.tipos';
+import { ESTADOS_PEDIDO, MODALIDADES_VENTA } from './pedidos-admin.tipos';
+
+/** `cliente` e `items` traen objetos anidados: el service los valida campo por campo. */
+export const ESQUEMA_VENTA: Esquema = {
+  cliente: objeto(),
+  modalidad: enumerado(MODALIDADES_VENTA),
+  direccion_entrega: opcional(texto({ max: 300 })),
+  costo_domicilio: opcional(numero({ min: 0 })),
+  metodo_pago: enumerado(METODOS_PAGO),
+  notas: opcional(texto({ max: 1000 })),
+  items: lista(),
+  usar_puntos: opcional(booleano()),
+};
 
 export const ESQUEMA_MODULO: Esquema = {
   activo: booleano(),

@@ -9,6 +9,7 @@ import {
   uuid,
   validarObjeto,
   lista,
+  objeto,
 } from './validacion';
 
 describe('esFechaValida', () => {
@@ -79,6 +80,20 @@ describe('validarObjeto', () => {
     expect(validarObjeto(esquema, valor)).toEqual([
       { mensaje: 'El cuerpo debe ser un objeto JSON.' },
     ]);
+  });
+});
+
+describe('objeto', () => {
+  it('acepta un objeto plano', () => {
+    expect(objeto()({})).toBeNull();
+    expect(objeto()({ nombre: 'Ana' })).toBeNull();
+  });
+
+  it('rechaza listas, nulos y valores simples', () => {
+    expect(objeto()([])).toBe('debe ser un objeto');
+    expect(objeto()(null)).toBe('debe ser un objeto');
+    expect(objeto()('a')).toBe('debe ser un objeto');
+    expect(objeto()(undefined)).toBe('debe ser un objeto');
   });
 });
 
