@@ -1,4 +1,5 @@
 import type { ItemCarritoResuelto } from '../catalog/catalog.service';
+import { MAX_DIRECCION } from '../pedidos/validar-pedido';
 import type {
   CheckoutWhatsapp,
   ModalidadPedido,
@@ -142,10 +143,12 @@ export function direccionDeUbicacion(
   return texto ? `${texto} — ${mapa}` : `📍 ${mapa}`;
 }
 
-/** Misma cota que el checkout web (300 máx.); menos de 5 no es una dirección. */
+const MIN_DIRECCION = 5;
+
+/** Misma cota que el checkout web (`MAX_DIRECCION`); menos de 5 no es una dirección. */
 export function direccionEscritaValida(texto: string): boolean {
   const largo = texto.trim().length;
-  return largo >= 5 && largo <= 200;
+  return largo >= MIN_DIRECCION && largo <= MAX_DIRECCION;
 }
 
 /**
@@ -164,7 +167,7 @@ export function separarNombre(texto: string): {
     .trim();
   const palabras = limpio.split(' ').filter(Boolean);
   if (palabras.length === 0) return { nombre: null, apellido: null };
-  const capital = (p: string) =>
+  const capital = (p: string): string =>
     p.charAt(0).toUpperCase() + p.slice(1).toLowerCase();
   return {
     nombre: capital(palabras[0]),

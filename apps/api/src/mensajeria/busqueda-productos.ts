@@ -74,7 +74,7 @@ export function buscarProductoUnico(
   if (buscadas.length === 0) {
     return { error: `No se pudo identificar el producto "${nombreBuscado}".` };
   }
-  const coincidencias = (texto: string) =>
+  const coincidencias = (texto: string): number =>
     palabrasSignificativas(texto).filter((w) => buscadas.includes(w)).length;
 
   const porProducto = mejorUnico(

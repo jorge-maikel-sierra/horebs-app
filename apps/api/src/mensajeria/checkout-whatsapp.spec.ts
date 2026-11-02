@@ -136,6 +136,11 @@ describe('ubicación y dirección', () => {
     expect(direccionEscritaValida('si')).toBe(false);
     expect(direccionEscritaValida('Carrera 7H1 # 33 - 66')).toBe(true);
   });
+
+  it('acepta hasta 300 caracteres, igual que el checkout web', () => {
+    expect(direccionEscritaValida('a'.repeat(300))).toBe(true);
+    expect(direccionEscritaValida('a'.repeat(301))).toBe(false);
+  });
 });
 
 describe('cancelar y saludo', () => {

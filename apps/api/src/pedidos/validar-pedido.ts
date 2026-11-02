@@ -8,7 +8,7 @@ const MODALIDADES: Record<CanalPedido, string[]> = {
 };
 
 const MAX_NOMBRE = 100;
-const MAX_DIRECCION = 300;
+export const MAX_DIRECCION = 300;
 const MAX_NOTAS = 500;
 const TELEFONO = /^\+?[0-9 ()-]{7,20}$/;
 const CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
