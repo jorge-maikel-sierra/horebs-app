@@ -230,20 +230,20 @@ Aplican a `src/**` sin specs:
 | `no-explicit-any` | sin `any` |
 | `no-magic-numbers` | sin números sueltos (se ignoran 0, 1, -1 y 100) |
 | `explicit-function-return-type` | tipo de retorno declarado |
-| `no-floating-promises` | `error` |
+| `no-floating-promises` | sin promesas sin esperar |
+| `no-unsafe-argument` | sin `any` pasado como argumento |
+| `security/detect-object-injection` | sin acceso por clave externa |
 
-Cada regla pasa a `error` cuando su conteo llega a cero. Ya lo son
-`no-floating-promises`, `max-lines`, `max-depth`, `no-explicit-any`,
-`explicit-function-return-type` y `no-unsafe-argument`. El resto va como
-`warn` porque todavía hay deuda medida: **el conteo solo puede bajar** y no se
-acepta código nuevo que agregue advertencias. Conteo al 2026-11-02 (`src` y
-`test`): `no-magic-numbers` 75, `complexity` 9, `max-lines-per-function` 6,
-`max-params` 5, `security/detect-object-injection` 3.
+Todas son `error` desde el 2026-11-02: el lint de `src` y `test` está en cero
+y código nuevo que rompa una regla no pasa. Si una función no cabe en los
+límites, se parte: lo puro a su archivo (ver sección 5), las dependencias de
+un service a otros services (más de 4 parámetros en el constructor es una
+señal de que hace demasiado) y los números a constantes con nombre
+(`common/tiempo.ts` para unidades de tiempo).
 
-`npx eslint "{src,test}/**/*.ts"` (el `npm run lint` lleva `--fix`, no usarlo
-para medir) da 0 errores. Las filas de Supabase se tipan con `.returns<T[]>()`,
-`.maybeSingle<T>()` y `.single<T>()`, con las interfaces en `*.tipos.ts`. La regla práctica: **los archivos
-que tocas no pueden tener más errores ni advertencias que antes**.
+`npx eslint "{src,test}/**/*.ts"` mide (el `npm run lint` lleva `--fix`, no
+usarlo para medir). Las filas de Supabase se tipan con `.returns<T[]>()`,
+`.maybeSingle<T>()` y `.single<T>()`, con las interfaces en `*.tipos.ts`.
 
 ### Reglas de código backend
 

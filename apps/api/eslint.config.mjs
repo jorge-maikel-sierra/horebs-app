@@ -28,6 +28,8 @@ export default tseslint.config(
   },
   {
     rules: {
+      // Acceso a un objeto con una clave de afuera: en cero, por eso error.
+      'security/detect-object-injection': 'error',
       // Una promesa sin esperar es un error que nadie ve: en cero, por eso error.
       '@typescript-eslint/no-floating-promises': 'error',
       '@typescript-eslint/no-unsafe-argument': 'error',
@@ -36,25 +38,22 @@ export default tseslint.config(
   },
   {
     // Clean code estricto en el código de producción (los specs quedan
-    // fuera: sus describe son largos por naturaleza). Van como `warn`
-    // porque hay deuda medida (ver CLAUDE.md, "Convenciones de nomenclatura y estilo"): el
-    // objetivo es que el conteo solo baje, y cada regla pasa a `error` cuando
-    // llegue a cero (`no-explicit-any`, `max-lines`, `max-depth` y
-    // `explicit-function-return-type` ya lo están). Conteo al 2026-11-02 en
-    // CLAUDE.md.
+    // fuera: sus describe son largos por naturaleza). Todas son `error`
+    // desde el 2026-11-02, cuando el conteo llegó a cero: código nuevo que
+    // las rompa no pasa el lint (ver CLAUDE.md, "Reglas de ESLint").
     files: ['src/**/*.ts'],
     ignores: ['src/**/*.spec.ts'],
     rules: {
       '@typescript-eslint/no-explicit-any': 'error',
       'max-lines': ['error', { max: 400, skipBlankLines: true, skipComments: true }],
-      'max-lines-per-function': ['warn', { max: 50, skipBlankLines: true, skipComments: true }],
-      complexity: ['warn', 10],
-      'max-params': ['warn', 4],
+      'max-lines-per-function': ['error', { max: 50, skipBlankLines: true, skipComments: true }],
+      complexity: ['error', 10],
+      'max-params': ['error', 4],
       'max-depth': ['error', 3],
       // Un número suelto en la lógica es una regla de negocio escondida:
       // va a una constante con nombre (0, 1, -1 y 100 no cuentan).
       'no-magic-numbers': [
-        'warn',
+        'error',
         {
           ignore: [0, 1, -1, 100],
           ignoreArrayIndexes: true,
