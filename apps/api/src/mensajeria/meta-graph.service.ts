@@ -11,7 +11,6 @@ import {
   interactivoCatalogo,
   interactivoLista,
   interactivoListaProductos,
-  interactivoPedirUbicacion,
   interactivoTarjetaProducto,
   normalizarNegritaWhatsapp,
   recortarListaProductos,
@@ -163,14 +162,6 @@ export class MetaGraphService {
       datos: Buffer.from(await archivo.arrayBuffer()),
       mime: info.mime_type ?? 'application/octet-stream',
     };
-  }
-
-  /** Botón nativo "Enviar ubicación" — la respuesta llega como mensaje `location`. */
-  async pedirUbicacion(destinatarioId: string, cuerpo: string): Promise<void> {
-    await this.enviarInteractivo(
-      destinatarioId,
-      interactivoPedirUbicacion(cuerpo),
-    );
   }
 
   async enviarMensajeSesion(

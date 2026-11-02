@@ -126,15 +126,6 @@ export function interactivoLista(datos: {
   };
 }
 
-/** Botón nativo "Enviar ubicación"; la respuesta llega como `location`. */
-export function interactivoPedirUbicacion(cuerpo: string): Interactivo {
-  return {
-    type: 'location_request_message',
-    body: cuerpoDe(cuerpo),
-    action: { name: 'send_location' },
-  };
-}
-
 /** Catálogo nativo completo del número del bot. */
 export function interactivoCatalogo(miniaturaRetailerId?: string): Interactivo {
   return {

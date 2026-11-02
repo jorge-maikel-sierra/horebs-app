@@ -8,7 +8,6 @@ import { CheckoutPreguntasService } from './checkout-preguntas.service';
 import {
   BOTON,
   BOTONES_MODALIDAD,
-  direccionDeUbicacion,
   direccionEscritaValida,
   esBotonCheckout,
   esCancelar,
@@ -30,6 +29,8 @@ import type {
 import { pesos } from './resumen-pedido';
 
 const URL_CATALOGO = 'https://pizzeriahorebs.shop/catalogo';
+export const TEXTO_PIDE_ESCRITA =
+  'Para que el domiciliario llegue exacto, escribime la dirección con barrio y una referencia. La ubicación del teléfono suele quedar a unas cuadras 📍';
 
 /**
  * Checkout del bot por botones: modalidad → dirección → nombre → hora de
@@ -186,7 +187,12 @@ export class CheckoutWhatsappService {
     entrada: EntradaCheckout,
   ): Promise<boolean> {
     if (entrada.tipo === 'boton' && entrada.id === BOTON.otraDireccion) {
-      await this.preguntas.ubicacion(ctx, checkout);
+      await this.preguntas.pedirDireccion(ctx, checkout);
+      return true;
+    }
+    if (entrada.tipo === 'ubicacion') {
+      // El pin no sirve para entregar (queda a cuadras de la casa).
+      await this.envios.texto(ctx, TEXTO_PIDE_ESCRITA);
       return true;
     }
     if (!this.completarDireccion(checkout, entrada)) return false;
@@ -205,8 +211,6 @@ export class CheckoutWhatsappService {
       checkout.direccionSugerida
     ) {
       checkout.direccion = checkout.direccionSugerida;
-    } else if (entrada.tipo === 'ubicacion') {
-      checkout.direccion = direccionDeUbicacion(entrada);
     } else if (
       entrada.tipo === 'texto' &&
       direccionEscritaValida(entrada.texto)

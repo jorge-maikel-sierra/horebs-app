@@ -27,7 +27,6 @@ function crearServicio() {
     enviarMensajeSesion: jest.fn().mockResolvedValue(undefined),
     enviarBotones: jest.fn().mockResolvedValue(undefined),
     enviarLista: jest.fn().mockResolvedValue(undefined),
-    pedirUbicacion: jest.fn().mockResolvedValue(undefined),
     enviarCatalogo: jest.fn().mockResolvedValue(undefined),
   };
   const servicio = new CheckoutEnviosService(
@@ -86,22 +85,6 @@ describe('CheckoutEnviosService', () => {
       'conv-1',
       'saliente_bot',
       'Elige la hora\n[Domicilio · Retirar]',
-    );
-  });
-
-  it('pedirUbicacion registra el cuerpo tal cual', async () => {
-    const { servicio, metaGraph, conversaciones } = crearServicio();
-
-    await servicio.pedirUbicacion(CTX, 'Compárteme tu ubicación');
-
-    expect(metaGraph.pedirUbicacion).toHaveBeenCalledWith(
-      '573157861208',
-      'Compárteme tu ubicación',
-    );
-    expect(conversaciones.registrarMensaje).toHaveBeenCalledWith(
-      'conv-1',
-      'saliente_bot',
-      'Compárteme tu ubicación',
     );
   });
 

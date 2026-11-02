@@ -56,11 +56,6 @@ export class CheckoutEnviosService {
     await this.registrar(ctx, conOpciones(cuerpo, filas));
   }
 
-  async pedirUbicacion(ctx: ContextoCheckout, cuerpo: string): Promise<void> {
-    await this.metaGraph.pedirUbicacion(ctx.identificadorExterno, cuerpo);
-    await this.registrar(ctx, cuerpo);
-  }
-
   async catalogo(ctx: ContextoCheckout, urlFallback: string): Promise<void> {
     await this.metaGraph.enviarCatalogo(
       'whatsapp',

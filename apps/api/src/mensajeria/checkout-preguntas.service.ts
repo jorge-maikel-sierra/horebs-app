@@ -19,9 +19,12 @@ import {
 } from './conversaciones.service';
 import { armarResumenPedido } from './resumen-pedido';
 
+export const TEXTO_PEDIR_DIRECCION =
+  '¿A dónde te lo llevamos? Escribime la dirección completa: calle o carrera, barrio y una referencia (por ejemplo, "frente a la tienda X").';
+
 /**
- * Las preguntas del checkout con botones: hora de entrega, dirección (o
- * ubicación) y resumen con los botones de pago. Cada una deja guardado el
+ * Las preguntas del checkout con botones: hora de entrega, dirección escrita
+ * y resumen con los botones de pago. Cada una deja guardado el
  * paso en que quedó el cliente.
  */
 @Injectable()
@@ -60,7 +63,7 @@ export class CheckoutPreguntasService {
     );
   }
 
-  /** Ofrece la dirección del último pedido; si no hay, pide la ubicación. */
+  /** Ofrece la dirección del último pedido; si no hay, pide que la escriba. */
   async direccion(
     ctx: ContextoCheckout,
     checkout: CheckoutWhatsapp,
@@ -72,7 +75,7 @@ export class CheckoutPreguntasService {
     const sugerida =
       (ultimo?.direccionEntrega ?? cliente?.direccion)?.trim() || null;
     if (!sugerida) {
-      await this.ubicacion(ctx, checkout);
+      await this.pedirDireccion(ctx, checkout);
       return;
     }
     checkout.paso = 'direccion';
@@ -84,16 +87,17 @@ export class CheckoutPreguntasService {
     ]);
   }
 
-  async ubicacion(
+  /**
+   * Solo dirección escrita: el pin de WhatsApp es el GPS del teléfono y puede
+   * quedar a varias cuadras de la casa (decisión del dueño, 2 nov 2026).
+   */
+  async pedirDireccion(
     ctx: ContextoCheckout,
     checkout: CheckoutWhatsapp,
   ): Promise<void> {
     checkout.paso = 'direccion';
     await this.envios.guardar(ctx, checkout);
-    await this.envios.pedirUbicacion(
-      ctx,
-      '¿A dónde te lo llevamos? Tocá *Enviar ubicación* o escribime la dirección con barrio y alguna referencia.',
-    );
+    await this.envios.texto(ctx, TEXTO_PEDIR_DIRECCION);
   }
 
   /**

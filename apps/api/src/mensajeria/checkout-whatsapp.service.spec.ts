@@ -2,7 +2,10 @@ import type { CheckoutEnviosService } from './checkout-envios.service';
 import type { CheckoutHistorialService } from './checkout-historial.service';
 import type { CheckoutPedidoService } from './checkout-pedido.service';
 import type { CheckoutPreguntasService } from './checkout-preguntas.service';
-import { CheckoutWhatsappService } from './checkout-whatsapp.service';
+import {
+  CheckoutWhatsappService,
+  TEXTO_PIDE_ESCRITA,
+} from './checkout-whatsapp.service';
 import {
   BOTON,
   MENSAJE_CERRADO,
@@ -45,7 +48,7 @@ function crearServicio(checkout: CheckoutWhatsapp | null) {
   const preguntas = {
     hora: jest.fn().mockResolvedValue(undefined),
     direccion: jest.fn().mockResolvedValue(undefined),
-    ubicacion: jest.fn().mockResolvedValue(undefined),
+    pedirDireccion: jest.fn().mockResolvedValue(undefined),
     pago: jest.fn().mockResolvedValue('resumen'),
   };
   const servicio = new CheckoutWhatsappService(
@@ -181,14 +184,33 @@ describe('CheckoutWhatsappService', () => {
       expect(preguntas.direccion).not.toHaveBeenCalled();
     });
 
-    it('"Otra dirección" pide la ubicación', async () => {
+    it('"Otra dirección" pide la dirección escrita', async () => {
       const checkout: CheckoutWhatsapp = {
         paso: 'direccion',
         modalidad: 'domicilio',
       };
       const { servicio, preguntas } = crearServicio(checkout);
       await servicio.manejar(CTX, boton(BOTON.otraDireccion));
-      expect(preguntas.ubicacion).toHaveBeenCalledWith(CTX, checkout);
+      expect(preguntas.pedirDireccion).toHaveBeenCalledWith(CTX, checkout);
+    });
+
+    it('un pin de ubicación no se acepta: se queda en la dirección y pide escribirla', async () => {
+      const checkout: CheckoutWhatsapp = {
+        paso: 'direccion',
+        modalidad: 'domicilio',
+      };
+      const { servicio, envios, preguntas } = crearServicio(checkout);
+      await expect(
+        servicio.manejar(CTX, {
+          tipo: 'ubicacion',
+          latitud: 11.5298282,
+          longitud: -72.904363,
+        }),
+      ).resolves.toBe(true);
+      expect(checkout.direccion).toBeUndefined();
+      expect(checkout.paso).toBe('direccion');
+      expect(envios.texto).toHaveBeenCalledWith(CTX, TEXTO_PIDE_ESCRITA);
+      expect(preguntas.hora).not.toHaveBeenCalled();
     });
 
     it('una dirección escrita pasa al siguiente paso (el nombre)', async () => {
