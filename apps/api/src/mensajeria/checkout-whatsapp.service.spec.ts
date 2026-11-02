@@ -1,6 +1,5 @@
-import type { CatalogService } from '../catalog/catalog.service';
-import type { PedidosConsultasService } from '../pedidos/pedidos-consultas.service';
 import type { CheckoutEnviosService } from './checkout-envios.service';
+import type { CheckoutHistorialService } from './checkout-historial.service';
 import type { CheckoutPedidoService } from './checkout-pedido.service';
 import type { CheckoutPreguntasService } from './checkout-preguntas.service';
 import { CheckoutWhatsappService } from './checkout-whatsapp.service';
@@ -10,10 +9,7 @@ import {
   type ContextoCheckout,
   type EntradaCheckout,
 } from './checkout-whatsapp';
-import type {
-  CheckoutWhatsapp,
-  ConversacionesService,
-} from './conversaciones.service';
+import type { CheckoutWhatsapp } from './conversaciones.service';
 
 const CTX: ContextoCheckout = {
   identificadorExterno: '573157861208',
@@ -30,20 +26,15 @@ const boton = (id: string): EntradaCheckout => ({ tipo: 'boton', id });
 const texto = (t: string): EntradaCheckout => ({ tipo: 'texto', texto: t });
 
 function crearServicio(checkout: CheckoutWhatsapp | null) {
-  const conversaciones = {
-    obtenerCheckout: jest.fn().mockResolvedValue(checkout),
-    guardarCarrito: jest.fn().mockResolvedValue(undefined),
-  };
-  const catalog = {
-    resolverCarrito: jest
+  const historial = {
+    cliente: jest.fn().mockResolvedValue(null),
+    ultimoPedidoRepetible: jest
       .fn()
       .mockResolvedValue({ disponibles: [], noDisponibles: 0 }),
   };
-  const consultas = {
-    clientePorTelefono: jest.fn().mockResolvedValue(null),
-    ultimoPedidoPorTelefono: jest.fn().mockResolvedValue(null),
-  };
   const envios = {
+    obtener: jest.fn().mockResolvedValue(checkout),
+    guardarCarrito: jest.fn().mockResolvedValue(undefined),
     texto: jest.fn().mockResolvedValue(undefined),
     botones: jest.fn().mockResolvedValue(undefined),
     guardar: jest.fn().mockResolvedValue(undefined),
@@ -58,18 +49,14 @@ function crearServicio(checkout: CheckoutWhatsapp | null) {
     pago: jest.fn().mockResolvedValue('resumen'),
   };
   const servicio = new CheckoutWhatsappService(
-    conversaciones as unknown as ConversacionesService,
-    catalog as unknown as CatalogService,
-    consultas as unknown as PedidosConsultasService,
+    historial as unknown as CheckoutHistorialService,
     envios as unknown as CheckoutEnviosService,
     pedido as unknown as CheckoutPedidoService,
     preguntas as unknown as CheckoutPreguntasService,
   );
   return {
     servicio,
-    conversaciones,
-    catalog,
-    consultas,
+    historial,
     envios,
     pedido,
     preguntas,
@@ -130,11 +117,11 @@ describe('CheckoutWhatsappService', () => {
 
     it('fuera del horario del bot cierra el checkout y avisa', async () => {
       jest.setSystemTime(CERRADO);
-      const { servicio, envios, conversaciones } = crearServicio(null);
+      const { servicio, envios } = crearServicio(null);
       await servicio.iniciar(CTX, [item], 0, null);
       expect(envios.limpiar).toHaveBeenCalledWith(CTX);
       expect(envios.texto).toHaveBeenCalledWith(CTX, MENSAJE_CERRADO);
-      expect(conversaciones.guardarCarrito).not.toHaveBeenCalled();
+      expect(envios.guardarCarrito).not.toHaveBeenCalled();
     });
 
     it('sin productos disponibles no arranca', async () => {
@@ -148,13 +135,11 @@ describe('CheckoutWhatsappService', () => {
     });
 
     it('guarda el carrito con ids exactos, el paso y la nota, y pregunta la modalidad', async () => {
-      const { servicio, envios, conversaciones } = crearServicio(null);
+      const { servicio, envios } = crearServicio(null);
       await servicio.iniciar(CTX, [item], 1, 'sin cebolla');
-      expect(conversaciones.guardarCarrito).toHaveBeenCalledWith(
-        'whatsapp',
-        '573157861208',
-        [{ varianteId: 'v-1', cantidad: 1 }],
-      );
+      expect(envios.guardarCarrito).toHaveBeenCalledWith(CTX, [
+        { varianteId: 'v-1', cantidad: 1 },
+      ]);
       expect(envios.guardar).toHaveBeenCalledWith(CTX, {
         paso: 'modalidad',
         nota: 'sin cebolla',
@@ -304,9 +289,9 @@ describe('CheckoutWhatsappService', () => {
     });
 
     it('sin hora de entrega primero pregunta la hora', async () => {
-      const { servicio, preguntas, conversaciones } = crearServicio(null);
+      const { servicio, preguntas, envios } = crearServicio(null);
       const aviso = await servicio.ofrecerPagoDesdeCalculo(datos());
-      expect(conversaciones.guardarCarrito).toHaveBeenCalled();
+      expect(envios.guardarCarrito).toHaveBeenCalled();
       expect(preguntas.hora).toHaveBeenCalled();
       expect(preguntas.pago).not.toHaveBeenCalled();
       expect(aviso).toContain('lista de horarios');
@@ -324,9 +309,9 @@ describe('CheckoutWhatsappService', () => {
   describe('ofrecerLoMismo', () => {
     it('fuera de horario no ofrece nada', async () => {
       jest.setSystemTime(CERRADO);
-      const { servicio, consultas } = crearServicio(null);
+      const { servicio, historial } = crearServicio(null);
       await expect(servicio.ofrecerLoMismo(CTX)).resolves.toBe(false);
-      expect(consultas.ultimoPedidoPorTelefono).not.toHaveBeenCalled();
+      expect(historial.ultimoPedidoRepetible).not.toHaveBeenCalled();
     });
 
     it('un cliente que nunca compró no tiene "lo mismo"', async () => {
@@ -336,12 +321,9 @@ describe('CheckoutWhatsappService', () => {
     });
 
     it('ofrece repetir el último pedido con el subtotal desde la base', async () => {
-      const { servicio, consultas, catalog, envios } = crearServicio(null);
-      consultas.ultimoPedidoPorTelefono.mockResolvedValue({
-        items: [{ varianteId: 'v-1', cantidad: 2 }],
-      });
-      consultas.clientePorTelefono.mockResolvedValue({ nombre: 'Ana' });
-      catalog.resolverCarrito.mockResolvedValue({
+      const { servicio, historial, envios } = crearServicio(null);
+      historial.cliente.mockResolvedValue({ nombre: 'Ana' });
+      historial.ultimoPedidoRepetible.mockResolvedValue({
         disponibles: [
           {
             varianteId: 'v-1',

@@ -1,11 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import {
-  CatalogService,
-  type ItemCarritoResuelto,
-} from '../catalog/catalog.service';
+import type { ItemCarritoResuelto } from '../catalog/catalog.service';
 import { estadoAtencion, franjaVigente } from '../common/horario';
-import { PedidosConsultasService } from '../pedidos/pedidos-consultas.service';
 import { CheckoutEnviosService } from './checkout-envios.service';
+import { CheckoutHistorialService } from './checkout-historial.service';
 import { CheckoutPedidoService } from './checkout-pedido.service';
 import { CheckoutPreguntasService } from './checkout-preguntas.service';
 import {
@@ -26,10 +23,9 @@ import {
   type EntradaCheckout,
   type MetodoPagoBot,
 } from './checkout-whatsapp';
-import {
-  ConversacionesService,
-  type CheckoutWhatsapp,
-  type ItemCarritoPendiente,
+import type {
+  CheckoutWhatsapp,
+  ItemCarritoPendiente,
 } from './conversaciones.service';
 import { pesos } from './resumen-pedido';
 
@@ -47,9 +43,7 @@ const URL_CATALOGO = 'https://pizzeriahorebs.shop/catalogo';
 @Injectable()
 export class CheckoutWhatsappService {
   constructor(
-    private readonly conversaciones: ConversacionesService,
-    private readonly catalog: CatalogService,
-    private readonly consultas: PedidosConsultasService,
+    private readonly historial: CheckoutHistorialService,
     private readonly envios: CheckoutEnviosService,
     private readonly pedido: CheckoutPedidoService,
     private readonly preguntas: CheckoutPreguntasService,
@@ -75,9 +69,8 @@ export class CheckoutWhatsappService {
       );
       return;
     }
-    await this.conversaciones.guardarCarrito(
-      'whatsapp',
-      ctx.identificadorExterno,
+    await this.envios.guardarCarrito(
+      ctx,
       disponibles.map((i) => ({
         varianteId: i.varianteId,
         cantidad: i.cantidad,
@@ -110,10 +103,7 @@ export class CheckoutWhatsappService {
       return true;
     }
 
-    const checkout = await this.conversaciones.obtenerCheckout(
-      'whatsapp',
-      ctx.identificadorExterno,
-    );
+    const checkout = await this.envios.obtener(ctx);
     if (!checkout) {
       // Un botón viejo (de un pedido ya creado o cancelado).
       if (entrada.tipo === 'boton' && esBotonCheckout(entrada.id)) {
@@ -257,9 +247,7 @@ export class CheckoutWhatsappService {
     checkout: CheckoutWhatsapp,
   ): Promise<void> {
     if (checkout.nombre && checkout.apellido) return;
-    const cliente = await this.consultas.clientePorTelefono(
-      ctx.identificadorExterno,
-    );
+    const cliente = await this.historial.cliente(ctx.identificadorExterno);
     if (cliente?.nombre && cliente.apellido) {
       checkout.nombre = cliente.nombre;
       checkout.apellido = cliente.apellido;
@@ -281,11 +269,7 @@ export class CheckoutWhatsappService {
       conversacionId: datos.conversacionId,
       mensajeId: null,
     };
-    await this.conversaciones.guardarCarrito(
-      'whatsapp',
-      datos.identificadorExterno,
-      datos.items,
-    );
+    await this.envios.guardarCarrito(ctx, datos.items);
     // Falta la hora de entrega: primero la lista de franjas, el resumen
     // sale cuando la elige.
     if (!datos.checkout.entrega) {
@@ -302,15 +286,11 @@ export class CheckoutWhatsappService {
   async ofrecerLoMismo(ctx: ContextoCheckout): Promise<boolean> {
     // Fuera de horario responde Gemini (sabe el horario por obtener_horario).
     if (estadoAtencion(new Date()) === 'cerrado') return false;
-    const ultimo = await this.consultas.ultimoPedidoPorTelefono(
+    const { disponibles } = await this.historial.ultimoPedidoRepetible(
       ctx.identificadorExterno,
     );
-    if (!ultimo) return false;
-    const { disponibles } = await this.catalog.resolverCarrito(ultimo.items);
     if (disponibles.length === 0) return false;
-    const cliente = await this.consultas.clientePorTelefono(
-      ctx.identificadorExterno,
-    );
+    const cliente = await this.historial.cliente(ctx.identificadorExterno);
     const subtotal = disponibles.reduce((s, i) => s + i.precio * i.cantidad, 0);
     await this.envios.botones(
       ctx,
@@ -325,12 +305,8 @@ export class CheckoutWhatsappService {
   }
 
   private async repetirUltimoPedido(ctx: ContextoCheckout): Promise<void> {
-    const ultimo = await this.consultas.ultimoPedidoPorTelefono(
-      ctx.identificadorExterno,
-    );
-    const { disponibles, noDisponibles } = await this.catalog.resolverCarrito(
-      ultimo?.items ?? [],
-    );
+    const { disponibles, noDisponibles } =
+      await this.historial.ultimoPedidoRepetible(ctx.identificadorExterno);
     await this.iniciar(ctx, disponibles, noDisponibles, null);
   }
 
