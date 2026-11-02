@@ -240,13 +240,16 @@ function textoWhatsapp(mensaje: WhatsappMensaje): string | null {
     mensaje.type === 'interactive' &&
     mensaje.interactive?.type === 'button_reply'
   ) {
-    const id = mensaje.interactive.button_reply?.id ?? '';
-    const nombreProducto = id.startsWith('pedir:')
-      ? id.slice('pedir:'.length)
-      : null;
-    return nombreProducto ? `Quiero pedir ${nombreProducto}` : null;
+    return textoBotonPedir(mensaje.interactive.button_reply?.id ?? '');
   }
   return null;
+}
+
+function textoBotonPedir(id: string): string | null {
+  const nombreProducto = id.startsWith('pedir:')
+    ? id.slice('pedir:'.length)
+    : null;
+  return nombreProducto ? `Quiero pedir ${nombreProducto}` : null;
 }
 
 function procedenciaWhatsapp(
@@ -275,16 +278,31 @@ function procedenciaMessenger(
   };
 }
 
+function carritoDeMensaje(
+  mensaje: WhatsappMensaje,
+): CarritoCatalogo | undefined {
+  return mensaje.type === 'order' && mensaje.order
+    ? carritoDesdeOrden(mensaje.order)
+    : undefined;
+}
+
+/** Qué trae el mensaje: un carrito, un toque del checkout, un archivo o texto. */
+function contenidoWhatsapp(mensaje: WhatsappMensaje): {
+  carrito: CarritoCatalogo | undefined;
+  checkout: ReturnType<typeof entradaCheckoutDe>;
+  media: ReturnType<typeof mediaDe>;
+  texto: string | null;
+} {
+  const carrito = carritoDeMensaje(mensaje);
+  if (carrito) return { carrito, checkout: null, media: null, texto: '' };
+  const checkout = entradaCheckoutDe(mensaje);
+  const media = checkout ? null : mediaDe(mensaje);
+  const texto = checkout?.texto ?? media?.texto ?? textoWhatsapp(mensaje);
+  return { carrito, checkout, media, texto };
+}
+
 function eventoWhatsapp(mensaje: WhatsappMensaje): EventoEntrante | null {
-  const carrito =
-    mensaje.type === 'order' && mensaje.order
-      ? carritoDesdeOrden(mensaje.order)
-      : undefined;
-  const checkout = carrito ? null : entradaCheckoutDe(mensaje);
-  const media = carrito || checkout ? null : mediaDe(mensaje);
-  const texto = carrito
-    ? ''
-    : (checkout?.texto ?? media?.texto ?? textoWhatsapp(mensaje));
+  const { carrito, checkout, media, texto } = contenidoWhatsapp(mensaje);
   // Texto, toques de botón, ubicación y carrito del catálogo — audio e
   // imagen quedan para una extensión posterior.
   if (texto === null) return null;
@@ -310,27 +328,41 @@ export function parsearWhatsapp(
   return mensajes.flatMap((mensaje) => eventoWhatsapp(mensaje) ?? []);
 }
 
+/** Solo cuentan los mensajes de texto de una persona: no ecos ni entregas. */
+function textoYRemitente(
+  evento: MessengerEvento,
+): { texto: string; senderId: string } | null {
+  const texto = evento?.message?.text;
+  const senderId = evento?.sender?.id;
+  // Ignora deliveries/reads/postbacks sin texto y ecos de mensajes
+  // que el bot mismo mandó (is_echo).
+  if (!texto || !senderId || evento.message?.is_echo) return null;
+  return { texto, senderId };
+}
+
+function eventoMessenger(
+  evento: MessengerEvento,
+  canal: 'messenger' | 'instagram',
+): EventoEntrante | null {
+  const mensaje = textoYRemitente(evento);
+  if (!mensaje) return null;
+  return {
+    canal,
+    identificadorExterno: mensaje.senderId,
+    telefono: null, // Messenger/Instagram no exponen el teléfono real
+    texto: mensaje.texto,
+    procedenciaAnuncio: procedenciaMessenger(evento),
+    mensajeId: evento.message?.mid ?? null,
+  };
+}
+
 export function parsearMessengerOInstagram(
   payload: MessengerWebhookPayload,
   canal: 'messenger' | 'instagram',
 ): EventoEntrante[] {
-  const eventos: EventoEntrante[] = [];
-  for (const entry of payload?.entry ?? []) {
-    for (const evento of entry?.messaging ?? []) {
-      const texto = evento?.message?.text;
-      const senderId = evento?.sender?.id;
-      // Ignora deliveries/reads/postbacks sin texto y ecos de mensajes
-      // que el bot mismo mandó (is_echo).
-      if (!texto || !senderId || evento?.message?.is_echo) continue;
-      eventos.push({
-        canal,
-        identificadorExterno: senderId,
-        telefono: null, // Messenger/Instagram no exponen el teléfono real
-        texto,
-        procedenciaAnuncio: procedenciaMessenger(evento),
-        mensajeId: evento.message?.mid ?? null,
-      });
-    }
-  }
-  return eventos;
+  return (payload?.entry ?? []).flatMap((entry) =>
+    (entry?.messaging ?? []).flatMap(
+      (evento) => eventoMessenger(evento, canal) ?? [],
+    ),
+  );
 }
