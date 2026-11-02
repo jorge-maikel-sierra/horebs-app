@@ -39,16 +39,17 @@ export default tseslint.config(
     // fuera: sus describe son largos por naturaleza). Van como `warn`
     // porque hay deuda medida (ver CLAUDE.md, "Convenciones de nomenclatura y estilo"): el
     // objetivo es que el conteo solo baje, y cada regla pasa a `error` cuando
-    // llegue a cero. Conteo al 2026-10-31 en CLAUDE.md.
+    // llegue a cero (`no-explicit-any`, `max-lines` y `max-depth` ya lo
+    // están). Conteo al 2026-11-02 en CLAUDE.md.
     files: ['src/**/*.ts'],
     ignores: ['src/**/*.spec.ts'],
     rules: {
-      '@typescript-eslint/no-explicit-any': 'warn',
-      'max-lines': ['warn', { max: 400, skipBlankLines: true, skipComments: true }],
+      '@typescript-eslint/no-explicit-any': 'error',
+      'max-lines': ['error', { max: 400, skipBlankLines: true, skipComments: true }],
       'max-lines-per-function': ['warn', { max: 50, skipBlankLines: true, skipComments: true }],
       complexity: ['warn', 10],
       'max-params': ['warn', 4],
-      'max-depth': ['warn', 3],
+      'max-depth': ['error', 3],
       // Un número suelto en la lógica es una regla de negocio escondida:
       // va a una constante con nombre (0, 1, -1 y 100 no cuentan).
       'no-magic-numbers': [
