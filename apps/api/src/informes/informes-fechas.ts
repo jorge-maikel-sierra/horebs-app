@@ -1,5 +1,12 @@
 import { BadRequestException } from '@nestjs/common';
 import { finDiaBogota, inicioDiaBogota } from '../common/horario';
+import {
+  DIAS_POR_SEMANA,
+  LARGO_FECHA,
+  LARGO_MES,
+  MS_POR_DIA,
+  MS_POR_HORA,
+} from '../common/tiempo';
 import type {
   RangoInforme,
   Acumulador,
@@ -15,7 +22,11 @@ import type {
  * siguiente — agrupar/filtrar por fecha UTC cruda parte la noche de venta
  * por la mitad y corre pedidos de la noche al día siguiente.
  */
-const OFFSET_MS = 5 * 60 * 60 * 1000;
+const OFFSET_BOGOTA_HORAS = 5;
+const OFFSET_MS = OFFSET_BOGOTA_HORAS * MS_POR_HORA;
+
+/** Más de estos días ya no se grafica barra por día. */
+const DIAS_MAX_GRANULARIDAD_DIA = 62;
 
 /**
  * Rangos largos (histórico incluido) no se pueden mostrar barra-por-día
@@ -25,7 +36,7 @@ export function resolverGranularidad(
   desde: string,
   hasta: string,
 ): Granularidad {
-  return contarDias(desde, hasta) > 62 ? 'mes' : 'dia';
+  return contarDias(desde, hasta) > DIAS_MAX_GRANULARIDAD_DIA ? 'mes' : 'dia';
 }
 
 export function claveBucket(
@@ -33,7 +44,9 @@ export function claveBucket(
   granularidad: Granularidad,
 ): string {
   const local = aFechaLocal(fechaIso);
-  return granularidad === 'mes' ? local.slice(0, 7) : local.slice(0, 10);
+  return granularidad === 'mes'
+    ? local.slice(0, LARGO_MES)
+    : local.slice(0, LARGO_FECHA);
 }
 
 export function aFechaLocal(fechaIso: string): string {
@@ -56,13 +69,13 @@ export function recorrerFechas<T>(
     const fin = new Date(`${hasta}T00:00:00`);
     while (cursor <= fin) {
       resultado.push(armar(formatearFecha(cursor)));
-      cursor = new Date(cursor.getTime() + 24 * 60 * 60 * 1000);
+      cursor = new Date(cursor.getTime() + MS_POR_DIA);
     }
   } else {
-    let cursor = new Date(`${desde.slice(0, 7)}-01T00:00:00`);
-    const fin = new Date(`${hasta.slice(0, 7)}-01T00:00:00`);
+    let cursor = new Date(`${desde.slice(0, LARGO_MES)}-01T00:00:00`);
+    const fin = new Date(`${hasta.slice(0, LARGO_MES)}-01T00:00:00`);
     while (cursor <= fin) {
-      resultado.push(armar(cursor.toISOString().slice(0, 7)));
+      resultado.push(armar(cursor.toISOString().slice(0, LARGO_MES)));
       cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
     }
   }
@@ -101,7 +114,7 @@ export function resolverRango(
   const hastaDate = hastaInput ? new Date(`${hastaInput}T00:00:00`) : hoyLocal;
   const desdeDate = desdeInput
     ? new Date(`${desdeInput}T00:00:00`)
-    : new Date(hastaDate.getTime() - 6 * 24 * 60 * 60 * 1000);
+    : new Date(hastaDate.getTime() - (DIAS_POR_SEMANA - 1) * MS_POR_DIA);
 
   if (Number.isNaN(desdeDate.getTime()) || Number.isNaN(hastaDate.getTime())) {
     throw new BadRequestException('Rango de fechas inválido.');
@@ -126,9 +139,9 @@ export function contarDias(desde: string, hasta: string): number {
   const ms =
     new Date(`${hasta}T00:00:00`).getTime() -
     new Date(`${desde}T00:00:00`).getTime();
-  return Math.floor(ms / (24 * 60 * 60 * 1000)) + 1;
+  return Math.floor(ms / MS_POR_DIA) + 1;
 }
 
 export function formatearFecha(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  return d.toISOString().slice(0, LARGO_FECHA);
 }

@@ -1,3 +1,5 @@
+import { DIAS_POR_SEMANA, LARGO_FECHA } from '../common/tiempo';
+
 // Duplicado a propósito en apps/web/src/lib/semana.ts — este monorepo no
 // tiene un paquete compartido entre apps/api y apps/web (mismo criterio ya
 // usado para el offset de Bogotá en common/horario.ts).
@@ -20,16 +22,16 @@ export function calcularSemana(fechaYMD: string): RangoSemana {
   const [anio, mes, dia] = fechaYMD.split('-').map(Number);
   const fecha = new Date(Date.UTC(anio, mes - 1, dia));
   const diaSemana = fecha.getUTCDay(); // 0=domingo .. 6=sábado
-  const offsetLunes = diaSemana === 0 ? -6 : 1 - diaSemana;
+  const offsetLunes = diaSemana === 0 ? -(DIAS_POR_SEMANA - 1) : 1 - diaSemana;
 
   const inicio = new Date(fecha);
   inicio.setUTCDate(inicio.getUTCDate() + offsetLunes);
   const fin = new Date(inicio);
-  fin.setUTCDate(fin.getUTCDate() + 6);
+  fin.setUTCDate(fin.getUTCDate() + DIAS_POR_SEMANA - 1);
 
   return { inicio: formatearYMD(inicio), fin: formatearYMD(fin) };
 }
 
 function formatearYMD(fecha: Date): string {
-  return fecha.toISOString().slice(0, 10);
+  return fecha.toISOString().slice(0, LARGO_FECHA);
 }

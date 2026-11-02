@@ -4,6 +4,8 @@ import { Logger } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { configurarApp } from './configurar-app';
 
+const PUERTO_POR_DEFECTO = 3000;
+
 async function bootstrap(): Promise<void> {
   // Railway (y otros hosts sin salida IPv6) resuelven dominios como
   // smtp.gmail.com con la dirección IPv6 primero por defecto en Node,
@@ -21,7 +23,7 @@ async function bootstrap(): Promise<void> {
   // proceso al toque y corta requests en curso a mitad de camino.
   app.enableShutdownHooks();
 
-  const port = process.env.PORT ?? 3000;
+  const port = process.env.PORT ?? PUERTO_POR_DEFECTO;
   await app.listen(port);
   new Logger('Bootstrap').log(`API corriendo en http://localhost:${port}`);
 }
