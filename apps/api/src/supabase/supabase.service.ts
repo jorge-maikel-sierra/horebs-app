@@ -2,6 +2,11 @@ import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
+export interface EstadoSupabase {
+  ok: boolean;
+  error?: string;
+}
+
 /**
  * Cliente de Supabase para uso del lado del servidor (NestJS).
  * Usa la SERVICE ROLE KEY — nunca exponer esta key al frontend.
@@ -28,7 +33,7 @@ export class SupabaseService implements OnModuleInit {
     });
   }
 
-  onModuleInit() {
+  onModuleInit(): void {
     this.logger.log('Cliente de Supabase inicializado');
   }
 
@@ -41,7 +46,7 @@ export class SupabaseService implements OnModuleInit {
    * es una lectura local en memoria y nunca llega a hacer un request — por eso
    * se pega directo a PostgREST contra una tabla que siempre existe.
    */
-  async ping(): Promise<{ ok: boolean; error?: string }> {
+  async ping(): Promise<EstadoSupabase> {
     try {
       const { error } = await this.client
         .from('configuracion')

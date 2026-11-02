@@ -127,7 +127,7 @@ export class MailService {
     asunto: string;
     texto: string;
     html: string;
-  }) {
+  }): Promise<void> {
     if (!this.apiKey) return;
 
     const destino = await this.obtenerCorreo(CLAVE_CORREO_AVISOS_BOT);
@@ -202,7 +202,7 @@ export class MailService {
       stockActual: number;
       stockMinimo: number;
     }[],
-  ) {
+  ): Promise<void> {
     if (insumos.length === 0) return;
 
     const destino = await this.destinoDeAlertas(
@@ -234,7 +234,7 @@ export class MailService {
   private async enviarAlertaStock(datos: {
     pedidoId: string;
     motivoError: string;
-  }) {
+  }): Promise<void> {
     const destino = await this.destinoDeAlertas(
       `No hay correo configurado para alertas — se omite el aviso de stock pendiente del pedido ${datos.pedidoId}.`,
     );
@@ -256,7 +256,7 @@ export class MailService {
   private async enviarAlertaPuntos(datos: {
     pedidoId: string;
     motivoError: string;
-  }) {
+  }): Promise<void> {
     const destino = await this.destinoDeAlertas(
       `No hay correo configurado para alertas — se omite el aviso de puntos pendientes del pedido ${datos.pedidoId}.`,
     );
@@ -275,7 +275,7 @@ export class MailService {
     });
   }
 
-  private async enviar(datos: NotificacionDomicilio) {
+  private async enviar(datos: NotificacionDomicilio): Promise<void> {
     const destino = await this.destinoDeAlertas(
       'No hay correo de domiciliario configurado — se omite el envío ' +
         `para el pedido ${datos.pedidoId}.`,
