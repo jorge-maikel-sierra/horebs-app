@@ -1,0 +1,130 @@
+import { Injectable } from '@nestjs/common';
+import {
+  CatalogService,
+  entraEnCatalogoMeta,
+} from '../catalog/catalog.service';
+import { textoDe } from './datos-pedido-bot';
+import type { CanalMensajeria } from './conversaciones.tipos';
+import { ConversacionesService } from './conversaciones.service';
+import type { PasoFunctionCall } from './gemini-cliente.service';
+import { NOMBRE_NEGOCIO, URL_CATALOGO } from './gemini-prompt';
+import type { ContextoHerramienta } from './herramientas-bot.tipos';
+import { MetaGraphService } from './meta-graph.service';
+import {
+  elegirProductos,
+  seccionesPorCategoria,
+  tarjetasDe,
+} from './seleccion-productos';
+
+/**
+ * Las herramientas del modelo que mandan su propio mensaje a WhatsApp
+ * (`enviar_catalogo` y `mostrar_productos`): el modelo no redacta nada de lo
+ * que ve el cliente en estos casos.
+ */
+@Injectable()
+export class EnvioHerramientasService {
+  constructor(
+    private readonly catalog: CatalogService,
+    private readonly metaGraph: MetaGraphService,
+    private readonly conversaciones: ConversacionesService,
+  ) {}
+
+  /**
+   * Registra lo enviado y guarda la interacción. Devuelve true si la
+   * llamada era una de esas dos herramientas (no queda nada por responder).
+   */
+  async mandoElMensaje(
+    llamada: PasoFunctionCall,
+    ctx: ContextoHerramienta,
+    interaccionId: string,
+  ): Promise<boolean> {
+    const { canal, identificadorExterno, conversacionId } = ctx;
+    let registro: string | null;
+    if (llamada.name === 'enviar_catalogo') {
+      const enviado = await this.metaGraph.enviarCatalogo(
+        canal,
+        identificadorExterno,
+        URL_CATALOGO,
+        await this.retailerIdMiniatura(),
+      );
+      registro =
+        enviado === 'catalogo'
+          ? 'Menú enviado como catálogo de WhatsApp.'
+          : `Mirá nuestro catálogo completo con fotos y precios acá: ${URL_CATALOGO}`;
+    } else if (llamada.name === 'mostrar_productos') {
+      const mostrados = await this.enviarProductos(
+        canal,
+        identificadorExterno,
+        textoDe(llamada.arguments.consulta),
+      );
+      registro =
+        mostrados.length > 0
+          ? `Productos mostrados: ${mostrados.join(', ')}`
+          : null;
+    } else {
+      return false;
+    }
+    if (registro) {
+      await this.conversaciones.registrarMensaje(
+        conversacionId,
+        'saliente_bot',
+        registro,
+      );
+    }
+    await this.conversaciones.guardarInteraccionGemini(
+      canal,
+      identificadorExterno,
+      interaccionId,
+    );
+    return true;
+  }
+
+  /** Variante del primer producto destacado del catálogo, para la portada. */
+  private async retailerIdMiniatura(): Promise<string | undefined> {
+    const productos = await this.catalog.getProductos();
+    return productos.find(entraEnCatalogoMeta)?.variantes[0]?.id;
+  }
+
+  /**
+   * Elige los productos que matchean `consulta`: primero por categoría
+   * ("pizzas", "bebidas"), después por palabras del nombre/descripción
+   * ordenadas por puntaje; si nada matchea o viene vacía, se usa el orden
+   * por defecto de getProductos() (destacado primero — los productos ancla
+   * confirmados en CLAUDE.md). En WhatsApp va como lista nativa del
+   * catálogo agrupada por categoría; si no se puede, hasta 3 tarjetas.
+   * Devuelve los nombres de lo que se mostró.
+   */
+  private async enviarProductos(
+    canal: CanalMensajeria,
+    identificadorExterno: string,
+    consulta: string,
+  ): Promise<string[]> {
+    const [productos, categorias] = await Promise.all([
+      this.catalog.getProductos(),
+      this.catalog.getCategorias(),
+    ]);
+    if (productos.length === 0) return [];
+
+    const elegidos = elegirProductos(productos, categorias, consulta);
+    const tarjetas = tarjetasDe(elegidos);
+    const secciones = seccionesPorCategoria(elegidos, categorias);
+
+    const enviado = await this.metaGraph.enviarListaProductos(
+      canal,
+      identificadorExterno,
+      {
+        encabezado:
+          secciones.length === 1 ? secciones[0].titulo : NOMBRE_NEGOCIO,
+        cuerpo: 'Tocá un producto para ver el detalle y agregalo al carrito 🛒',
+        secciones: secciones.map((s) => ({
+          titulo: s.titulo,
+          retailerIds: s.productos.flatMap((p) => p.variantes.map((v) => v.id)),
+        })),
+      },
+      tarjetas,
+    );
+    return enviado === 'lista'
+      ? secciones.flatMap((s) => s.productos.map((p) => p.nombre))
+      : tarjetas.map((t) => t.nombre);
+  }
+}

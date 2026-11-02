@@ -6,7 +6,10 @@ import { PedidosModule } from '../pedidos/pedidos.module';
 import { WebhooksController } from './webhooks.controller';
 import { WebhooksService } from './webhooks.service';
 import { MetaGraphService } from './meta-graph.service';
+import { DespachoHerramientasService } from './despacho-herramientas.service';
+import { EnvioHerramientasService } from './envio-herramientas.service';
 import { GeminiService } from './gemini.service';
+import { ResumenPedidoBotService } from './resumen-pedido-bot.service';
 import { GeminiClienteService } from './gemini-cliente.service';
 import { HerramientasBotService } from './herramientas-bot.service';
 import { DerivacionBotService } from './derivacion-bot.service';
@@ -32,6 +35,9 @@ import { RespuestaBotService } from './respuesta-bot.service';
     WebhooksService,
     MetaGraphService,
     GeminiService,
+    DespachoHerramientasService,
+    EnvioHerramientasService,
+    ResumenPedidoBotService,
     GeminiClienteService,
     HerramientasBotService,
     DerivacionBotService,
