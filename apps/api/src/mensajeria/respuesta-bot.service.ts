@@ -45,11 +45,13 @@ export class RespuestaBotService {
     }
 
     const respuesta = await this.gemini.responder(
-      evento.canal,
-      evento.identificadorExterno,
-      evento.telefono,
+      {
+        canal: evento.canal,
+        identificadorExterno: evento.identificadorExterno,
+        telefono: evento.telefono,
+        conversacionId: conversacion.id,
+      },
       evento.texto,
-      conversacion.id,
     );
     // null = la herramienta (ej. el botón de catálogo) ya mandó el mensaje
     // y ya lo dejó registrado ella misma (ver gemini.service.ts).

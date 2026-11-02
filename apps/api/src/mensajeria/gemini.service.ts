@@ -1,42 +1,18 @@
 import { Injectable, Logger } from '@nestjs/common';
-import {
-  CatalogService,
-  entraEnCatalogoMeta,
-} from '../catalog/catalog.service';
-import { COSTO_DOMICILIO_DEFAULT } from '../common/costos';
 import { MENSAJE_DERIVACION } from './aviso-equipo.service';
 import { contieneNumeroNoVerificado } from './busqueda-productos';
-import {
-  CalculoPedidoBotService,
-  type ResultadoCalculo,
-} from './calculo-pedido-bot.service';
-import { CheckoutWhatsappService } from './checkout-whatsapp.service';
-import { textoDe } from './datos-pedido-bot';
-import {
-  ConversacionesService,
-  type CanalMensajeria,
-} from './conversaciones.service';
+import { ConversacionesService } from './conversaciones.service';
+import type { CanalMensajeria } from './conversaciones.tipos';
+import { DespachoHerramientasService } from './despacho-herramientas.service';
+import { EnvioHerramientasService } from './envio-herramientas.service';
 import {
   GeminiClienteService,
   type PasoFunctionCall,
   type PasoModelOutput,
   type RespuestaInteraction,
 } from './gemini-cliente.service';
-import {
-  HERRAMIENTAS,
-  NOMBRE_NEGOCIO,
-  SYSTEM_INSTRUCTION,
-  URL_CATALOGO,
-} from './gemini-prompt';
-import { HerramientasBotService } from './herramientas-bot.service';
+import { HERRAMIENTAS, SYSTEM_INSTRUCTION } from './gemini-prompt';
 import type { ContextoHerramienta } from './herramientas-bot.tipos';
-import { MetaGraphService } from './meta-graph.service';
-import { armarResumenPedido } from './resumen-pedido';
-import {
-  elegirProductos,
-  seccionesPorCategoria,
-  tarjetasDe,
-} from './seleccion-productos';
 
 const MAX_TURNOS_HERRAMIENTAS = 4;
 const LIMITE_MENSAJES_VENTANA_MINUTOS = 60;
@@ -72,12 +48,9 @@ export class GeminiService {
 
   constructor(
     private readonly cliente: GeminiClienteService,
-    private readonly catalog: CatalogService,
     private readonly conversaciones: ConversacionesService,
-    private readonly metaGraph: MetaGraphService,
-    private readonly checkout: CheckoutWhatsappService,
-    private readonly herramientas: HerramientasBotService,
-    private readonly calculo: CalculoPedidoBotService,
+    private readonly envios: EnvioHerramientasService,
+    private readonly despacho: DespachoHerramientasService,
   ) {}
 
   /**
@@ -85,12 +58,10 @@ export class GeminiService {
    * (el botón de catálogo) — en ese caso no hay que enviar nada más.
    */
   async responder(
-    canal: CanalMensajeria,
-    identificadorExterno: string,
-    telefono: string | null,
+    ctx: ContextoHerramienta,
     textoEntrante: string,
-    conversacionId: string,
   ): Promise<string | null> {
+    const { canal, identificadorExterno } = ctx;
     if (!this.cliente.configurado) {
       return 'En este momento no puedo responder automáticamente — escribí *humano* para que te atienda alguien del equipo.';
     }
@@ -112,10 +83,7 @@ export class GeminiService {
         );
       }
 
-      const respuestaFinal = await this.conversarConGemini(
-        { canal, identificadorExterno, telefono, conversacionId },
-        textoEntrante,
-      );
+      const respuestaFinal = await this.conversarConGemini(ctx, textoEntrante);
       return respuestaFinal === null
         ? null
         : this.truncarParaWhatsapp(respuestaFinal);
@@ -160,10 +128,12 @@ export class GeminiService {
       if (!llamada || respuesta.status !== 'requires_action') break;
 
       // Estas dos mandan el mensaje ellas mismas: no queda nada por responder.
-      if (await this.mandoElMensaje(llamada, ctx, respuesta.id)) return null;
+      if (await this.envios.mandoElMensaje(llamada, ctx, respuesta.id)) {
+        return null;
+      }
 
       if (llamada.name === 'derivar_a_humano') derivadoEnEsteTurno = true;
-      const resultado = await this.resultadoDeHerramienta(
+      const resultado = await this.despacho.resultado(
         llamada,
         ctx,
         respuesta.id,
@@ -249,234 +219,12 @@ export class GeminiService {
       this.logger.warn(
         `id=${ctx.identificadorExterno} respuesta bloqueada: número no verificado — se deriva a una persona.`,
       );
-      await this.herramientas.ejecutar('derivar_a_humano', {}, ctx);
+      await this.despacho.derivar(ctx);
       return MENSAJE_DERIVACION;
     }
     return formatearParaWhatsapp(
       texto ??
         'Perdón, no pude procesar tu mensaje. Escribí *humano* para hablar con alguien del equipo.',
     );
-  }
-
-  /**
-   * `enviar_catalogo` y `mostrar_productos` mandan su propio mensaje a
-   * WhatsApp: se registra lo enviado y se guarda la interacción. Devuelve
-   * true si la llamada era una de esas dos.
-   */
-  private async mandoElMensaje(
-    llamada: PasoFunctionCall,
-    ctx: ContextoHerramienta,
-    interaccionId: string,
-  ): Promise<boolean> {
-    const { canal, identificadorExterno, conversacionId } = ctx;
-    let registro: string | null;
-    if (llamada.name === 'enviar_catalogo') {
-      const enviado = await this.metaGraph.enviarCatalogo(
-        canal,
-        identificadorExterno,
-        URL_CATALOGO,
-        await this.retailerIdMiniatura(),
-      );
-      registro =
-        enviado === 'catalogo'
-          ? 'Menú enviado como catálogo de WhatsApp.'
-          : `Mirá nuestro catálogo completo con fotos y precios acá: ${URL_CATALOGO}`;
-    } else if (llamada.name === 'mostrar_productos') {
-      const mostrados = await this.enviarProductos(
-        canal,
-        identificadorExterno,
-        textoDe(llamada.arguments.consulta),
-      );
-      registro =
-        mostrados.length > 0
-          ? `Productos mostrados: ${mostrados.join(', ')}`
-          : null;
-    } else {
-      return false;
-    }
-    if (registro) {
-      await this.conversaciones.registrarMensaje(
-        conversacionId,
-        'saliente_bot',
-        registro,
-      );
-    }
-    await this.conversaciones.guardarInteraccionGemini(
-      canal,
-      identificadorExterno,
-      interaccionId,
-    );
-    return true;
-  }
-
-  /**
-   * Texto que se le devuelve al modelo como resultado de la herramienta.
-   * `null` cuando `calcular_pedido` ya le mandó el resumen al cliente por
-   * su cuenta y no hay nada más que contestar.
-   */
-  private async resultadoDeHerramienta(
-    llamada: PasoFunctionCall,
-    ctx: ContextoHerramienta,
-    interaccionId: string,
-  ): Promise<string | null> {
-    if (llamada.name !== 'calcular_pedido') {
-      return this.herramientas.ejecutar(llamada.name, llamada.arguments, ctx);
-    }
-    const calculo = await this.calculo.calcular(
-      llamada.arguments,
-      ctx.canal,
-      ctx.identificadorExterno,
-    );
-    if (!calculo.ok) return calculo.texto;
-    await this.enviarResumenPedido(ctx, calculo, interaccionId, llamada.id);
-    return null;
-  }
-
-  /** Variante del primer producto destacado del catálogo, para la portada. */
-  private async retailerIdMiniatura(): Promise<string | undefined> {
-    const productos = await this.catalog.getProductos();
-    return productos.find(entraEnCatalogoMeta)?.variantes[0]?.id;
-  }
-
-  /**
-   * Elige los productos que matchean `consulta`: primero por categoría
-   * ("pizzas", "bebidas"), después por palabras del nombre/descripción
-   * ordenadas por puntaje; si nada matchea o viene vacía, se usa el orden
-   * por defecto de getProductos() (destacado primero — los productos ancla
-   * confirmados en CLAUDE.md). En WhatsApp va como lista nativa del
-   * catálogo agrupada por categoría; si no se puede, hasta 3 tarjetas.
-   * Devuelve los nombres de lo que se mostró.
-   */
-  private async enviarProductos(
-    canal: CanalMensajeria,
-    identificadorExterno: string,
-    consulta: string,
-  ): Promise<string[]> {
-    const [productos, categorias] = await Promise.all([
-      this.catalog.getProductos(),
-      this.catalog.getCategorias(),
-    ]);
-    if (productos.length === 0) return [];
-
-    const elegidos = elegirProductos(productos, categorias, consulta);
-    const tarjetas = tarjetasDe(elegidos);
-    const secciones = seccionesPorCategoria(elegidos, categorias);
-
-    const enviado = await this.metaGraph.enviarListaProductos(
-      canal,
-      identificadorExterno,
-      {
-        encabezado:
-          secciones.length === 1 ? secciones[0].titulo : NOMBRE_NEGOCIO,
-        cuerpo: 'Tocá un producto para ver el detalle y agregalo al carrito 🛒',
-        secciones: secciones.map((s) => ({
-          titulo: s.titulo,
-          retailerIds: s.productos.flatMap((p) => p.variantes.map((v) => v.id)),
-        })),
-      },
-      tarjetas,
-    );
-    return enviado === 'lista'
-      ? secciones.flatMap((s) => s.productos.map((p) => p.nombre))
-      : tarjetas.map((t) => t.nombre);
-  }
-
-  /**
-   * Manda el resumen armado por código y le avisa a Gemini que ya se envió.
-   * En WhatsApp pasa al checkout con botones (paso de pago): el pedido se
-   * crea con un toque, sin que el modelo intervenga. En Messenger/Instagram
-   * se pregunta el pago por texto. Lo que Gemini conteste al aviso no se
-   * manda al cliente.
-   */
-  private async enviarResumenPedido(
-    ctx: ContextoHerramienta,
-    calculo: Extract<ResultadoCalculo, { ok: true }>,
-    interaccionId: string,
-    llamadaId: string,
-  ): Promise<void> {
-    const { canal, identificadorExterno, conversacionId } = ctx;
-    const resumen =
-      canal === 'whatsapp'
-        ? await this.checkout.ofrecerPagoDesdeCalculo({
-            identificadorExterno,
-            conversacionId,
-            items: calculo.items,
-            checkout: { paso: 'pago', ...calculo.datos },
-          })
-        : await this.enviarResumenPorTexto(ctx, calculo);
-    this.logger.log(
-      `id=${identificadorExterno} herramienta=calcular_pedido → resumen enviado por el sistema`,
-    );
-    await this.avisarResumen(ctx, resumen, interaccionId, llamadaId);
-  }
-
-  /** Le cuenta a Gemini que el sistema ya mandó el resumen; su respuesta no llega al cliente. */
-  private async avisarResumen(
-    ctx: ContextoHerramienta,
-    resumen: string,
-    interaccionId: string,
-    llamadaId: string,
-  ): Promise<void> {
-    const { canal, identificadorExterno } = ctx;
-    try {
-      const aviso = await this.cliente.llamar({
-        model: this.cliente.modelo,
-        previous_interaction_id: interaccionId,
-        input: {
-          type: 'function_result',
-          call_id: llamadaId,
-          name: 'calcular_pedido',
-          result: [
-            {
-              type: 'text',
-              text: `El sistema ya le mandó al cliente este resumen y los botones del método de pago — no lo repitas:\n${resumen}\nCuando el cliente elija el método de pago, el sistema crea el pedido solo. Si escribe el método de pago en vez de tocar el botón, también lo toma el sistema.`,
-            },
-          ],
-        },
-      });
-      await this.conversaciones.guardarInteraccionGemini(
-        canal,
-        identificadorExterno,
-        aviso.id,
-      );
-    } catch (err) {
-      // El cliente ya tiene su resumen: si Gemini no responde, se guarda
-      // la interacción previa y la conversación sigue igual.
-      this.logger.warn(
-        `id=${identificadorExterno} no se pudo avisar a Gemini del resumen: ${(err as Error).message}`,
-      );
-      await this.conversaciones.guardarInteraccionGemini(
-        canal,
-        identificadorExterno,
-        interaccionId,
-      );
-    }
-  }
-
-  private async enviarResumenPorTexto(
-    ctx: ContextoHerramienta,
-    calculo: Extract<ResultadoCalculo, { ok: true }>,
-  ): Promise<string> {
-    const resumen = `${
-      armarResumenPedido({
-        nombreCompleto: `${calculo.datos.nombre} ${calculo.datos.apellido}`,
-        lineas: calculo.lineas,
-        modalidad: calculo.datos.modalidad,
-        direccion: calculo.datos.direccion ?? null,
-        costoDomicilio: COSTO_DOMICILIO_DEFAULT,
-        nota: calculo.datos.nota,
-      }).texto
-    }\n\n¿Cuál va a ser tu método de pago: *efectivo*, *transferencia* o *tarjeta*?`;
-    await this.metaGraph.enviarMensajeSesion(
-      ctx.canal,
-      ctx.identificadorExterno,
-      resumen,
-    );
-    await this.conversaciones.registrarMensaje(
-      ctx.conversacionId,
-      'saliente_bot',
-      resumen,
-    );
-    return resumen;
   }
 }
