@@ -22,6 +22,7 @@ function crearServicio() {
     guardarCheckout: jest.fn().mockResolvedValue(undefined),
     guardarCarrito: jest.fn().mockResolvedValue(undefined),
     obtenerCheckout: jest.fn().mockResolvedValue({ paso: 'pago' }),
+    guardarTelefono: jest.fn().mockResolvedValue(undefined),
   };
   const metaGraph = {
     enviarMensajeSesion: jest.fn().mockResolvedValue(undefined),
@@ -160,6 +161,54 @@ describe('CheckoutEnviosService', () => {
       'whatsapp',
       '573157861208',
       items,
+    );
+  });
+
+  it('respeta el canal del contexto en texto, botones y catálogo', async () => {
+    const { servicio, metaGraph, conversaciones } = crearServicio();
+    const ctxInstagram: ContextoCheckout = {
+      ...CTX,
+      canal: 'instagram',
+      identificadorExterno: 'igsid-123',
+    };
+
+    await servicio.texto(ctxInstagram, 'Hola Instagram');
+    expect(metaGraph.enviarMensajeSesion).toHaveBeenCalledWith(
+      'instagram',
+      'igsid-123',
+      'Hola Instagram',
+    );
+
+    await servicio.catalogo(
+      ctxInstagram,
+      'https://pizzeriahorebs.shop/catalogo',
+    );
+    expect(metaGraph.enviarCatalogo).toHaveBeenCalledWith(
+      'instagram',
+      'igsid-123',
+      'https://pizzeriahorebs.shop/catalogo',
+    );
+    expect(conversaciones.registrarMensaje).toHaveBeenCalledWith(
+      'conv-1',
+      'saliente_bot',
+      'Menú enviado.',
+    );
+  });
+
+  it('guardarTelefono delega en ConversacionesService con el canal del contexto', async () => {
+    const { servicio, conversaciones } = crearServicio();
+    const ctxMessenger: ContextoCheckout = {
+      ...CTX,
+      canal: 'messenger',
+      identificadorExterno: 'psid-888',
+    };
+
+    await servicio.guardarTelefono(ctxMessenger, '3157861208');
+
+    expect(conversaciones.guardarTelefono).toHaveBeenCalledWith(
+      'messenger',
+      'psid-888',
+      '3157861208',
     );
   });
 });

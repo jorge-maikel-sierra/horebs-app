@@ -148,7 +148,7 @@ describe('RespuestaBotService.responder', () => {
     expect(llamadas).toEqual(['leido', 'manejar', 'gemini']);
   });
 
-  it('en Messenger marca leído/escribiendo y delega a Gemini', async () => {
+  it('en Messenger marca leído/escribiendo, evalúa checkout y delega a Gemini si no aplica', async () => {
     const { servicio, llamadas } = crearServicio();
 
     await servicio.responder(
@@ -157,7 +157,19 @@ describe('RespuestaBotService.responder', () => {
       null,
     );
 
-    expect(llamadas).toEqual(['leido', 'gemini']);
+    expect(llamadas).toEqual(['leido', 'manejar', 'gemini']);
+  });
+
+  it('en Messenger o Instagram también ejecuta el checkout si hay un paso en curso', async () => {
+    const { servicio, llamadas } = crearServicio({ manejaCheckout: true });
+
+    await servicio.responder(
+      evento({ canal: 'instagram', identificadorExterno: 'igsid-1' }),
+      CONVERSACION,
+      null,
+    );
+
+    expect(llamadas).toEqual(['leido', 'manejar']);
   });
 
   it('si Gemini devuelve null (la herramienta ya respondió) no se envía nada', async () => {

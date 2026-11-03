@@ -43,12 +43,14 @@ function crearServicio(checkout: CheckoutWhatsapp | null) {
     guardar: jest.fn().mockResolvedValue(undefined),
     limpiar: jest.fn().mockResolvedValue(undefined),
     catalogo: jest.fn().mockResolvedValue(undefined),
+    guardarTelefono: jest.fn().mockResolvedValue(undefined),
   };
   const pedido = { crear: jest.fn().mockResolvedValue(undefined) };
   const preguntas = {
     hora: jest.fn().mockResolvedValue(undefined),
     direccion: jest.fn().mockResolvedValue(undefined),
     pedirDireccion: jest.fn().mockResolvedValue(undefined),
+    pedirTelefono: jest.fn().mockResolvedValue(undefined),
     pago: jest.fn().mockResolvedValue('resumen'),
     ofrecerAdicionales: jest.fn().mockResolvedValue(false),
     infoAdicionales: jest.fn().mockResolvedValue(true),
@@ -327,6 +329,51 @@ describe('CheckoutWhatsappService', () => {
       await servicio.manejar(CTX, texto('Pérez'));
       expect(checkout).toMatchObject({ nombre: 'Ana', apellido: 'Pérez' });
       expect(preguntas.hora).toHaveBeenCalledWith(CTX, checkout);
+    });
+
+    it('en el paso de teléfono guarda el número y avanza', async () => {
+      const checkout: CheckoutWhatsapp = {
+        paso: 'telefono',
+        modalidad: 'retiro',
+        nombre: 'Ana',
+        apellido: 'Pérez',
+      };
+      const { servicio, envios, preguntas } = crearServicio(checkout);
+      const ctxSocial = { ...CTX, canal: 'messenger' as const };
+
+      await expect(
+        servicio.manejar(ctxSocial, texto('315 786 1208')),
+      ).resolves.toBe(true);
+
+      expect(checkout.telefono).toBe('3157861208');
+      expect(envios.guardarTelefono).toHaveBeenCalledWith(
+        ctxSocial,
+        '3157861208',
+      );
+      expect(preguntas.hora).toHaveBeenCalledWith(ctxSocial, checkout);
+    });
+
+    it('en el paso de teléfono pide corregir si el número es inválido', async () => {
+      const checkout: CheckoutWhatsapp = {
+        paso: 'telefono',
+        modalidad: 'retiro',
+        nombre: 'Ana',
+        apellido: 'Pérez',
+      };
+      const { servicio, envios } = crearServicio(checkout);
+      const ctxSocial = { ...CTX, canal: 'instagram' as const };
+
+      await expect(servicio.manejar(ctxSocial, texto('1234'))).resolves.toBe(
+        true,
+      );
+
+      expect(envios.guardarTelefono).not.toHaveBeenCalled();
+      expect(envios.texto).toHaveBeenCalledWith(
+        ctxSocial,
+        expect.stringContaining(
+          'Porfa escribí un número de teléfono de 10 dígitos',
+        ),
+      );
     });
 
     it('elegir la hora pasa al resumen con los botones de pago', async () => {

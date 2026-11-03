@@ -9,6 +9,7 @@ import {
   modalidadDe,
   separarNombre,
   siguientePaso,
+  validarTelefonoCO,
 } from './checkout-whatsapp';
 
 const texto = (t: string) => ({ tipo: 'texto' as const, texto: t });
@@ -154,5 +155,43 @@ describe('cancelar y saludo', () => {
     expect(esSaludoOIntencionDePedir('Buenas noches')).toBe(true);
     expect(esSaludoOIntencionDePedir('quiero pedir')).toBe(true);
     expect(esSaludoOIntencionDePedir('¿a qué hora abren?')).toBe(false);
+  });
+
+  describe('validarTelefonoCO', () => {
+    it('valida números colombianos de 10 dígitos o con prefijo 57', () => {
+      expect(validarTelefonoCO('3157861208')).toBe('3157861208');
+      expect(validarTelefonoCO('+57 315 786 1208')).toBe('3157861208');
+      expect(validarTelefonoCO('12345')).toBeNull();
+      expect(validarTelefonoCO('abcd')).toBeNull();
+    });
+  });
+
+  describe('siguientePaso en canales sociales', () => {
+    it('pide teléfono en Messenger o Instagram si no se conoce de antes', () => {
+      const checkout = {
+        paso: 'nombre' as const,
+        modalidad: 'domicilio' as const,
+        direccion: 'Calle 1 # 2-3',
+        nombre: 'Carlos',
+        apellido: 'Gómez',
+      };
+      expect(siguientePaso(checkout, 'messenger')).toBe('telefono');
+      expect(siguientePaso(checkout, 'instagram')).toBe('telefono');
+      expect(siguientePaso(checkout, 'whatsapp')).toBe('hora');
+    });
+
+    it('omite teléfono si ya está en el contexto o en el checkout', () => {
+      const checkout = {
+        paso: 'nombre' as const,
+        modalidad: 'domicilio' as const,
+        direccion: 'Calle 1 # 2-3',
+        nombre: 'Carlos',
+        apellido: 'Gómez',
+      };
+      expect(siguientePaso(checkout, 'messenger', '3157861208')).toBe('hora');
+      expect(
+        siguientePaso({ ...checkout, telefono: '3157861208' }, 'messenger'),
+      ).toBe('hora');
+    });
   });
 });

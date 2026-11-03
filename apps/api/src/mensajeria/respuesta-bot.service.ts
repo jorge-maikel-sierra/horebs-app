@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import type { ItemCarritoResuelto } from '../catalog/catalog.service';
-import { esSaludoOIntencionDePedir } from './checkout-whatsapp';
+import {
+  esSaludoOIntencionDePedir,
+  type ContextoCheckout,
+} from './checkout-whatsapp';
 import { CheckoutWhatsappService } from './checkout-whatsapp.service';
 import { ConversacionesService } from './conversaciones.service';
 import type { ConversacionCompleta } from './conversaciones.tipos';
@@ -39,10 +42,7 @@ export class RespuestaBotService {
       evento.identificadorExterno,
       evento.mensajeId ?? undefined,
     );
-    if (
-      evento.canal === 'whatsapp' &&
-      (await this.checkoutPorBotones(evento, conversacion, carrito))
-    ) {
+    if (await this.checkoutPorBotones(evento, conversacion, carrito)) {
       return;
     }
 
@@ -50,7 +50,7 @@ export class RespuestaBotService {
       {
         canal: evento.canal,
         identificadorExterno: evento.identificadorExterno,
-        telefono: evento.telefono,
+        telefono: evento.telefono ?? conversacion.telefono ?? null,
         conversacionId: conversacion.id,
       },
       evento.texto,
@@ -80,7 +80,9 @@ export class RespuestaBotService {
     carrito: CarritoValidado | null,
   ): Promise<boolean> {
     const ctx = {
+      canal: evento.canal,
       identificadorExterno: evento.identificadorExterno,
+      telefono: evento.telefono ?? conversacion.telefono ?? null,
       conversacionId: conversacion.id,
       mensajeId: evento.mensajeId,
     };
@@ -98,14 +100,21 @@ export class RespuestaBotService {
       texto: evento.texto,
     };
     if (await this.checkout.manejar(ctx, entrada)) return true;
-    return (
-      !evento.entrada &&
-      esSaludoOIntencionDePedir(evento.texto) &&
-      !(await this.conversaciones.obtenerUltimaInteraccionGemini(
-        evento.canal,
-        evento.identificadorExterno,
-      )) &&
-      (await this.checkout.ofrecerLoMismo(ctx))
+    return this.intentarOfrecerLoMismo(evento, ctx);
+  }
+
+  private async intentarOfrecerLoMismo(
+    evento: EventoEntrante,
+    ctx: ContextoCheckout,
+  ): Promise<boolean> {
+    if (evento.entrada || !esSaludoOIntencionDePedir(evento.texto)) {
+      return false;
+    }
+    const ultima = await this.conversaciones.obtenerUltimaInteraccionGemini(
+      evento.canal,
+      evento.identificadorExterno,
     );
+    if (ultima) return false;
+    return this.checkout.ofrecerLoMismo(ctx);
   }
 }
