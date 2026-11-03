@@ -241,7 +241,7 @@ export class MetaGraphService {
       await this.enviarMensajeSesion(
         canal,
         destinatarioId,
-        `Mirá nuestro catálogo completo con fotos y precios acá: ${url}`,
+        `Mira nuestro catálogo completo con fotos y precios aquí: ${url}`,
       );
       return;
     }

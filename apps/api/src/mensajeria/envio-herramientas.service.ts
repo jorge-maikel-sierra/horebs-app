@@ -3,6 +3,8 @@ import {
   CatalogService,
   entraEnCatalogoMeta,
 } from '../catalog/catalog.service';
+import { esAdicional } from './adicionales';
+import { obtenerCapacidades } from './capacidades-canal';
 import { textoDe } from './datos-pedido-bot';
 import type { CanalMensajeria } from './conversaciones.tipos';
 import { ConversacionesService } from './conversaciones.service';
@@ -41,16 +43,7 @@ export class EnvioHerramientasService {
     const { canal, identificadorExterno, conversacionId } = ctx;
     let registro: string | null;
     if (llamada.name === 'enviar_catalogo') {
-      const enviado = await this.metaGraph.enviarCatalogo(
-        canal,
-        identificadorExterno,
-        URL_CATALOGO,
-        await this.retailerIdMiniatura(),
-      );
-      registro =
-        enviado === 'catalogo'
-          ? 'Menú enviado como catálogo de WhatsApp.'
-          : `Mirá nuestro catálogo completo con fotos y precios acá: ${URL_CATALOGO}`;
+      registro = await this.enviarMenu(canal, identificadorExterno);
     } else if (llamada.name === 'mostrar_productos') {
       const mostrados = await this.enviarProductos(
         canal,
@@ -77,6 +70,63 @@ export class EnvioHerramientasService {
       interaccionId,
     );
     return true;
+  }
+
+  /** El menú: catálogo nativo en WhatsApp; tarjetas dentro del chat en Messenger e Instagram. */
+  private async enviarMenu(
+    canal: CanalMensajeria,
+    identificadorExterno: string,
+  ): Promise<string | null> {
+    if (canal !== 'whatsapp') {
+      return this.enviarMenuSocial(canal, identificadorExterno);
+    }
+    const enviado = await this.metaGraph.enviarCatalogo(
+      canal,
+      identificadorExterno,
+      URL_CATALOGO,
+      await this.retailerIdMiniatura(),
+    );
+    return enviado === 'catalogo'
+      ? 'Menú enviado como catálogo de WhatsApp.'
+      : `Mirá nuestro catálogo completo con fotos y precios acá: ${URL_CATALOGO}`;
+  }
+
+  /**
+   * Messenger e Instagram no tienen el catálogo de WhatsApp y el cliente no
+   * debe salir del chat: se manda un carrusel con los primeros productos y
+   * después las categorías como opciones rápidas (al tocar una, el modelo
+   * muestra los productos de esa categoría con `mostrar_productos`).
+   */
+  private async enviarMenuSocial(
+    canal: CanalMensajeria,
+    identificadorExterno: string,
+  ): Promise<string | null> {
+    const [productos, categorias] = await Promise.all([
+      this.catalog.getProductos(),
+      this.catalog.getCategorias(),
+    ]);
+    const tarjetas = tarjetasDe(
+      productos,
+      obtenerCapacidades(canal).maxElementosTarjetas,
+    );
+    if (tarjetas.length === 0) return null;
+    await this.metaGraph.enviarTarjetasProductos(
+      canal,
+      identificadorExterno,
+      tarjetas,
+    );
+    const conProductos = categorias.filter((c) =>
+      productos.some((p) => p.categoria_id === c.id && !esAdicional(p.nombre)),
+    );
+    if (conProductos.length > 1) {
+      await this.metaGraph.enviarBotones(
+        canal,
+        identificadorExterno,
+        '¿Quieres ver una categoría en particular? 👇',
+        conProductos.map((c) => ({ id: `cat:${c.id}`, titulo: c.nombre })),
+      );
+    }
+    return `Menú enviado dentro del chat: ${tarjetas.map((t) => t.nombre).join(', ')}.`;
   }
 
   /** Variante del primer producto destacado del catálogo, para la portada. */
@@ -106,7 +156,10 @@ export class EnvioHerramientasService {
     if (productos.length === 0) return [];
 
     const elegidos = elegirProductos(productos, categorias, consulta);
-    const tarjetas = tarjetasDe(elegidos);
+    const tarjetas =
+      canal === 'whatsapp'
+        ? tarjetasDe(elegidos)
+        : tarjetasDe(elegidos, obtenerCapacidades(canal).maxElementosTarjetas);
     const secciones = seccionesPorCategoria(elegidos, categorias);
 
     const enviado = await this.metaGraph.enviarListaProductos(

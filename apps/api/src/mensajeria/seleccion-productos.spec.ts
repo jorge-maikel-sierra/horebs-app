@@ -67,6 +67,22 @@ describe('elegirProductos', () => {
   });
 });
 
+describe('tarjetasDe (canales sociales)', () => {
+  it('admite más tarjetas cuando se pide un máximo mayor y omite los adicionales', () => {
+    const muchos = [
+      ...Array.from({ length: 12 }, (_, i) =>
+        producto(`P${i}`, 'pizzas', [1000]),
+      ),
+      producto('Adicional: Piña', 'adicionales', [5000]),
+    ];
+
+    expect(tarjetasDe(muchos)).toHaveLength(3);
+    const tarjetas = tarjetasDe(muchos, 10);
+    expect(tarjetas).toHaveLength(10);
+    expect(tarjetas.map((t) => t.nombre)).not.toContain('Adicional: Piña');
+  });
+});
+
 describe('tarjetasDe', () => {
   it('toma hasta 3 productos con el precio más bajo de sus variantes', () => {
     const tarjetas = tarjetasDe([...MENU, producto('Extra', 'pizzas', [1000])]);
