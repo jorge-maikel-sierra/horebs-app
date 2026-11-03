@@ -55,6 +55,7 @@ describe('BoldService', () => {
     expect(JSON.parse(init.body as string)).toEqual({
       amount_type: 'CLOSE',
       amount: { currency: 'COP', total_amount: 65000, tip_amount: 0 },
+      callback_url: 'https://wa.me/573157861208',
       reference: 'pedido-1',
       description: 'Pedido #abc12345',
     });

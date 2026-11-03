@@ -4,6 +4,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { ENLACE_WHATSAPP_NEGOCIO } from '../common/contacto';
 
 const URL_LINKS = 'https://integrations.api.bold.co/online/link/v1';
 const MAX_REFERENCIA = 60;
@@ -70,6 +71,8 @@ export class BoldService {
       body: JSON.stringify({
         amount_type: 'CLOSE',
         amount: { currency: 'COP', total_amount: datos.total, tip_amount: 0 },
+        // Sin esto el botón "Volver a la tienda" de Bold no lleva a ningún lado.
+        callback_url: ENLACE_WHATSAPP_NEGOCIO,
         reference: datos.referencia.slice(0, MAX_REFERENCIA),
         description: datos.descripcion
           .padEnd(MIN_DESCRIPCION)

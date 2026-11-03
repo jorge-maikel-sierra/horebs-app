@@ -1,3 +1,4 @@
+import { ENLACE_WHATSAPP_NEGOCIO } from '../common/contacto';
 import { idCortoPedido } from '../common/pedido-numero';
 
 /** Correo de aviso de domicilio: datos que recibe y HTML que arma. */
@@ -26,7 +27,7 @@ const AMARILLO = '#FFD93D';
 const VERDE = '#1F9D55';
 
 const REDES = {
-  whatsapp: 'https://wa.me/573157861208',
+  whatsapp: ENLACE_WHATSAPP_NEGOCIO,
   facebook: 'https://www.facebook.com/Pizzeriahorebs/',
   instagram: 'https://www.instagram.com/pizzeria_horebs/',
 };
