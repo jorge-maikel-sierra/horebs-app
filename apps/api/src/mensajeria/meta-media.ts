@@ -44,3 +44,20 @@ export async function descargarMediaWhatsapp(
     mime: info.mime_type ?? 'application/octet-stream',
   };
 }
+
+export async function descargarMediaUrlDirecta(
+  url: string,
+): Promise<{ datos: Buffer; mime: string }> {
+  const archivo = await fetch(url);
+  if (!archivo.ok) {
+    throw new ServiceUnavailableException(
+      `No se pudo descargar el archivo: ${archivo.status}`,
+    );
+  }
+  const mimeHeader =
+    archivo.headers.get('content-type') ?? 'application/octet-stream';
+  return {
+    datos: Buffer.from(await archivo.arrayBuffer()),
+    mime: mimeHeader.split(';')[0],
+  };
+}

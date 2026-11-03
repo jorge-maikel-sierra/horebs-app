@@ -10,11 +10,14 @@ import { ConversacionesService } from './conversaciones.service';
 import { MetaGraphService } from './meta-graph.service';
 import { idCortoPedido } from '../common/pedido-numero';
 import { DIAS_POR_SEMANA, MS_POR_DIA, MS_POR_SEGUNDO } from '../common/tiempo';
+import type { CanalMensajeria } from './conversaciones.tipos';
 
 const SIETE_DIAS_SEGUNDOS = (DIAS_POR_SEMANA * MS_POR_DIA) / MS_POR_SEGUNDO;
 
 export interface ProcesarComprobanteInput {
+  canal?: CanalMensajeria;
   identificadorExterno: string;
+  telefono?: string | null;
   conversacionId: string;
   mensajeId: string;
   mediaId: string;
@@ -42,9 +45,8 @@ export class ComprobantesService {
    * cliente no tiene un pedido esperando comprobante (quien llama responde).
    */
   async procesar(datos: ProcesarComprobanteInput): Promise<boolean> {
-    const pedido = await this.pedidos.pedidoEsperandoComprobante(
-      datos.identificadorExterno,
-    );
+    const telefono = datos.telefono ?? datos.identificadorExterno;
+    const pedido = await this.pedidos.pedidoEsperandoComprobante(telefono);
     if (!pedido) return false;
 
     const archivo = await this.metaGraph.descargarMedia(datos.mediaId);
@@ -56,7 +58,7 @@ export class ComprobantesService {
 
     const respuesta = `¡Recibido el comprobante del pedido *#${idCortoPedido(pedido.id)}*! 🙌 Lo revisamos y te confirmamos por acá.`;
     await this.metaGraph.enviarMensajeSesion(
-      'whatsapp',
+      datos.canal ?? 'whatsapp',
       datos.identificadorExterno,
       respuesta,
     );

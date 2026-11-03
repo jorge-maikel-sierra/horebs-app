@@ -29,8 +29,8 @@ import {
   elementosDeTarjetas,
   esErrorBusinessAi,
 } from './mensajes-meta-social';
-import { descargarMediaWhatsapp } from './meta-media';
-import { armarPerfilCanal } from './perfil-meta';
+import { descargarMediaUrlDirecta, descargarMediaWhatsapp } from './meta-media';
+import { enviarPerfilMeta } from './perfil-meta';
 
 const REINTENTOS = 2;
 const ESPERA_PRIMER_REINTENTO_MS = 500;
@@ -134,6 +134,9 @@ export class MetaGraphService {
   }
 
   descargarMedia(mediaId: string): Promise<{ datos: Buffer; mime: string }> {
+    if (mediaId.startsWith('http://') || mediaId.startsWith('https://')) {
+      return descargarMediaUrlDirecta(mediaId);
+    }
     if (!this.whatsappToken) {
       throw new ServiceUnavailableException('WhatsApp no está configurado.');
     }
@@ -282,24 +285,7 @@ export class MetaGraphService {
         'MESSENGER_PAGE_ACCESS_TOKEN no configurada.',
       );
     }
-    const cuerpo = armarPerfilCanal(canal);
-    const res = await fetch(
-      `https://graph.facebook.com/${this.version}/me/messenger_profile`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${this.pageToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(cuerpo),
-      },
-    );
-    if (!res.ok) {
-      const errorTexto = await res.text().catch(() => '');
-      throw new ServiceUnavailableException(
-        `Meta Graph API respondió ${res.status} al configurar perfil de ${canal}: ${errorTexto}`,
-      );
-    }
+    await enviarPerfilMeta(this.version, this.pageToken, canal);
     this.logger.log(`Perfil de ${canal} configurado exitosamente en Meta.`);
   }
 

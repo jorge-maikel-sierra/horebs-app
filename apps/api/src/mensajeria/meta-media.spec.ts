@@ -1,5 +1,5 @@
 import { ServiceUnavailableException } from '@nestjs/common';
-import { descargarMediaWhatsapp } from './meta-media';
+import { descargarMediaUrlDirecta, descargarMediaWhatsapp } from './meta-media';
 
 describe('descargarMediaWhatsapp', () => {
   const originalFetch = global.fetch;
@@ -56,6 +56,39 @@ describe('descargarMediaWhatsapp', () => {
 
     await expect(
       descargarMediaWhatsapp('v21.0', 'token-123', 'media-1'),
+    ).rejects.toThrow(ServiceUnavailableException);
+  });
+});
+
+describe('descargarMediaUrlDirecta', () => {
+  const originalFetch = global.fetch;
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  it('descarga el archivo por url directa y lee el content-type', async () => {
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      headers: new Headers({ 'content-type': 'image/png; charset=utf-8' }),
+      arrayBuffer: () => Promise.resolve(new Uint8Array([4, 5, 6]).buffer),
+    });
+
+    const res = await descargarMediaUrlDirecta(
+      'https://cdn.instagram.com/photo.png',
+    );
+    expect(res.mime).toBe('image/png');
+    expect(res.datos).toEqual(Buffer.from([4, 5, 6]));
+  });
+
+  it('lanza ServiceUnavailableException si el fetch falla', async () => {
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+    });
+
+    await expect(
+      descargarMediaUrlDirecta('https://cdn.instagram.com/photo.png'),
     ).rejects.toThrow(ServiceUnavailableException);
   });
 });

@@ -33,7 +33,7 @@ export class MediaEntranteService {
    * el equipo sepa que fue un audio.
    */
   async transcribirNota(evento: EventoEntrante): Promise<string> {
-    if (evento.canal !== 'whatsapp' || evento.media?.tipo !== 'audio') {
+    if (evento.media?.tipo !== 'audio') {
       return evento.texto;
     }
     const transcripcion = await this.transcribir(evento.media.id);
@@ -53,13 +53,15 @@ export class MediaEntranteService {
     conversacion: ConversacionCompleta,
   ): Promise<boolean> {
     const { media, mensajeId } = evento;
-    if (evento.canal !== 'whatsapp' || !media || !mensajeId) return false;
+    if (!media || !mensajeId) return false;
 
     const esAudio = media.tipo === 'audio';
     if (
       !esAudio &&
       (await this.guardarComprobante({
+        canal: evento.canal,
         identificadorExterno: evento.identificadorExterno,
+        telefono: evento.telefono ?? conversacion.telefono ?? null,
         conversacionId: conversacion.id,
         mensajeId,
         mediaId: media.id,

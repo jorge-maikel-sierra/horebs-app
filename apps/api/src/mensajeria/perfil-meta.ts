@@ -1,3 +1,5 @@
+import { ServiceUnavailableException } from '@nestjs/common';
+
 export type CanalMeta = 'messenger' | 'instagram';
 
 export interface ResultadoPerfilCanalDto {
@@ -80,4 +82,29 @@ export function armarPerfilCanal(
   return canal === 'messenger'
     ? armarPerfilMessenger()
     : armarPerfilInstagram();
+}
+
+export async function enviarPerfilMeta(
+  version: string,
+  pageToken: string,
+  canal: CanalMeta,
+): Promise<void> {
+  const cuerpo = armarPerfilCanal(canal);
+  const res = await fetch(
+    `https://graph.facebook.com/${version}/me/messenger_profile`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${pageToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(cuerpo),
+    },
+  );
+  if (!res.ok) {
+    const errorTexto = await res.text().catch(() => '');
+    throw new ServiceUnavailableException(
+      `Meta Graph API respondió ${res.status} al configurar perfil de ${canal}: ${errorTexto}`,
+    );
+  }
 }
