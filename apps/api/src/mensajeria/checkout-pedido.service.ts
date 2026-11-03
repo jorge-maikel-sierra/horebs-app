@@ -141,7 +141,7 @@ export class CheckoutPedidoService {
       identificadorExterno: ctx.identificadorExterno,
       telefono:
         ctx.telefono ??
-        (canal === 'whatsapp' ? ctx.identificadorExterno : undefined),
+        (canal === 'whatsapp' ? ctx.identificadorExterno : null),
       conversacionId: ctx.conversacionId,
       ...(pedido ? { pedido } : {}),
     });
