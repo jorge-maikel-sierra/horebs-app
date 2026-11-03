@@ -103,6 +103,36 @@ describe('HerramientasBotService.ejecutar', () => {
     expect(texto).toContain(`$${(5000).toLocaleString('es-CO')}`);
   });
 
+  it('obtener_horario solo habla de WhatsApp en WhatsApp', async () => {
+    const { servicio } = crearServicio();
+    const wa = await servicio.ejecutar('obtener_horario', {}, CTX);
+    const messenger = await servicio.ejecutar(
+      'obtener_horario',
+      {},
+      {
+        ...CTX,
+        canal: 'messenger',
+      },
+    );
+    expect(wa).toContain('Por WhatsApp');
+    expect(messenger).not.toContain('WhatsApp');
+    expect(messenger).toContain('Horario del local');
+  });
+
+  it('en Messenger e Instagram obtener_cliente_registrado no manda a pedir datos', async () => {
+    const { servicio, pedidos } = crearServicio();
+    for (const canal of ['messenger', 'instagram'] as const) {
+      const texto = await servicio.ejecutar(
+        'obtener_cliente_registrado',
+        {},
+        { ...CTX, canal, telefono: null },
+      );
+      expect(texto).toContain('sin pedirle nombre ni teléfono');
+      expect(texto).not.toContain('No se pudo identificar');
+    }
+    expect(pedidos.buscarNombrePorTelefono).not.toHaveBeenCalled();
+  });
+
   it('consultar_pedido y cliente registrado piden el teléfono si el canal no lo da', async () => {
     const { servicio, pedidos } = crearServicio();
     const sinTelefono = { ...CTX, telefono: null };

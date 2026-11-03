@@ -5,6 +5,7 @@ import {
   armarTextoSocial,
   elementosDeTarjetas,
   esErrorBusinessAi,
+  sinNegritasDeWhatsapp,
 } from './mensajes-meta-social';
 
 describe('mensajes-meta-social', () => {
@@ -14,6 +15,23 @@ describe('mensajes-meta-social', () => {
       recipient: { id: 'psid-1' },
       messaging_type: 'RESPONSE',
       message: { text: 'Hola mundo' },
+    });
+  });
+
+  it('quita la negrita de WhatsApp porque Messenger e Instagram la muestran literal', () => {
+    expect(sinNegritasDeWhatsapp('Total: *$42.000* y **listo**')).toBe(
+      'Total: $42.000 y listo',
+    );
+    expect(sinNegritasDeWhatsapp('5 * 3 sin cierre')).toBe('5 * 3 sin cierre');
+    const texto = armarTextoSocial('psid-1', 'Tu pedido *#AB12* va en camino');
+    expect(texto).toMatchObject({
+      message: { text: 'Tu pedido #AB12 va en camino' },
+    });
+    const opciones = armarQuickRepliesSocial('psid-1', '¿Cómo pagas? *Elige*', [
+      { id: 'a', titulo: 'Efectivo' },
+    ]);
+    expect(opciones).toMatchObject({
+      message: { text: '¿Cómo pagas? Elige' },
     });
   });
 

@@ -229,7 +229,7 @@ export function validarTelefonoCO(texto: string): string | null {
   return digitos.length === LARGO_TELEFONO_CO ? digitos : null;
 }
 
-function faltaTelefono(
+export function faltaTelefono(
   checkout: CheckoutWhatsapp,
   canal?: CanalMensajeria,
   telefonoContexto?: string | null,

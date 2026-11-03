@@ -7,6 +7,7 @@ import { textoAdicionales } from './adicionales';
 import { buscarProductoUnico } from './busqueda-productos';
 import { CalculoPedidoBotService } from './calculo-pedido-bot.service';
 import { textoDe } from './datos-pedido-bot';
+import type { CanalMensajeria } from './conversaciones.tipos';
 import { DerivacionBotService } from './derivacion-bot.service';
 import type { ContextoHerramienta } from './herramientas-bot.tipos';
 import {
@@ -23,6 +24,11 @@ import { textoDetalleProducto } from './seleccion-productos';
 
 const SIN_TELEFONO =
   'No se pudo identificar el número de teléfono del cliente en este canal.';
+
+// Sin esta aclaración el modelo tomaba SIN_TELEFONO como una orden y le pedía
+// nombre y teléfono al cliente antes de mostrarle el menú.
+const SIN_CLIENTE_SOCIAL =
+  'En este canal no se conoce al cliente: salúdalo de forma normal y ayúdalo con lo que pida, sin pedirle nombre ni teléfono (eso lo pide el sistema al hacer el pedido).';
 
 /**
  * Las herramientas de consulta y de derivación que el modelo puede llamar.
@@ -68,7 +74,7 @@ export class HerramientasBotService {
       case 'consultar_adicionales':
         return this.textoAdicionales();
       case 'obtener_horario':
-        return this.textoHorario();
+        return this.textoHorario(ctx.canal);
       case 'obtener_categorias':
         return this.textoCategorias();
       case 'obtener_tamanos_pizza':
@@ -76,7 +82,7 @@ export class HerramientasBotService {
       case 'consultar_pedido':
         return this.textoPedido(ctx.telefono);
       case 'obtener_cliente_registrado':
-        return this.textoClienteRegistrado(ctx.telefono);
+        return this.textoClienteRegistrado(ctx.telefono, ctx.canal);
       case 'derivar_a_humano':
         return this.derivacion.derivar(ctx);
       default:
@@ -103,10 +109,11 @@ export class HerramientasBotService {
     );
   }
 
-  private textoHorario(): string {
+  /** El detalle de "por WhatsApp" es del bot de WhatsApp: no se le dice a un cliente de Messenger o Instagram. */
+  private textoHorario(canal: CanalMensajeria): string {
     return [
       `Horario del local: ${HORARIO}`,
-      HORARIO_PEDIDOS_BOT,
+      ...(canal === 'whatsapp' ? [HORARIO_PEDIDOS_BOT] : []),
       `Ahora mismo: ${ESTADO_ATENCION_TEXTO[estadoAtencion(new Date())]}`,
       `Dirección: ${DIRECCION}`,
       `Costo de domicilio: $${COSTO_DOMICILIO_DEFAULT.toLocaleString('es-CO')}`,
@@ -149,8 +156,10 @@ export class HerramientasBotService {
 
   private async textoClienteRegistrado(
     telefono: string | null,
+    canal: CanalMensajeria,
   ): Promise<string> {
-    if (!telefono) return SIN_TELEFONO;
+    if (!telefono)
+      return canal === 'whatsapp' ? SIN_TELEFONO : SIN_CLIENTE_SOCIAL;
     const nombre = await this.pedidos.buscarNombrePorTelefono(telefono);
     return nombre
       ? `Cliente encontrado: ${nombre}.`

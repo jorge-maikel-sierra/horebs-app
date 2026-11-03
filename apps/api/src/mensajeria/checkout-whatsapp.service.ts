@@ -13,6 +13,7 @@ import {
   completarDireccion,
   esBotonCheckout,
   esCancelar,
+  faltaTelefono,
   horaDe,
   listaItems,
   MENSAJE_CERRADO,
@@ -28,6 +29,7 @@ import type {
   CheckoutWhatsapp,
   ItemCarritoPendiente,
 } from './conversaciones.service';
+import type { CanalMensajeria } from './conversaciones.tipos';
 import { pesos } from './resumen-pedido';
 
 const URL_CATALOGO = 'https://pizzeriahorebs.shop/catalogo';
@@ -337,13 +339,23 @@ export class CheckoutWhatsappService {
     conversacionId: string;
     items: ItemCarritoPendiente[];
     checkout: CheckoutWhatsapp;
+    canal?: CanalMensajeria;
+    telefono?: string | null;
   }): Promise<string> {
-    const ctx = {
+    const ctx: ContextoCheckout = {
       identificadorExterno: datos.identificadorExterno,
       conversacionId: datos.conversacionId,
       mensajeId: null,
+      canal: datos.canal,
+      telefono: datos.telefono,
     };
     await this.envios.guardarCarrito(ctx, datos.items);
+    // En Messenger e Instagram el número no viene con la cuenta: se pide
+    // antes de la hora y el pago, y el checkout sigue solo cuando lo escribe.
+    if (faltaTelefono(datos.checkout, datos.canal, datos.telefono)) {
+      await this.preguntas.pedirTelefono(ctx, datos.checkout);
+      return 'Se le pidió al cliente su número de teléfono; el resumen y los botones de pago le llegan cuando lo escriba.';
+    }
     // Falta la hora de entrega: primero la lista de franjas, el resumen
     // sale cuando la elige.
     if (!datos.checkout.entrega) {

@@ -449,6 +449,30 @@ describe('CheckoutWhatsappService', () => {
       expect(aviso).toContain('lista de horarios');
     });
 
+    it('en Messenger sin teléfono lo pide antes de la hora y del pago', async () => {
+      const { servicio, preguntas } = crearServicio(null);
+      const aviso = await servicio.ofrecerPagoDesdeCalculo({
+        ...datos(),
+        canal: 'messenger',
+        telefono: null,
+      });
+      expect(preguntas.pedirTelefono).toHaveBeenCalled();
+      expect(preguntas.hora).not.toHaveBeenCalled();
+      expect(preguntas.pago).not.toHaveBeenCalled();
+      expect(aviso).toContain('número de teléfono');
+    });
+
+    it('en Instagram con el teléfono ya guardado sigue a la hora', async () => {
+      const { servicio, preguntas } = crearServicio(null);
+      await servicio.ofrecerPagoDesdeCalculo({
+        ...datos(),
+        canal: 'instagram',
+        telefono: '3157861208',
+      });
+      expect(preguntas.pedirTelefono).not.toHaveBeenCalled();
+      expect(preguntas.hora).toHaveBeenCalled();
+    });
+
     it('con la hora ya elegida ofrece el pago y devuelve el resumen', async () => {
       const { servicio, preguntas } = crearServicio(null);
       await expect(servicio.ofrecerPagoDesdeCalculo(datos('ya'))).resolves.toBe(

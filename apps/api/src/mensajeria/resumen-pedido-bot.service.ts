@@ -1,12 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { COSTO_DOMICILIO_DEFAULT } from '../common/costos';
 import type { ResultadoCalculo } from './calculo-pedido-bot.service';
 import { CheckoutWhatsappService } from './checkout-whatsapp.service';
 import { ConversacionesService } from './conversaciones.service';
 import { GeminiClienteService } from './gemini-cliente.service';
 import type { ContextoHerramienta } from './herramientas-bot.tipos';
-import { MetaGraphService } from './meta-graph.service';
-import { armarResumenPedido } from './resumen-pedido';
 
 type CalculoListo = Extract<ResultadoCalculo, { ok: true }>;
 
@@ -20,16 +17,15 @@ export class ResumenPedidoBotService {
 
   constructor(
     private readonly cliente: GeminiClienteService,
-    private readonly metaGraph: MetaGraphService,
     private readonly conversaciones: ConversacionesService,
     private readonly checkout: CheckoutWhatsappService,
   ) {}
 
   /**
    * Manda el resumen armado por código y le avisa a Gemini que ya se envió.
-   * En WhatsApp pasa al checkout con botones (paso de pago): el pedido se
-   * crea con un toque, sin que el modelo intervenga. En Messenger/Instagram
-   * se pregunta el pago por texto. Lo que Gemini conteste al aviso no se
+   * Pasa al checkout con botones (teléfono si falta, hora y pago) en los tres
+   * canales: el pedido se crea con un toque, sin que el modelo intervenga y
+   * sin sacar al cliente del chat. Lo que Gemini conteste al aviso no se
    * manda al cliente.
    */
   async enviar(
@@ -39,15 +35,14 @@ export class ResumenPedidoBotService {
     llamadaId: string,
   ): Promise<void> {
     const { canal, identificadorExterno, conversacionId } = ctx;
-    const resumen =
-      canal === 'whatsapp'
-        ? await this.checkout.ofrecerPagoDesdeCalculo({
-            identificadorExterno,
-            conversacionId,
-            items: calculo.items,
-            checkout: { paso: 'pago', ...calculo.datos },
-          })
-        : await this.enviarResumenPorTexto(ctx, calculo);
+    const resumen = await this.checkout.ofrecerPagoDesdeCalculo({
+      canal,
+      telefono: ctx.telefono,
+      identificadorExterno,
+      conversacionId,
+      items: calculo.items,
+      checkout: { paso: 'pago', ...calculo.datos },
+    });
     this.logger.log(
       `id=${identificadorExterno} herramienta=calcular_pedido → resumen enviado por el sistema`,
     );
@@ -95,32 +90,5 @@ export class ResumenPedidoBotService {
         interaccionId,
       );
     }
-  }
-
-  private async enviarResumenPorTexto(
-    ctx: ContextoHerramienta,
-    calculo: CalculoListo,
-  ): Promise<string> {
-    const resumen = `${
-      armarResumenPedido({
-        nombreCompleto: `${calculo.datos.nombre} ${calculo.datos.apellido}`,
-        lineas: calculo.lineas,
-        modalidad: calculo.datos.modalidad,
-        direccion: calculo.datos.direccion ?? null,
-        costoDomicilio: COSTO_DOMICILIO_DEFAULT,
-        nota: calculo.datos.nota,
-      }).texto
-    }\n\n¿Cuál va a ser tu método de pago: *efectivo*, *transferencia* o *tarjeta*?`;
-    await this.metaGraph.enviarMensajeSesion(
-      ctx.canal,
-      ctx.identificadorExterno,
-      resumen,
-    );
-    await this.conversaciones.registrarMensaje(
-      ctx.conversacionId,
-      'saliente_bot',
-      resumen,
-    );
-    return resumen;
   }
 }

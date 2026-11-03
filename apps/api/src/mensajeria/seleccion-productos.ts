@@ -1,5 +1,6 @@
 import type { CatalogService } from '../catalog/catalog.service';
 import { entraEnCatalogoMeta } from '../catalog/catalog.service';
+import { esAdicional } from './adicionales';
 import { palabrasSignificativas } from './busqueda-productos';
 import type { TarjetaProducto } from './mensajes-interactivos';
 
@@ -71,16 +72,26 @@ export function elegirProductos(
   return porDescripcion.length > 0 ? porDescripcion : productos;
 }
 
-/** Hasta 3 productos como tarjetas, con el precio más bajo de sus variantes. */
-export function tarjetasDe(elegidos: Producto[]): TarjetaProducto[] {
-  return elegidos.slice(0, MAX_TARJETAS).map((p) => ({
-    nombre: p.nombre,
-    descripcion: p.descripcion,
-    imagenUrl: p.imagen_url,
-    precioDesde: Math.min(
-      ...p.variantes.map((v) => v.precio_oferta ?? v.precio),
-    ),
-  }));
+/**
+ * Hasta `maximo` productos como tarjetas (3 en WhatsApp; Messenger e Instagram
+ * admiten más), con el precio más bajo de sus variantes. Los adicionales no
+ * van como tarjeta: se ofrecen al armar el pedido.
+ */
+export function tarjetasDe(
+  elegidos: Producto[],
+  maximo = MAX_TARJETAS,
+): TarjetaProducto[] {
+  return elegidos
+    .filter((p) => !esAdicional(p.nombre))
+    .slice(0, maximo)
+    .map((p) => ({
+      nombre: p.nombre,
+      descripcion: p.descripcion,
+      imagenUrl: p.imagen_url,
+      precioDesde: Math.min(
+        ...p.variantes.map((v) => v.precio_oferta ?? v.precio),
+      ),
+    }));
 }
 
 /** Lo que entra al catálogo de Meta, agrupado por categoría (sin secciones vacías). */

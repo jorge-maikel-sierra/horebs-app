@@ -3,7 +3,6 @@ import type { CheckoutWhatsappService } from './checkout-whatsapp.service';
 import type { ConversacionesService } from './conversaciones.service';
 import type { GeminiClienteService } from './gemini-cliente.service';
 import type { ContextoHerramienta } from './herramientas-bot.tipos';
-import type { MetaGraphService } from './meta-graph.service';
 import { ResumenPedidoBotService } from './resumen-pedido-bot.service';
 
 const ctx = (canal: ContextoHerramienta['canal']): ContextoHerramienta => ({
@@ -34,7 +33,6 @@ const CALCULO = {
 } as unknown as Extract<ResultadoCalculo, { ok: true }>;
 
 function crearServicio(falloGemini = false) {
-  const enviados: string[] = [];
   const registrados: string[] = [];
   const interacciones: string[] = [];
   const pagos: unknown[] = [];
@@ -43,12 +41,6 @@ function crearServicio(falloGemini = false) {
     llamar: () => {
       if (falloGemini) return Promise.reject(new Error('timeout'));
       return Promise.resolve({ id: 'aviso-1' });
-    },
-  };
-  const metaGraph = {
-    enviarMensajeSesion: (_c: string, _id: string, texto: string) => {
-      enviados.push(texto);
-      return Promise.resolve();
     },
   };
   const conversaciones = {
@@ -73,16 +65,15 @@ function crearServicio(falloGemini = false) {
   };
   const servicio = new ResumenPedidoBotService(
     cliente as unknown as GeminiClienteService,
-    metaGraph as unknown as MetaGraphService,
     conversaciones as unknown as ConversacionesService,
     checkout as unknown as CheckoutWhatsappService,
   );
-  return { servicio, enviados, registrados, interacciones, pagos };
+  return { servicio, interacciones, pagos };
 }
 
 describe('ResumenPedidoBotService.enviar', () => {
   it('en WhatsApp pasa al paso de pago del checkout con botones', async () => {
-    const { servicio, enviados, pagos, interacciones } = crearServicio();
+    const { servicio, pagos, interacciones } = crearServicio();
 
     await servicio.enviar(ctx('whatsapp'), CALCULO, 'int-1', 'call-1');
 
@@ -92,19 +83,29 @@ describe('ResumenPedidoBotService.enviar', () => {
       items: CALCULO.items,
       checkout: { paso: 'pago', nombre: 'Ana' },
     });
-    expect(enviados).toEqual([]);
+    expect(pagos[0]).toMatchObject({ canal: 'whatsapp' });
     expect(interacciones).toEqual(['aviso-1']);
   });
 
-  it('en Messenger manda el resumen por texto y pregunta el método de pago', async () => {
-    const { servicio, enviados, registrados, pagos } = crearServicio();
+  it('en Messenger e Instagram también cierra con el checkout del chat, sin derivar a una persona', async () => {
+    for (const canal of ['messenger', 'instagram'] as const) {
+      const { servicio, pagos, interacciones } = crearServicio();
 
-    await servicio.enviar(ctx('messenger'), CALCULO, 'int-1', 'call-1');
+      await servicio.enviar(
+        { ...ctx(canal), telefono: null },
+        CALCULO,
+        'int-1',
+        'call-1',
+      );
 
-    expect(pagos).toEqual([]);
-    expect(enviados[0]).toContain('Ana Pérez');
-    expect(enviados[0]).toContain('¿Cuál va a ser tu método de pago');
-    expect(registrados).toEqual(enviados);
+      expect(pagos[0]).toMatchObject({
+        canal,
+        telefono: null,
+        identificadorExterno: '573157861208',
+        checkout: { paso: 'pago', nombre: 'Ana', apellido: 'Pérez' },
+      });
+      expect(interacciones).toEqual(['aviso-1']);
+    }
   });
 
   it('si Gemini no responde al aviso, conserva la interacción previa', async () => {

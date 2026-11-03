@@ -40,12 +40,15 @@ interface Opciones {
   catalogo?: 'catalogo' | 'enlace';
   lista?: 'lista' | 'tarjetas';
   productos?: ProductoDto[];
+  categorias?: { id: string; nombre: string; orden: number }[];
 }
 
 function crearServicio(opciones: Opciones = {}) {
   const registrados: string[] = [];
   const interacciones: string[] = [];
   const catalogosEnviados: unknown[][] = [];
+  const tarjetasEnviadas: unknown[][] = [];
+  const botonesEnviados: unknown[][] = [];
   const catalog = {
     getProductos: () =>
       Promise.resolve(
@@ -55,7 +58,9 @@ function crearServicio(opciones: Opciones = {}) {
         ],
       ),
     getCategorias: () =>
-      Promise.resolve([{ id: 'cat-1', nombre: 'Pizzas', orden: 1 }]),
+      Promise.resolve(
+        opciones.categorias ?? [{ id: 'cat-1', nombre: 'Pizzas', orden: 1 }],
+      ),
   };
   const metaGraph = {
     enviarCatalogo: (...args: unknown[]) => {
@@ -63,6 +68,14 @@ function crearServicio(opciones: Opciones = {}) {
       return Promise.resolve(opciones.catalogo ?? 'catalogo');
     },
     enviarListaProductos: () => Promise.resolve(opciones.lista ?? 'lista'),
+    enviarTarjetasProductos: (...args: unknown[]) => {
+      tarjetasEnviadas.push(args);
+      return Promise.resolve();
+    },
+    enviarBotones: (...args: unknown[]) => {
+      botonesEnviados.push(args);
+      return Promise.resolve();
+    },
   };
   const conversaciones = {
     registrarMensaje: (_id: string, _dir: string, texto: string) => {
@@ -83,7 +96,14 @@ function crearServicio(opciones: Opciones = {}) {
     metaGraph as unknown as MetaGraphService,
     conversaciones as unknown as ConversacionesService,
   );
-  return { servicio, registrados, interacciones, catalogosEnviados };
+  return {
+    servicio,
+    registrados,
+    interacciones,
+    catalogosEnviados,
+    tarjetasEnviadas,
+    botonesEnviados,
+  };
 }
 
 describe('EnvioHerramientasService.mandoElMensaje', () => {
@@ -108,6 +128,57 @@ describe('EnvioHerramientasService.mandoElMensaje', () => {
     expect(catalogosEnviados[0][3]).toBe('p-1-v');
     expect(registrados).toEqual(['Menú enviado como catálogo de WhatsApp.']);
     expect(interacciones).toEqual(['int-1']);
+  });
+
+  it('en Messenger e Instagram el menú va como tarjetas dentro del chat, sin enlace', async () => {
+    for (const canal of ['messenger', 'instagram'] as const) {
+      const { servicio, registrados, catalogosEnviados, tarjetasEnviadas } =
+        crearServicio();
+
+      await expect(
+        servicio.mandoElMensaje(
+          llamada('enviar_catalogo'),
+          { ...CTX, canal, identificadorExterno: 'psid-1', telefono: null },
+          'int-1',
+        ),
+      ).resolves.toBe(true);
+
+      expect(catalogosEnviados).toEqual([]);
+      expect(tarjetasEnviadas).toHaveLength(1);
+      expect(tarjetasEnviadas[0][0]).toBe(canal);
+      expect(registrados[0]).toContain('Menú enviado dentro del chat');
+      expect(registrados[0]).not.toContain('http');
+    }
+  });
+
+  it('en Messenger ofrece las categorías con productos, sin los adicionales', async () => {
+    const { servicio, botonesEnviados } = crearServicio({
+      productos: [
+        producto('p-1', 'Hawaiana'),
+        { ...producto('p-2', 'Coca-Cola'), categoria_id: 'cat-2' },
+        {
+          ...producto('p-3', 'Adicional: Piña'),
+          categoria_id: 'cat-3',
+        },
+      ],
+      categorias: [
+        { id: 'cat-1', nombre: 'Pizzas', orden: 1 },
+        { id: 'cat-2', nombre: 'Bebidas', orden: 2 },
+        { id: 'cat-3', nombre: 'Adicionales', orden: 3 },
+      ],
+    });
+
+    await servicio.mandoElMensaje(
+      llamada('enviar_catalogo'),
+      { ...CTX, canal: 'messenger', telefono: null },
+      'int-1',
+    );
+
+    expect(botonesEnviados).toHaveLength(1);
+    expect(botonesEnviados[0][3]).toEqual([
+      { id: 'cat:cat-1', titulo: 'Pizzas' },
+      { id: 'cat:cat-2', titulo: 'Bebidas' },
+    ]);
   });
 
   it('si el catálogo nativo no se pudo, registra el enlace', async () => {
