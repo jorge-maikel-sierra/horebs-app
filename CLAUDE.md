@@ -58,6 +58,9 @@ pregunta; no se supone un valor razonable.
   régimen "No responsable de IVA"; solo se muestra el nombre comercial
   "Pizzería Horebs", no el nombre personal del titular.
 - WhatsApp: +57 315 786 1208 (canal de confirmación de pedidos).
+- Número del bot de WhatsApp: +57 320 567 4313 (confirmado por el dueño el
+  2 nov 2026). El botón "Volver a la tienda" del link de Bold abre ese chat
+  (`ENLACE_WHATSAPP_BOT` en `common/contacto.ts`).
 - Dominio activo: `pizzeriahorebs.shop`. **NUNCA** usar ni enlazar
   `pizzeriahorebs.com` (expiró, ya no es del negocio) — ni en código, ni en
   contenido, ni en ejemplos.
