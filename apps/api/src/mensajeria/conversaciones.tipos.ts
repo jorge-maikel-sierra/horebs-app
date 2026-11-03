@@ -7,6 +7,8 @@ export interface ConversacionParaSeguimiento {
   id: string;
   canal: CanalMensajeria;
   identificador_externo: string;
+  telefono?: string | null;
+  ultima_interaccion?: string;
 }
 
 export interface ConversacionCompleta {

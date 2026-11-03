@@ -8,7 +8,8 @@ import {
   type EtapaSeguimiento,
 } from './conversaciones.service';
 import { MetaGraphService } from './meta-graph.service';
-import { AvisosPedidoService } from './avisos-pedido.service';
+import { AvisoEquipoService } from './aviso-equipo.service';
+import { dentroDeLaVentana } from './avisos-pedido';
 
 // Los plazos (recordatorio / oferta) son editables desde /admin/seguimiento
 // — se leen de la tabla configuracion en cada corrida del cron, ver
@@ -50,7 +51,7 @@ export class SeguimientoService {
     private readonly conversaciones: ConversacionesService,
     private readonly metaGraph: MetaGraphService,
     private readonly pedidos: PedidosConsultasService,
-    private readonly avisosPedido: AvisosPedidoService,
+    private readonly avisoEquipo: AvisoEquipoService,
   ) {}
 
   // Nombre explícito: identifica el job en logs y en el SchedulerRegistry
@@ -72,8 +73,6 @@ export class SeguimientoService {
         await this.conversaciones.obtenerConfiguracionSeguimiento();
       await this.enviarRecordatorios(recordatorioMinutos);
       await this.enviarOfertas(ofertaMinutos);
-      // Invitación a repetir el pedido, en la última hora de la ventana de 24h.
-      await this.avisosPedido.enviarRecompras();
     } finally {
       this.ejecutando = false;
     }
@@ -96,11 +95,14 @@ export class SeguimientoService {
    * checkout del bot el pedido queda registrado y la conversación sigue en
    * `bot`, así que sin este corte le llegaría "¿seguís interesado?". Se
    * cierra el seguimiento para no volver a evaluarlo en cada corrida.
+   * En Messenger e Instagram busca por el teléfono capturado en la conversación.
    */
   private async yaCompro(c: ConversacionParaSeguimiento): Promise<boolean> {
-    if (c.canal !== 'whatsapp') return false;
+    const telefono =
+      c.canal === 'whatsapp' ? c.identificador_externo : c.telefono;
+    if (!telefono) return false;
     const compro = await this.pedidos.tienePedidoReciente(
-      c.identificador_externo,
+      telefono,
       HORAS_YA_COMPRO,
     );
     if (!compro) return false;
@@ -130,30 +132,58 @@ export class SeguimientoService {
   ): Promise<void> {
     for (const c of candidatas) {
       try {
-        if (await this.yaCompro(c)) continue;
-        await this.metaGraph.enviarMensajeSesion(
-          c.canal,
-          c.identificador_externo,
-          envio.texto,
-        );
-        await this.conversaciones.registrarMensaje(
-          c.id,
-          'saliente_bot',
-          envio.texto,
-        );
-        await this.conversaciones.marcarSeguimientoEnviado(
-          c.canal,
-          c.identificador_externo,
-          envio.marca,
-        );
-        this.logger.log(
-          `${envio.nombre} enviado — canal=${c.canal} id=${c.identificador_externo}`,
-        );
+        await this.procesarSeguimiento(c, envio);
       } catch (err) {
         this.logger.error(
           `Error mandando ${envio.nombre.toLowerCase()} a ${c.canal}/${c.identificador_externo}: ${(err as Error).message}`,
         );
       }
     }
+  }
+
+  private async procesarSeguimiento(
+    c: ConversacionParaSeguimiento,
+    envio: { nombre: string; texto: string; marca: EtapaSeguimiento },
+  ): Promise<void> {
+    if (await this.yaCompro(c)) return;
+
+    if (c.canal !== 'whatsapp' && !this.enVentanaSeguimiento(c)) {
+      this.avisoEquipo.notificarVentanaCerrada({
+        canal: c.canal,
+        identificadorExterno: c.identificador_externo,
+        telefono: c.telefono ?? null,
+        conversacionId: c.id,
+      });
+      await this.conversaciones.marcarSeguimientoEnviado(
+        c.canal,
+        c.identificador_externo,
+        'oferta_enviada',
+      );
+      return;
+    }
+
+    await this.metaGraph.enviarMensajeSesion(
+      c.canal,
+      c.identificador_externo,
+      envio.texto,
+    );
+    await this.conversaciones.registrarMensaje(
+      c.id,
+      'saliente_bot',
+      envio.texto,
+    );
+    await this.conversaciones.marcarSeguimientoEnviado(
+      c.canal,
+      c.identificador_externo,
+      envio.marca,
+    );
+    this.logger.log(
+      `${envio.nombre} enviado — canal=${c.canal} id=${c.identificador_externo}`,
+    );
+  }
+
+  private enVentanaSeguimiento(c: ConversacionParaSeguimiento): boolean {
+    if (!c.ultima_interaccion) return false;
+    return dentroDeLaVentana(new Date(c.ultima_interaccion), new Date());
   }
 }

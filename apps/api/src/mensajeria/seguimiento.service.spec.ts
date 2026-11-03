@@ -2,15 +2,21 @@ import { SeguimientoService } from './seguimiento.service';
 import type { ConversacionParaSeguimiento } from './conversaciones.service';
 
 const AHORA_ABIERTO = new Date('2026-10-31T21:00:00.000Z'); // 4:00 p.m. en Bogotá
+const HACE_2_HORAS = new Date('2026-10-31T19:00:00.000Z').toISOString();
+const HACE_25_HORAS = new Date('2026-10-30T20:00:00.000Z').toISOString();
 
 function conversacion(
   id: string,
   canal = 'whatsapp',
+  telefono?: string,
+  ultimaInteraccion = HACE_2_HORAS,
 ): ConversacionParaSeguimiento {
   return {
     id,
     canal,
-    identificador_externo: `57300${id}`,
+    identificador_externo: canal === 'whatsapp' ? `57300${id}` : `psid-${id}`,
+    telefono,
+    ultima_interaccion: ultimaInteraccion,
   } as ConversacionParaSeguimiento;
 }
 
@@ -45,16 +51,17 @@ function armar(opciones: {
       Promise.resolve(opciones.yaComproPorId?.includes(id) ?? false),
     ),
   };
-  const avisosPedido = {
-    enviarRecompras: jest.fn().mockResolvedValue(undefined),
+  const avisoEquipo = {
+    notificar: jest.fn(),
+    notificarVentanaCerrada: jest.fn(),
   };
   const servicio = new SeguimientoService(
     conversaciones as never,
     metaGraph as never,
     pedidos as never,
-    avisosPedido as never,
+    avisoEquipo as never,
   );
-  return { servicio, conversaciones, metaGraph, pedidos, avisosPedido };
+  return { servicio, conversaciones, metaGraph, pedidos, avisoEquipo };
 }
 
 describe('SeguimientoService.ejecutar', () => {
@@ -112,6 +119,61 @@ describe('SeguimientoService.ejecutar', () => {
       'whatsapp',
       c.identificador_externo,
       'oferta_enviada',
+    );
+  });
+
+  it('en Messenger/Instagram busca compra por telefono y cierra seguimiento', async () => {
+    const c = conversacion('30', 'messenger', '3001234567');
+    const { servicio, metaGraph, conversaciones, pedidos } = armar({
+      inactivas: [c],
+      yaComproPorId: ['3001234567'],
+    });
+    await servicio.ejecutar();
+    expect(pedidos.tienePedidoReciente).toHaveBeenCalledWith('3001234567', 24);
+    expect(metaGraph.enviarMensajeSesion).not.toHaveBeenCalled();
+    expect(conversaciones.marcarSeguimientoEnviado).toHaveBeenCalledWith(
+      'messenger',
+      c.identificador_externo,
+      'oferta_enviada',
+    );
+  });
+
+  it('en Messenger/Instagram fuera de ventana de 24h avisa al equipo y no llama a Meta', async () => {
+    const c = conversacion('31', 'instagram', '3007654321', HACE_25_HORAS);
+    const { servicio, metaGraph, conversaciones, avisoEquipo } = armar({
+      inactivas: [c],
+    });
+    await servicio.ejecutar();
+    expect(metaGraph.enviarMensajeSesion).not.toHaveBeenCalled();
+    expect(avisoEquipo.notificarVentanaCerrada).toHaveBeenCalledWith(
+      expect.objectContaining({
+        canal: 'instagram',
+        identificadorExterno: c.identificador_externo,
+        telefono: '3007654321',
+      }),
+    );
+    expect(conversaciones.marcarSeguimientoEnviado).toHaveBeenCalledWith(
+      'instagram',
+      c.identificador_externo,
+      'oferta_enviada',
+    );
+  });
+
+  it('en Messenger/Instagram dentro de ventana de 24h envía normal', async () => {
+    const c = conversacion('32', 'messenger', '3007654321', HACE_2_HORAS);
+    const { servicio, metaGraph, conversaciones } = armar({
+      inactivas: [c],
+    });
+    await servicio.ejecutar();
+    expect(metaGraph.enviarMensajeSesion).toHaveBeenCalledWith(
+      'messenger',
+      c.identificador_externo,
+      expect.stringContaining('Seguís interesado'),
+    );
+    expect(conversaciones.marcarSeguimientoEnviado).toHaveBeenCalledWith(
+      'messenger',
+      c.identificador_externo,
+      'recordatorio_enviado',
     );
   });
 

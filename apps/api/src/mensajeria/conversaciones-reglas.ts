@@ -1,6 +1,7 @@
 import type {
   CanalMensajeria,
   ConfiguracionSeguimiento,
+  EstadoConversacion,
 } from './conversaciones.tipos';
 
 export const CLAVE_RECORDATORIO_MINUTOS = 'seguimiento_recordatorio_minutos';
@@ -93,5 +94,101 @@ export function payloadFrenoCosto(
     identificador_externo: identificadorExterno,
     limite_ventana_inicio: ventana.inicio,
     limite_ventana_contador: ventana.contador,
+  };
+}
+
+export const DIGITOS_TELEFONO_CO = 10;
+
+export function variantesTelefonoCO(telefono: string): string[] {
+  const digitos = telefono.replace(/\D/g, '').slice(-DIGITOS_TELEFONO_CO);
+  return [digitos, `57${digitos}`, `+57${digitos}`];
+}
+
+export function payloadEstadoManual(estado: string): Record<string, unknown> {
+  return {
+    estado,
+    gemini_interaction_id: null,
+    seguimiento_etapa: 'ninguna',
+    seguimiento_enviado_en: null,
+    carrito_pendiente: null,
+    checkout: null,
+  };
+}
+
+export function payloadConfiguracionSeguimiento(
+  recordatorio: number,
+  oferta: number,
+): { clave: string; valor: string }[] {
+  return [
+    { clave: CLAVE_RECORDATORIO_MINUTOS, valor: String(recordatorio) },
+    { clave: CLAVE_OFERTA_MINUTOS, valor: String(oferta) },
+  ];
+}
+
+export interface VentanaConversacion {
+  conversacionId: string;
+  estado: EstadoConversacion;
+  ultimaInteraccion: Date;
+  identificadorExterno?: string;
+}
+
+export function mapearVentana(
+  fila: {
+    id: string;
+    estado: EstadoConversacion;
+    ultima_interaccion: string | null;
+    identificador_externo?: string;
+  } | null,
+): VentanaConversacion | null {
+  if (!fila?.ultima_interaccion) return null;
+  return {
+    conversacionId: fila.id,
+    estado: fila.estado,
+    ultimaInteraccion: new Date(fila.ultima_interaccion),
+    ...(fila.identificador_externo
+      ? { identificadorExterno: fila.identificador_externo }
+      : {}),
+  };
+}
+
+export function payloadCtwa(
+  ctwaClid: string,
+  capturadoEn: string = new Date().toISOString(),
+): Record<string, unknown> {
+  return { ctwa_clid: ctwaClid, ctwa_capturado_en: capturadoEn };
+}
+
+export function payloadSeguimiento(
+  etapa: string,
+  enviadoEn: string = new Date().toISOString(),
+): Record<string, unknown> {
+  return { seguimiento_etapa: etapa, seguimiento_enviado_en: enviadoEn };
+}
+
+export function payloadMensaje(
+  conversacionId: string,
+  direccion: string,
+  texto: string,
+  autorUsuarioId?: string,
+): Record<string, unknown> {
+  return {
+    conversacion_id: conversacionId,
+    direccion,
+    texto,
+    autor_usuario_id: autorUsuarioId ?? null,
+  };
+}
+
+export function payloadRegistroInteraccion(
+  canal: CanalMensajeria,
+  identificadorExterno: string,
+  ahora: string,
+): Record<string, unknown> {
+  return {
+    canal,
+    identificador_externo: identificadorExterno,
+    ultima_interaccion: ahora,
+    seguimiento_etapa: 'ninguna',
+    seguimiento_enviado_en: null,
   };
 }
