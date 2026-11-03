@@ -128,6 +128,157 @@ describe('parsearMessengerOInstagram', () => {
     expect(eventos).toEqual([]);
   });
 
+  it('en Instagram ignora is_self y is_deleted', () => {
+    const eventos = parsearMessengerOInstagram(
+      {
+        entry: [
+          {
+            messaging: [
+              {
+                sender: { id: 'a' },
+                message: { text: 'propio', is_self: true },
+              },
+              {
+                sender: { id: 'b' },
+                message: { text: 'borrado', is_deleted: true },
+              },
+            ],
+          },
+        ],
+      },
+      'instagram',
+    );
+    expect(eventos).toEqual([]);
+  });
+
+  it('procesa quick_reply y postback con payload de checkout o botón pedir', () => {
+    const eventos = parsearMessengerOInstagram(
+      {
+        entry: [
+          {
+            messaging: [
+              {
+                sender: { id: 'user-1' },
+                message: {
+                  text: '🛵 Domicilio',
+                  quick_reply: { payload: 'ck:mod:domicilio' },
+                },
+              },
+              {
+                sender: { id: 'user-2' },
+                postback: {
+                  payload: 'pedir:Pizza Pepperoni',
+                  title: 'Agregar',
+                },
+              },
+            ],
+          },
+        ],
+      },
+      'messenger',
+    );
+    expect(eventos[0]?.entrada).toEqual({
+      tipo: 'boton',
+      id: 'ck:mod:domicilio',
+    });
+    expect(eventos[0]?.texto).toBe('🛵 Domicilio');
+    expect(eventos[1]?.texto).toBe('Quiero pedir Pizza Pepperoni');
+  });
+
+  it('procesa attachments de imagen, audio y ubicación', () => {
+    const eventos = parsearMessengerOInstagram(
+      {
+        entry: [
+          {
+            messaging: [
+              {
+                sender: { id: 'user-3' },
+                message: {
+                  attachments: [
+                    {
+                      type: 'image',
+                      payload: { url: 'https://cdn.fb.com/foto.jpg' },
+                    },
+                  ],
+                },
+              },
+              {
+                sender: { id: 'user-4' },
+                message: {
+                  attachments: [
+                    {
+                      type: 'audio',
+                      payload: { url: 'https://cdn.fb.com/audio.mp4' },
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        ],
+      },
+      'instagram',
+    );
+    expect(eventos[0]?.media).toEqual({
+      id: 'https://cdn.fb.com/foto.jpg',
+      tipo: 'imagen',
+    });
+    expect(eventos[1]?.media).toEqual({
+      id: 'https://cdn.fb.com/audio.mp4',
+      tipo: 'audio',
+    });
+  });
+
+  it('agrega contexto a respuestas de historias y no rompe con reels compartidos', () => {
+    const eventos = parsearMessengerOInstagram(
+      {
+        entry: [
+          {
+            messaging: [
+              {
+                sender: { id: 'user-5' },
+                message: {
+                  text: '¿Cuánto vale?',
+                  reply_to: { story: { id: 'story-1' } },
+                },
+              },
+              {
+                sender: { id: 'user-6' },
+                message: {
+                  attachments: [{ type: 'reel' }],
+                },
+              },
+            ],
+          },
+        ],
+      },
+      'instagram',
+    );
+    expect(eventos[0]?.texto).toBe('[Respuesta a historia] ¿Cuánto vale?');
+    expect(eventos[1]?.texto).toBe(
+      'El cliente compartió contenido de Instagram.',
+    );
+  });
+
+  it('valida object y entry.id esperados', () => {
+    const payload = {
+      object: 'page',
+      entry: [
+        {
+          id: 'page-123',
+          messaging: [{ sender: { id: 'u1' }, message: { text: 'Hola' } }],
+        },
+      ],
+    };
+    expect(
+      parsearMessengerOInstagram(payload, 'messenger', 'page-123').length,
+    ).toBe(1);
+    expect(
+      parsearMessengerOInstagram(payload, 'messenger', 'otra-pagina').length,
+    ).toBe(0);
+    expect(parsearMessengerOInstagram(payload, 'instagram').length).toBe(0); // object es page, no instagram
+  });
+
   it('detecta anuncio por source ADS', () => {
     const [evento] = parsearMessengerOInstagram(
       {

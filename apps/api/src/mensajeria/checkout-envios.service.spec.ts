@@ -60,6 +60,7 @@ describe('CheckoutEnviosService', () => {
     await servicio.botones(CTX, '¿Cómo lo quieres?', BOTONES);
 
     expect(metaGraph.enviarBotones).toHaveBeenCalledWith(
+      'whatsapp',
       '573157861208',
       '¿Cómo lo quieres?',
       BOTONES,
@@ -76,11 +77,15 @@ describe('CheckoutEnviosService', () => {
 
     await servicio.lista(CTX, 'Elige la hora', 'Ver horas', BOTONES);
 
-    expect(metaGraph.enviarLista).toHaveBeenCalledWith('573157861208', {
-      cuerpo: 'Elige la hora',
-      boton: 'Ver horas',
-      filas: BOTONES,
-    });
+    expect(metaGraph.enviarLista).toHaveBeenCalledWith(
+      'whatsapp',
+      '573157861208',
+      {
+        cuerpo: 'Elige la hora',
+        boton: 'Ver horas',
+        filas: BOTONES,
+      },
+    );
     expect(conversaciones.registrarMensaje).toHaveBeenCalledWith(
       'conv-1',
       'saliente_bot',

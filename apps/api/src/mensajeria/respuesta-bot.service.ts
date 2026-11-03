@@ -34,9 +34,11 @@ export class RespuestaBotService {
   ): Promise<void> {
     // Solo cuando el bot va a responder: Meta pide no mostrar "escribiendo…"
     // si no va a llegar una respuesta.
-    if (evento.canal === 'whatsapp' && evento.mensajeId) {
-      this.metaGraph.marcarLeidoEscribiendo(evento.mensajeId);
-    }
+    this.metaGraph.marcarLeidoEscribiendo(
+      evento.canal,
+      evento.identificadorExterno,
+      evento.mensajeId ?? undefined,
+    );
     if (
       evento.canal === 'whatsapp' &&
       (await this.checkoutPorBotones(evento, conversacion, carrito))

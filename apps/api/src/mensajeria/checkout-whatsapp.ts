@@ -1,6 +1,7 @@
 import type { ItemCarritoResuelto } from '../catalog/catalog.service';
 import { MAX_DIRECCION } from '../pedidos/validar-pedido';
 import type {
+  CanalMensajeria,
   CheckoutWhatsapp,
   ModalidadPedido,
   PasoCheckout,
@@ -18,6 +19,8 @@ export interface ContextoCheckout {
   conversacionId: string;
   /** wamid del mensaje que disparó el paso — idempotencia del pedido. */
   mensajeId: string | null;
+  canal?: CanalMensajeria;
+  telefono?: string | null;
 }
 
 const HORAS_MEDIO_DIA = 12;

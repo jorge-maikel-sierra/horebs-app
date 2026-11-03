@@ -5,6 +5,13 @@ import {
   type EntradaCheckout,
 } from './checkout-whatsapp';
 import type { CanalMensajeria } from './conversaciones.service';
+import {
+  parsearMessengerOInstagram,
+  type MessengerWebhookPayload,
+} from './parseo-webhook-social';
+
+export { parsearMessengerOInstagram, type MessengerWebhookPayload };
+
 export interface ProcedenciaAnuncio {
   esAnuncio: boolean;
   anuncioId?: string;
@@ -24,16 +31,12 @@ export interface EventoEntrante {
   telefono: string | null; // solo WhatsApp expone el teléfono real
   texto: string;
   procedenciaAnuncio: ProcedenciaAnuncio | null;
-  mensajeId: string | null; // wamid (WhatsApp) o mid (Messenger/Instagram) — para deduplicar reenvíos de Meta
-  /** Carrito enviado desde el catálogo de WhatsApp — `texto` se arma al procesarlo. */
+  mensajeId: string | null; // wamid (WhatsApp) o mid (Messenger/Instagram)
   carrito?: CarritoCatalogo;
-  /** Toque de un botón del checkout (`ck:*`) o ubicación compartida. */
   entrada?: EntradaCheckout;
-  /** Foto, documento o nota de voz. */
   media?: { id: string; tipo: TipoMedia };
 }
 
-// Mismo tope que calcular_pedido en gemini.service.ts.
 const MAX_CANTIDAD_ITEM = 20;
 
 interface WhatsappOrden {
@@ -42,16 +45,9 @@ interface WhatsappOrden {
   product_items?: {
     product_retailer_id?: string;
     quantity?: number;
-    // item_price y currency también llegan, pero se ignoran a propósito:
-    // el precio sale siempre de Supabase (calcular_pedido).
   }[];
 }
 
-/**
- * Carrito de un mensaje `order` de WhatsApp. Solo se toma el id de la
- * variante y la cantidad (acotada a 1–20) — nunca el precio que manda el
- * cliente, que se recalcula desde la base.
- */
 export function carritoDesdeOrden(orden: WhatsappOrden): CarritoCatalogo {
   const items = (orden.product_items ?? []).flatMap((item) => {
     if (!item.product_retailer_id) return [];
@@ -66,12 +62,6 @@ export function carritoDesdeOrden(orden: WhatsappOrden): CarritoCatalogo {
   return { items, nota: orden.text?.trim() || null };
 }
 
-/**
- * Texto sintético que recibe Gemini en lugar del carrito — mismo criterio
- * que "Quiero pedir …" del botón de las tarjetas: el modelo sigue el flujo
- * normal de toma de pedido con productos que ya existen en el catálogo.
- * Sin precios: el total lo calcula calcular_pedido desde la base.
- */
 export function textoCarritoCatalogo(
   disponibles: ItemCarritoResuelto[],
   noDisponibles: number,
@@ -97,12 +87,7 @@ export function textoCarritoCatalogo(
     .join(' ');
 }
 
-/**
- * Solo los campos que este servicio realmente lee de cada payload — así un
- * cambio de forma en la API de Meta lo marca el compilador en vez de
- * romperse en silencio en runtime.
- */
-interface MetaReferral {
+export interface MetaReferral {
   source_id?: string;
   source_type?: string;
   ctwa_clid?: string;
@@ -135,10 +120,6 @@ export interface WhatsappMensaje {
 
 export type TipoMedia = 'imagen' | 'documento' | 'audio';
 
-/**
- * Foto, documento o nota de voz: el archivo se descarga después por id.
- * El texto es lo que queda en el historial de la conversación.
- */
 export function mediaDe(
   mensaje: WhatsappMensaje,
 ): { id: string; tipo: TipoMedia; texto: string } | null {
@@ -163,14 +144,9 @@ export function mediaDe(
   return null;
 }
 
-/**
- * Toque de un botón del checkout o ubicación compartida → entrada para
- * CheckoutWhatsappService, con un texto legible para el historial.
- */
 export function entradaCheckoutDe(
   mensaje: WhatsappMensaje,
 ): { entrada: EntradaCheckout; texto: string } | null {
-  // Botón de respuesta o fila de una lista (franjas de entrega): mismo trato.
   const boton =
     mensaje.type === 'interactive'
       ? mensaje.interactive?.type === 'button_reply'
@@ -208,32 +184,6 @@ export interface WhatsappWebhookPayload {
   }[];
 }
 
-interface MessengerEvento {
-  sender?: { id?: string };
-  message?: {
-    text?: string;
-    is_echo?: boolean;
-    mid?: string;
-    referral?: MetaReferral;
-  };
-  referral?: MetaReferral;
-  postback?: { referral?: MetaReferral };
-}
-
-export interface MessengerWebhookPayload {
-  entry?: {
-    messaging?: MessengerEvento[];
-  }[];
-}
-
-/**
- * Texto plano tal cual, o texto sintético cuando el cliente tocó el
- * botón "Agregar al pedido" de una tarjeta de producto (mostrar_productos
- * en gemini.service.ts) — el id del botón lleva el nombre del producto,
- * nunca un id de base de datos, así no hace falta volver a consultar
- * nada acá: se arma un mensaje natural y Gemini sigue el flujo normal
- * de toma de pedido como si el cliente lo hubiera escrito.
- */
 function textoWhatsapp(mensaje: WhatsappMensaje): string | null {
   if (mensaje.type === 'text') return mensaje.text?.body ?? '';
   if (
@@ -265,35 +215,16 @@ function procedenciaWhatsapp(
   };
 }
 
-function procedenciaMessenger(
-  evento: MessengerEvento,
-): ProcedenciaAnuncio | null {
-  const referral =
-    evento.referral ?? evento.message?.referral ?? evento.postback?.referral;
-  if (!referral) return null;
-  return {
-    esAnuncio: referral.source === 'ADS' || !!referral.ad_id,
-    anuncioId: referral.ad_id,
-    fuente: referral.source,
-  };
-}
-
-function carritoDeMensaje(
-  mensaje: WhatsappMensaje,
-): CarritoCatalogo | undefined {
-  return mensaje.type === 'order' && mensaje.order
-    ? carritoDesdeOrden(mensaje.order)
-    : undefined;
-}
-
-/** Qué trae el mensaje: un carrito, un toque del checkout, un archivo o texto. */
 function contenidoWhatsapp(mensaje: WhatsappMensaje): {
   carrito: CarritoCatalogo | undefined;
   checkout: ReturnType<typeof entradaCheckoutDe>;
   media: ReturnType<typeof mediaDe>;
   texto: string | null;
 } {
-  const carrito = carritoDeMensaje(mensaje);
+  const carrito =
+    mensaje.type === 'order' && mensaje.order
+      ? carritoDesdeOrden(mensaje.order)
+      : undefined;
   if (carrito) return { carrito, checkout: null, media: null, texto: '' };
   const checkout = entradaCheckoutDe(mensaje);
   const media = checkout ? null : mediaDe(mensaje);
@@ -303,8 +234,6 @@ function contenidoWhatsapp(mensaje: WhatsappMensaje): {
 
 function eventoWhatsapp(mensaje: WhatsappMensaje): EventoEntrante | null {
   const { carrito, checkout, media, texto } = contenidoWhatsapp(mensaje);
-  // Texto, toques de botón, ubicación y carrito del catálogo — audio e
-  // imagen quedan para una extensión posterior.
   if (texto === null) return null;
   return {
     canal: 'whatsapp',
@@ -326,43 +255,4 @@ export function parsearWhatsapp(
     (entry?.changes ?? []).flatMap((change) => change?.value?.messages ?? []),
   );
   return mensajes.flatMap((mensaje) => eventoWhatsapp(mensaje) ?? []);
-}
-
-/** Solo cuentan los mensajes de texto de una persona: no ecos ni entregas. */
-function textoYRemitente(
-  evento: MessengerEvento,
-): { texto: string; senderId: string } | null {
-  const texto = evento?.message?.text;
-  const senderId = evento?.sender?.id;
-  // Ignora deliveries/reads/postbacks sin texto y ecos de mensajes
-  // que el bot mismo mandó (is_echo).
-  if (!texto || !senderId || evento.message?.is_echo) return null;
-  return { texto, senderId };
-}
-
-function eventoMessenger(
-  evento: MessengerEvento,
-  canal: 'messenger' | 'instagram',
-): EventoEntrante | null {
-  const mensaje = textoYRemitente(evento);
-  if (!mensaje) return null;
-  return {
-    canal,
-    identificadorExterno: mensaje.senderId,
-    telefono: null, // Messenger/Instagram no exponen el teléfono real
-    texto: mensaje.texto,
-    procedenciaAnuncio: procedenciaMessenger(evento),
-    mensajeId: evento.message?.mid ?? null,
-  };
-}
-
-export function parsearMessengerOInstagram(
-  payload: MessengerWebhookPayload,
-  canal: 'messenger' | 'instagram',
-): EventoEntrante[] {
-  return (payload?.entry ?? []).flatMap((entry) =>
-    (entry?.messaging ?? []).flatMap(
-      (evento) => eventoMessenger(evento, canal) ?? [],
-    ),
-  );
 }

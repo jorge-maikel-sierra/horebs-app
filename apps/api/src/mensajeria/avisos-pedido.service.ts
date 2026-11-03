@@ -116,7 +116,7 @@ export class AvisosPedidoService {
       valorPuntoPesos: config.valorPuntoPesos,
       minimoCanje: config.puntosMinimoCanje,
     });
-    await this.metaGraph.enviarBotones(destino, texto, [
+    await this.metaGraph.enviarBotones('whatsapp', destino, texto, [
       { id: BOTON.loMismo, titulo: '🍕 Pedir lo mismo' },
     ]);
     await this.conversaciones.registrarMensaje(

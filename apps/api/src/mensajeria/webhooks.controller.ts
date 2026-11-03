@@ -66,7 +66,11 @@ export class WebhooksController {
   @HttpCode(HttpStatus.OK)
   recibirMessenger(@Req() req: RawBodyRequest<Request>): { ok: boolean } {
     this.verificarFirmaOFallar(req);
-    this.webhooks.procesarMessenger(req.body as MessengerWebhookPayload);
+    const pageId = this.config.get<string>('MESSENGER_PAGE_ID');
+    this.webhooks.procesarMessenger(
+      req.body as MessengerWebhookPayload,
+      pageId,
+    );
     return { ok: true };
   }
 
@@ -74,7 +78,8 @@ export class WebhooksController {
   @HttpCode(HttpStatus.OK)
   recibirInstagram(@Req() req: RawBodyRequest<Request>): { ok: boolean } {
     this.verificarFirmaOFallar(req);
-    this.webhooks.procesarInstagram(req.body as MessengerWebhookPayload);
+    const igId = this.config.get<string>('INSTAGRAM_ACCOUNT_ID');
+    this.webhooks.procesarInstagram(req.body as MessengerWebhookPayload, igId);
     return { ok: true };
   }
 

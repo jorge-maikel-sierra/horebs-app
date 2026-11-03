@@ -35,6 +35,7 @@ export class CheckoutEnviosService {
     botones: BotonRespuesta[],
   ): Promise<void> {
     await this.metaGraph.enviarBotones(
+      ctx.canal ?? 'whatsapp',
       ctx.identificadorExterno,
       cuerpo,
       botones,
@@ -48,11 +49,15 @@ export class CheckoutEnviosService {
     boton: string,
     filas: BotonRespuesta[],
   ): Promise<void> {
-    await this.metaGraph.enviarLista(ctx.identificadorExterno, {
-      cuerpo,
-      boton,
-      filas,
-    });
+    await this.metaGraph.enviarLista(
+      ctx.canal ?? 'whatsapp',
+      ctx.identificadorExterno,
+      {
+        cuerpo,
+        boton,
+        filas,
+      },
+    );
     await this.registrar(ctx, conOpciones(cuerpo, filas));
   }
 

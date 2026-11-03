@@ -148,7 +148,7 @@ describe('RespuestaBotService.responder', () => {
     expect(llamadas).toEqual(['leido', 'manejar', 'gemini']);
   });
 
-  it('en Messenger no hay checkout por botones ni "leído"', async () => {
+  it('en Messenger marca leído/escribiendo y delega a Gemini', async () => {
     const { servicio, llamadas } = crearServicio();
 
     await servicio.responder(
@@ -157,7 +157,7 @@ describe('RespuestaBotService.responder', () => {
       null,
     );
 
-    expect(llamadas).toEqual(['gemini']);
+    expect(llamadas).toEqual(['leido', 'gemini']);
   });
 
   it('si Gemini devuelve null (la herramienta ya respondió) no se envía nada', async () => {

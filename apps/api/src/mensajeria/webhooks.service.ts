@@ -58,12 +58,22 @@ export class WebhooksService {
     this.procesar(parsearWhatsapp(payload));
   }
 
-  procesarMessenger(payload: MessengerWebhookPayload): void {
-    this.procesar(parsearMessengerOInstagram(payload, 'messenger'));
+  procesarMessenger(
+    payload: MessengerWebhookPayload,
+    expectedPageId?: string,
+  ): void {
+    this.procesar(
+      parsearMessengerOInstagram(payload, 'messenger', expectedPageId),
+    );
   }
 
-  procesarInstagram(payload: MessengerWebhookPayload): void {
-    this.procesar(parsearMessengerOInstagram(payload, 'instagram'));
+  procesarInstagram(
+    payload: MessengerWebhookPayload,
+    expectedInstagramId?: string,
+  ): void {
+    this.procesar(
+      parsearMessengerOInstagram(payload, 'instagram', expectedInstagramId),
+    );
   }
 
   private procesar(eventos: EventoEntrante[]): void {

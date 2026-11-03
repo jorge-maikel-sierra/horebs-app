@@ -4,6 +4,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { obtenerCapacidades, partirTextoPorBytes } from './capacidades-canal';
 import type { CanalMensajeria } from './conversaciones.service';
 import {
   interactivoBotonCatalogo,
@@ -20,6 +21,14 @@ import {
   type ListaProductos,
   type TarjetaProducto,
 } from './mensajes-interactivos';
+import {
+  armarGenericTemplateSocial,
+  armarQuickRepliesSocial,
+  armarSenderActionSocial,
+  armarTextoSocial,
+  elementosDeTarjetas,
+  esErrorBusinessAi,
+} from './mensajes-meta-social';
 
 const REINTENTOS = 2;
 const ESPERA_PRIMER_REINTENTO_MS = 500;
@@ -29,13 +38,6 @@ const BYTES_POR_KB = 1024;
 const MAX_MB_MEDIA = 10;
 const MAX_BYTES_MEDIA = MAX_MB_MEDIA * BYTES_POR_KB * BYTES_POR_KB;
 
-/**
- * Envío saliente por Graph API — solo mensajes de sesión (gratis dentro de
- * la ventana de 24h/72h). A propósito NO hay ningún método para enviar
- * plantillas: así el flujo automático nunca puede disparar un cobro por su
- * cuenta. Mandar una plantilla de remarketing es una acción manual aparte,
- * a construir si se pide explícitamente.
- */
 @Injectable()
 export class MetaGraphService {
   private readonly logger = new Logger(MetaGraphService.name);
@@ -44,6 +46,7 @@ export class MetaGraphService {
   private readonly whatsappPhoneNumberId?: string;
   private readonly pageToken?: string;
   private readonly pageId?: string;
+  private readonly instagramAccountId?: string;
   private readonly whatsappCatalogId?: string;
 
   constructor(private readonly config: ConfigService) {
@@ -52,15 +55,14 @@ export class MetaGraphService {
     this.whatsappPhoneNumberId = this.config.get<string>(
       'WHATSAPP_PHONE_NUMBER_ID',
     );
-    // Catálogo de Meta Commerce conectado al número del bot. Sin él, el
-    // bot vuelve al link del sitio y a las tarjetas con botón.
     this.whatsappCatalogId = this.config.get<string>('WHATSAPP_CATALOG_ID');
     this.pageToken = this.config.get<string>('MESSENGER_PAGE_ACCESS_TOKEN');
     this.pageId = this.config.get<string>('MESSENGER_PAGE_ID');
+    this.instagramAccountId = this.config.get<string>('INSTAGRAM_ACCOUNT_ID');
 
     if (!this.whatsappToken || !this.whatsappPhoneNumberId) {
       this.logger.warn(
-        'WHATSAPP_ACCESS_TOKEN o WHATSAPP_PHONE_NUMBER_ID no configuradas — el canal de WhatsApp no puede enviar mensajes.',
+        'WHATSAPP_ACCESS_TOKEN o WHATSAPP_PHONE_NUMBER_ID no configuradas — WhatsApp no puede enviar mensajes.',
       );
     }
     if (!this.pageToken || !this.pageId) {
@@ -70,57 +72,68 @@ export class MetaGraphService {
     }
   }
 
-  /**
-   * Doble check azul + "escribiendo…" en un solo llamado (Cloud API). El
-   * indicador se apaga solo al responder o a los 25s. Fire-and-forget: es
-   * cosmético, un error nunca frena la respuesta al cliente.
-   */
-  marcarLeidoEscribiendo(mensajeId: string): void {
-    if (!this.whatsappToken || !this.whatsappPhoneNumberId) return;
-    this.postWhatsapp({
-      status: 'read',
-      message_id: mensajeId,
-      typing_indicator: { type: 'text' },
-    }).catch((err: Error) =>
-      this.logger.warn(
-        `No se pudo marcar leído/escribiendo ${mensajeId}: ${err.message}`,
-      ),
+  marcarLeidoEscribiendo(
+    canal: CanalMensajeria,
+    destinatarioId: string,
+    mensajeId?: string,
+  ): void {
+    if (canal === 'whatsapp') {
+      if (!mensajeId || !this.whatsappToken || !this.whatsappPhoneNumberId)
+        return;
+      this.postWhatsapp({
+        status: 'read',
+        message_id: mensajeId,
+        typing_indicator: { type: 'text' },
+      }).catch((err: Error) =>
+        this.logger.warn(
+          `No se pudo marcar leído/escribiendo ${mensajeId}: ${err.message}`,
+        ),
+      );
+      return;
+    }
+    if (!this.pageToken || !this.pageId) return;
+    this.postSocial(armarSenderActionSocial(destinatarioId, 'mark_seen')).catch(
+      () => undefined,
+    );
+    this.postSocial(armarSenderActionSocial(destinatarioId, 'typing_on')).catch(
+      () => undefined,
     );
   }
 
-  /**
-   * Hasta 3 botones de respuesta (límite de WhatsApp, títulos de hasta 20
-   * caracteres). El id vuelve en el webhook como `button_reply.id` — así el
-   * checkout avanza sin interpretar texto libre.
-   */
   async enviarBotones(
+    canal: CanalMensajeria,
     destinatarioId: string,
     cuerpo: string,
     botones: BotonRespuesta[],
   ): Promise<void> {
-    await this.enviarInteractivo(
-      destinatarioId,
-      interactivoBotones(cuerpo, botones),
+    if (canal === 'whatsapp') {
+      await this.enviarInteractivo(
+        destinatarioId,
+        interactivoBotones(cuerpo, botones),
+      );
+      return;
+    }
+    await this.conReintentos(() =>
+      this.postSocial(armarQuickRepliesSocial(destinatarioId, cuerpo, botones)),
     );
   }
 
-  /**
-   * Lista interactiva (hasta 10 filas, títulos de 24 caracteres): el cliente
-   * toca "Elegir" y elige una opción. Vuelve como `list_reply.id`.
-   */
   async enviarLista(
+    canal: CanalMensajeria,
     destinatarioId: string,
     datos: { cuerpo: string; boton: string; filas: BotonRespuesta[] },
   ): Promise<void> {
-    await this.enviarInteractivo(destinatarioId, interactivoLista(datos));
+    if (canal === 'whatsapp') {
+      await this.enviarInteractivo(destinatarioId, interactivoLista(datos));
+      return;
+    }
+    await this.conReintentos(() =>
+      this.postSocial(
+        armarQuickRepliesSocial(destinatarioId, datos.cuerpo, datos.filas),
+      ),
+    );
   }
 
-  /**
-   * Descarga un archivo que mandó el cliente (foto, PDF, nota de voz): la
-   * Cloud API primero da una URL temporal por id y después se baja con el
-   * mismo token. Tope de 10 MB — un comprobante o un audio corto pesan
-   * mucho menos.
-   */
   async descargarMedia(
     mediaId: string,
   ): Promise<{ datos: Buffer; mime: string }> {
@@ -169,8 +182,8 @@ export class MetaGraphService {
     destinatarioId: string,
     texto: string,
   ): Promise<void> {
-    const textoNormalizado = normalizarNegritaWhatsapp(texto);
     if (canal === 'whatsapp') {
+      const textoNormalizado = normalizarNegritaWhatsapp(texto);
       await this.conReintentos(() =>
         this.postWhatsapp({
           to: destinatarioId,
@@ -180,19 +193,15 @@ export class MetaGraphService {
       );
       return;
     }
-    // Messenger e Instagram comparten el mismo Send API una vez que la
-    // cuenta de Instagram está vinculada a la Página de Facebook.
-    await this.conReintentos(() =>
-      this.enviarMessengerOInstagram(destinatarioId, textoNormalizado),
-    );
+    const capacidades = obtenerCapacidades(canal);
+    const partes = partirTextoPorBytes(texto, capacidades.maxBytesTexto);
+    for (const parte of partes) {
+      await this.conReintentos(() =>
+        this.postSocial(armarTextoSocial(destinatarioId, parte)),
+      );
+    }
   }
 
-  /**
-   * Catálogo nativo de WhatsApp (fotos, precios y carrito dentro del
-   * chat) — la venta no sale de WhatsApp. Sin catálogo conectado, o en
-   * Messenger/Instagram que no tienen catálogo, cae al link del sitio.
-   * Devuelve qué se mandó para que quien llama lo registre igual.
-   */
   async enviarCatalogo(
     canal: CanalMensajeria,
     destinatarioId: string,
@@ -218,11 +227,6 @@ export class MetaGraphService {
     }
   }
 
-  /**
-   * Lista nativa de productos del catálogo (product_list), agrupada en
-   * secciones — el cliente agrega al carrito sin salir del chat. Sin
-   * catálogo conectado, o fuera de WhatsApp, cae a las tarjetas con botón.
-   */
   async enviarListaProductos(
     canal: CanalMensajeria,
     destinatarioId: string,
@@ -250,10 +254,6 @@ export class MetaGraphService {
       );
       return 'lista';
     } catch (err) {
-      // El feed del catálogo se refresca cada hora: un producto recién
-      // creado en Supabase puede no estar todavía en Meta, y Meta rechaza
-      // la lista entera por un solo id desconocido. Mejor tarjetas que
-      // dejar al cliente sin respuesta.
       this.logger.warn(
         `product_list rechazado, se mandan tarjetas: ${(err as Error).message}`,
       );
@@ -266,12 +266,6 @@ export class MetaGraphService {
     }
   }
 
-  /**
-   * Botón nativo de WhatsApp que abre el catálogo en el navegador — mejor
-   * UX que mandar la lista completa de precios como texto. Messenger/
-   * Instagram usan un formato de botón distinto (no armado todavía, sin
-   * canal en producción para probarlo) — por ahora caen a texto plano.
-   */
   async enviarBotonCatalogo(
     canal: CanalMensajeria,
     destinatarioId: string,
@@ -288,35 +282,35 @@ export class MetaGraphService {
     await this.enviarInteractivo(destinatarioId, interactivoBotonCatalogo(url));
   }
 
-  /**
-   * Manda hasta 3 productos como tarjetas separadas (imagen + nombre +
-   * precio + botón "Agregar al pedido") en vez de una lista de precios en
-   * texto — mejor UX para elegir. Sin catálogo de Meta Commerce vinculado,
-   * no existe un carrusel nativo de WhatsApp fuera de plantillas
-   * aprobadas — se arma a mano con mensajes interactivos tipo botón, uno
-   * por producto, cada uno con su propia imagen como header. Solo WhatsApp
-   * — Messenger/Instagram no soportan botones con imagen del mismo modo y
-   * no hay canal en producción para probarlo.
-   */
   async enviarTarjetasProductos(
     canal: CanalMensajeria,
     destinatarioId: string,
     productos: TarjetaProducto[],
   ): Promise<void> {
-    if (canal !== 'whatsapp') {
+    if (canal === 'whatsapp') {
+      for (const producto of productos) {
+        await this.enviarInteractivo(
+          destinatarioId,
+          interactivoTarjetaProducto(producto),
+        );
+      }
+      return;
+    }
+    if (canal === 'instagram') {
       await this.enviarMensajeSesion(
         canal,
         destinatarioId,
         textoTarjetasProductos(productos),
       );
-      return;
     }
-    for (const producto of productos) {
-      await this.enviarInteractivo(
-        destinatarioId,
-        interactivoTarjetaProducto(producto),
-      );
-    }
+    await this.conReintentos(() =>
+      this.postSocial(
+        armarGenericTemplateSocial(
+          destinatarioId,
+          elementosDeTarjetas(productos),
+        ),
+      ),
+    );
   }
 
   private enviarInteractivo(
@@ -332,7 +326,6 @@ export class MetaGraphService {
     );
   }
 
-  /** POST a `/messages` del número de WhatsApp; 503 si Meta no responde ok. */
   private async postWhatsapp(cuerpo: Record<string, unknown>): Promise<void> {
     if (!this.whatsappToken || !this.whatsappPhoneNumberId) {
       throw new ServiceUnavailableException('WhatsApp no está configurado.');
@@ -356,10 +349,7 @@ export class MetaGraphService {
     }
   }
 
-  private async enviarMessengerOInstagram(
-    destinatarioId: string,
-    texto: string,
-  ): Promise<void> {
+  private async postSocial(cuerpo: Record<string, unknown>): Promise<void> {
     if (!this.pageToken || !this.pageId) {
       throw new ServiceUnavailableException(
         'Messenger/Instagram no están configurados.',
@@ -373,17 +363,25 @@ export class MetaGraphService {
           Authorization: `Bearer ${this.pageToken}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          recipient: { id: destinatarioId },
-          messaging_type: 'RESPONSE',
-          message: { text: texto },
-        }),
+        body: JSON.stringify(cuerpo),
       },
     );
     if (!res.ok) {
-      const cuerpo = await res.text().catch(() => '');
+      const textoError = await res.text().catch(() => '');
+      let errorJson: unknown;
+      try {
+        errorJson = JSON.parse(textoError);
+      } catch {
+        errorJson = null;
+      }
+      if (esErrorBusinessAi(errorJson)) {
+        this.logger.warn(
+          `Business AI tomó el control en Messenger/Instagram — no se reintenta: ${textoError}`,
+        );
+        return;
+      }
       throw new ServiceUnavailableException(
-        `Messenger/Instagram Graph API respondió ${res.status}: ${cuerpo}`,
+        `Messenger/Instagram Graph API respondió ${res.status}: ${textoError}`,
       );
     }
   }
@@ -397,8 +395,6 @@ export class MetaGraphService {
       } catch (err) {
         ultimoError = err;
         if (intento < REINTENTOS) {
-          // intento es un contador interno del for (0..REINTENTOS), nunca
-          // input externo — no hay injection posible acá.
           await new Promise((resolve) =>
             // eslint-disable-next-line security/detect-object-injection
             setTimeout(resolve, BACKOFF_MS[intento]),
