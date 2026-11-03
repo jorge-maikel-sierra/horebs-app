@@ -3,6 +3,7 @@ import {
   acumularProducto,
   armarResumen,
   serieVentasBot,
+  serializarCanales,
   serializarMapa,
   totalizarPedidos,
 } from './informes-agregados';
@@ -55,6 +56,32 @@ describe('acumular', () => {
     ]);
 
     expect(serializarMapa(mapa).map((d) => d.clave)).toEqual(['b', 'a']);
+  });
+
+  it('serializarCanales incluye los 5 canales confirmados ordenados por total', () => {
+    const mapa = new Map([
+      ['whatsapp', { total: 50_000, pedidos: 2 }],
+      ['web', { total: 100_000, pedidos: 4 }],
+    ]);
+
+    const resultado = serializarCanales(mapa);
+    expect(resultado.map((r) => r.clave)).toEqual([
+      'web',
+      'whatsapp',
+      'pos',
+      'messenger',
+      'instagram',
+    ]);
+    expect(resultado.find((r) => r.clave === 'messenger')).toEqual({
+      clave: 'messenger',
+      total: 0,
+      pedidos: 0,
+    });
+    expect(resultado.find((r) => r.clave === 'instagram')).toEqual({
+      clave: 'instagram',
+      total: 0,
+      pedidos: 0,
+    });
   });
 });
 

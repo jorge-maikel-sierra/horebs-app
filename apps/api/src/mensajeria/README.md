@@ -21,274 +21,113 @@ y se le pasa a la Interactions API en el siguiente mensaje, así el modelo
 recuerda lo que el cliente ya pidió (Gemini mantiene el historial
 server-side, no hace falta guardarlo nosotros).
 
-**Toma de pedidos**: el bot puede armar el resumen de un pedido nuevo
-(productos, tamaños, cantidades, domicilio si aplica) con precios reales
-del catálogo, y preguntar el método de pago — pero **no lo registra en el
-sistema**. Una vez que el cliente da el método de pago, deriva la
-conversación a una persona del equipo para que confirme y lo registre a
-mano. Así se evita que un error de interpretación del modelo descuente
-stock o genere una venta real sin que nadie la revise.
+---
 
-**Seguimiento de conversaciones abandonadas** (`seguimiento.service.ts`):
-un cron cada 10 minutos (`@nestjs/schedule`) revisa `conversaciones_bot` y,
-para conversaciones que nunca llegaron a `derivar_a_humano` (siguen en
-`estado='bot'`):
-- sin mensajes nuevos del cliente durante **N minutos** (default 180 = 3h),
-  manda un recordatorio fijo;
-- sin respuesta durante **M minutos** más (default 360 = 6h más, o sea 9h
-  en total), manda una oferta fija (el porcentaje y el texto exacto viven
-  en `seguimiento.service.ts`: `DESCUENTO_OFERTA_PORCENTAJE` y el mensaje de
-  oferta; esa es la fuente de verdad).
+## 1. Arquitectura de canal y capacidades
 
-Ambos son mensajes de sesión fijos, no generados por Gemini — así no hay
-riesgo de que el modelo invente un descuento o un dato. Los plazos son
-editables desde **`/admin/seguimiento`** (roles admin y empleado) — se guardan en la
-tabla `configuracion` (`seguimiento_recordatorio_minutos` /
-`seguimiento_oferta_minutos`) y el cron los relee en cada corrida, sin
-necesidad de redeploy. Queda bajo responsabilidad de quien los configure
-mantenerlos adentro de la ventana gratis de 24h; pasado ese punto el bot no
-vuelve a insistir (haría falta una plantilla paga, fuera de este módulo).
-Un mensaje nuevo del cliente en cualquier momento cancela el seguimiento
-pendiente.
+El sistema implementa una arquitectura unificada: un solo cerebro
+(`gemini.service.ts`, herramientas y Supabase) conectado a adaptadores de
+canal con capacidades declaradas (`capacidades-canal.ts` y
+`meta-graph.service.ts`).
 
-Esa misma página también lista todas las conversaciones con su estado
-(`bot` / `derivado`) y deja cambiarlo a mano — útil para forzar que el bot
-vuelva a responder un hilo que quedó derivado, o al revés. Cambiar el
-estado desde ahí resetea la memoria de Gemini y el seguimiento pendiente de
-esa conversación, igual que cuando lo hace el bot solo.
+| Capacidad | WhatsApp | Messenger | Instagram Direct |
+|---|---|---|---|
+| **Límite de texto** | ~4096 caracteres | ≤ 2.000 caracteres | 1.000 bytes UTF-8 (partido estricto por bytes) |
+| **Opciones rápidas** | Botones ≤ 3 / Lista ≤ 10 | Quick replies ≤ 13 (título ≤ 20) | Quick replies ≤ 13 (título ≤ 20, solo text) |
+| **Teléfono nativo** | wa_id directo (57...) | Quick reply `user_phone_number` | No nativo: se solicita y valida en checkout |
+| **Tarjetas de producto** | Imagen + botón interactivo | Generic Template (≤ 10 elementos) | Generic Template (≤ 10 elementos, autosuficiente) |
+| **Inicio del chat** | Mensaje directo | Get Started + Menú persistente | Ice Breakers (≤ 4 preguntas frecuentes) |
+| **Formato de texto** | Negrita con asteriscos (`*texto*`) | Texto plano limpio (sin markdown) | Texto plano limpio (sin markdown) |
 
-**Límite conocido — mensajes muy seguidos**: el webhook procesa cada
-mensaje entrante de forma fire-and-forget (responde 200 a Meta al toque y
-sigue procesando aparte), sin encolar por conversación. Si el mismo
-cliente manda dos mensajes casi pegados (unos pocos segundos, antes de que
-termine de resolverse el primero — que puede necesitar varias vueltas a
-Gemini si usa herramientas), el segundo puede leer el
-`gemini_interaction_id` todavía viejo y arrancar sin la memoria del
-primero. En una conversación real de WhatsApp, donde el cliente tipea y
-hace pausas naturales, no debería notarse — se verificó en pruebas que con
-un margen de ~10s entre mensajes la memoria se mantiene sin problema. Si
-en producción se ve que el bot "se olvida" de un mensaje anterior, esta es
-la primera hipótesis a revisar.
+---
 
-## Catálogo de WhatsApp (venta dentro del chat)
+## 2. Flujo de compra en redes sociales
 
-Regla de negocio: si la venta empieza en WhatsApp, termina en WhatsApp. El
-bot no manda al cliente al sitio web.
+En WhatsApp, Messenger e Instagram el cliente puede completar su pedido
+sin salir del chat:
 
-- **Catálogo de Meta**: "Pizzería Horebs" (`1949258666036000`), conectado
-  al número del bot con carrito activo. Se llena solo desde Supabase con una
-  lista de datos programada **cada hora** que lee
-  `GET /catalogo/feed.csv` (`CatalogService.getFeedCsv`). Cada ítem es una
-  variante y su id es el UUID de `variantes_producto`, el mismo que usa el
-  píxel. Un producto entra solo si tiene foto y slug (`entraEnCatalogoMeta`).
-  El catálogo viejo de anuncios (`992458518076809`) lee el mismo feed.
-- **`enviar_catalogo`**: manda el menú completo como `catalog_message`
-  (fotos, precios y carrito dentro del chat).
-- **`mostrar_productos`**: manda una `product_list` agrupada por categoría
-  con los productos que matchean (máximo 30 ítems y 10 secciones, límite de
-  Meta). Si Meta la rechaza (por ejemplo un producto nuevo que el feed
-  todavía no subió), cae a las tarjetas con botón.
-- **Carrito**: cuando el cliente envía el carrito llega un mensaje `order`.
-  Se toman solo el id de la variante y la cantidad (1–20); el precio que
-  manda WhatsApp se ignora. Las variantes se validan contra Supabase
-  (`CatalogService.resolverCarrito`) y Gemini recibe un texto como
-  "Envié mi carrito del catálogo: 2x Pizza Hawaiana (Grande)". Desde ahí
-  sigue el flujo normal: modalidad, nombre completo, `calcular_pedido` (que
-  recalcula precios desde la base) y derivación a una persona.
-- **Sin `WHATSAPP_CATALOG_ID`**, o en Messenger/Instagram (que no tienen
-  catálogo), el bot vuelve al link del sitio y a las tarjetas.
+1. **Consulta / Carrito**: Gemini cotiza productos y adicionales desde
+   Supabase con precios reales (`calcular_pedido`, `adicionales`,
+   `cotizar_pizza_mitad_y_mitad`).
+2. **Paso a paso interactivo**:
+   - **Modalidad**: Domicilio, Retiro en tienda o En el local.
+   - **Dirección** (domicilio): escrita con calle/carrera, barrio y
+     referencia (se rechaza pin GPS por imprecisión según regla de negocio).
+   - **Nombre y apellido**: tomado del perfil o solicitado al cliente.
+   - **Teléfono**: en Messenger e Instagram (donde el PSID/IGSID no trae
+     número de teléfono) el bot solicita el número colombiano (10 dígitos),
+     lo valida y lo persiste en `conversaciones_bot.telefono`.
+   - **Franja de entrega**: 'ya' (lo antes posible) o franjas de reserva
+     (cada 30 min desde las 4:00 p.m. si el pedido llega entre 11 a.m. y 4 p.m.).
+3. **Creación del pedido**: se crea en Supabase (`pedidos.canal` =
+   `whatsapp` | `messenger` | `instagram`, estado `pendiente`), descuenta
+   stock de insumos y asigna puntos de fidelidad.
+4. **Pago**:
+   - **Efectivo / Datáfono**: registrado directamente.
+   - **Transferencia bancaria**: muestra la llave de Banco Nu (`1118843420`)
+     y recibe el comprobante por imagen o PDF (`comprobantes.service.ts`).
+   - **Tarjeta en línea (Bold)**: con `BOLD_API_KEY` y `BOLD_SECRET_KEY`
+     genera un link de un solo uso. El webhook (`POST /webhooks/bold`) marca
+     el pedido como `pagado` de forma idempotente y notifica a la cocina.
+5. **Avisos de estado y ventana de 24h**: cada cambio de estado desde el
+   panel (`confirmado`, `en_preparacion`, `en_camino`, `entregado`,
+   `cancelado`) le llega al cliente por su canal respectivo. Si la ventana de
+   24h está cerrada, el sistema **no llama a Meta** (evitando el error 100) y
+   avisa al equipo para gestión manual.
 
-## Checkout por botones y pedidos del bot (`checkout-whatsapp*.ts`)
+---
 
-Desde el carrito del catálogo (o "Sí, lo mismo") el pedido se cierra con
-botones, sin pasar por Gemini:
+## 3. Seguimiento automático (`seguimiento.service.ts`)
 
-1. **Modalidad**: `🛵 Domicilio` / `🏃 Retiro` / `🍽️ En el local`.
-2. **Dirección** (solo domicilio): "¿Te lo llevamos a <última dirección>?"
-   o el botón nativo *Enviar ubicación* (queda como link de Google Maps). La
-   dirección también se puede escribir.
-3. **Nombre**: se salta si el teléfono ya es cliente con nombre y apellido.
-4. **Resumen** (precios desde la base) + botones de pago. Los puntos no
-   van acá: se cuentan al día siguiente, en la invitación a repetir.
-5. **Pago**: el bot **crea el pedido** (`PedidosService.crearDesdeWhatsapp`,
-   canal `whatsapp`, estado `pendiente`, stock y puntos como el checkout
-   web, idempotente por el `wamid` del toque) y confirma con el número de
-   pedido. Con transferencia agrega la llave Nu.
+Un cron cada 10 minutos (`@nestjs/schedule`) revisa `conversaciones_bot`:
+- **Recordatorio**: a los N minutos de inactividad (default 180 min = 3h).
+- **Oferta de 10%**: a los M minutos tras el recordatorio (default 360 min = 6h).
+- **Verificación de compra (`yaCompro`)**: tanto en WhatsApp (por wa_id)
+  como en Messenger/Instagram (por `conversacion.telefono`), si el cliente ya
+  compró en las últimas 24h se cancela el seguimiento para no molestar.
+- **Guard de ventana de 24h**: en canales sociales, si la última interacción
+  supera las 24 horas, se omite el envío a Meta, se notifica al equipo por
+  correo/WhatsApp cocina y se cierra la etapa.
 
-El estado del checkout vive en `conversaciones_bot.checkout`; "cancelar" lo
-limpia. Texto que no corresponde al paso (una pregunta) lo responde Gemini
-y los botones siguen sirviendo. Un pedido escrito por texto que calcula
-`calcular_pedido` entra al mismo paso de pago.
+---
 
-**"¿Lo mismo de la última vez?"**: ante un saludo corto, sin memoria de
-Gemini y con un pedido anterior (cualquier canal), el bot ofrece repetirlo
-con los precios actuales.
+## 4. Recompras (`recompras.service.ts`)
 
-**Avisos de estado** (`avisos-pedido*.ts`): cada cambio de estado de un
-pedido `whatsapp` desde `/admin/pedidos` (confirmado → en el horno → en
-camino → entregado / cancelado) le llega al cliente con un texto fijo.
-**Invitación a repetir** (con los puntos que sumó y su saldo, como excusa
-para volver): el cron de seguimiento la manda una sola vez,
-entre 23 y 24 h después del último mensaje del cliente, si su pedido ya
-está entregado. Ambos solo dentro de la ventana de 24h (sin plantilla, Meta
-descarta lo demás).
+Un cron cada 10 minutos busca pedidos entregados en su última hora de
+ventana de 24h (entre 23h y 24h desde el último mensaje) e invita a repetir
+con un toque (`🍕 Pedir lo mismo`), indicando los puntos de fidelidad ganados
+y saldo disponible.
 
-Migración: `apps/api/docs/sql/2026-10-27-checkout-whatsapp-y-estados.sql`.
+---
 
-## Aviso al equipo cuando el bot deriva (`aviso-derivacion.ts`)
+## 5. Variables de entorno (Railway → Service → Variables)
 
-Cuando una conversación pasa a una persona, el equipo recibe:
+| Variable | De dónde sale | Obligatoria |
+|---|---|---|
+| `META_APP_SECRET` | Meta App Dashboard → Configuración básica | Sí |
+| `META_WEBHOOK_VERIFY_TOKEN` | Token inventado para el handshake del webhook (`openssl rand -hex 24`) | Sí |
+| `META_GRAPH_API_VERSION` | Versión de Graph API (ej. `v21.0` o `v26.0`, default `v21.0`) | Opcional |
+| `WHATSAPP_ACCESS_TOKEN` | Token permanente de usuario del sistema con permisos de mensajería | Sí (para WhatsApp) |
+| `WHATSAPP_PHONE_NUMBER_ID` | ID interno de Meta del número de WhatsApp del bot | Sí (para WhatsApp) |
+| `WHATSAPP_CATALOG_ID` | Commerce Manager → catálogo de Meta (`1949258666036000`) | Opcional |
+| `MESSENGER_PAGE_ACCESS_TOKEN` | Token de la Página de Facebook (compartido para Messenger e Instagram) | Sí (para RRSS) |
+| `MESSENGER_PAGE_ID` | ID numérico de la Página de Facebook de Horebs | Sí (para Messenger) |
+| `INSTAGRAM_ACCOUNT_ID` | ID de la cuenta profesional de Instagram conectada | Sí (para Instagram) |
+| `BOLD_API_KEY` | Dashboard de Bold → Llaves de integración (producción) | Sí (para pagos tarjeta) |
+| `BOLD_SECRET_KEY` | Dashboard de Bold → Firma secreta de webhooks | Sí (para pagos tarjeta) |
+| `PERSONAL_COCINA_WHATSAPP` | Números de WhatsApp del equipo para avisos de pedidos y alertas | Opcional |
+| `GEMINI_API_KEY` | Google AI Studio API Key | Sí |
+| `GEMINI_MODEL` | Modelo de Gemini (default `gemini-flash-lite-latest`) | Opcional |
+| `META_CAPI_ACCESS_TOKEN` | Token para Meta Conversions API (Click-to-WhatsApp) | Opcional |
+| `META_DATASET_ID` | ID del Dataset de Meta Conversions API | Opcional |
+| `WHATSAPP_BUSINESS_ACCOUNT_ID` | ID de cuenta de WhatsApp Business (WABA) | Opcional |
 
-- **Correo** (canal principal) **solo** a `correo_avisos_bot` de
-  `configuracion`, editable en `/admin/configuracion` → "Avisos del bot de
-  WhatsApp". Si está vacío no se manda (no cae al correo del
-  domiciliario). Trae el nombre del cliente, un botón
-  "Escribirle por WhatsApp" (`wa.me`), el resumen del pedido con el total,
-  el último mensaje del cliente (normalmente el método de pago) y los
-  últimos mensajes de la conversación.
-- **WhatsApp** a cada número de `PERSONAL_COCINA_WHATSAPP`, con la versión
-  corta. Sin plantilla, Meta solo entrega texto libre a un número que le
-  escribió al bot en las últimas 24h: fuera de esa ventana el mensaje se
-  descarta, por eso el correo es el canal confiable.
+---
 
-Todo sale de los mensajes guardados de la conversación (el resumen lo arma
-el código), nunca de texto generado por el modelo.
+## 6. Endpoints del módulo
 
-## Conversions API para Click-to-WhatsApp (`conversiones-meta.service.ts`)
-
-Le avisa a Meta qué conversaciones que empezaron con un clic en anuncio
-terminaron en venta, para que la campaña optimice hacia compradores y no
-solo hacia conversaciones iniciadas.
-
-- **Captura**: el `referral.ctwa_clid` del primer mensaje se guarda en
-  `conversaciones_bot.ctwa_clid` (un clic nuevo pisa el anterior).
-- **`LeadSubmitted`**: cuando el bot deriva la conversación a una persona.
-- **`Purchase`**: cuando el equipo registra una venta en el POS
-  (`AdminService.crearVenta`); se liga a la conversación por teléfono
-  (`3157861208` ↔ wa_id `573157861208`). Si ese cliente no llegó por un
-  anuncio, no se envía nada. Lleva valor y moneda `COP`. Los pedidos que
-  crea el bot (canal `whatsapp`) mandan el `Purchase` cuando el equipo los
-  marca **entregados** en `/admin/pedidos` (`AdminService.editarPedido`),
-  no al crearlos: un pedido cancelado no es una venta.
-- **Idempotencia**: Meta no deduplica eventos de mensajería, así que cada
-  envío reclama `(evento, referencia_id)` en `eventos_meta_enviados` antes
-  de llamar a Meta; si Meta rechaza el evento, la clave se libera.
-- **Nunca rompe el flujo**: errores se loguean, no se propagan. Sin las
-  variables de abajo el servicio queda apagado.
-- **Requisito de datos**: solo se atribuyen ventas a clientes cuyo teléfono
-  en el POS coincide con el de su chat de WhatsApp. Las conversaciones
-  anteriores a esta función no tienen `ctwa_clid` y no se pueden enviar.
-
-Migración: `apps/api/docs/sql/2026-09-23-meta-capi-mensajeria.sql`.
-
-| Variable | De dónde sale |
-|---|---|
-| `META_CAPI_ACCESS_TOKEN` | Token de usuario del sistema con permisos `whatsapp_business_management` y `whatsapp_business_manage_events` (si falta, se usa `WHATSAPP_ACCESS_TOKEN`) |
-| `META_DATASET_ID` | Administrador de eventos → el conjunto de datos (`296724564973046`) |
-| `WHATSAPP_BUSINESS_ACCOUNT_ID` | WhatsApp Manager → ID de la cuenta de WhatsApp Business (WABA) |
-
-## Variables de entorno (Railway → Service → Variables)
-
-`apps/api/.env.example` no se pudo editar automáticamente por permisos del
-entorno de esta sesión — agregá estas variables ahí también, a mano, además
-de en Railway:
-
-| Variable | De dónde sale |
-|---|---|
-| `META_APP_SECRET` | Meta App Dashboard → Configuración básica |
-| `META_WEBHOOK_VERIFY_TOKEN` | String que vos inventás — lo repetís al registrar el webhook en Meta |
-| `META_GRAPH_API_VERSION` | ej. `v21.0` (opcional, default `v21.0`) |
-| `WHATSAPP_ACCESS_TOKEN` | Token del sistema (permanente) del número dedicado |
-| `WHATSAPP_PHONE_NUMBER_ID` | ID interno de Meta del número — **no** el número de teléfono |
-| `MESSENGER_PAGE_ACCESS_TOKEN` | Token de la Página de Facebook vinculada al Meta App |
-| `MESSENGER_PAGE_ID` | ID de esa Página |
-| `GEMINI_API_KEY` | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) — gratis |
-| `GEMINI_MODEL` | opcional, default `gemini-flash-lite-latest` (el más barato disponible) |
-| `WHATSAPP_CATALOG_ID` | Commerce Manager → el catálogo conectado al número del bot (`1949258666036000`). El token necesita el permiso `catalog_management` |
-
-Instagram Direct usa el **mismo** `MESSENGER_PAGE_ACCESS_TOKEN` — así
-funciona la Instagram Messaging API (la cuenta de Instagram tiene que estar
-vinculada a la Página en Meta Business Suite antes de que ese canal
-funcione).
-
-## Cómo obtener cada credencial
-
-Requisito previo: la verificación de negocio de "Pizzeria Horeb's" en Meta
-Business Manager tiene que estar aprobada (o muy avanzada) para poder
-generar tokens permanentes y conectar un número real — con la verificación
-pendiente solo se puede probar con el número de prueba que da Meta.
-
-1. **Crear la Meta App**: [developers.facebook.com/apps](https://developers.facebook.com/apps)
-   → Crear app → tipo "Business" → asociarla al Business Manager
-   "Pizzeria Horeb's".
-2. **`META_APP_SECRET`**: App Dashboard → Configuración → Básica → "Clave
-   secreta de la app" → Mostrar (pide contraseña de Facebook).
-3. **WhatsApp** (`WHATSAPP_PHONE_NUMBER_ID` / `WHATSAPP_ACCESS_TOKEN`):
-   - Agregar producto → WhatsApp. La pestaña "Introducción a la API" da un
-     número de prueba con su Phone Number ID y un token temporal de 24h
-     (solo para pruebas rápidas con `curl`).
-   - Número real: WhatsApp Manager → agregar el número dedicado →
-     verificar por SMS/llamada → copiar su Phone Number ID.
-   - Token permanente: Configuración empresarial → Usuarios del sistema →
-     crear usuario del sistema (rol Admin) → Generar token → permisos
-     `whatsapp_business_messaging` + `whatsapp_business_management` → sin
-     fecha de expiración.
-4. **Messenger** (`MESSENGER_PAGE_ID` / `MESSENGER_PAGE_ACCESS_TOKEN`):
-   - Agregar producto → Messenger → Configuración de la API → generar
-     token para la Página del negocio (mejor desde el Usuario del sistema,
-     permiso `pages_messaging`, así no depende de una sesión personal ni
-     expira).
-   - Page ID: misma pantalla, o Página de Facebook → Configuración →
-     General → ID de la página.
-5. **Instagram**: sin variables nuevas — usa `MESSENGER_PAGE_ACCESS_TOKEN`.
-   Requiere cuenta profesional (business/creator) vinculada a la Página
-   desde Meta Business Suite → Configuración → Cuentas vinculadas. Después,
-   Agregar producto → Instagram → vincular.
-6. **`META_WEBHOOK_VERIFY_TOKEN`**: no sale de Meta, lo inventás vos —
-   `openssl rand -hex 24` — y tiene que ser idéntico en Railway y en el
-   campo "Verify Token" al registrar el webhook (paso siguiente).
-7. **`META_GRAPH_API_VERSION`**: opcional, ya tiene default `v21.0` en el
-   código.
-
-## Registrar los webhooks en Meta
-
-> **Si cambia el dominio del API en Railway**, hay que actualizar en Meta la
-> Callback URL del webhook **y** la URL de las listas de datos de los dos
-> catálogos. En septiembre de 2026 el dominio cambió, Meta siguió mandando
-> todo al dominio viejo (404) y el bot y los catálogos dejaron de funcionar
-> sin ningún error visible del lado del API.
-
-Por cada producto (WhatsApp, Messenger, Instagram) en el App Dashboard →
-Webhooks:
-
-1. **Callback URL**: `https://horebs-api-production-d191.up.railway.app/webhooks/whatsapp` (o
-   `/messenger`, `/instagram` según el producto).
-2. **Verify Token**: el mismo valor que pusiste en `META_WEBHOOK_VERIFY_TOKEN`.
-3. Meta llama la URL con `GET` para confirmar el handshake antes de dejarte
-   guardar — si no responde con el `hub.challenge` esperado, no guarda.
-4. Suscribite a los campos de mensajes entrantes (`messages` en WhatsApp,
-   `messages`/`messaging_postbacks` en Messenger/Instagram).
-
-## Probar antes de conectar el número real
-
-1. **Handshake**: `curl "https://<railway>/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=<TU_TOKEN>&hub.challenge=123"`
-   debe devolver `123`. Con un token incorrecto, 403.
-2. **Firma inválida**: un `POST` sin `X-Hub-Signature-256` correcto debe dar
-   403 y no aparecer nada en los logs de `WebhooksService` como procesado.
-3. **Flujo completo**: registrá el webhook apuntando al número/Página de
-   **prueba**, no al que se usa para atención manual, y mandá "menú",
-   "horario", "mi pedido", "humano" — confirmá que cada respuesta sale con
-   datos reales (catálogo/pedidos de Supabase, no texto fijo).
-4. Solo después de eso, apuntar el número dedicado real y conectar
-   campañas de anuncios.
-
-## Qué NO hace este módulo (a propósito)
-
-- No envía plantillas de marketing — cualquier remarketing pago es una
-  acción manual aparte, fuera de este flujo.
-- El modelo (Gemini) nunca inventa datos de negocio — precios, horario y
-  estado de pedido siempre pasan por las herramientas (`gemini.service.ts`)
-  que consultan Supabase directamente.
-- No registra pedidos nuevos en el sistema — arma el resumen con precios
-  reales y deriva a una persona del equipo para que lo confirme y lo cargue
-  a mano. Solo consulta el estado de pedidos ya existentes por teléfono.
+- `GET/POST /webhooks/whatsapp` — Handshake y recepción de eventos de WhatsApp.
+- `GET/POST /webhooks/messenger` — Handshake y recepción de eventos de Messenger.
+- `GET/POST /webhooks/instagram` — Handshake y recepción de eventos de Instagram.
+- `POST /webhooks/bold` — Webhook de notificación de pagos con tarjeta de Bold.
+- `PUT /admin/mensajeria/perfil/:canal` — Configuración de perfil de entrada (`messenger` con Get Started + Persistent Menu; `instagram` con Ice Breakers). Requiere `@Roles('admin')`.

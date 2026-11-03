@@ -40,6 +40,27 @@ export function serializarMapa(
     .sort((a, b) => b.total - a.total);
 }
 
+export const CANALES_REPORTADOS = [
+  'web',
+  'pos',
+  'whatsapp',
+  'messenger',
+  'instagram',
+] as const;
+
+export function serializarCanales(
+  mapa: Map<string, Acumulador>,
+): InformeDesgloseDto[] {
+  const conjunto = new Set<string>([...CANALES_REPORTADOS, ...mapa.keys()]);
+  return [...conjunto]
+    .map((clave) => ({
+      clave,
+      total: mapa.get(clave)?.total ?? 0,
+      pedidos: mapa.get(clave)?.pedidos ?? 0,
+    }))
+    .sort((a, b) => b.total - a.total);
+}
+
 export function totalizarPedidos(
   filas: PedidoUnificado[],
   granularidad: Granularidad,
