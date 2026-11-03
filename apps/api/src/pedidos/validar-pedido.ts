@@ -5,6 +5,8 @@ import type { CanalPedido, DatosPedido } from './pedidos.tipos';
 const MODALIDADES: Record<CanalPedido, string[]> = {
   web: ['domicilio', 'retiro'],
   whatsapp: ['domicilio', 'retiro', 'local'],
+  messenger: ['domicilio', 'retiro', 'local'],
+  instagram: ['domicilio', 'retiro', 'local'],
 };
 
 const MAX_NOMBRE = 100;

@@ -1,4 +1,7 @@
-import type { ConfiguracionSeguimiento } from './conversaciones.tipos';
+import type {
+  CanalMensajeria,
+  ConfiguracionSeguimiento,
+} from './conversaciones.tipos';
 
 export const CLAVE_RECORDATORIO_MINUTOS = 'seguimiento_recordatorio_minutos';
 export const CLAVE_OFERTA_MINUTOS = 'seguimiento_oferta_minutos';
@@ -60,4 +63,35 @@ export function avanzarVentanaLimite(
         contador: (previa.contador ?? 0) + 1,
       }
     : { inicio: ahora.toISOString(), contador: 1 };
+}
+
+export function payloadDerivacion(
+  canal: CanalMensajeria,
+  identificadorExterno: string,
+  ahora: Date = new Date(),
+): Record<string, unknown> {
+  return {
+    canal,
+    identificador_externo: identificadorExterno,
+    estado: 'derivado',
+    ultima_interaccion: ahora.toISOString(),
+    gemini_interaction_id: null,
+    seguimiento_etapa: 'ninguna',
+    seguimiento_enviado_en: null,
+    carrito_pendiente: null,
+    checkout: null,
+  };
+}
+
+export function payloadFrenoCosto(
+  canal: CanalMensajeria,
+  identificadorExterno: string,
+  ventana: VentanaLimite,
+): Record<string, unknown> {
+  return {
+    canal,
+    identificador_externo: identificadorExterno,
+    limite_ventana_inicio: ventana.inicio,
+    limite_ventana_contador: ventana.contador,
+  };
 }

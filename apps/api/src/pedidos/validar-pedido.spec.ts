@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import type { DatosPedido } from './pedidos.tipos';
+import type { CanalPedido, DatosPedido } from './pedidos.tipos';
 import { validarDatosPedido } from './validar-pedido';
 
 const BASE: DatosPedido = {
@@ -22,7 +22,7 @@ const con = (cambios: Partial<DatosPedido>): DatosPedido => ({
 const conCliente = (cambios: Partial<DatosPedido['cliente']>): DatosPedido =>
   con({ cliente: { ...BASE.cliente, ...cambios } });
 
-function mensaje(input: DatosPedido, canal: 'web' | 'whatsapp'): string | null {
+function mensaje(input: DatosPedido, canal: CanalPedido): string | null {
   try {
     validarDatosPedido(input, canal);
     return null;
@@ -43,6 +43,16 @@ describe('validarDatosPedido', () => {
       mensaje(con({ ...sinCorreo, modalidad: 'local' }), 'whatsapp'),
     ).toBeNull();
     expect(mensaje(sinCorreo, 'web')).toBe('Falta el correo del cliente.');
+  });
+
+  it('en Messenger e Instagram el correo es opcional y acepta local', () => {
+    const sinCorreo = conCliente({ correo: undefined });
+    expect(
+      mensaje(con({ ...sinCorreo, modalidad: 'local' }), 'messenger'),
+    ).toBeNull();
+    expect(
+      mensaje(con({ ...sinCorreo, modalidad: 'domicilio' }), 'instagram'),
+    ).toBeNull();
   });
 
   it('la web no acepta comer en el local', () => {

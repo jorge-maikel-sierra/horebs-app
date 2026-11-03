@@ -4,6 +4,8 @@ import {
   CLAVE_RECORDATORIO_MINUTOS,
   configuracionDeFilas,
   haceMinutos,
+  payloadDerivacion,
+  payloadFrenoCosto,
 } from './conversaciones-reglas';
 
 const AHORA = new Date('2026-10-31T20:00:00.000Z');
@@ -67,5 +69,37 @@ describe('avanzarVentanaLimite', () => {
         10,
       ),
     ).toEqual({ inicio: AHORA.toISOString(), contador: 1 });
+  });
+});
+
+describe('payloadDerivacion', () => {
+  it('arma el payload de reseteo para derivación a humano', () => {
+    const payload = payloadDerivacion('messenger', 'psid-1', AHORA);
+    expect(payload).toEqual({
+      canal: 'messenger',
+      identificador_externo: 'psid-1',
+      estado: 'derivado',
+      ultima_interaccion: AHORA.toISOString(),
+      gemini_interaction_id: null,
+      seguimiento_etapa: 'ninguna',
+      seguimiento_enviado_en: null,
+      carrito_pendiente: null,
+      checkout: null,
+    });
+  });
+});
+
+describe('payloadFrenoCosto', () => {
+  it('arma el payload con datos de la ventana de freno', () => {
+    const payload = payloadFrenoCosto('instagram', 'igsid-1', {
+      inicio: AHORA.toISOString(),
+      contador: 3,
+    });
+    expect(payload).toEqual({
+      canal: 'instagram',
+      identificador_externo: 'igsid-1',
+      limite_ventana_inicio: AHORA.toISOString(),
+      limite_ventana_contador: 3,
+    });
   });
 });

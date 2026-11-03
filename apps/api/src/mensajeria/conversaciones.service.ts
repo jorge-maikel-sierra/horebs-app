@@ -21,10 +21,12 @@ import {
   CLAVE_RECORDATORIO_MINUTOS,
   configuracionDeFilas,
   haceMinutos,
+  payloadDerivacion,
+  payloadFrenoCosto,
 } from './conversaciones-reglas';
 
 const COLUMNAS_CONVERSACION =
-  'id, canal, identificador_externo, estado, seguimiento_etapa, seguimiento_enviado_en, ultima_interaccion';
+  'id, canal, identificador_externo, telefono, estado, seguimiento_etapa, seguimiento_enviado_en, ultima_interaccion';
 
 /**
  * Estado por conversación (canal + número/PSID/IGSID) contra la tabla
@@ -341,6 +343,14 @@ export class ConversacionesService {
     });
   }
 
+  async guardarTelefono(
+    canal: CanalMensajeria,
+    identificadorExterno: string,
+    telefono: string,
+  ): Promise<void> {
+    await this.actualizarHilo(canal, identificadorExterno, { telefono });
+  }
+
   async derivarAHumano(
     canal: CanalMensajeria,
     identificadorExterno: string,
@@ -348,24 +358,9 @@ export class ConversacionesService {
     const { error } = await this.supabase
       .getClient()
       .from('conversaciones_bot')
-      .upsert(
-        {
-          canal,
-          identificador_externo: identificadorExterno,
-          estado: 'derivado',
-          ultima_interaccion: new Date().toISOString(),
-          // Al derivar, la persona humana toma la conversación desde acá —
-          // cuando el bot vuelva a responder más adelante, arranca de cero.
-          gemini_interaction_id: null,
-          seguimiento_etapa: 'ninguna',
-          seguimiento_enviado_en: null,
-          // El pedido ya pasó a una persona: un carrito viejo no debe
-          // colarse en el próximo pedido de este cliente.
-          carrito_pendiente: null,
-          checkout: null,
-        },
-        { onConflict: 'canal,identificador_externo' },
-      );
+      .upsert(payloadDerivacion(canal, identificadorExterno), {
+        onConflict: 'canal,identificador_externo',
+      });
     if (error) throw errorDeBase(error);
   }
 
@@ -458,15 +453,9 @@ export class ConversacionesService {
     const { error: upsertError } = await this.supabase
       .getClient()
       .from('conversaciones_bot')
-      .upsert(
-        {
-          canal,
-          identificador_externo: identificadorExterno,
-          limite_ventana_inicio: ventana.inicio,
-          limite_ventana_contador: ventana.contador,
-        },
-        { onConflict: 'canal,identificador_externo' },
-      );
+      .upsert(payloadFrenoCosto(canal, identificadorExterno, ventana), {
+        onConflict: 'canal,identificador_externo',
+      });
     if (upsertError) throw errorDeBase(upsertError);
 
     return ventana.contador <= maxMensajes;

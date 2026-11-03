@@ -56,8 +56,9 @@ export class PedidosService {
    * aviso de domicilio, idempotencia) — el pedido entra `pendiente` y el
    * equipo lo avanza desde /admin/pedidos.
    */
-  async crearDesdeWhatsapp(
+  async crearDesdeBot(
     input: CrearPedidoWhatsappInput,
+    canal: CanalPedido = 'whatsapp',
   ): Promise<PedidoDto> {
     const datos = {
       ...input,
@@ -66,8 +67,12 @@ export class PedidosService {
         telefono: normalizarTelefonoCO(input.cliente.telefono),
       },
     };
-    validarDatosPedido(datos, 'whatsapp');
-    return this.registrar(datos, 'whatsapp');
+    validarDatosPedido(datos, canal);
+    return this.registrar(datos, canal);
+  }
+
+  crearDesdeWhatsapp(input: CrearPedidoWhatsappInput): Promise<PedidoDto> {
+    return this.crearDesdeBot(input, 'whatsapp');
   }
 
   async obtener(id: string): Promise<PedidoDto> {
