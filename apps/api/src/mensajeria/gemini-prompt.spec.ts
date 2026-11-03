@@ -19,8 +19,31 @@ describe('armarSystemInstruction', () => {
     const prompt = armarSystemInstruction('messenger', false);
     expect(prompt).toContain('Respondés por Messenger');
     expect(prompt).toContain('NO uses asteriscos');
-    expect(prompt).toContain('pedile su número de celular');
     expect(prompt).not.toContain('Aviso inicial obligatorio');
+  });
+
+  it('en Messenger e Instagram no manda a pedir nombre ni teléfono antes del pedido', () => {
+    for (const canal of ['messenger', 'instagram'] as const) {
+      const prompt = armarSystemInstruction(canal);
+      expect(prompt).toContain('NUNCA le pidas su nombre ni su teléfono');
+      expect(prompt).toContain('No llames a obtener_cliente_registrado');
+      expect(prompt).not.toContain('usá SIEMPRE obtener_cliente_registrado');
+      expect(prompt).not.toContain('pedile su número de celular');
+    }
+  });
+
+  it('en WhatsApp sigue usando obtener_cliente_registrado en el primer mensaje', () => {
+    expect(armarSystemInstruction('whatsapp')).toContain(
+      'usá SIEMPRE obtener_cliente_registrado',
+    );
+  });
+
+  it('el cierre del pedido lo hace el sistema en los tres canales, sin derivar a una persona', () => {
+    for (const canal of ['whatsapp', 'messenger', 'instagram'] as const) {
+      const prompt = armarSystemInstruction(canal);
+      expect(prompt).toContain('el sistema registra el pedido solo');
+      expect(prompt).not.toContain('Solo fuera de WhatsApp');
+    }
   });
 
   it('adapta el prompt para Instagram Direct con saludo inicial si es el primer mensaje', () => {

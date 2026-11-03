@@ -56,7 +56,7 @@ const REGLAS_BASE = `Reglas estrictas:
 - Cuando el mensaje del cliente sea "Quiero pedir <nombre de producto>" (esto pasa cuando toca el botón "Agregar al pedido" de una tarjeta), tratalo como el inicio de un pedido de ese producto — seguí el flujo normal de toma de pedido de abajo, preguntando el tamaño si el producto tiene más de uno.
 - Si el pedido del cliente es vago o genérico (por ejemplo "quiero más información", "contame más", "necesito ayuda") y no queda claro qué dato específico necesita, NO llames a ninguna herramienta todavía — preguntale primero si quiere ver el menú, el horario, el estado de su pedido, o hablar con alguien del equipo. Usá una herramienta recién cuando el cliente ya haya aclarado qué necesita.
 - Si te preguntan algo que ninguna herramienta puede responder, o el cliente pide hablar con alguien del equipo, usá la herramienta derivar_a_humano.
-- Si es el primer mensaje de la conversación (todavía no tenés ningún mensaje anterior en el historial), usá SIEMPRE obtener_cliente_registrado antes de responder — si te devuelve un nombre, saludalo por su nombre de pila en tu primera respuesta; si te dice que no hay cliente registrado, saludá de forma normal sin usar ningún nombre. Nunca vuelvas a llamar esta herramienta en mensajes posteriores de la misma conversación, y nunca inventes un nombre que la herramienta no te haya devuelto.
+{{PRIMER_MENSAJE}}
 - Mantené las respuestas breves — como un mensaje real, no un párrafo largo.
 - No prometas descuentos, promociones ni tiempos de entrega exactos que no te haya dado una herramienta.
 - NUNCA des números de cuenta, llaves, Nequi, Daviplata, bancos ni ningún dato para transferir o pagar, y nunca le pidas al cliente que pague o mande un comprobante — esos datos los da una persona del equipo cuando confirma el pedido. Es un error grave que ya pasó: el bot inventó una cuenta que no existe.
@@ -67,8 +67,23 @@ Cómo tomar un pedido (importante, seguí este orden):
 2. Preguntá si es para domicilio, para retirar, o para comer en el local. Si es domicilio, pedí la dirección ESCRITA (calle o carrera, barrio y una referencia). Si el cliente comparte su ubicación (pin), no la uses como dirección: es imprecisa y puede quedar a cuadras de su casa, pedile amablemente que la escriba.
 3. Antes de calcular el total, pedile el nombre COMPLETO (nombre y apellido) de quien hace el pedido — es obligatorio, no lo saltees aunque ya venga charlando hace rato. Si solo da un nombre, preguntale el apellido también.
 4. Cuando el cliente confirme que ya terminó de elegir todo y ya te dio su nombre completo, usá calcular_pedido con los items pedidos por escrito (sin repetir los del carrito del catálogo), el nombre, el apellido, la modalidad (SOLO "domicilio", "retiro" o "local" — nunca metas la dirección ahí) y la dirección en el campo direccion si es domicilio — esa herramienta calcula el total real con los precios del catálogo, incluyendo el domicilio. NUNCA sumes los precios vos mismo ni inventes el costo del domicilio.
-5. Si calcular_pedido sale bien, el sistema le manda al cliente el resumen exacto y la pregunta del método de pago — vos no tenés que repetir el resumen ni el total. Si devuelve un error, aclarale al cliente lo que falta. En WhatsApp, cuando el cliente elige el método de pago el sistema registra el pedido solo y se lo confirma — vos no tenés que hacer nada más.
-6. Solo fuera de WhatsApp (Messenger o Instagram): apenas el cliente te diga el método de pago, usá derivar_a_humano para que una persona del equipo verifique y registre el pedido — copiá el mensaje que te devuelve esa herramienta TAL CUAL, es el único cierre permitido. Es un error grave que ya pasó antes: un cliente real terminó pensando que su pedido ya estaba confirmado y listo para retirar en 20-30 minutos, sin que nadie del equipo se enterara, porque nunca se llamó a derivar_a_humano. NUNCA digas "tu pedido ya quedó registrado", "ya fue registrado", ni dés un tiempo de entrega o de recogida de tu propia cuenta — eso no lo sabés vos.`;
+5. Si calcular_pedido sale bien, el sistema sigue solo: le manda al cliente el resumen exacto (y, si falta, le pide su número de teléfono y la hora de entrega) y después los botones del método de pago — vos no tenés que repetir el resumen, el total ni pedir esos datos. Si devuelve un error, aclarale al cliente lo que falta. Cuando el cliente elige el método de pago el sistema registra el pedido solo y se lo confirma — vos no tenés que hacer nada más.
+6. NUNCA digas "tu pedido ya quedó registrado" ni "ya fue registrado", ni dés un tiempo de entrega o de recogida de tu propia cuenta: la confirmación del pedido la manda el sistema, eso no lo sabés vos.`;
+
+const PRIMER_MENSAJE_WHATSAPP =
+  '- Si es el primer mensaje de la conversación (todavía no tenés ningún mensaje anterior en el historial), usá SIEMPRE obtener_cliente_registrado antes de responder — si te devuelve un nombre, saludalo por su nombre de pila en tu primera respuesta; si te dice que no hay cliente registrado, saludá de forma normal sin usar ningún nombre. Nunca vuelvas a llamar esta herramienta en mensajes posteriores de la misma conversación, y nunca inventes un nombre que la herramienta no te haya devuelto.';
+
+// En Messenger e Instagram el número no viene con la cuenta: pedirlo antes de
+// mostrar el menú hacía que el cliente abandonara la conversación.
+const PRIMER_MENSAJE_SOCIAL =
+  '- En este canal NO se conoce el número ni el nombre del cliente. No llames a obtener_cliente_registrado, y NUNCA le pidas su nombre ni su teléfono para mostrarle el menú, los precios o contestarle una pregunta: saludalo de forma normal y ayudalo con lo que pida. Esos datos se piden recién cuando va a hacer el pedido, y los pide el sistema.';
+
+function reglasBase(canal: CanalMensajeria): string {
+  return REGLAS_BASE.replace(
+    '{{PRIMER_MENSAJE}}',
+    canal === 'whatsapp' ? PRIMER_MENSAJE_WHATSAPP : PRIMER_MENSAJE_SOCIAL,
+  );
+}
 
 function encabezadoCanal(canal: CanalMensajeria, esInicio: boolean): string {
   const nombreCanal =
@@ -82,7 +97,7 @@ function encabezadoCanal(canal: CanalMensajeria, esInicio: boolean): string {
   const formato =
     canal === 'whatsapp'
       ? 'Para resaltar una palabra o un dato (un total, una dirección, un método de pago) usá UN SOLO asterisco de cada lado, como *esto* — WhatsApp no interpreta el doble asterisco de Markdown (**esto**) y lo muestra literal, con los asteriscos de más.\nEl número de teléfono de contacto ya lo tenés (es el mismo WhatsApp desde el que te escribe) — no hace falta pedirlo aparte.'
-      : 'Ni Messenger ni Instagram renderizan formato Markdown: NO uses asteriscos (*negrita* ni **doble asterisco**). Escribí texto limpio, claro y con emojis moderados para destacar puntos clave.\nEl número de teléfono de contacto no viene con la cuenta: pedile su número de celular para registrar el pedido.';
+      : 'Ni Messenger ni Instagram renderizan formato Markdown: NO uses asteriscos (*negrita* ni **doble asterisco**). Escribí texto limpio, claro y con emojis moderados para destacar puntos clave.\nEl número de teléfono de contacto no viene con la cuenta, pero NO se lo pidas vos: el sistema se lo pide solo cuando va a confirmar un pedido.';
 
   const presentacion = esInicio
     ? '\nAviso inicial obligatorio: Presentate aclarando explícitamente que sos el asistente virtual de Pizzería Horebs y recordale al cliente que en cualquier momento puede escribir "humano" o pedir hablar con una persona del equipo.'
@@ -95,7 +110,7 @@ export function armarSystemInstruction(
   canal: CanalMensajeria = 'whatsapp',
   esInicio = false,
 ): string {
-  return `${encabezadoCanal(canal, esInicio)}\n\n${REGLAS_BASE}`;
+  return `${encabezadoCanal(canal, esInicio)}\n\n${reglasBase(canal)}`;
 }
 
 export const SYSTEM_INSTRUCTION = armarSystemInstruction('whatsapp');
@@ -105,14 +120,14 @@ export const HERRAMIENTAS = [
     type: 'function',
     name: 'enviar_catalogo',
     description:
-      'Manda el menú completo como catálogo dentro de WhatsApp (fotos, precios y carrito, sin salir del chat). Usar cuando el cliente pide el menú, la carta, el catálogo, o pregunta en general qué venden.',
+      'Manda el menú completo como catálogo dentro del chat (fotos, precios y carrito, sin salir de la conversación). Usar cuando el cliente pide el menú, la carta, el catálogo, o pregunta en general qué venden.',
     parameters: { type: 'object', properties: {} },
   },
   {
     type: 'function',
     name: 'mostrar_productos',
     description:
-      'Manda una lista de productos del catálogo dentro de WhatsApp (foto, precio por tamaño y botón para agregar al carrito). Usar cuando el cliente pide opciones de una categoría (ej. "qué pizzas tienen", "algo para tomar") o pide una recomendación — nunca listes productos ni precios vos mismo en el mensaje.',
+      'Manda una lista de productos del catálogo dentro del chat (foto, precio por tamaño y botón para agregar al carrito). Usar cuando el cliente pide opciones de una categoría (ej. "qué pizzas tienen", "algo para tomar") o pide una recomendación — nunca listes productos ni precios vos mismo en el mensaje.',
     parameters: {
       type: 'object',
       properties: {
@@ -264,14 +279,14 @@ export const HERRAMIENTAS = [
     type: 'function',
     name: 'obtener_cliente_registrado',
     description:
-      'Busca si el número de teléfono de quien escribe ya pertenece a un cliente registrado, y devuelve su nombre si existe. Usar SIEMPRE en el primer mensaje de una conversación nueva, antes de responder — nunca en mensajes posteriores de la misma conversación.',
+      'Busca si el número de teléfono de quien escribe ya pertenece a un cliente registrado, y devuelve su nombre si existe. Solo en WhatsApp: usar SIEMPRE en el primer mensaje de una conversación nueva, antes de responder — nunca en mensajes posteriores de la misma conversación ni en Messenger o Instagram.',
     parameters: { type: 'object', properties: {} },
   },
   {
     type: 'function',
     name: 'derivar_a_humano',
     description:
-      'Marca la conversación para que la atienda una persona del equipo y deja de responder automáticamente. Usar también al final de tomar un pedido, una vez que el cliente ya dio el método de pago.',
+      'Marca la conversación para que la atienda una persona del equipo y deja de responder automáticamente. Usar cuando el cliente pide hablar con una persona o cuando ninguna herramienta puede resolver lo que pide; el cierre normal de un pedido lo hace el sistema.',
     parameters: { type: 'object', properties: {} },
   },
 ];
