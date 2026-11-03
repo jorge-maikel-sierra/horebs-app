@@ -57,3 +57,5 @@ export const ESQUEMA_EDITAR_PEDIDO: Esquema = {
   estado: opcional(enumerado(ESTADOS_PEDIDO)),
   items: opcional(lista()),
 };
+
+export const ESQUEMA_PERFIL_MENSAJERIA: Esquema = {};

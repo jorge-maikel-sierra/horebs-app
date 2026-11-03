@@ -42,10 +42,12 @@ function crearServicio(opciones: Opciones = {}) {
   const respuestas = [...(opciones.respuestas ?? [texto('r-1', 'Hola')])];
   const guardadas: string[] = [];
   const derivaciones: number[] = [];
+  const llamadas: Array<{ model: string; system_instruction?: string }> = [];
   const cliente = {
     configurado: opciones.configurado ?? true,
     modelo: 'modelo-1',
-    llamar: () => {
+    llamar: (params: { model: string; system_instruction?: string }) => {
+      llamadas.push(params);
       const siguiente = respuestas.shift();
       if (siguiente instanceof Error) return Promise.reject(siguiente);
       return Promise.resolve(siguiente);
@@ -83,7 +85,7 @@ function crearServicio(opciones: Opciones = {}) {
     envios as unknown as EnvioHerramientasService,
     despacho as unknown as DespachoHerramientasService,
   );
-  return { servicio, guardadas, derivaciones };
+  return { servicio, guardadas, derivaciones, llamadas };
 }
 
 describe('GeminiService.responder', () => {
@@ -198,5 +200,56 @@ describe('GeminiService.responder', () => {
 
     expect(respuesta).toHaveLength(4096);
     expect(respuesta?.endsWith('…')).toBe(true);
+  });
+
+  it('en canales sociales formatea el texto sin asteriscos de Markdown', async () => {
+    const ctxMessenger: ContextoHerramienta = {
+      canal: 'messenger',
+      identificadorExterno: 'psid-1',
+      telefono: null,
+      conversacionId: 'cv-2',
+    };
+    const { servicio } = crearServicio({
+      respuestas: [texto('r-1', '**Hawaiana**\n* jamón y piña\n*Especial*')],
+    });
+
+    await expect(servicio.responder(ctxMessenger, 'menú')).resolves.toBe(
+      'Hawaiana\n- jamón y piña\nEspecial',
+    );
+  });
+
+  it('en canales sociales sin configurar ofrece humano con comillas', async () => {
+    const ctxInstagram: ContextoHerramienta = {
+      canal: 'instagram',
+      identificadorExterno: 'igsid-1',
+      telefono: null,
+      conversacionId: 'cv-3',
+    };
+    const { servicio } = crearServicio({ configurado: false });
+
+    await expect(servicio.responder(ctxInstagram, 'hola')).resolves.toContain(
+      'escribí "humano"',
+    );
+  });
+
+  it('envía system_instruction para el canal correspondiente e indica si es inicio', async () => {
+    const ctxInstagram: ContextoHerramienta = {
+      canal: 'instagram',
+      identificadorExterno: 'igsid-1',
+      telefono: null,
+      conversacionId: 'cv-3',
+    };
+    const { servicio, llamadas } = crearServicio({
+      respuestas: [texto('r-1', 'Hola')],
+    });
+
+    await servicio.responder(ctxInstagram, 'hola');
+
+    expect(llamadas[0]?.system_instruction).toContain(
+      'Respondés por Instagram Direct',
+    );
+    expect(llamadas[0]?.system_instruction).toContain(
+      'Aviso inicial obligatorio',
+    );
   });
 });

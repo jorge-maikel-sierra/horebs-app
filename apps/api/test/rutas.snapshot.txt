@@ -85,6 +85,7 @@ POST /webhooks/bold
 POST /webhooks/instagram
 POST /webhooks/messenger
 POST /webhooks/whatsapp
+PUT /admin/mensajeria/perfil/:canal
 PUT /blog/posts/:slug/likes/yo
 PUT /nomina/semanas/:id/asistencia/:fecha
 PUT /nomina/semanas/:id/liquidacion

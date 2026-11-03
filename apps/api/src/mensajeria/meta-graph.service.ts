@@ -29,14 +29,13 @@ import {
   elementosDeTarjetas,
   esErrorBusinessAi,
 } from './mensajes-meta-social';
+import { descargarMediaWhatsapp } from './meta-media';
+import { armarPerfilCanal } from './perfil-meta';
 
 const REINTENTOS = 2;
 const ESPERA_PRIMER_REINTENTO_MS = 500;
 const ESPERA_SEGUNDO_REINTENTO_MS = 1500;
 const BACKOFF_MS = [ESPERA_PRIMER_REINTENTO_MS, ESPERA_SEGUNDO_REINTENTO_MS];
-const BYTES_POR_KB = 1024;
-const MAX_MB_MEDIA = 10;
-const MAX_BYTES_MEDIA = MAX_MB_MEDIA * BYTES_POR_KB * BYTES_POR_KB;
 
 @Injectable()
 export class MetaGraphService {
@@ -134,47 +133,11 @@ export class MetaGraphService {
     );
   }
 
-  async descargarMedia(
-    mediaId: string,
-  ): Promise<{ datos: Buffer; mime: string }> {
+  descargarMedia(mediaId: string): Promise<{ datos: Buffer; mime: string }> {
     if (!this.whatsappToken) {
       throw new ServiceUnavailableException('WhatsApp no está configurado.');
     }
-    const auth = { Authorization: `Bearer ${this.whatsappToken}` };
-    const meta = await fetch(
-      `https://graph.facebook.com/${this.version}/${mediaId}`,
-      { headers: auth },
-    );
-    if (!meta.ok) {
-      throw new ServiceUnavailableException(
-        `No se pudo obtener el archivo ${mediaId}: ${meta.status}`,
-      );
-    }
-    const info = (await meta.json()) as {
-      url?: string;
-      mime_type?: string;
-      file_size?: number;
-    };
-    if (!info.url) {
-      throw new ServiceUnavailableException(
-        `El archivo ${mediaId} no tiene URL.`,
-      );
-    }
-    if ((info.file_size ?? 0) > MAX_BYTES_MEDIA) {
-      throw new ServiceUnavailableException(
-        `El archivo ${mediaId} pesa más de 10 MB.`,
-      );
-    }
-    const archivo = await fetch(info.url, { headers: auth });
-    if (!archivo.ok) {
-      throw new ServiceUnavailableException(
-        `No se pudo descargar el archivo ${mediaId}: ${archivo.status}`,
-      );
-    }
-    return {
-      datos: Buffer.from(await archivo.arrayBuffer()),
-      mime: info.mime_type ?? 'application/octet-stream',
-    };
+    return descargarMediaWhatsapp(this.version, this.whatsappToken, mediaId);
   }
 
   async enviarMensajeSesion(
@@ -311,6 +274,33 @@ export class MetaGraphService {
         ),
       ),
     );
+  }
+
+  async configurarPerfil(canal: 'messenger' | 'instagram'): Promise<void> {
+    if (!this.pageToken) {
+      throw new ServiceUnavailableException(
+        'MESSENGER_PAGE_ACCESS_TOKEN no configurada.',
+      );
+    }
+    const cuerpo = armarPerfilCanal(canal);
+    const res = await fetch(
+      `https://graph.facebook.com/${this.version}/me/messenger_profile`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.pageToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(cuerpo),
+      },
+    );
+    if (!res.ok) {
+      const errorTexto = await res.text().catch(() => '');
+      throw new ServiceUnavailableException(
+        `Meta Graph API respondió ${res.status} al configurar perfil de ${canal}: ${errorTexto}`,
+      );
+    }
+    this.logger.log(`Perfil de ${canal} configurado exitosamente en Meta.`);
   }
 
   private enviarInteractivo(
