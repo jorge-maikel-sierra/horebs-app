@@ -21,10 +21,21 @@ import {
   CLAVE_RECORDATORIO_MINUTOS,
   configuracionDeFilas,
   haceMinutos,
+  mapearVentana,
+  payloadConfiguracionSeguimiento,
+  payloadCtwa,
+  payloadDerivacion,
+  payloadEstadoManual,
+  payloadFrenoCosto,
+  payloadMensaje,
+  payloadRegistroInteraccion,
+  payloadSeguimiento,
+  variantesTelefonoCO,
+  type VentanaConversacion,
 } from './conversaciones-reglas';
 
 const COLUMNAS_CONVERSACION =
-  'id, canal, identificador_externo, estado, seguimiento_etapa, seguimiento_enviado_en, ultima_interaccion';
+  'id, canal, identificador_externo, telefono, estado, seguimiento_etapa, seguimiento_enviado_en, ultima_interaccion';
 
 /**
  * Estado por conversación (canal + número/PSID/IGSID) contra la tabla
@@ -37,28 +48,23 @@ export class ConversacionesService {
 
   async obtenerEstado(
     canal: CanalMensajeria,
-    identificadorExterno: string,
+    id: string,
   ): Promise<EstadoConversacion> {
     const fila = await this.leerHilo<{ estado: EstadoConversacion }>(
       canal,
-      identificadorExterno,
+      id,
       'estado',
     );
     return fila?.estado ?? 'bot';
   }
 
-  /**
-   * El ID de la última interacción con Gemini para este hilo — le da
-   * memoria al modelo entre mensajes separados (Interactions API lo
-   * mantiene server-side si se lo pasás en `previous_interaction_id`).
-   */
   async obtenerUltimaInteraccionGemini(
     canal: CanalMensajeria,
-    identificadorExterno: string,
+    id: string,
   ): Promise<string | null> {
     const fila = await this.leerHilo<{ gemini_interaction_id: string | null }>(
       canal,
-      identificadorExterno,
+      id,
       'gemini_interaction_id',
     );
     return fila?.gemini_interaction_id ?? null;
@@ -66,10 +72,10 @@ export class ConversacionesService {
 
   async guardarInteraccionGemini(
     canal: CanalMensajeria,
-    identificadorExterno: string,
+    id: string,
     interactionId: string,
   ): Promise<void> {
-    await this.actualizarHilo(canal, identificadorExterno, {
+    await this.actualizarHilo(canal, id, {
       gemini_interaction_id: interactionId,
     });
   }
@@ -84,21 +90,15 @@ export class ConversacionesService {
     canal: CanalMensajeria,
     identificadorExterno: string,
   ): Promise<ConversacionCompleta> {
+    const payload = payloadRegistroInteraccion(
+      canal,
+      identificadorExterno,
+      new Date().toISOString(),
+    );
     const { data, error } = await this.supabase
       .getClient()
       .from('conversaciones_bot')
-      .upsert(
-        {
-          canal,
-          identificador_externo: identificadorExterno,
-          ultima_interaccion: new Date().toISOString(),
-          // Un mensaje nuevo del cliente cancela cualquier seguimiento
-          // pendiente — ya no está "abandonado".
-          seguimiento_etapa: 'ninguna',
-          seguimiento_enviado_en: null,
-        },
-        { onConflict: 'canal,identificador_externo' },
-      )
+      .upsert(payload, { onConflict: 'canal,identificador_externo' })
       .select(COLUMNAS_CONVERSACION)
       .single();
     if (error) throw errorDeBase(error);
@@ -111,32 +111,35 @@ export class ConversacionesService {
   async buscarInactivasSinSeguimiento(
     minutosInactividad: number,
   ): Promise<ConversacionParaSeguimiento[]> {
-    const limite = haceMinutos(minutosInactividad);
-    const { data, error } = await this.supabase
-      .getClient()
-      .from('conversaciones_bot')
-      .select('id, canal, identificador_externo')
-      .eq('estado', 'bot')
-      .eq('seguimiento_etapa', 'ninguna')
-      .lt('ultima_interaccion', limite);
-    if (error) throw errorDeBase(error);
-    return data ?? [];
+    return this.buscarCandidatas(
+      'ninguna',
+      'ultima_interaccion',
+      haceMinutos(minutosInactividad),
+    );
   }
 
-  /** Conversaciones a las que ya se les mandó el recordatorio hace más de
-   * `minutosDesdeRecordatorio` y siguen sin responder — candidatas a la
-   * oferta final. */
   async buscarConRecordatorioVencido(
     minutosDesdeRecordatorio: number,
   ): Promise<ConversacionParaSeguimiento[]> {
-    const limite = haceMinutos(minutosDesdeRecordatorio);
+    return this.buscarCandidatas(
+      'recordatorio_enviado',
+      'seguimiento_enviado_en',
+      haceMinutos(minutosDesdeRecordatorio),
+    );
+  }
+
+  private async buscarCandidatas(
+    etapa: EtapaSeguimiento,
+    campo: 'ultima_interaccion' | 'seguimiento_enviado_en',
+    limite: string,
+  ): Promise<ConversacionParaSeguimiento[]> {
     const { data, error } = await this.supabase
       .getClient()
       .from('conversaciones_bot')
-      .select('id, canal, identificador_externo')
+      .select('id, canal, identificador_externo, telefono, ultima_interaccion')
       .eq('estado', 'bot')
-      .eq('seguimiento_etapa', 'recordatorio_enviado')
-      .lt('seguimiento_enviado_en', limite);
+      .eq('seguimiento_etapa', etapa)
+      .lt(campo, limite);
     if (error) throw errorDeBase(error);
     return data ?? [];
   }
@@ -162,13 +165,7 @@ export class ConversacionesService {
       .getClient()
       .from('configuracion')
       .upsert(
-        [
-          {
-            clave: CLAVE_RECORDATORIO_MINUTOS,
-            valor: String(recordatorioMinutos),
-          },
-          { clave: CLAVE_OFERTA_MINUTOS, valor: String(ofertaMinutos) },
-        ],
+        payloadConfiguracionSeguimiento(recordatorioMinutos, ofertaMinutos),
         { onConflict: 'clave' },
       );
     if (error) throw errorDeBase(error);
@@ -209,15 +206,16 @@ export class ConversacionesService {
     texto: string,
     autorUsuarioId?: string,
   ): Promise<MensajeConversacion> {
+    const payload = payloadMensaje(
+      conversacionId,
+      direccion,
+      texto,
+      autorUsuarioId,
+    );
     const { data, error } = await this.supabase
       .getClient()
       .from('mensajes_conversacion')
-      .insert({
-        conversacion_id: conversacionId,
-        direccion,
-        texto,
-        autor_usuario_id: autorUsuarioId ?? null,
-      })
+      .insert(payload)
       .select()
       .single<MensajeConversacion>();
     if (error) throw errorDeBase(error);
@@ -247,36 +245,29 @@ export class ConversacionesService {
     const { error } = await this.supabase
       .getClient()
       .from('conversaciones_bot')
-      .update({
-        estado,
-        gemini_interaction_id: null,
-        seguimiento_etapa: 'ninguna',
-        seguimiento_enviado_en: null,
-        carrito_pendiente: null,
-        checkout: null,
-      })
+      .update(payloadEstadoManual(estado))
       .eq('id', id);
     if (error) throw errorDeBase(error);
   }
 
   async guardarCheckout(
     canal: CanalMensajeria,
-    identificadorExterno: string,
+    id: string,
     checkout: CheckoutWhatsapp | null,
   ): Promise<void> {
-    await this.actualizarHilo(canal, identificadorExterno, { checkout });
+    await this.actualizarHilo(canal, id, { checkout });
   }
 
   async obtenerCheckout(
     canal: CanalMensajeria,
-    identificadorExterno: string,
+    id: string,
   ): Promise<CheckoutWhatsapp | null> {
-    const fila = await this.leerHilo<{ checkout: CheckoutWhatsapp | null }>(
+    const f = await this.leerHilo<{ checkout: CheckoutWhatsapp | null }>(
       canal,
-      identificadorExterno,
+      id,
       'checkout',
     );
-    return fila?.checkout ?? null;
+    return f?.checkout ?? null;
   }
 
   /**
@@ -285,23 +276,36 @@ export class ConversacionesService {
    */
   async obtenerVentana(
     canal: CanalMensajeria,
-    identificadorExterno: string,
-  ): Promise<{
-    conversacionId: string;
-    estado: EstadoConversacion;
-    ultimaInteraccion: Date;
-  } | null> {
+    id: string,
+  ): Promise<VentanaConversacion | null> {
     const fila = await this.leerHilo<{
       id: string;
       estado: EstadoConversacion;
       ultima_interaccion: string | null;
-    }>(canal, identificadorExterno, 'id, estado, ultima_interaccion');
-    if (!fila?.ultima_interaccion) return null;
-    return {
-      conversacionId: fila.id,
-      estado: fila.estado,
-      ultimaInteraccion: new Date(fila.ultima_interaccion),
-    };
+    }>(canal, id, 'id, estado, ultima_interaccion');
+    return mapearVentana(fila);
+  }
+
+  async obtenerVentanaPorTelefono(
+    canal: CanalMensajeria,
+    telefono: string,
+  ): Promise<VentanaConversacion | null> {
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('conversaciones_bot')
+      .select('id, identificador_externo, estado, ultima_interaccion')
+      .eq('canal', canal)
+      .in('telefono', variantesTelefonoCO(telefono))
+      .order('ultima_interaccion', { ascending: false })
+      .limit(1)
+      .maybeSingle<{
+        id: string;
+        identificador_externo: string;
+        estado: EstadoConversacion;
+        ultima_interaccion: string | null;
+      }>();
+    if (error) throw errorDeBase(error);
+    return mapearVentana(data);
   }
 
   /**
@@ -312,92 +316,66 @@ export class ConversacionesService {
    */
   async guardarCarrito(
     canal: CanalMensajeria,
-    identificadorExterno: string,
+    id: string,
     items: ItemCarritoPendiente[] | null,
   ): Promise<void> {
-    await this.actualizarHilo(canal, identificadorExterno, {
-      carrito_pendiente: items,
-    });
+    await this.actualizarHilo(canal, id, { carrito_pendiente: items });
   }
 
   async obtenerCarrito(
     canal: CanalMensajeria,
-    identificadorExterno: string,
+    id: string,
   ): Promise<ItemCarritoPendiente[]> {
-    const fila = await this.leerHilo<{
+    const f = await this.leerHilo<{
       carrito_pendiente: ItemCarritoPendiente[] | null;
-    }>(canal, identificadorExterno, 'carrito_pendiente');
-    return fila?.carrito_pendiente ?? [];
+    }>(canal, id, 'carrito_pendiente');
+    return f?.carrito_pendiente ?? [];
   }
 
   async marcarSeguimientoEnviado(
     canal: CanalMensajeria,
-    identificadorExterno: string,
+    id: string,
     etapa: EtapaSeguimiento,
   ): Promise<void> {
-    await this.actualizarHilo(canal, identificadorExterno, {
-      seguimiento_etapa: etapa,
-      seguimiento_enviado_en: new Date().toISOString(),
-    });
+    await this.actualizarHilo(canal, id, payloadSeguimiento(etapa));
   }
 
-  async derivarAHumano(
+  async guardarTelefono(
     canal: CanalMensajeria,
-    identificadorExterno: string,
+    id: string,
+    telefono: string,
   ): Promise<void> {
+    await this.actualizarHilo(canal, id, { telefono });
+  }
+
+  async derivarAHumano(canal: CanalMensajeria, id: string): Promise<void> {
     const { error } = await this.supabase
       .getClient()
       .from('conversaciones_bot')
-      .upsert(
-        {
-          canal,
-          identificador_externo: identificadorExterno,
-          estado: 'derivado',
-          ultima_interaccion: new Date().toISOString(),
-          // Al derivar, la persona humana toma la conversación desde acá —
-          // cuando el bot vuelva a responder más adelante, arranca de cero.
-          gemini_interaction_id: null,
-          seguimiento_etapa: 'ninguna',
-          seguimiento_enviado_en: null,
-          // El pedido ya pasó a una persona: un carrito viejo no debe
-          // colarse en el próximo pedido de este cliente.
-          carrito_pendiente: null,
-          checkout: null,
-        },
-        { onConflict: 'canal,identificador_externo' },
-      );
+      .upsert(payloadDerivacion(canal, id), {
+        onConflict: 'canal,identificador_externo',
+      });
     if (error) throw errorDeBase(error);
   }
 
-  /**
-   * Meta manda el `ctwa_clid` solo en el primer mensaje de una conversación
-   * que empezó con un clic en anuncio. Un clic nuevo trae un id nuevo, así
-   * que siempre se pisa el anterior — la atribución es al último anuncio.
-   */
   async guardarCtwaClid(
     canal: CanalMensajeria,
-    identificadorExterno: string,
+    id: string,
     ctwaClid: string,
   ): Promise<void> {
-    await this.actualizarHilo(canal, identificadorExterno, {
-      ctwa_clid: ctwaClid,
-      ctwa_capturado_en: new Date().toISOString(),
-    });
+    await this.actualizarHilo(canal, id, payloadCtwa(ctwaClid));
   }
 
-  /** La conversación con su `ctwa_clid`, o null si nunca vino de un anuncio
-   * (o si no existe). Solo la usa la API de conversiones de Meta. */
   async obtenerCtwa(
     canal: CanalMensajeria,
-    identificadorExterno: string,
+    id: string,
   ): Promise<{ id: string; ctwaClid: string } | null> {
-    const fila = await this.leerHilo<{ id: string; ctwa_clid: string | null }>(
+    const f = await this.leerHilo<{ id: string; ctwa_clid: string | null }>(
       canal,
-      identificadorExterno,
+      id,
       'id, ctwa_clid',
     );
-    if (!fila?.ctwa_clid) return null;
-    return { id: fila.id, ctwaClid: fila.ctwa_clid };
+    return f?.ctwa_clid ? { id: f.id, ctwaClid: f.ctwa_clid } : null;
   }
 
   /**
@@ -434,17 +412,14 @@ export class ConversacionesService {
     ventanaMinutos: number,
     maxMensajes: number,
   ): Promise<boolean> {
-    const { data, error } = await this.supabase
-      .getClient()
-      .from('conversaciones_bot')
-      .select('limite_ventana_inicio, limite_ventana_contador')
-      .eq('canal', canal)
-      .eq('identificador_externo', identificadorExterno)
-      .maybeSingle<{
-        limite_ventana_inicio: string | null;
-        limite_ventana_contador: number | null;
-      }>();
-    if (error) throw errorDeBase(error);
+    const data = await this.leerHilo<{
+      limite_ventana_inicio: string | null;
+      limite_ventana_contador: number | null;
+    }>(
+      canal,
+      identificadorExterno,
+      'limite_ventana_inicio, limite_ventana_contador',
+    );
 
     const ventana = avanzarVentanaLimite(
       {
@@ -455,19 +430,13 @@ export class ConversacionesService {
       ventanaMinutos,
     );
 
-    const { error: upsertError } = await this.supabase
+    const { error } = await this.supabase
       .getClient()
       .from('conversaciones_bot')
-      .upsert(
-        {
-          canal,
-          identificador_externo: identificadorExterno,
-          limite_ventana_inicio: ventana.inicio,
-          limite_ventana_contador: ventana.contador,
-        },
-        { onConflict: 'canal,identificador_externo' },
-      );
-    if (upsertError) throw errorDeBase(upsertError);
+      .upsert(payloadFrenoCosto(canal, identificadorExterno, ventana), {
+        onConflict: 'canal,identificador_externo',
+      });
+    if (error) throw errorDeBase(error);
 
     return ventana.contador <= maxMensajes;
   }

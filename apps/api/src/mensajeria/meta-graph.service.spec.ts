@@ -11,6 +11,9 @@ function crearServicio(opciones: { conCatalogo?: boolean } = {}) {
     Object.entries({
       WHATSAPP_ACCESS_TOKEN: 'tok',
       WHATSAPP_PHONE_NUMBER_ID: 'phone-1',
+      MESSENGER_PAGE_ACCESS_TOKEN: 'page-tok',
+      MESSENGER_PAGE_ID: 'page-1',
+      INSTAGRAM_ACCOUNT_ID: 'ig-1',
       ...(conCatalogo ? { WHATSAPP_CATALOG_ID: 'cat-1' } : {}),
     }),
   );
@@ -144,5 +147,54 @@ describe('MetaGraphService — catálogo nativo', () => {
     expect(resultado).toBe('tarjetas');
     const ultima = cuerpoEnviado(fetchMock, fetchMock.mock.calls.length - 1);
     expect(ultima.interactive.type).toBe('button');
+  });
+
+  it('manda quick replies en Messenger e Instagram con enviarBotones', async () => {
+    await crearServicio().enviarBotones('messenger', 'psid-1', '¿Modalidad?', [
+      { id: 'ck:mod:domicilio', titulo: 'Domicilio' },
+    ]);
+    const cuerpo = cuerpoEnviado(fetchMock);
+    expect(cuerpo.message.quick_replies).toBeDefined();
+    expect(cuerpo.message.quick_replies[0].payload).toBe('ck:mod:domicilio');
+  });
+
+  it('manda generic template en Messenger y texto + generic template en Instagram', async () => {
+    await crearServicio().enviarTarjetasProductos('messenger', 'psid-1', [
+      TARJETA,
+    ]);
+    const cuerpoMessenger = cuerpoEnviado(fetchMock);
+    expect(cuerpoMessenger.message.attachment.payload.template_type).toBe(
+      'generic',
+    );
+
+    fetchMock.mockClear();
+    await crearServicio().enviarTarjetasProductos('instagram', 'igsid-1', [
+      TARJETA,
+    ]);
+    expect(fetchMock).toHaveBeenCalledTimes(2); // 1 texto plano + 1 generic template
+  });
+
+  it('parte mensajes largos por bytes en Instagram', async () => {
+    const textoLargo = '🍕'.repeat(300); // 1200 bytes en UTF-8 (límite IG es 1000)
+    await crearServicio().enviarMensajeSesion(
+      'instagram',
+      'igsid-2',
+      textoLargo,
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('maneja el error 100 subcódigo 2534037 de Business AI sin reintentar ni fallar', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+      text: async () =>
+        JSON.stringify({
+          error: { code: 100, error_subcode: 2534037, message: 'AI active' },
+        }),
+    });
+    await expect(
+      crearServicio().enviarMensajeSesion('messenger', 'psid-3', 'hola'),
+    ).resolves.not.toThrow();
   });
 });

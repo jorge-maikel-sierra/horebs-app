@@ -81,4 +81,20 @@ describe('armarAvisoDerivacion', () => {
     expect(html).not.toContain('<script>');
     expect(html).toContain('&lt;script&gt;');
   });
+
+  it('con motivo personalizado: asunto con advertencia e introducción específica', () => {
+    const aviso = armarAvisoDerivacion({
+      canal: 'instagram',
+      identificadorExterno: 'ig-123',
+      telefono: '3187592616',
+      mensajes: [],
+      motivo:
+        'No se pudo notificar al cliente en Instagram por ventana cerrada, escribirle a mano',
+    });
+    expect(aviso.asunto).toContain('⚠️');
+    expect(aviso.asunto).toContain('ventana cerrada');
+    expect(aviso.texto).toContain(
+      'No se pudo notificar al cliente en Instagram por ventana cerrada',
+    );
+  });
 });

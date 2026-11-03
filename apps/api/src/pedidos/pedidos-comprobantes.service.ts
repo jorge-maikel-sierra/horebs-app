@@ -34,7 +34,7 @@ export class PedidosComprobantesService {
       .from('pedidos')
       .select('id, total')
       .eq('cliente_id', cliente.id)
-      .eq('canal', 'whatsapp')
+      .in('canal', ['whatsapp', 'messenger', 'instagram'])
       .eq('metodo_pago', 'transferencia')
       .is('comprobante_path', null)
       .in('estado', ['pendiente', 'confirmado', 'en_preparacion', 'en_camino'])

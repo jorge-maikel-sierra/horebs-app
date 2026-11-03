@@ -7,6 +7,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   armarResumen,
   serieVentasBot,
+  serializarCanales,
   serializarMapa,
   totalizarPedidos,
 } from './informes-agregados';
@@ -100,7 +101,7 @@ export class InformesService {
       ),
       por_metodo_pago: serializarMapa(totales.porMetodo),
       por_modalidad: serializarMapa(totales.porModalidad),
-      por_canal: serializarMapa(totales.porCanal),
+      por_canal: serializarCanales(totales.porCanal),
       top_productos: items.topProductos,
       por_categoria: items.porCategoria,
       clientes,
@@ -120,7 +121,7 @@ export class InformesService {
   ): Promise<InformeDto['bot']> {
     const [pedidos, entrantes, derivaciones, repetirToques, recompras] =
       await Promise.all([
-        this.pedidosWhatsapp(client, rango),
+        this.pedidosBot(client, rango),
         this.mensajesEntrantes(client, rango),
         this.contarMensajes(client, rango, 'saliente_bot', MENSAJE_DERIVACION),
         this.contarMensajes(client, rango, 'entrante', TEXTOS_REPETIR),
@@ -155,8 +156,8 @@ export class InformesService {
     };
   }
 
-  /** Pedidos del canal WhatsApp (los cancelados cuentan para el embudo). */
-  private pedidosWhatsapp(
+  /** Pedidos de los canales del bot (los cancelados cuentan para el embudo). */
+  private pedidosBot(
     client: SupabaseClient,
     { desdeISO, hastaISO }: RangoInforme,
   ): Promise<PedidoBotFila[]> {
@@ -166,7 +167,7 @@ export class InformesService {
         .select(
           'total, estado, created_at, programado_para, comprobante_recibido_en',
         )
-        .eq('canal', 'whatsapp')
+        .in('canal', ['whatsapp', 'messenger', 'instagram'])
         .gte('created_at', desdeISO)
         .lte('created_at', hastaISO)
         .range(d, h),

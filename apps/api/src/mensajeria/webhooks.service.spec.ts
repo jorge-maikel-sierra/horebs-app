@@ -111,6 +111,19 @@ describe('WebhooksService.verificarFirma', () => {
       false,
     );
   });
+
+  it('acepta firmas de payloads con caracteres no ASCII (tildes, ñ, emojis)', () => {
+    const cuerpoNoAscii = Buffer.from(
+      JSON.stringify({ texto: 'Pizza con jalapeño 🍕, champiñones y piña' }),
+      'utf8',
+    );
+    const firmaNoAscii = `sha256=${createHmac('sha256', 'secreto')
+      .update(cuerpoNoAscii)
+      .digest('hex')}`;
+    expect(
+      servicio.verificarFirma('secreto', cuerpoNoAscii, firmaNoAscii),
+    ).toBe(true);
+  });
 });
 
 describe('WebhooksService.manejarEvento', () => {

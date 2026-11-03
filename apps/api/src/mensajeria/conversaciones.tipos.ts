@@ -7,12 +7,15 @@ export interface ConversacionParaSeguimiento {
   id: string;
   canal: CanalMensajeria;
   identificador_externo: string;
+  telefono?: string | null;
+  ultima_interaccion?: string;
 }
 
 export interface ConversacionCompleta {
   id: string;
   canal: CanalMensajeria;
   identificador_externo: string;
+  telefono?: string | null;
   estado: EstadoConversacion;
   seguimiento_etapa: EtapaSeguimiento;
   seguimiento_enviado_en: string | null;
@@ -29,7 +32,13 @@ export interface ItemCarritoPendiente {
 
 export type ModalidadPedido = 'domicilio' | 'retiro' | 'local';
 export type PasoCheckout =
-  'adicionales' | 'modalidad' | 'direccion' | 'nombre' | 'hora' | 'pago';
+  | 'adicionales'
+  | 'modalidad'
+  | 'direccion'
+  | 'nombre'
+  | 'telefono'
+  | 'hora'
+  | 'pago';
 
 /** `conversaciones_bot.checkout` (jsonb) — en qué paso del checkout con botones va el cliente. */
 export interface CheckoutWhatsapp {
@@ -40,6 +49,7 @@ export interface CheckoutWhatsapp {
   direccionSugerida?: string;
   nombre?: string;
   apellido?: string;
+  telefono?: string;
   /** Nota que el cliente escribió al mandar el carrito del catálogo. */
   nota?: string;
   /** Franja elegida: 'ya' (lo antes posible) o 'HH:MM' en hora de Bogotá. */

@@ -1,5 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { texto } from '../validacion';
+import { CanalMetaPipe } from './canal-meta.pipe';
 import { FechaPipe } from './fecha.pipe';
 import { LimitePipe } from './limite.pipe';
 import { ValidarBodyPipe } from './validar-body.pipe';
@@ -47,5 +48,16 @@ describe('ValidarBodyPipe', () => {
       expect(cuerpo.errores).toHaveLength(2);
       expect(cuerpo.message).toContain('"nombre"');
     }
+  });
+});
+
+describe('CanalMetaPipe', () => {
+  const pipe = new CanalMetaPipe();
+  it('acepta messenger e instagram', () => {
+    expect(pipe.transform('messenger')).toBe('messenger');
+    expect(pipe.transform('instagram')).toBe('instagram');
+  });
+  it.each(['whatsapp', 'web', 'pos', '', 'otro'])('rechaza %s', (v) => {
+    expect(() => pipe.transform(v)).toThrow(BadRequestException);
   });
 });

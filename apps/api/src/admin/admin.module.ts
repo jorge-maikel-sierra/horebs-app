@@ -5,6 +5,7 @@ import { ConfiguracionAdminController } from './configuracion-admin.controller';
 import { ConfiguracionAdminService } from './configuracion-admin.service';
 import { ModulosController } from './modulos.controller';
 import { ModulosService } from './modulos.service';
+import { MensajeriaAdminController } from './mensajeria-admin.controller';
 import { PedidosAdminController } from './pedidos-admin.controller';
 import { PedidosAdminService } from './pedidos-admin.service';
 import { SeguimientoAdminController } from './seguimiento-admin.controller';
@@ -38,6 +39,7 @@ import { PedidosModule } from '../pedidos/pedidos.module';
     ConfiguracionAdminController,
     ModulosController,
     SeguimientoAdminController,
+    MensajeriaAdminController,
   ],
   providers: [
     VentasService,

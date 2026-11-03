@@ -113,6 +113,8 @@ const CANAL_LABEL: Record<string, string> = {
   web: 'Pedidos web',
   pos: 'Mostrador (POS)',
   whatsapp: 'Bot de WhatsApp',
+  messenger: 'Bot de Messenger',
+  instagram: 'Bot de Instagram',
 };
 
 function porcentaje(valor: number) {
@@ -759,7 +761,7 @@ function InformesPageInterno() {
           {informe.bot && (
             <>
               <h2 className="mt-8 text-lg font-bold text-zinc-900 dark:text-zinc-50">
-                Bot de WhatsApp
+                Bots de mensajería (WhatsApp, Messenger, Instagram)
               </h2>
               <div className="mt-3 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
                 <TarjetaKpi

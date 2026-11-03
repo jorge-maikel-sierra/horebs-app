@@ -3,6 +3,7 @@ import {
   enVentanaDeRecompra,
   textoAvisoEstado,
   textoRecompra,
+  waId,
 } from './avisos-pedido';
 
 const HORA = 60 * 60 * 1000;
@@ -73,5 +74,16 @@ describe('ventana de 24h', () => {
     expect(enVentanaDeRecompra(hace(23), ahora)).toBe(true);
     expect(enVentanaDeRecompra(hace(23.8), ahora)).toBe(true);
     expect(enVentanaDeRecompra(hace(24), ahora)).toBe(false);
+  });
+});
+
+describe('waId', () => {
+  it('agrega el prefijo 57 si es teléfono local de 10 dígitos', () => {
+    expect(waId('3187592616')).toBe('573187592616');
+  });
+
+  it('mantiene el 57 si ya viene con prefijo país', () => {
+    expect(waId('+573187592616')).toBe('573187592616');
+    expect(waId('573187592616')).toBe('573187592616');
   });
 });

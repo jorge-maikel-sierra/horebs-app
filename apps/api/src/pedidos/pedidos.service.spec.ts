@@ -323,6 +323,29 @@ describe('PedidosService.crearDesdeWhatsapp', () => {
     expect(escrituras[0].datos).not.toHaveProperty('correo');
     expect(escrituras[1].datos).toMatchObject({ canal: 'whatsapp' });
   });
+
+  it('crearDesdeBot registra el pedido con canal messenger o instagram', async () => {
+    const { servicio, escrituras } = crearServicio({
+      single: { clientes: OK_CLIENTE, pedidos: OK_PEDIDO },
+    });
+
+    await servicio.crearDesdeBot(
+      {
+        cliente: {
+          nombre: 'Carlos',
+          apellido: 'Gómez',
+          telefono: '3001234567',
+        },
+        modalidad: 'domicilio',
+        direccion_entrega: 'Calle 2',
+        metodo_pago: 'efectivo',
+        items: [{ variante_id: 'v-1', cantidad: 1 }],
+      },
+      'instagram',
+    );
+
+    expect(escrituras[1].datos).toMatchObject({ canal: 'instagram' });
+  });
 });
 
 describe('PedidosService.obtener', () => {

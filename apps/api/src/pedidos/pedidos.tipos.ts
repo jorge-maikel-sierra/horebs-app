@@ -47,7 +47,7 @@ export interface CrearPedidoWhatsappInput extends Omit<
   programado_para?: string | null;
 }
 
-export type CanalPedido = 'web' | 'whatsapp';
+export type CanalPedido = 'web' | 'whatsapp' | 'messenger' | 'instagram';
 
 /** Lo común a las dos entradas — el correo solo lo exige la web. */
 export type DatosPedido = Omit<CrearPedidoInput, 'cliente' | 'modalidad'> & {

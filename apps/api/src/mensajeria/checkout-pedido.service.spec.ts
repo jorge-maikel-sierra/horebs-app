@@ -81,6 +81,25 @@ describe('datosPedidoWhatsapp', () => {
     expect(datos.programado_para).toBe('2026-10-31T18:30:00-05:00');
     expect(datos.idempotency_key).toBeUndefined();
   });
+
+  it('en Instagram usa prefijo ig para idempotency_key y toma el teléfono del contexto', () => {
+    const ctxInstagram: ContextoCheckout = {
+      identificadorExterno: 'igsid-456',
+      conversacionId: 'conv-2',
+      mensajeId: 'mid.123',
+      canal: 'instagram',
+      telefono: '3157861208',
+    };
+    const datos = datosPedidoWhatsapp({
+      ctx: ctxInstagram,
+      checkout: CHECKOUT,
+      metodo: 'efectivo',
+      franja: YA,
+      carrito: CARRITO,
+    });
+    expect(datos.cliente.telefono).toBe('3157861208');
+    expect(datos.idempotency_key).toBe('ig:mid.123');
+  });
 });
 
 describe('textoConfirmacionPedido', () => {
@@ -144,10 +163,14 @@ describe('CheckoutPedidoService.crear', () => {
     crearDesdeWhatsapp: jest.Mock,
     enlacePago: string | null = null,
   ) {
-    const pedidos = { crearDesdeWhatsapp };
+    const pedidos = {
+      crearDesdeBot: crearDesdeWhatsapp,
+      crearDesdeWhatsapp,
+    };
     const conversaciones = {
       obtenerCarrito: jest.fn().mockResolvedValue(CARRITO),
       derivarAHumano: jest.fn().mockResolvedValue(undefined),
+      guardarTelefono: jest.fn().mockResolvedValue(undefined),
     };
     const avisoEquipo = { notificar: jest.fn() };
     const envios = {
@@ -185,6 +208,7 @@ describe('CheckoutPedidoService.crear', () => {
         metodo_pago: 'transferencia',
         idempotency_key: 'wa:wamid.9',
       }),
+      'whatsapp',
     );
     expect(envios.limpiar).toHaveBeenCalledWith(CTX);
     expect(envios.texto).toHaveBeenCalledWith(
@@ -213,16 +237,45 @@ describe('CheckoutPedidoService.crear', () => {
 
     await servicio.crear(CTX, CHECKOUT, 'tarjeta', YA);
 
-    expect(pagoBold.iniciarCobro).toHaveBeenCalledWith({
-      id: 'abcdef12-3456',
-      total: 33000,
-    });
+    expect(pagoBold.iniciarCobro).toHaveBeenCalledWith(
+      {
+        id: 'abcdef12-3456',
+        total: 33000,
+      },
+      'whatsapp',
+    );
     expect(envios.texto).toHaveBeenCalledWith(
       CTX,
       expect.stringContaining('https://checkout.bold.co/LNK_1'),
     );
     expect(metodoDelAviso(avisoEquipo.notificar)).toBe(
       'tarjeta (pago pendiente)',
+    );
+  });
+
+  it('en canales sociales guarda el teléfono en la conversación al crear el pedido', async () => {
+    const crear = jest
+      .fn()
+      .mockResolvedValue({ id: 'abcdef12-3456', total: 33000 });
+    const { servicio, conversaciones } = crearServicio(crear);
+
+    const ctxSocial: ContextoCheckout = {
+      canal: 'messenger',
+      identificadorExterno: 'psid-99',
+      conversacionId: 'conv-99',
+      mensajeId: 'mid.99',
+    };
+    const checkoutConTel: CheckoutWhatsapp = {
+      ...CHECKOUT,
+      telefono: '3157861208',
+    };
+
+    await servicio.crear(ctxSocial, checkoutConTel, 'efectivo', YA);
+
+    expect(conversaciones.guardarTelefono).toHaveBeenCalledWith(
+      'messenger',
+      'psid-99',
+      '3157861208',
     );
   });
 

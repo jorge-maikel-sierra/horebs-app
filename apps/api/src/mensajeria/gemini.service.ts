@@ -11,7 +11,7 @@ import {
   type PasoModelOutput,
   type RespuestaInteraction,
 } from './gemini-cliente.service';
-import { HERRAMIENTAS, SYSTEM_INSTRUCTION } from './gemini-prompt';
+import { HERRAMIENTAS, armarSystemInstruction } from './gemini-prompt';
 import type { ContextoHerramienta } from './herramientas-bot.tipos';
 
 const MAX_TURNOS_HERRAMIENTAS = 4;
@@ -32,6 +32,10 @@ function formatearParaWhatsapp(texto: string): string {
   return texto
     .replace(/^[ \t]*\*[ \t]+/gm, '- ')
     .replace(/\*\*(.+?)\*\*/g, '*$1*');
+}
+
+function formatearParaSocial(texto: string): string {
+  return texto.replace(/^[ \t]*\*[ \t]+/gm, '- ').replace(/\*+(.+?)\*+/g, '$1');
 }
 
 /**
@@ -63,7 +67,9 @@ export class GeminiService {
   ): Promise<string | null> {
     const { canal, identificadorExterno } = ctx;
     if (!this.cliente.configurado) {
-      return 'En este momento no puedo responder automáticamente — escribí *humano* para que te atienda alguien del equipo.';
+      return canal === 'whatsapp'
+        ? 'En este momento no puedo responder automáticamente — escribí *humano* para que te atienda alguien del equipo.'
+        : 'En este momento no puedo responder automáticamente — escribí "humano" para que te atienda alguien del equipo.';
     }
 
     try {
@@ -78,9 +84,11 @@ export class GeminiService {
         this.logger.warn(
           `Límite de mensajes excedido — canal=${canal} id=${identificadorExterno}`,
         );
-        return this.truncarParaWhatsapp(
-          'Estás mandando muchos mensajes seguidos — dame un momento o escribí *humano* para que te atienda alguien del equipo.',
-        );
+        const avisoLimite =
+          canal === 'whatsapp'
+            ? 'Estás mandando muchos mensajes seguidos — dame un momento o escribí *humano* para que te atienda alguien del equipo.'
+            : 'Estás mandando muchos mensajes seguidos — dame un momento o escribí "humano" para que te atienda alguien del equipo.';
+        return this.truncarParaWhatsapp(avisoLimite);
       }
 
       const respuestaFinal = await this.conversarConGemini(ctx, textoEntrante);
@@ -91,7 +99,9 @@ export class GeminiService {
       this.logger.error(
         `Error respondiendo a canal=${canal} id=${identificadorExterno}: ${(err as Error).message}`,
       );
-      return 'Perdón, tuve un problema para procesar tu mensaje. Escribí *humano* para hablar con alguien del equipo.';
+      return canal === 'whatsapp'
+        ? 'Perdón, tuve un problema para procesar tu mensaje. Escribí *humano* para hablar con alguien del equipo.'
+        : 'Perdón, tuve un problema para procesar tu mensaje. Escribí "humano" para hablar con alguien del equipo.';
     }
   }
 
@@ -181,9 +191,10 @@ export class GeminiService {
         ctx.canal,
         ctx.identificadorExterno,
       );
+    const esInicio = !interaccionPrevia;
     return this.cliente.llamar({
       model: this.cliente.modelo,
-      system_instruction: SYSTEM_INSTRUCTION,
+      system_instruction: armarSystemInstruction(ctx.canal, esInicio),
       tools: HERRAMIENTAS,
       ...(interaccionPrevia
         ? { previous_interaction_id: interaccionPrevia, input: textoEntrante }
@@ -222,9 +233,14 @@ export class GeminiService {
       await this.despacho.derivar(ctx);
       return MENSAJE_DERIVACION;
     }
-    return formatearParaWhatsapp(
+    const textoBruto =
       texto ??
-        'Perdón, no pude procesar tu mensaje. Escribí *humano* para hablar con alguien del equipo.',
-    );
+      (ctx.canal === 'whatsapp'
+        ? 'Perdón, no pude procesar tu mensaje. Escribí *humano* para hablar con alguien del equipo.'
+        : 'Perdón, no pude procesar tu mensaje. Escribí "humano" para hablar con alguien del equipo.');
+
+    return ctx.canal === 'whatsapp'
+      ? formatearParaWhatsapp(textoBruto)
+      : formatearParaSocial(textoBruto);
   }
 }

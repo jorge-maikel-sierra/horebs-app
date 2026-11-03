@@ -97,12 +97,17 @@ describe('MediaEntranteService.transcribirNota', () => {
     expect(e2.media).toEqual({ id: 'm-2', tipo: 'audio' });
   });
 
-  it('un mensaje sin audio, o de otro canal, no se toca', async () => {
+  it('un mensaje sin audio no se toca', async () => {
     const { servicio } = crearServicio({ transcripcion: 'x' });
 
     await expect(
       servicio.transcribirNota(evento({ texto: 'hola' })),
     ).resolves.toBe('hola');
+  });
+
+  it('un audio de messenger o instagram también se transcribe', async () => {
+    const { servicio } = crearServicio({ transcripcion: 'x' });
+
     await expect(
       servicio.transcribirNota(
         evento({
@@ -111,12 +116,12 @@ describe('MediaEntranteService.transcribirNota', () => {
           media: { id: 'm', tipo: 'audio' },
         }),
       ),
-    ).resolves.toBe('hola');
+    ).resolves.toBe('🎤 x');
   });
 });
 
 describe('MediaEntranteService.atenderArchivo', () => {
-  it('un evento sin archivo, sin id o de otro canal no es de este servicio', async () => {
+  it('un evento sin archivo o sin id no es de este servicio', async () => {
     const { servicio } = crearServicio();
 
     await expect(
@@ -128,12 +133,17 @@ describe('MediaEntranteService.atenderArchivo', () => {
         conversacion('bot'),
       ),
     ).resolves.toBe(false);
+  });
+
+  it('atiende comprobantes de messenger e instagram', async () => {
+    const { servicio, procesados } = crearServicio({ comprobante: true });
     await expect(
       servicio.atenderArchivo(
         evento({ canal: 'messenger', media: { id: 'f', tipo: 'imagen' } }),
         conversacion('bot'),
       ),
-    ).resolves.toBe(false);
+    ).resolves.toBe(true);
+    expect(procesados.length).toBe(1);
   });
 
   it('una foto que es el comprobante esperado se guarda y no se responde', async () => {
@@ -149,13 +159,41 @@ describe('MediaEntranteService.atenderArchivo', () => {
     expect(atendido).toBe(true);
     expect(procesados).toEqual([
       {
+        canal: 'whatsapp',
         identificadorExterno: '573157861208',
+        telefono: '573157861208',
         conversacionId: 'cv-1',
         mensajeId: 'wamid.1',
         mediaId: 'f-1',
       },
     ]);
     expect(enviados).toEqual([]);
+  });
+
+  it('procesa comprobante en Instagram o Messenger', async () => {
+    const { servicio, procesados } = crearServicio({ comprobante: true });
+
+    const atendido = await servicio.atenderArchivo(
+      evento({
+        canal: 'instagram',
+        identificadorExterno: 'igsid-1',
+        telefono: null,
+        media: { id: 'https://cdn.instagram.com/receipt.jpg', tipo: 'imagen' },
+      }),
+      { ...conversacion('bot'), telefono: '3001234567' },
+    );
+
+    expect(atendido).toBe(true);
+    expect(procesados).toEqual([
+      {
+        canal: 'instagram',
+        identificadorExterno: 'igsid-1',
+        telefono: '3001234567',
+        conversacionId: 'cv-1',
+        mensajeId: 'wamid.1',
+        mediaId: 'https://cdn.instagram.com/receipt.jpg',
+      },
+    ]);
   });
 
   it('una foto que no era comprobante recibe la respuesta fija', async () => {

@@ -4,6 +4,7 @@ import { PedidosService } from '../pedidos/pedidos.service';
 import { AvisoEquipoService } from './aviso-equipo.service';
 import { ConfirmacionPedidoService } from './confirmacion-pedido.service';
 import type { ContextoCheckout, MetodoPagoBot } from './checkout-whatsapp';
+import type { CanalMensajeria } from './conversaciones.tipos';
 import {
   ConversacionesService,
   type CheckoutWhatsapp,
@@ -12,6 +13,20 @@ import {
 
 /** La franja de entrega ya validada (`franjaVigente` devolvió algo). */
 export type FranjaElegida = NonNullable<ReturnType<typeof franjaVigente>>;
+
+function resolverTelefonoCliente(
+  ctx: ContextoCheckout,
+  checkout: CheckoutWhatsapp,
+): string {
+  if (ctx.canal === 'whatsapp' || !ctx.canal) return ctx.identificadorExterno;
+  return ctx.telefono ?? checkout.telefono ?? ctx.identificadorExterno;
+}
+
+function resolverPrefijoIdempotencia(canal?: CanalMensajeria): string {
+  if (canal === 'instagram') return 'ig';
+  if (canal === 'messenger') return 'ms';
+  return 'wa';
+}
 
 /** Lo que recibe `PedidosService.crearDesdeWhatsapp` a partir del checkout terminado. */
 export function datosPedidoWhatsapp(entrada: {
@@ -23,11 +38,13 @@ export function datosPedidoWhatsapp(entrada: {
 }): Parameters<PedidosService['crearDesdeWhatsapp']>[0] {
   const { ctx, checkout, metodo, franja, carrito } = entrada;
   const esDomicilio = checkout.modalidad === 'domicilio';
+  const telefono = resolverTelefonoCliente(ctx, checkout);
+  const prefijo = resolverPrefijoIdempotencia(ctx.canal);
   return {
     cliente: {
       nombre: checkout.nombre ?? '',
       apellido: checkout.apellido ?? '',
-      telefono: ctx.identificadorExterno,
+      telefono,
       ...(esDomicilio && checkout.direccion
         ? { direccion: checkout.direccion }
         : {}),
@@ -41,7 +58,7 @@ export function datosPedidoWhatsapp(entrada: {
       variante_id: i.varianteId,
       cantidad: i.cantidad,
     })),
-    idempotency_key: ctx.mensajeId ? `wa:${ctx.mensajeId}` : undefined,
+    idempotency_key: ctx.mensajeId ? `${prefijo}:${ctx.mensajeId}` : undefined,
   };
 }
 
@@ -68,18 +85,34 @@ export class CheckoutPedidoService {
     metodo: MetodoPagoBot,
     franja: FranjaElegida,
   ): Promise<void> {
+    const canal = ctx.canal ?? 'whatsapp';
     const carrito = await this.conversaciones.obtenerCarrito(
-      'whatsapp',
+      canal,
       ctx.identificadorExterno,
     );
-    let pedido: Awaited<ReturnType<PedidosService['crearDesdeWhatsapp']>>;
+    const datos = datosPedidoWhatsapp({
+      ctx,
+      checkout,
+      metodo,
+      franja,
+      carrito,
+    });
+    let pedido: Awaited<ReturnType<PedidosService['crearDesdeBot']>>;
     try {
-      pedido = await this.pedidos.crearDesdeWhatsapp(
-        datosPedidoWhatsapp({ ctx, checkout, metodo, franja, carrito }),
-      );
+      pedido = await this.pedidos.crearDesdeBot(datos, canal);
     } catch (err) {
       await this.pasarAUnaPersona(ctx, err as Error);
       return;
+    }
+
+    if (canal !== 'whatsapp' && datos.cliente.telefono) {
+      await this.conversaciones
+        .guardarTelefono(
+          canal,
+          ctx.identificadorExterno,
+          datos.cliente.telefono,
+        )
+        .catch(() => undefined);
     }
 
     const pendienteDePago = await this.confirmacion.confirmar(ctx, {
@@ -102,10 +135,13 @@ export class CheckoutPedidoService {
     ctx: ContextoCheckout,
     pedido?: { id: string; total: number; metodoPago: string },
   ): void {
+    const canal = ctx.canal ?? 'whatsapp';
     this.avisoEquipo.notificar({
-      canal: 'whatsapp',
+      canal,
       identificadorExterno: ctx.identificadorExterno,
-      telefono: ctx.identificadorExterno,
+      telefono:
+        ctx.telefono ??
+        (canal === 'whatsapp' ? ctx.identificadorExterno : undefined),
       conversacionId: ctx.conversacionId,
       ...(pedido ? { pedido } : {}),
     });
@@ -119,7 +155,7 @@ export class CheckoutPedidoService {
       `id=${ctx.identificadorExterno} no se pudo crear el pedido: ${err.message}`,
     );
     await this.conversaciones.derivarAHumano(
-      'whatsapp',
+      ctx.canal ?? 'whatsapp',
       ctx.identificadorExterno,
     );
     await this.confirmacion.noSePudoRegistrar(ctx);

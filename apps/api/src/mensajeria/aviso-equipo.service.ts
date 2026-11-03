@@ -12,6 +12,35 @@ import { pesos } from './resumen-pedido';
 
 const URL_PANEL_PEDIDOS = 'https://pizzeriahorebs.shop/admin/pedidos';
 
+export interface DatosAvisoEquipo {
+  canal: CanalMensajeria;
+  identificadorExterno: string;
+  telefono: string | null;
+  conversacionId: string;
+  pedido?: { id: string; total: number; metodoPago: string };
+  motivo?: string;
+}
+
+export interface DatosVentanaCerrada {
+  canal: CanalMensajeria;
+  identificadorExterno: string;
+  telefono: string | null;
+  conversacionId?: string;
+  pedidoId?: string;
+  estadoPedido?: string;
+}
+
+export function nombreCanalSocial(canal: CanalMensajeria): string {
+  switch (canal) {
+    case 'messenger':
+      return 'Messenger';
+    case 'instagram':
+      return 'Instagram';
+    default:
+      return 'WhatsApp';
+  }
+}
+
 // Mismo formato que espera el "to" de la Graph API (código de país sin "+",
 // ej. 573157861208) — PERSONAL_COCINA_WHATSAPP se carga en formato local
 // (3157861208), igual que se muestran los números acá en Colombia.
@@ -55,18 +84,35 @@ export class AvisoEquipoService {
       .map(formatearNumeroWhatsappCO);
   }
 
-  notificar(datos: {
-    canal: CanalMensajeria;
-    identificadorExterno: string;
-    telefono: string | null;
-    conversacionId: string;
-    pedido?: { id: string; total: number; metodoPago: string };
-  }): void {
+  notificar(datos: DatosAvisoEquipo): void {
     this.avisar(datos).catch((err) =>
       this.logger.error(
         `No se pudo armar el aviso al equipo de ${datos.identificadorExterno}: ${(err as Error).message}`,
       ),
     );
+  }
+
+  /**
+   * Notifica al equipo que un aviso automático no pudo enviarse por ventana cerrada
+   * de 24h en Messenger o Instagram, para que el personal lo atienda a mano.
+   */
+  notificarVentanaCerrada(datos: DatosVentanaCerrada): void {
+    const canalNom = nombreCanalSocial(datos.canal);
+    const motivo = `No se pudo notificar al cliente en ${canalNom} por ventana cerrada, escribirle a mano`;
+    if (datos.pedidoId && datos.estadoPedido) {
+      this.logger.warn(
+        `Pedido ${datos.pedidoId} → ${datos.estadoPedido}: ${motivo}.`,
+      );
+    } else {
+      this.logger.warn(motivo);
+    }
+    this.notificar({
+      canal: datos.canal,
+      identificadorExterno: datos.identificadorExterno,
+      telefono: datos.telefono,
+      conversacionId: datos.conversacionId ?? '',
+      motivo,
+    });
   }
 
   /** Un pago con tarjeta se acreditó (o falló): correo y WhatsApp a la cocina. */
@@ -99,16 +145,10 @@ export class AvisoEquipoService {
     }
   }
 
-  private async avisar(datos: {
-    canal: CanalMensajeria;
-    identificadorExterno: string;
-    telefono: string | null;
-    conversacionId: string;
-    pedido?: { id: string; total: number; metodoPago: string };
-  }): Promise<void> {
-    const mensajes = await this.conversaciones.listarMensajes(
-      datos.conversacionId,
-    );
+  private async avisar(datos: DatosAvisoEquipo): Promise<void> {
+    const mensajes = datos.conversacionId
+      ? await this.conversaciones.listarMensajes(datos.conversacionId)
+      : [];
     // Solo el pedido actual: lo anterior a la última derivación o al último
     // pedido confirmado ya se atendió. El último mensaje no cuenta como
     // límite — puede ser justo la confirmación de este pedido.
@@ -126,6 +166,7 @@ export class AvisoEquipoService {
       telefono: datos.telefono,
       mensajes: mensajes.slice(ultimaDerivacion + 1),
       pedido: datos.pedido,
+      motivo: datos.motivo,
     });
 
     this.mail.enviarAvisoEquipo(aviso);

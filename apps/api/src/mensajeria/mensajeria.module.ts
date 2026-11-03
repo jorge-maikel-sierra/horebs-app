@@ -28,6 +28,7 @@ import { CheckoutHistorialService } from './checkout-historial.service';
 import { CheckoutPedidoService } from './checkout-pedido.service';
 import { CheckoutPreguntasService } from './checkout-preguntas.service';
 import { AvisosPedidoService } from './avisos-pedido.service';
+import { RecomprasService } from './recompras.service';
 import { ComprobantesService } from './comprobantes.service';
 import { MediaEntranteService } from './media-entrante.service';
 import { RespuestaBotService } from './respuesta-bot.service';
@@ -62,6 +63,7 @@ import { RespuestaBotService } from './respuesta-bot.service';
     CheckoutPedidoService,
     CheckoutPreguntasService,
     AvisosPedidoService,
+    RecomprasService,
     ComprobantesService,
     MediaEntranteService,
     RespuestaBotService,

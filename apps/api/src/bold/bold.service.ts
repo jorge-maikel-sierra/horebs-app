@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ENLACE_WHATSAPP_BOT } from '../common/contacto';
+import type { CanalMensajeria } from '../mensajeria/conversaciones.tipos';
 
 const URL_LINKS = 'https://integrations.api.bold.co/online/link/v1';
 const MAX_REFERENCIA = 60;
@@ -57,6 +58,8 @@ export class BoldService {
     referencia: string;
     total: number;
     descripcion: string;
+    canal?: CanalMensajeria;
+    callbackUrl?: string;
   }): Promise<LinkBold> {
     const llave = this.config.get<string>('BOLD_API_KEY');
     if (!llave)
@@ -72,7 +75,7 @@ export class BoldService {
         amount_type: 'CLOSE',
         amount: { currency: 'COP', total_amount: datos.total, tip_amount: 0 },
         // Sin esto el botón "Volver a la tienda" de Bold no lleva a ningún lado.
-        callback_url: ENLACE_WHATSAPP_BOT,
+        callback_url: this.resolverCallbackUrl(datos.callbackUrl, datos.canal),
         reference: datos.referencia.slice(0, MAX_REFERENCIA),
         description: datos.descripcion
           .padEnd(MIN_DESCRIPCION)
@@ -94,5 +97,17 @@ export class BoldService {
       );
     }
     return { id, url };
+  }
+
+  private resolverCallbackUrl(
+    callbackUrl?: string,
+    canal?: CanalMensajeria,
+  ): string {
+    if (callbackUrl) return callbackUrl;
+    if (canal === 'messenger') {
+      const pageId = this.config.get<string>('MESSENGER_PAGE_ID');
+      if (pageId) return `https://m.me/${pageId}`;
+    }
+    return ENLACE_WHATSAPP_BOT;
   }
 }

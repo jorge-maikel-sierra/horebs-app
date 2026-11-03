@@ -28,7 +28,10 @@ export class ConfirmacionPedidoService {
     await this.envios.limpiar(ctx);
     const enlacePago =
       datos.metodo === 'tarjeta'
-        ? await this.pagoBold.iniciarCobro(datos.pedido)
+        ? await this.pagoBold.iniciarCobro(
+            datos.pedido,
+            ctx.canal ?? 'whatsapp',
+          )
         : null;
     await this.envios.texto(
       ctx,

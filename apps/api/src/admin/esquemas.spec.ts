@@ -1,5 +1,9 @@
 import { validarObjeto } from '../common/validacion';
-import { ESQUEMA_CONFIGURACION_CORREOS, ESQUEMA_VENTA } from './esquemas';
+import {
+  ESQUEMA_CONFIGURACION_CORREOS,
+  ESQUEMA_PERFIL_MENSAJERIA,
+  ESQUEMA_VENTA,
+} from './esquemas';
 
 describe('ESQUEMA_CONFIGURACION_CORREOS', () => {
   const campos = (cuerpo: object) =>
@@ -77,5 +81,19 @@ describe('ESQUEMA_VENTA', () => {
 
   it('un campo desconocido es error', () => {
     expect(campos({ ...VENTA, descuento: 50 })).toEqual(['descuento']);
+  });
+});
+
+describe('ESQUEMA_PERFIL_MENSAJERIA', () => {
+  it('acepta un objeto vacío', () => {
+    expect(validarObjeto(ESQUEMA_PERFIL_MENSAJERIA, {})).toEqual([]);
+  });
+
+  it('rechaza propiedades inesperadas', () => {
+    expect(
+      validarObjeto(ESQUEMA_PERFIL_MENSAJERIA, { extra: true }).map(
+        (e) => e.campo,
+      ),
+    ).toEqual(['extra']);
   });
 });

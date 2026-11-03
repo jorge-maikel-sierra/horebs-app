@@ -124,12 +124,24 @@ export class CheckoutPreguntasService {
     await this.envios.texto(ctx, TEXTO_PEDIR_DIRECCION);
   }
 
+  async pedirTelefono(
+    ctx: ContextoCheckout,
+    checkout: CheckoutWhatsapp,
+  ): Promise<void> {
+    checkout.paso = 'telefono';
+    await this.envios.guardar(ctx, checkout);
+    await this.envios.texto(
+      ctx,
+      '¿A qué número de teléfono de 10 dígitos te contactamos si el domiciliario no encuentra la casa? 📱',
+    );
+  }
+
   /** Lo que el cliente ya tiene en el carrito, con precios y nombres de la base. */
   private async carritoResuelto(
     ctx: ContextoCheckout,
   ): Promise<ItemCarritoResuelto[]> {
     const carrito = await this.conversaciones.obtenerCarrito(
-      'whatsapp',
+      ctx.canal ?? 'whatsapp',
       ctx.identificadorExterno,
     );
     return (await this.catalog.resolverCarrito(carrito)).disponibles;

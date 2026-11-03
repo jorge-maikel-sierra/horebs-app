@@ -22,7 +22,7 @@ export class CheckoutEnviosService {
 
   async texto(ctx: ContextoCheckout, texto: string): Promise<void> {
     await this.metaGraph.enviarMensajeSesion(
-      'whatsapp',
+      ctx.canal ?? 'whatsapp',
       ctx.identificadorExterno,
       texto,
     );
@@ -35,6 +35,7 @@ export class CheckoutEnviosService {
     botones: BotonRespuesta[],
   ): Promise<void> {
     await this.metaGraph.enviarBotones(
+      ctx.canal ?? 'whatsapp',
       ctx.identificadorExterno,
       cuerpo,
       botones,
@@ -48,27 +49,37 @@ export class CheckoutEnviosService {
     boton: string,
     filas: BotonRespuesta[],
   ): Promise<void> {
-    await this.metaGraph.enviarLista(ctx.identificadorExterno, {
-      cuerpo,
-      boton,
-      filas,
-    });
+    await this.metaGraph.enviarLista(
+      ctx.canal ?? 'whatsapp',
+      ctx.identificadorExterno,
+      {
+        cuerpo,
+        boton,
+        filas,
+      },
+    );
     await this.registrar(ctx, conOpciones(cuerpo, filas));
   }
 
   async catalogo(ctx: ContextoCheckout, urlFallback: string): Promise<void> {
+    const canal = ctx.canal ?? 'whatsapp';
     await this.metaGraph.enviarCatalogo(
-      'whatsapp',
+      canal,
       ctx.identificadorExterno,
       urlFallback,
     );
-    await this.registrar(ctx, 'Menú enviado como catálogo de WhatsApp.');
+    await this.registrar(
+      ctx,
+      canal === 'whatsapp'
+        ? 'Menú enviado como catálogo de WhatsApp.'
+        : 'Menú enviado.',
+    );
   }
 
   /** El checkout en curso del cliente, o null si no tiene uno. */
   obtener(ctx: ContextoCheckout): Promise<CheckoutWhatsapp | null> {
     return this.conversaciones.obtenerCheckout(
-      'whatsapp',
+      ctx.canal ?? 'whatsapp',
       ctx.identificadorExterno,
     );
   }
@@ -78,7 +89,7 @@ export class CheckoutEnviosService {
     items: ItemCarritoPendiente[],
   ): Promise<void> {
     await this.conversaciones.guardarCarrito(
-      'whatsapp',
+      ctx.canal ?? 'whatsapp',
       ctx.identificadorExterno,
       items,
     );
@@ -89,21 +100,33 @@ export class CheckoutEnviosService {
     checkout: CheckoutWhatsapp,
   ): Promise<void> {
     await this.conversaciones.guardarCheckout(
-      'whatsapp',
+      ctx.canal ?? 'whatsapp',
       ctx.identificadorExterno,
       checkout,
     );
   }
 
+  async guardarTelefono(
+    ctx: ContextoCheckout,
+    telefono: string,
+  ): Promise<void> {
+    await this.conversaciones.guardarTelefono(
+      ctx.canal ?? 'whatsapp',
+      ctx.identificadorExterno,
+      telefono,
+    );
+  }
+
   /** Cierra el checkout: borra el paso en curso y el carrito pendiente. */
   async limpiar(ctx: ContextoCheckout): Promise<void> {
+    const canal = ctx.canal ?? 'whatsapp';
     await this.conversaciones.guardarCheckout(
-      'whatsapp',
+      canal,
       ctx.identificadorExterno,
       null,
     );
     await this.conversaciones.guardarCarrito(
-      'whatsapp',
+      canal,
       ctx.identificadorExterno,
       null,
     );

@@ -5,6 +5,7 @@ import { errorDeBase } from '../common/error-de-base';
 import { idCortoPedido } from '../common/pedido-numero';
 import { SupabaseService } from '../supabase/supabase.service';
 import { AvisoEquipoService } from './aviso-equipo.service';
+import type { CanalMensajeria } from './conversaciones.tipos';
 import { MetaGraphService } from './meta-graph.service';
 import type { EventoBold, PagoEstado, PedidoCobrado } from './pago-bold.tipos';
 import { pesos } from './resumen-pedido';
@@ -46,16 +47,20 @@ export class PagoBoldService {
   ) {}
 
   /** URL de pago del pedido, o null si Bold está apagado o falló (el equipo cobra a mano). */
-  async iniciarCobro(pedido: {
-    id: string;
-    total: number;
-  }): Promise<string | null> {
+  async iniciarCobro(
+    pedido: {
+      id: string;
+      total: number;
+    },
+    canal?: CanalMensajeria,
+  ): Promise<string | null> {
     if (!this.bold.habilitado()) return null;
     try {
       const link = await this.bold.crearLink({
         referencia: pedido.id,
         total: pedido.total,
         descripcion: `Pizzería Horebs, pedido #${idCortoPedido(pedido.id)}`,
+        canal,
       });
       const { error } = await this.supabase
         .getClient()

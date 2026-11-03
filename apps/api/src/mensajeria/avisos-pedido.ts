@@ -89,3 +89,13 @@ export function enVentanaDeRecompra(
   const transcurrido = ahora.getTime() - ultimaInteraccion.getTime();
   return transcurrido >= INICIO_RECOMPRA_MS && transcurrido < VENTANA_SESION_MS;
 }
+
+export const LARGO_WA_ID_COLOMBIA = 12;
+
+/** clientes.telefono se guarda local (3187592616); WhatsApp usa 573187592616. */
+export function waId(telefonoLocal: string): string {
+  const digitos = telefonoLocal.replace(/\D/g, '');
+  return digitos.startsWith('57') && digitos.length === LARGO_WA_ID_COLOMBIA
+    ? digitos
+    : `57${digitos}`;
+}

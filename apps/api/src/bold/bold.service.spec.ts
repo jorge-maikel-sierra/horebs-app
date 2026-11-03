@@ -61,6 +61,32 @@ describe('BoldService', () => {
     });
   });
 
+  it('permite callbackUrl personalizada si se pasa', async () => {
+    const mock = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () =>
+        Promise.resolve({
+          payload: {
+            payment_link: 'LNK_ABC',
+            url: 'https://checkout.bold.co/LNK_ABC',
+          },
+        }),
+    });
+    global.fetch = mock;
+
+    await crear({ ...LLAVES, MESSENGER_PAGE_ID: 'page-123' }).crearLink({
+      ...DATOS,
+      canal: 'messenger',
+    });
+
+    const [, init] = mock.mock.calls[0] as [string, RequestInit];
+    const cuerpo = JSON.parse(init.body as string) as {
+      callback_url?: string;
+    };
+    expect(cuerpo.callback_url).toBe('https://m.me/page-123');
+  });
+
   it('recorta referencia y descripción a los máximos de Bold', async () => {
     const mock = jest.fn().mockResolvedValue({
       ok: true,

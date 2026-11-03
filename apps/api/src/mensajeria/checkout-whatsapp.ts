@@ -1,12 +1,14 @@
 import type { ItemCarritoResuelto } from '../catalog/catalog.service';
 import { MAX_DIRECCION } from '../pedidos/validar-pedido';
 import type {
+  CanalMensajeria,
   CheckoutWhatsapp,
   ModalidadPedido,
   PasoCheckout,
 } from './conversaciones.tipos';
 import type { LineaPedido } from './resumen-pedido';
 import { dosDigitos } from '../common/horario';
+import { normalizarTelefonoCO } from '../pedidos/normalizar-telefono';
 
 // Horario del bot: 11:00 a.m. a 11:00 p.m. (ver common/horario.ts).
 export const MENSAJE_CERRADO =
@@ -18,6 +20,8 @@ export interface ContextoCheckout {
   conversacionId: string;
   /** wamid del mensaje que disparó el paso — idempotencia del pedido. */
   mensajeId: string | null;
+  canal?: CanalMensajeria;
+  telefono?: string | null;
 }
 
 const HORAS_MEDIO_DIA = 12;
@@ -184,12 +188,71 @@ export function separarNombre(texto: string): {
   };
 }
 
+export function aplicarNombreYApellido(
+  checkout: CheckoutWhatsapp,
+  texto: string,
+): boolean {
+  const { nombre, apellido } = separarNombre(texto);
+  if (!nombre) return false;
+  if (checkout.nombre && !checkout.apellido) {
+    checkout.apellido = [nombre, apellido].filter(Boolean).join(' ');
+  } else {
+    checkout.nombre = nombre;
+    checkout.apellido = apellido ?? undefined;
+  }
+  return true;
+}
+
+export function completarDireccion(
+  checkout: CheckoutWhatsapp,
+  entrada: EntradaCheckout,
+): boolean {
+  if (
+    entrada.tipo === 'boton' &&
+    entrada.id === BOTON.direccionAnterior &&
+    checkout.direccionSugerida
+  ) {
+    checkout.direccion = checkout.direccionSugerida;
+    return true;
+  }
+  if (entrada.tipo === 'texto' && direccionEscritaValida(entrada.texto)) {
+    checkout.direccion = entrada.texto.trim();
+    return true;
+  }
+  return false;
+}
+
+const LARGO_TELEFONO_CO = 10;
+
+export function validarTelefonoCO(texto: string): string | null {
+  const digitos = normalizarTelefonoCO(texto);
+  return digitos.length === LARGO_TELEFONO_CO ? digitos : null;
+}
+
+function faltaTelefono(
+  checkout: CheckoutWhatsapp,
+  canal?: CanalMensajeria,
+  telefonoContexto?: string | null,
+): boolean {
+  if (canal !== 'messenger' && canal !== 'instagram') return false;
+  return !telefonoContexto && !checkout.telefono;
+}
+
+function faltaNombreOApellido(checkout: CheckoutWhatsapp): boolean {
+  return !checkout.nombre || !checkout.apellido;
+}
+
 /** Qué falta para poder cobrar, en orden. */
-export function siguientePaso(checkout: CheckoutWhatsapp): PasoCheckout {
+export function siguientePaso(
+  checkout: CheckoutWhatsapp,
+  canal?: CanalMensajeria,
+  telefonoContexto?: string | null,
+): PasoCheckout {
   if (!checkout.modalidad) return 'modalidad';
   if (checkout.modalidad === 'domicilio' && !checkout.direccion)
     return 'direccion';
-  if (!checkout.nombre || !checkout.apellido) return 'nombre';
+  if (faltaNombreOApellido(checkout)) return 'nombre';
+  if (faltaTelefono(checkout, canal, telefonoContexto)) return 'telefono';
   if (!checkout.entrega) return 'hora';
   return 'pago';
 }

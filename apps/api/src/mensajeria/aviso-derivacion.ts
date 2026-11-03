@@ -13,6 +13,7 @@ export interface DatosAvisoDerivacion {
   mensajes: { direccion: DireccionMensaje; texto: string }[];
   /** Presente cuando el bot ya creó el pedido en el sistema (checkout con botones). */
   pedido?: { id: string; total: number; metodoPago: string };
+  motivo?: string;
 }
 
 export interface AvisoDerivacion {
@@ -65,6 +66,7 @@ interface ContextoAviso {
   urlPanel: string;
   /** Los últimos mensajes ya con prefijo "Cliente:" o "Bot:" y sin formato. */
   contexto: string[];
+  motivo?: string;
 }
 
 function ultimoMensaje(
@@ -114,6 +116,7 @@ function contextoDelAviso(datos: DatosAvisoDerivacion): ContextoAviso {
     quien: nombre ?? contacto,
     numeroPedido: pedido ? `#${idCortoPedido(pedido.id)}` : null,
     urlPanel: pedido ? URL_PANEL_PEDIDOS : URL_PANEL_SEGUIMIENTO,
+    motivo: datos.motivo,
     contexto: datos.mensajes
       .slice(-MENSAJES_DE_CONTEXTO)
       .map(
@@ -124,6 +127,9 @@ function contextoDelAviso(datos: DatosAvisoDerivacion): ContextoAviso {
 }
 
 function asuntoDelAviso(c: ContextoAviso): string {
+  if (c.motivo) {
+    return `⚠️ ${c.quien} — ${c.motivo}`;
+  }
   if (!c.pedido) {
     return `🔔 ${c.quien} espera atención${c.total ? ` — pedido de ${c.total}` : ''}`;
   }
@@ -132,6 +138,9 @@ function asuntoDelAviso(c: ContextoAviso): string {
 }
 
 function introduccion(c: ContextoAviso): string {
+  if (c.motivo) {
+    return c.motivo;
+  }
   if (c.pedido) {
     return `Entró un pedido nuevo por WhatsApp (${c.numeroPedido}, pago: ${c.pedido.metodoPago}). Ya está en el panel como pendiente: confirmalo desde ahí y al cliente le llega el aviso.`;
   }

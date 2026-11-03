@@ -7,9 +7,10 @@ import { CheckoutHistorialService } from './checkout-historial.service';
 import { CheckoutPedidoService } from './checkout-pedido.service';
 import { CheckoutPreguntasService } from './checkout-preguntas.service';
 import {
+  aplicarNombreYApellido,
   BOTON,
   BOTONES_MODALIDAD,
-  direccionEscritaValida,
+  completarDireccion,
   esBotonCheckout,
   esCancelar,
   horaDe,
@@ -17,8 +18,8 @@ import {
   MENSAJE_CERRADO,
   metodoPagoDe,
   modalidadDe,
-  separarNombre,
   siguientePaso,
+  validarTelefonoCO,
   type ContextoCheckout,
   type EntradaCheckout,
   type MetodoPagoBot,
@@ -186,30 +187,53 @@ export class CheckoutWhatsappService {
     switch (checkout.paso) {
       case 'adicionales':
         return this.manejarAdicionales(ctx, checkout, entrada);
-      case 'modalidad': {
-        const modalidad = modalidadDe(entrada);
-        if (!modalidad) return false;
-        checkout.modalidad = modalidad;
-        break;
-      }
+      case 'modalidad':
+        return this.manejarModalidad(ctx, checkout, entrada);
       case 'direccion':
         return this.manejarDireccion(ctx, checkout, entrada);
       case 'nombre':
         return this.manejarNombre(ctx, checkout, entrada);
-      case 'hora': {
-        const hora = horaDe(entrada);
-        if (!hora) return false;
-        checkout.entrega = hora;
-        break;
-      }
-      case 'pago': {
-        const metodo = metodoPagoDe(entrada);
-        if (!metodo) return false;
-        await this.crearPedido(ctx, checkout, metodo);
-        return true;
-      }
+      case 'telefono':
+        return this.manejarTelefono(ctx, checkout, entrada);
+      case 'hora':
+        return this.manejarHora(ctx, checkout, entrada);
+      case 'pago':
+        return this.manejarPago(ctx, checkout, entrada);
     }
+  }
+
+  private async manejarModalidad(
+    ctx: ContextoCheckout,
+    checkout: CheckoutWhatsapp,
+    entrada: EntradaCheckout,
+  ): Promise<boolean> {
+    const modalidad = modalidadDe(entrada);
+    if (!modalidad) return false;
+    checkout.modalidad = modalidad;
     await this.avanzar(ctx, checkout);
+    return true;
+  }
+
+  private async manejarHora(
+    ctx: ContextoCheckout,
+    checkout: CheckoutWhatsapp,
+    entrada: EntradaCheckout,
+  ): Promise<boolean> {
+    const hora = horaDe(entrada);
+    if (!hora) return false;
+    checkout.entrega = hora;
+    await this.avanzar(ctx, checkout);
+    return true;
+  }
+
+  private async manejarPago(
+    ctx: ContextoCheckout,
+    checkout: CheckoutWhatsapp,
+    entrada: EntradaCheckout,
+  ): Promise<boolean> {
+    const metodo = metodoPagoDe(entrada);
+    if (!metodo) return false;
+    await this.crearPedido(ctx, checkout, metodo);
     return true;
   }
 
@@ -242,30 +266,8 @@ export class CheckoutWhatsappService {
       await this.envios.texto(ctx, TEXTO_PIDE_ESCRITA);
       return true;
     }
-    if (!this.completarDireccion(checkout, entrada)) return false;
+    if (!completarDireccion(checkout, entrada)) return false;
     await this.avanzar(ctx, checkout);
-    return true;
-  }
-
-  /** Toma la dirección de lo que mandó el cliente; false si no sirve. */
-  private completarDireccion(
-    checkout: CheckoutWhatsapp,
-    entrada: EntradaCheckout,
-  ): boolean {
-    if (
-      entrada.tipo === 'boton' &&
-      entrada.id === BOTON.direccionAnterior &&
-      checkout.direccionSugerida
-    ) {
-      checkout.direccion = checkout.direccionSugerida;
-    } else if (
-      entrada.tipo === 'texto' &&
-      direccionEscritaValida(entrada.texto)
-    ) {
-      checkout.direccion = entrada.texto.trim();
-    } else {
-      return false;
-    }
     return true;
   }
 
@@ -275,20 +277,35 @@ export class CheckoutWhatsappService {
     entrada: EntradaCheckout,
   ): Promise<boolean> {
     if (entrada.tipo !== 'texto') return false;
-    const { nombre, apellido } = separarNombre(entrada.texto);
-    if (!nombre) return false;
-    if (checkout.nombre && !checkout.apellido) {
-      // Ya teníamos el nombre: lo que escribe ahora es el apellido.
-      checkout.apellido = [nombre, apellido].filter(Boolean).join(' ');
-    } else {
-      checkout.nombre = nombre;
-      checkout.apellido = apellido ?? undefined;
-    }
+    if (!aplicarNombreYApellido(checkout, entrada.texto)) return false;
     if (!checkout.apellido) {
       await this.envios.guardar(ctx, checkout);
-      await this.envios.texto(ctx, `Gracias, ${nombre}. ¿Y tu apellido?`);
+      await this.envios.texto(
+        ctx,
+        `Gracias, ${checkout.nombre}. ¿Y tu apellido?`,
+      );
       return true;
     }
+    await this.avanzar(ctx, checkout);
+    return true;
+  }
+
+  private async manejarTelefono(
+    ctx: ContextoCheckout,
+    checkout: CheckoutWhatsapp,
+    entrada: EntradaCheckout,
+  ): Promise<boolean> {
+    if (entrada.tipo !== 'texto') return false;
+    const telefono = validarTelefonoCO(entrada.texto);
+    if (!telefono) {
+      await this.envios.texto(
+        ctx,
+        'Porfa escribí un número de teléfono de 10 dígitos (ej. 315 786 1208) para poder contactarte por el pedido 📱',
+      );
+      return true;
+    }
+    checkout.telefono = telefono;
+    await this.envios.guardarTelefono(ctx, telefono).catch(() => undefined);
     await this.avanzar(ctx, checkout);
     return true;
   }
@@ -298,7 +315,13 @@ export class CheckoutWhatsappService {
     checkout: CheckoutWhatsapp,
   ): Promise<void> {
     if (checkout.nombre && checkout.apellido) return;
-    const cliente = await this.historial.cliente(ctx.identificadorExterno);
+    const tel =
+      ctx.telefono ??
+      (ctx.canal === 'whatsapp' || !ctx.canal
+        ? ctx.identificadorExterno
+        : undefined);
+    if (!tel) return;
+    const cliente = await this.historial.cliente(tel);
     if (cliente?.nombre && cliente.apellido) {
       checkout.nombre = cliente.nombre;
       checkout.apellido = cliente.apellido;
@@ -367,7 +390,7 @@ export class CheckoutWhatsappService {
     checkout: CheckoutWhatsapp,
   ): Promise<void> {
     await this.completarConClienteConocido(ctx, checkout);
-    checkout.paso = siguientePaso(checkout);
+    checkout.paso = siguientePaso(checkout, ctx.canal, ctx.telefono);
     switch (checkout.paso) {
       case 'modalidad':
         await this.envios.guardar(ctx, checkout);
@@ -382,6 +405,9 @@ export class CheckoutWhatsappService {
           ctx,
           '¿A nombre de quién va el pedido? Escribime nombre y apellido 🙂',
         );
+        return;
+      case 'telefono':
+        await this.preguntas.pedirTelefono(ctx, checkout);
         return;
       case 'hora':
         await this.preguntas.hora(ctx, checkout);

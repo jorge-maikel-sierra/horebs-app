@@ -105,10 +105,24 @@ describe('PagoBoldService · iniciarCobro', () => {
       referencia: PEDIDO.id,
       total: 65000,
       descripcion: 'Pizzería Horebs, pedido #abc12345',
+      canal: undefined,
     });
     expect(escrituras[0]).toEqual({
       datos: { bold_link_id: 'LNK_1', pago_estado: 'pendiente' },
       filtros: [['id', PEDIDO.id]],
+    });
+  });
+
+  it('iniciarCobro pasa callback_url de Messenger', async () => {
+    const { servicio, bold } = crear({});
+
+    await servicio.iniciarCobro(PEDIDO, 'messenger');
+
+    expect(bold.crearLink).toHaveBeenCalledWith({
+      referencia: PEDIDO.id,
+      total: 65000,
+      descripcion: 'Pizzería Horebs, pedido #abc12345',
+      canal: 'messenger',
     });
   });
 
