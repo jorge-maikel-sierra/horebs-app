@@ -19,6 +19,14 @@ export interface ElementoTemplateSocial {
   }[];
 }
 
+/**
+ * Los textos del bot se escriben con `*negrita*` de WhatsApp; Messenger e
+ * Instagram no lo interpretan y mostrarían los asteriscos tal cual.
+ */
+export function sinNegritasDeWhatsapp(texto: string): string {
+  return texto.replace(/\*{1,2}([^*\n]+?)\*{1,2}/g, '$1');
+}
+
 export function armarTextoSocial(
   destinatarioId: string,
   texto: string,
@@ -26,7 +34,7 @@ export function armarTextoSocial(
   return {
     recipient: { id: destinatarioId },
     messaging_type: 'RESPONSE',
-    message: { text: texto },
+    message: { text: sinNegritasDeWhatsapp(texto) },
   };
 }
 
@@ -54,7 +62,7 @@ export function armarQuickRepliesSocial(
     recipient: { id: destinatarioId },
     messaging_type: 'RESPONSE',
     message: {
-      text: texto,
+      text: sinNegritasDeWhatsapp(texto),
       quick_replies: quickReplies,
     },
   };
