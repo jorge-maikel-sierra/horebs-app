@@ -18,7 +18,8 @@ export const ESTADO_ATENCION_TEXTO: Record<EstadoAtencion, string> = {
   abierto: 'el local está abierto y tomamos pedidos.',
   reservas:
     'el local todavía no abrió, pero tomamos el pedido como reserva desde las 4:00 p.m.',
-  cerrado: 'estamos cerrados; tomamos pedidos de nuevo desde las 11:00 a.m.',
+  cerrado:
+    'ahora mismo estamos cerrados y no tomamos pedidos; los pedidos se reciben desde las 11:00 a.m. (el local abre a las 4:00 p.m., así que los de la mañana quedan como reserva).',
 };
 export const NOMBRE_NEGOCIO = 'Pizzería Horebs';
 export const URL_CATALOGO = 'https://pizzeriahorebs.shop/catalogo';
@@ -59,6 +60,8 @@ const REGLAS_BASE = `Reglas estrictas:
 {{PRIMER_MENSAJE}}
 - Mantené las respuestas breves — como un mensaje real, no un párrafo largo.
 - No prometas descuentos, promociones ni tiempos de entrega exactos que no te haya dado una herramienta.
+- No tenés forma de avisarle al cliente más tarde, recordarle algo, anotar su pedido para después ni guardarle nada: NUNCA le ofrezcas "avisarte cuando abramos", "anotarte para más tarde" ni algo parecido. Si el local está cerrado, decile el horario real que te da obtener_horario e invitalo a escribir de nuevo cuando abra.
+{{REGLAS_CANAL}}
 - NUNCA des números de cuenta, llaves, Nequi, Daviplata, bancos ni ningún dato para transferir o pagar, y nunca le pidas al cliente que pague o mande un comprobante — esos datos los da una persona del equipo cuando confirma el pedido. Es un error grave que ya pasó: el bot inventó una cuenta que no existe.
 - Un total o un precio sumado solo se le da al cliente si sale de calcular_pedido en este mismo pedido. Si calcular_pedido devuelve un error, no hay total: nunca lo calcules ni lo estimes vos.
 
@@ -78,11 +81,18 @@ const PRIMER_MENSAJE_WHATSAPP =
 const PRIMER_MENSAJE_SOCIAL =
   '- En este canal NO se conoce el número ni el nombre del cliente. No llames a obtener_cliente_registrado, y NUNCA le pidas su nombre ni su teléfono para mostrarle el menú, los precios o contestarle una pregunta: saludalo de forma normal y ayudalo con lo que pida. Esos datos se piden recién cuando va a hacer el pedido, y los pide el sistema.';
 
+// El cliente de Messenger o Instagram ya está en el canal donde cierra su
+// pedido. Mandarlo a WhatsApp o a la web (como pasó con clientes reales) lo
+// saca del chat y rompe lo que se busca: cerrar la venta sin que se pierda.
+const REGLAS_SOCIAL =
+  '- Este chat es donde el cliente hace su pedido completo, sin salir de la conversación: NUNCA le digas que pida por WhatsApp, por la página web, por teléfono ni por ningún otro canal, ni lo mandes a otro lado, aunque algo del historial de la conversación diga lo contrario. Si te pide un número, una página u otro medio de contacto, decile que aquí mismo lo atendés y que, si prefiere hablar con una persona del equipo, puede escribir "humano".';
+
 function reglasBase(canal: CanalMensajeria): string {
+  const esWhatsapp = canal === 'whatsapp';
   return REGLAS_BASE.replace(
     '{{PRIMER_MENSAJE}}',
-    canal === 'whatsapp' ? PRIMER_MENSAJE_WHATSAPP : PRIMER_MENSAJE_SOCIAL,
-  );
+    esWhatsapp ? PRIMER_MENSAJE_WHATSAPP : PRIMER_MENSAJE_SOCIAL,
+  ).replace('\n{{REGLAS_CANAL}}', esWhatsapp ? '' : `\n${REGLAS_SOCIAL}`);
 }
 
 function encabezadoCanal(canal: CanalMensajeria, esInicio: boolean): string {
