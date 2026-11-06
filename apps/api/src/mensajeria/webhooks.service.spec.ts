@@ -126,6 +126,51 @@ describe('WebhooksService.verificarFirma', () => {
   });
 });
 
+describe('WebhooksService.procesarMessenger', () => {
+  const mensaje = (mid: string, texto: string, psid = 'psid-1') => ({
+    sender: { id: psid },
+    recipient: { id: 'pagina-1' },
+    timestamp: 1,
+    message: { mid, text: texto },
+  });
+  const esperar = (ms: number): Promise<void> =>
+    new Promise((resolver) => setTimeout(resolver, ms));
+
+  it('atiende de a uno los mensajes seguidos de un mismo cliente y en paralelo a los de otros', async () => {
+    const { servicio } = crearServicio();
+    const eventos: string[] = [];
+    jest
+      .spyOn(servicio, 'manejarEvento')
+      .mockImplementation(async (e: EventoEntrante) => {
+        eventos.push(`inicio:${e.texto}`);
+        await esperar(e.texto === 'lento' ? 40 : 5);
+        eventos.push(`fin:${e.texto}`);
+      });
+
+    servicio.procesarMessenger({
+      object: 'page',
+      entry: [
+        {
+          id: 'pagina-1',
+          messaging: [
+            mensaje('m1', 'lento'),
+            mensaje('m2', 'segundo'),
+            mensaje('m3', 'otro-cliente', 'psid-2'),
+          ],
+        },
+      ],
+    });
+    await esperar(120);
+
+    expect(eventos.indexOf('fin:lento')).toBeLessThan(
+      eventos.indexOf('inicio:segundo'),
+    );
+    expect(eventos.indexOf('inicio:otro-cliente')).toBeLessThan(
+      eventos.indexOf('fin:lento'),
+    );
+  });
+});
+
 describe('WebhooksService.manejarEvento', () => {
   it('un mensaje nuevo se registra y le responde el bot', async () => {
     const { servicio, llamadas, registrados } = crearServicio();

@@ -1,6 +1,7 @@
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { conReintentoPorReloj } from './reintento-reloj';
 
 export interface EstadoSupabase {
   ok: boolean;
@@ -30,6 +31,13 @@ export class SupabaseService implements OnModuleInit {
 
     this.client = createClient(url ?? '', serviceRoleKey ?? '', {
       auth: { persistSession: false },
+      global: {
+        fetch: conReintentoPorReloj(fetch, () =>
+          this.logger.warn(
+            'Supabase rechazó la llave por desfase de reloj — se reintenta la llamada.',
+          ),
+        ),
+      },
     });
   }
 

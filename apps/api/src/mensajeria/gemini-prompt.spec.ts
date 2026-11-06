@@ -32,6 +32,26 @@ describe('armarSystemInstruction', () => {
     }
   });
 
+  it('en Messenger e Instagram prohíbe mandar al cliente a WhatsApp o a la web', () => {
+    for (const canal of ['messenger', 'instagram'] as const) {
+      const prompt = armarSystemInstruction(canal);
+      expect(prompt).toContain('NUNCA le digas que pida por WhatsApp');
+      expect(prompt).toContain('puede escribir "humano"');
+      expect(prompt).not.toContain('{{');
+    }
+    const whatsapp = armarSystemInstruction('whatsapp');
+    expect(whatsapp).not.toContain('NUNCA le digas que pida por WhatsApp');
+    expect(whatsapp).not.toContain('{{');
+  });
+
+  it('en todos los canales prohíbe prometer avisos o recordatorios que el bot no puede cumplir', () => {
+    for (const canal of ['whatsapp', 'messenger', 'instagram'] as const) {
+      expect(armarSystemInstruction(canal)).toContain(
+        'NUNCA le ofrezcas "avisarte cuando abramos"',
+      );
+    }
+  });
+
   it('en WhatsApp sigue usando obtener_cliente_registrado en el primer mensaje', () => {
     expect(armarSystemInstruction('whatsapp')).toContain(
       'usá SIEMPRE obtener_cliente_registrado',

@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { CatalogService } from '../catalog/catalog.service';
+import { ColaPorClave } from './cola-por-clave';
 import { ConversacionesService } from './conversaciones.service';
 import type { ConversacionCompleta } from './conversaciones.tipos';
 import { MediaEntranteService } from './media-entrante.service';
@@ -27,6 +28,8 @@ import {
 @Injectable()
 export class WebhooksService {
   private readonly logger = new Logger(WebhooksService.name);
+  // Los mensajes de un mismo cliente se atienden de a uno: ver ColaPorClave.
+  private readonly cola = new ColaPorClave();
 
   constructor(
     private readonly conversaciones: ConversacionesService,
@@ -78,11 +81,14 @@ export class WebhooksService {
 
   private procesar(eventos: EventoEntrante[]): void {
     for (const evento of eventos) {
-      this.manejarEvento(evento).catch((err) => {
-        this.logger.error(
-          `Error procesando mensaje de ${evento.canal} (${evento.identificadorExterno}): ${(err as Error).message}`,
-        );
-      });
+      const clave = `${evento.canal}:${evento.identificadorExterno}`;
+      this.cola
+        .ejecutar(clave, () => this.manejarEvento(evento))
+        .catch((err) => {
+          this.logger.error(
+            `Error procesando mensaje de ${evento.canal} (${evento.identificadorExterno}): ${(err as Error).message}`,
+          );
+        });
     }
   }
 
