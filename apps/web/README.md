@@ -29,6 +29,15 @@ To learn more about Next.js, take a look at the following resources:
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
+## Producción (Pizzería Horebs)
+
+- Sitio: `https://pizzeriahorebs.shop`, proyecto `horebs-web` en Vercel.
+- `NEXT_PUBLIC_API_URL` en Vercel (producción y preview) apunta al API en
+  Railway: `https://horebs-api-production.up.railway.app` (proyecto
+  `horebs-api`, cuenta nueva de Railway desde nov 2026). Es una variable de
+  build: al cambiarla hay que redesplegar el web, y Vercel solo construye si
+  hay cambios en `apps/web` (ver `vercel.json`).
+
 ## Deploy on Vercel
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
