@@ -8,10 +8,10 @@ correcta, no supuestos.
 
 ## 1. Introducción
 
-- **URL base en producción**: `https://horebs-api-production.up.railway.app`
+- **URL base en producción**: `https://api.pizzeriahorebs.shop`
 - **URL base en local** (si corrés la API vos mismo): `http://localhost:3000`
 - Todas las rutas descritas abajo cuelgan de esa URL base (ej.
-  `GET https://horebs-api-production.up.railway.app/catalogo/productos`).
+  `GET https://api.pizzeriahorebs.shop/catalogo/productos`).
 - Formato: JSON en request y response salvo que se indique lo contrario
   (hay dos rutas que devuelven PDF/CSV, marcadas explícitamente).
 - No hay versión en la URL (no hay `/v1/`) — es una sola API en evolución.
@@ -60,9 +60,12 @@ login opcional después si querés persistir algo (ver sección 11,
 
 ### Errores de autenticación
 
-- Sin token en una ruta que lo exige → `401`, `{"message": "Falta el token de autenticación."}`
-- Token inválido o expirado → `401`, `{"message": "Token inválido o expirado."}`
-- Token válido pero sin el rol necesario → `403`, `{"message": "No tenés permiso para esta acción."}`
+Los errores salen como `application/problem+json` (ver sección 7). El texto
+para mostrar está en el campo `detail`:
+
+- Sin token en una ruta que lo exige → `401`, `detail`: `"Falta el token de autenticación."`
+- Token inválido o expirado → `401`, `detail`: `"Token inválido o expirado."`
+- Token válido pero sin el rol necesario → `403`, `detail`: `"No tenés permiso para esta acción."`
 
 ## 3. Catálogo (público, sin autenticación)
 
@@ -255,15 +258,25 @@ una sesión Supabase (cualquier usuario logueado, sin rol especial):
 
 ## 7. Manejo de errores
 
-Todas las respuestas de error de esta API tienen esta forma exacta
-(formato estándar de NestJS):
+Todas las respuestas de error de esta API usan el formato estándar RFC 9457
+(Problem Details), con `Content-Type: application/problem+json`:
 
 ```json
-{ "statusCode": 400, "message": "Descripción del error en español", "error": "Bad Request" }
+{
+  "type": "https://pizzeriahorebs.shop/problemas/unauthorized",
+  "title": "Unauthorized",
+  "status": 401,
+  "detail": "Falta el token de autenticación.",
+  "instance": "/informes"
+}
 ```
 
-Mostrá `message` directamente al usuario cuando tenga sentido — son
-mensajes ya redactados en español para el cliente final, por ejemplo:
+En errores de validación (400) llega además `errores[]` con el detalle por
+campo. **No existe un campo `message`:** el texto para el usuario va siempre
+en `detail`.
+
+Mostrá `detail` directamente al usuario cuando tenga sentido — son mensajes
+ya redactados en español para el cliente final, por ejemplo:
 
 - `"Falta el nombre del cliente."`
 - `"El teléfono no tiene un formato válido."`
