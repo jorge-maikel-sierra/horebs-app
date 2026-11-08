@@ -97,6 +97,13 @@ pregunta; no se supone un valor razonable.
   valor (confirmado 29 oct 2026). El bot lo explica al cliente y deja escrito
   en el pedido qué sabores lleva (herramienta `cotizar_pizza_mitad_y_mitad`,
   `mensajeria/pizza-mitad.ts`).
+- Descuento del 20%: solo los miércoles y jueves, hasta las 8:00 p.m. (hora
+  de Bogotá); el resto de la semana no hay (confirmado por el dueño, nov
+  2026). Es lo que más preguntan los clientes de Messenger e Instagram: el
+  bot lo contesta con texto fijo según el día y la hora
+  (`mensajeria/respuestas-fijas.ts`), sin pasar por el modelo. Cómo se
+  aplica al total del pedido no está definido todavía: el bot solo informa
+  la regla.
 - Descuento de la oferta de seguimiento por conversación abandonada: 10%
   (`DESCUENTO_OFERTA_PORCENTAJE` en `seguimiento.service.ts`) — se ofrece si
   el cliente no responde tras el recordatorio de las 3 horas.
