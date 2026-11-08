@@ -73,6 +73,22 @@ describe('mensajes-meta-social', () => {
     });
   });
 
+  it('la tarjeta muestra el precio primero y después la descripción, dentro de los 80 caracteres', () => {
+    const [elemento] = elementosDeTarjetas([
+      {
+        nombre: 'Pizza Hawaiana',
+        descripcion:
+          'Combinación de sabores dulces y salados: jamón curado y piña jugosa sobre queso derretido.',
+        precioDesde: 20000,
+        imagenUrl: null,
+      },
+    ]);
+    expect(elemento.subtitle?.startsWith('Desde $20.000 · Combinación')).toBe(
+      true,
+    );
+    expect(elemento.subtitle?.length).toBeLessThanOrEqual(80);
+  });
+
   it('arma generic template con postback "Agregar al pedido"', () => {
     const elementos = elementosDeTarjetas([
       {
