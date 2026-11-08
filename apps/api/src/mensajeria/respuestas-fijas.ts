@@ -142,6 +142,29 @@ export function textoSaludo(): string {
   return '¡Hola! 👋 Soy el asistente virtual de Pizzería Horebs 🍕\nEn cualquier momento puedes escribir "humano" para hablar con una persona del equipo.\n¿Qué quieres hacer?';
 }
 
+const TEXTOS = new Map<IntencionFija, (ahora: Date) => string>([
+  ['saludo', textoSaludo],
+  ['descuento', textoDescuento],
+  ['horario', textoHorarioFijo],
+  [
+    'horarioUbicacion',
+    (ahora) => `${textoHorarioFijo(ahora)}\n${textoUbicacion()}`,
+  ],
+  ['ubicacion', textoUbicacion],
+  ['domicilio', textoDomicilio],
+  ['tamanos', textoTamanos],
+  ['pagos', textoPagos],
+  ['mitad', textoMitadYMitad],
+]);
+
+/** El texto fijo de una intención; null en las que no son un texto (menú, pedir, precios, humano). */
+export function textoDeIntencion(
+  intencion: IntencionFija,
+  ahora: Date,
+): string | null {
+  return TEXTOS.get(intencion)?.(ahora) ?? null;
+}
+
 const dice =
   (...reglas: RegExp[]) =>
   (t: string): boolean =>

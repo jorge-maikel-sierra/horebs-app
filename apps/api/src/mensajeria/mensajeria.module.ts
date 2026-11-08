@@ -32,6 +32,9 @@ import { RecomprasService } from './recompras.service';
 import { ComprobantesService } from './comprobantes.service';
 import { MediaEntranteService } from './media-entrante.service';
 import { RespuestaBotService } from './respuesta-bot.service';
+import { AtencionDeterministaService } from './atencion-determinista.service';
+import { PedidoSocialService } from './pedido-social.service';
+import { RespuestaSocialService } from './respuesta-social.service';
 
 @Module({
   imports: [
@@ -67,6 +70,9 @@ import { RespuestaBotService } from './respuesta-bot.service';
     ComprobantesService,
     MediaEntranteService,
     RespuestaBotService,
+    AtencionDeterministaService,
+    PedidoSocialService,
+    RespuestaSocialService,
     PagoBoldService,
     ConfirmacionPedidoService,
   ],

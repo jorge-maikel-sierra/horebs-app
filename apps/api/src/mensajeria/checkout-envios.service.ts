@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { obtenerCapacidades } from './capacidades-canal';
 import type { ContextoCheckout } from './checkout-whatsapp';
 import {
   ConversacionesService,
@@ -41,6 +42,25 @@ export class CheckoutEnviosService {
       botones,
     );
     await this.registrar(ctx, conOpciones(cuerpo, botones));
+  }
+
+  /**
+   * Texto con opciones rápidas. Si el texto no cabe en un solo mensaje del
+   * canal (Instagram admite 1000 bytes), va aparte y las opciones en uno corto.
+   */
+  async textoConOpciones(
+    ctx: ContextoCheckout,
+    texto: string,
+    opciones: BotonRespuesta[],
+  ): Promise<void> {
+    const canal = ctx.canal ?? 'whatsapp';
+    const limite = obtenerCapacidades(canal).maxBytesTexto;
+    if (Buffer.byteLength(texto, 'utf8') <= limite) {
+      await this.botones(ctx, texto, opciones);
+      return;
+    }
+    await this.texto(ctx, texto);
+    await this.botones(ctx, '¿Qué quieres hacer?', opciones);
   }
 
   async lista(
@@ -132,7 +152,8 @@ export class CheckoutEnviosService {
     );
   }
 
-  private async registrar(ctx: ContextoCheckout, texto: string): Promise<void> {
+  /** Deja en el historial de la conversación lo que se le mandó al cliente. */
+  async registrar(ctx: ContextoCheckout, texto: string): Promise<void> {
     await this.conversaciones.registrarMensaje(
       ctx.conversacionId,
       'saliente_bot',
