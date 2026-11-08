@@ -32,11 +32,12 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 ## Producción (Pizzería Horebs)
 
 - Sitio: `https://pizzeriahorebs.shop`, proyecto `horebs-web` en Vercel.
-- `NEXT_PUBLIC_API_URL` en Vercel (producción y preview) apunta al API en
-  Railway: `https://horebs-api-production.up.railway.app` (proyecto
-  `horebs-api`, cuenta nueva de Railway desde nov 2026). Es una variable de
-  build: al cambiarla hay que redesplegar el web, y Vercel solo construye si
-  hay cambios en `apps/web` (ver `vercel.json`).
+- `NEXT_PUBLIC_API_URL` en Vercel (producción y preview) es
+  `https://api.pizzeriahorebs.shop`, un dominio propio (CNAME en Hostinger)
+  que apunta al API en Railway. Si el API cambia de cuenta o de proyecto, esta
+  URL no cambia. Es una variable de build: al modificarla hay que redesplegar
+  el web, y Vercel solo construye si hay cambios en `apps/web` (ver
+  `vercel.json`). El CSP de `next.config.ts` toma el origen de esta variable.
 
 ## Deploy on Vercel
 

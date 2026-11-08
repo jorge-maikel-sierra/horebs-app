@@ -61,6 +61,14 @@ pregunta; no se supone un valor razonable.
 - Número del bot de WhatsApp: +57 320 567 4313 (confirmado por el dueño el
   2 nov 2026). El botón "Volver a la tienda" del link de Bold abre ese chat
   (`ENLACE_WHATSAPP_BOT` en `common/contacto.ts`).
+- URL pública del API: `https://api.pizzeriahorebs.shop` (CNAME en Hostinger
+  hacia el servicio de Railway; certificado de Railway). **Todo lo que se
+  configura afuera apunta a este dominio y nunca a `*.up.railway.app`:** los
+  webhooks de Meta (WhatsApp, Messenger, Instagram: `/webhooks/whatsapp`,
+  `/webhooks/messenger`, `/webhooks/instagram`), el de Bold (`/webhooks/bold`)
+  y `NEXT_PUBLIC_API_URL` en Vercel. Así, si el API se mueve de cuenta o de
+  proyecto, solo se cambia el destino del CNAME en Hostinger y no hay que
+  tocar Meta, Bold ni el web. El DNS del dominio lo lleva Hostinger, no Vercel.
 - Dominio activo: `pizzeriahorebs.shop`. **NUNCA** usar ni enlazar
   `pizzeriahorebs.com` (expiró, ya no es del negocio) — ni en código, ni en
   contenido, ni en ejemplos.
@@ -385,9 +393,11 @@ usarlo para medir). Las filas de Supabase se tipan con `.returns<T[]>()`,
   verificación real es contra el entorno desplegado: Railway para
   `apps/api`, Vercel para `apps/web`, con `curl` o el navegador contra la URL
   real.
-- Railway: el path de deploy es la raíz del repo, no `apps/api` — el servicio
-  ya tiene `Root directory: apps/api` configurado remotamente. Un push a
-  `main` **no** despliega solo: hay que disparar el redeploy.
+- Railway: proyecto `horebs-api` en la cuenta nueva (nov 2026, la anterior
+  se quedó sin crédito). El servicio está conectado a GitHub (`main`, `Root
+  directory: apps/api`) y **despliega solo con cada push a `main`**. El
+  servicio de Railway puede cambiar de cuenta o de proyecto; la URL pública
+  del API no: ver `api.pizzeriahorebs.shop` en la sección 2.
 - Vercel: el proyecto real es `horebs-web`; despliega solo cuando el commit
   toca `apps/web`. Hay un `vercel.json` suelto en la raíz (no trackeado en
   git, con una config `experimentalServices` deprecada) que rompe cualquier
