@@ -292,7 +292,10 @@ export class CheckoutPreguntasService {
     const [disponibles, productos, carrito] = await Promise.all([
       this.carritoResuelto(ctx),
       this.catalog.getProductos(),
-      this.conversaciones.obtenerCarrito('whatsapp', ctx.identificadorExterno),
+      this.conversaciones.obtenerCarrito(
+        ctx.canal ?? 'whatsapp',
+        ctx.identificadorExterno,
+      ),
     ]);
     const pizza = pizzasDelCarrito(disponibles).find(
       (p) => p.varianteId === pizzaVarianteId,

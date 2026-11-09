@@ -141,7 +141,11 @@ describe('CheckoutPreguntasService · adicionales', () => {
   const HAWAIANA = pizza('hw-M', 'Pizza Hawaiana', 'Mediana');
   const MARGARITA = pizza('mg-G', 'Pizza Margarita', 'Grande');
 
-  function crear(carritoResuelto: ReturnType<typeof pizza>[]) {
+  // El carrito vive en la conversación del canal: pedirlo de otro canal da vacío.
+  function crear(
+    carritoResuelto: ReturnType<typeof pizza>[],
+    canalDelCarrito = 'whatsapp',
+  ) {
     const carrito = carritoResuelto.map((i) => ({
       varianteId: i.varianteId,
       cantidad: i.cantidad,
@@ -155,7 +159,11 @@ describe('CheckoutPreguntasService · adicionales', () => {
     };
     const servicio = new CheckoutPreguntasService(
       {
-        obtenerCarrito: jest.fn().mockResolvedValue(carrito),
+        obtenerCarrito: jest
+          .fn()
+          .mockImplementation((canal: string) =>
+            Promise.resolve(canal === canalDelCarrito ? carrito : []),
+          ),
       } as unknown as ConversacionesService,
       {
         getProductos: jest.fn().mockResolvedValue(PRODUCTOS),
@@ -265,6 +273,26 @@ describe('CheckoutPreguntasService · adicionales', () => {
       ],
     );
     expect(checkout.adicionalProductoId).toBeUndefined();
+  });
+
+  it('en Instagram suma el adicional al carrito de Instagram y no pierde la pizza', async () => {
+    const { servicio, envios } = crear([HAWAIANA], 'instagram');
+    const ctxInstagram = {
+      ...CTX,
+      canal: 'instagram' as const,
+      identificadorExterno: 'igsid-1',
+    };
+
+    await servicio.responderAdicionales(
+      ctxInstagram,
+      { paso: 'adicionales' },
+      { tipo: 'boton', id: `${PREFIJO_ADICIONAL_PRODUCTO}ad-borde` },
+    );
+
+    expect(envios.guardarCarrito).toHaveBeenCalledWith(ctxInstagram, [
+      { varianteId: 'hw-M', cantidad: 1 },
+      { varianteId: 'ad-borde-Mediana', cantidad: 1 },
+    ]);
   });
 
   it('con varias pizzas pregunta a cuál y cobra según el tamaño de la elegida', async () => {
