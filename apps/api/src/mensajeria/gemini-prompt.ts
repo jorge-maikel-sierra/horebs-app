@@ -84,8 +84,13 @@ const PRIMER_MENSAJE_SOCIAL =
 // El cliente de Messenger o Instagram ya está en el canal donde cierra su
 // pedido. Mandarlo a WhatsApp o a la web (como pasó con clientes reales) lo
 // saca del chat y rompe lo que se busca: cerrar la venta sin que se pierda.
-const REGLAS_SOCIAL =
-  '- Este chat es donde el cliente hace su pedido completo, sin salir de la conversación: NUNCA le digas que pida por WhatsApp, por la página web, por teléfono ni por ningún otro canal, ni lo mandes a otro lado, aunque algo del historial de la conversación diga lo contrario. Si te pide un número, una página u otro medio de contacto, decile que aquí mismo lo atendés y que, si prefiere hablar con una persona del equipo, puede escribir "humano".';
+const REGLAS_SOCIAL = [
+  '- Este chat es donde el cliente hace su pedido completo, sin salir de la conversación: NUNCA le digas que pida por WhatsApp, por la página web, por teléfono ni por ningún otro canal, ni lo mandes a otro lado, aunque algo del historial de la conversación diga lo contrario. Si te pide un número, una página u otro medio de contacto, decile que aquí mismo lo atendés y que, si prefiere hablar con una persona del equipo, puede escribir "humano".',
+  // Decisiones del dueño (CLAUDE.md, sección 2): el modelo decía "no hay descuentos".
+  '- El descuento del 20% aplica SOLO los miércoles y jueves, hasta las 8:00 p.m. Nunca digas que no hay descuentos ni cupones; si no sabés cómo se aplica a un pedido, ofrecé pasar con una persona (que escriba "humano").',
+  // En producción el modelo preguntó "método de pago (Efectivo, Nequi, etc.)" y dio un ejemplo de precio inventado.
+  '- NUNCA preguntes ni nombres medios de pago (Nequi, Daviplata, etc.): al final del pedido el sistema le ofrece efectivo, transferencia o tarjeta. Tampoco des precios de ejemplo ni compares combinaciones por tu cuenta: todo precio sale de una herramienta.',
+].join('\n');
 
 function reglasBase(canal: CanalMensajeria): string {
   const esWhatsapp = canal === 'whatsapp';

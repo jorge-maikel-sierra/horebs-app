@@ -181,6 +181,25 @@ describe('EnvioHerramientasService.mandoElMensaje', () => {
     ]);
   });
 
+  it('categoriaSocial manda solo los productos de esa categoría y devuelve el registro', async () => {
+    const { servicio, tarjetasEnviadas } = crearServicio({
+      productos: [
+        producto('p-1', 'Hawaiana'),
+        { ...producto('p-2', 'Coca-Cola'), categoria_id: 'cat-2' },
+      ],
+    });
+
+    await expect(
+      servicio.categoriaSocial('messenger', 'psid-1', 'cat-2'),
+    ).resolves.toBe('Productos mostrados: Coca-Cola');
+    expect(tarjetasEnviadas).toHaveLength(1);
+
+    await expect(
+      servicio.categoriaSocial('messenger', 'psid-1', 'cat-9'),
+    ).resolves.toBeNull();
+    expect(tarjetasEnviadas).toHaveLength(1);
+  });
+
   it('si el catálogo nativo no se pudo, registra el enlace', async () => {
     const { servicio, registrados } = crearServicio({ catalogo: 'enlace' });
 

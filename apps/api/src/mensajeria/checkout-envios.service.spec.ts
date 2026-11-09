@@ -73,6 +73,39 @@ describe('CheckoutEnviosService', () => {
     );
   });
 
+  it('textoConOpciones manda el texto con las opciones en un solo mensaje si cabe', async () => {
+    const { servicio, metaGraph, conversaciones } = crearServicio();
+
+    await servicio.textoConOpciones(CTX, 'Hola', BOTONES);
+
+    expect(metaGraph.enviarBotones).toHaveBeenCalledTimes(1);
+    expect(metaGraph.enviarMensajeSesion).not.toHaveBeenCalled();
+    expect(conversaciones.registrarMensaje).toHaveBeenCalledTimes(1);
+  });
+
+  it('textoConOpciones separa el texto largo de las opciones (Instagram admite 1000 bytes)', async () => {
+    const { servicio, metaGraph } = crearServicio();
+    const largo = 'ñ'.repeat(600);
+
+    await servicio.textoConOpciones(
+      { ...CTX, canal: 'instagram', identificadorExterno: 'igsid-1' },
+      largo,
+      BOTONES,
+    );
+
+    expect(metaGraph.enviarMensajeSesion).toHaveBeenCalledWith(
+      'instagram',
+      'igsid-1',
+      largo,
+    );
+    expect(metaGraph.enviarBotones).toHaveBeenCalledWith(
+      'instagram',
+      'igsid-1',
+      '¿Qué quieres hacer?',
+      BOTONES,
+    );
+  });
+
   it('lista manda cuerpo, botón y filas, y registra las opciones', async () => {
     const { servicio, metaGraph, conversaciones } = crearServicio();
 

@@ -185,6 +185,59 @@ describe('parsearMessengerOInstagram', () => {
     expect(eventos[1]?.texto).toBe('Quiero pedir Pizza Pepperoni');
   });
 
+  it('los ids del pedido por botones, de las categorías y del menú de inicio llegan como botón', () => {
+    const quickReply = (payload: string, text: string) => ({
+      sender: { id: 'user-1' },
+      message: { text, quick_reply: { payload } },
+    });
+    const eventos = parsearMessengerOInstagram(
+      {
+        entry: [
+          {
+            messaging: [
+              quickReply('ped:v:abc', 'Mediana $35.000'),
+              quickReply('ped:q:abc:2', '2'),
+              quickReply('cat:cat-1', 'Pizzas'),
+              quickReply('mnu:descuento', '🎉 Descuento 20%'),
+              quickReply('ped:fin', '✅ Seguir con el pedido'),
+            ],
+          },
+        ],
+      },
+      'messenger',
+    );
+    expect(eventos.map((e) => e.entrada)).toEqual([
+      { tipo: 'boton', id: 'ped:v:abc' },
+      { tipo: 'boton', id: 'ped:q:abc:2' },
+      { tipo: 'boton', id: 'cat:cat-1' },
+      { tipo: 'boton', id: 'mnu:descuento' },
+      { tipo: 'boton', id: 'ped:fin' },
+    ]);
+    expect(eventos[2]?.texto).toBe('Pizzas');
+  });
+
+  it('el menú persistente y Get Started llegan como texto con el título (o el payload)', () => {
+    const eventos = parsearMessengerOInstagram(
+      {
+        entry: [
+          {
+            messaging: [
+              {
+                sender: { id: 'user-1' },
+                postback: { payload: 'menu', title: 'Ver menú 🍕' },
+              },
+              { sender: { id: 'user-2' }, postback: { payload: 'iniciar' } },
+            ],
+          },
+        ],
+      },
+      'messenger',
+    );
+    expect(eventos[0]?.texto).toBe('Ver menú 🍕');
+    expect(eventos[0]?.entrada).toBeUndefined();
+    expect(eventos[1]?.texto).toBe('iniciar');
+  });
+
   it('procesa attachments de imagen, audio y ubicación', () => {
     const eventos = parsearMessengerOInstagram(
       {

@@ -44,6 +44,20 @@ describe('armarSystemInstruction', () => {
     expect(whatsapp).not.toContain('{{');
   });
 
+  it('en Messenger e Instagram el modelo conoce el descuento del 20% y no inventa medios de pago', () => {
+    for (const canal of ['messenger', 'instagram'] as const) {
+      const prompt = armarSystemInstruction(canal);
+      expect(prompt).toContain(
+        'SOLO los miércoles y jueves, hasta las 8:00 p.m.',
+      );
+      expect(prompt).toContain('Nunca digas que no hay descuentos');
+      expect(prompt).toContain('NUNCA preguntes ni nombres medios de pago');
+    }
+    expect(armarSystemInstruction('whatsapp')).not.toContain(
+      'SOLO los miércoles y jueves',
+    );
+  });
+
   it('en todos los canales prohíbe prometer avisos o recordatorios que el bot no puede cumplir', () => {
     for (const canal of ['whatsapp', 'messenger', 'instagram'] as const) {
       expect(armarSystemInstruction(canal)).toContain(

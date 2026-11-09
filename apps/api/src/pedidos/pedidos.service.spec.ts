@@ -355,3 +355,84 @@ describe('PedidosService.obtener', () => {
     await expect(servicio.obtener('p-9')).rejects.toThrow(NotFoundException);
   });
 });
+
+describe('PedidosService: descuento del 20% en pizzas', () => {
+  const ENTRADA_BOT = {
+    cliente: { nombre: 'Carlos', apellido: 'Gómez', telefono: '3001234567' },
+    modalidad: 'domicilio' as const,
+    direccion_entrega: 'Calle 2',
+    metodo_pago: 'efectivo' as const,
+    items: [{ variante_id: 'v-1', cantidad: 2 }],
+  };
+
+  it('descuenta el 20% solo de las pizzas y deja el domicilio entero', async () => {
+    const { servicio, escrituras } = crearServicio({
+      single: { clientes: OK_CLIENTE, pedidos: OK_PEDIDO },
+    });
+
+    await servicio.crearDesdeBot(
+      { ...ENTRADA_BOT, aplicar_promocion: true },
+      'messenger',
+    );
+
+    // 60.000 de pizza - 12.000 + 5.000 de domicilio.
+    expect(escrituras[1].datos).toMatchObject({
+      costo_domicilio: 5000,
+      total: 53000,
+      notas: 'Descuento 20% en pizzas: -$12.000',
+    });
+  });
+
+  it('no toca lo que no es pizza', async () => {
+    mockCalcularItems.mockResolvedValue({
+      itemsCalculados: [
+        ITEM,
+        {
+          ...ITEM,
+          variante_id: 'v-2',
+          cantidad: 1,
+          precio_unitario: 4000,
+          subtotal: 4000,
+          producto_nombre: 'Bebidas',
+          variante_nombre: 'Jugo Hit 400ml',
+        },
+      ],
+      total: 64000,
+    });
+    const { servicio, escrituras } = crearServicio({
+      single: { clientes: OK_CLIENTE, pedidos: OK_PEDIDO },
+    });
+
+    await servicio.crearDesdeBot(
+      { ...ENTRADA_BOT, aplicar_promocion: true },
+      'instagram',
+    );
+
+    expect(escrituras[1].datos).toMatchObject({ total: 57000 });
+  });
+
+  it('sin aplicar_promocion el total y las notas quedan como siempre', async () => {
+    const { servicio, escrituras } = crearServicio({
+      single: { clientes: OK_CLIENTE, pedidos: OK_PEDIDO },
+    });
+
+    await servicio.crearDesdeBot(ENTRADA_BOT, 'messenger');
+
+    expect(escrituras[1].datos).toMatchObject({ total: 65000, notas: null });
+  });
+
+  it('suma el descuento a la nota que ya traía el pedido', async () => {
+    const { servicio, escrituras } = crearServicio({
+      single: { clientes: OK_CLIENTE, pedidos: OK_PEDIDO },
+    });
+
+    await servicio.crearDesdeBot(
+      { ...ENTRADA_BOT, notas: 'Sin cebolla', aplicar_promocion: true },
+      'messenger',
+    );
+
+    expect(escrituras[1].datos).toMatchObject({
+      notas: 'Sin cebolla | Descuento 20% en pizzas: -$12.000',
+    });
+  });
+});

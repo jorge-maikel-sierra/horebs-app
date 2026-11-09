@@ -1,10 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { ItemCarritoResuelto } from '../catalog/catalog.service';
-import {
-  esSaludoOIntencionDePedir,
-  type ContextoCheckout,
-} from './checkout-whatsapp';
-import { CheckoutWhatsappService } from './checkout-whatsapp.service';
+import { AtencionDeterministaService } from './atencion-determinista.service';
 import { ConversacionesService } from './conversaciones.service';
 import type { ConversacionCompleta } from './conversaciones.tipos';
 import { GeminiService } from './gemini.service';
@@ -18,8 +14,9 @@ export interface CarritoValidado {
 }
 
 /**
- * Cómo responde el bot a un mensaje que sí le toca: primero el checkout
- * determinístico por botones (WhatsApp) y, si no aplica, Gemini.
+ * Cómo responde el bot a un mensaje que sí le toca: primero lo determinístico
+ * (checkout por botones, pedido por botones y respuestas fijas) y, si no
+ * aplica, Gemini.
  */
 @Injectable()
 export class RespuestaBotService {
@@ -27,7 +24,7 @@ export class RespuestaBotService {
     private readonly gemini: GeminiService,
     private readonly metaGraph: MetaGraphService,
     private readonly conversaciones: ConversacionesService,
-    private readonly checkout: CheckoutWhatsappService,
+    private readonly determinista: AtencionDeterministaService,
   ) {}
 
   async responder(
@@ -42,7 +39,7 @@ export class RespuestaBotService {
       evento.identificadorExterno,
       evento.mensajeId ?? undefined,
     );
-    if (await this.checkoutPorBotones(evento, conversacion, carrito)) {
+    if (await this.determinista.atender(evento, conversacion, carrito)) {
       return;
     }
 
@@ -68,53 +65,5 @@ export class RespuestaBotService {
       'saliente_bot',
       respuesta,
     );
-  }
-
-  /**
-   * Checkout determinístico: carrito, toques, ubicación y las respuestas de
-   * cada paso no pasan por Gemini. true = el checkout ya atendió el evento.
-   */
-  private async checkoutPorBotones(
-    evento: EventoEntrante,
-    conversacion: ConversacionCompleta,
-    carrito: CarritoValidado | null,
-  ): Promise<boolean> {
-    const ctx = {
-      canal: evento.canal,
-      identificadorExterno: evento.identificadorExterno,
-      telefono: evento.telefono ?? conversacion.telefono ?? null,
-      conversacionId: conversacion.id,
-      mensajeId: evento.mensajeId,
-    };
-    if (carrito) {
-      await this.checkout.iniciar(
-        ctx,
-        carrito.disponibles,
-        carrito.noDisponibles,
-        evento.carrito?.nota ?? null,
-      );
-      return true;
-    }
-    const entrada = evento.entrada ?? {
-      tipo: 'texto' as const,
-      texto: evento.texto,
-    };
-    if (await this.checkout.manejar(ctx, entrada)) return true;
-    return this.intentarOfrecerLoMismo(evento, ctx);
-  }
-
-  private async intentarOfrecerLoMismo(
-    evento: EventoEntrante,
-    ctx: ContextoCheckout,
-  ): Promise<boolean> {
-    if (evento.entrada || !esSaludoOIntencionDePedir(evento.texto)) {
-      return false;
-    }
-    const ultima = await this.conversaciones.obtenerUltimaInteraccionGemini(
-      evento.canal,
-      evento.identificadorExterno,
-    );
-    if (ultima) return false;
-    return this.checkout.ofrecerLoMismo(ctx);
   }
 }

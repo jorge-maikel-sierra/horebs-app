@@ -78,7 +78,7 @@ export class EnvioHerramientasService {
     identificadorExterno: string,
   ): Promise<string | null> {
     if (canal !== 'whatsapp') {
-      return this.enviarMenuSocial(canal, identificadorExterno);
+      return this.menuSocial(canal, identificadorExterno);
     }
     const enviado = await this.metaGraph.enviarCatalogo(
       canal,
@@ -97,7 +97,7 @@ export class EnvioHerramientasService {
    * después las categorías como opciones rápidas (al tocar una, el modelo
    * muestra los productos de esa categoría con `mostrar_productos`).
    */
-  private async enviarMenuSocial(
+  async menuSocial(
     canal: CanalMensajeria,
     identificadorExterno: string,
   ): Promise<string | null> {
@@ -127,6 +127,28 @@ export class EnvioHerramientasService {
       );
     }
     return `Menú enviado dentro del chat: ${tarjetas.map((t) => t.nombre).join(', ')}.`;
+  }
+
+  /** Los productos de una categoría como tarjetas dentro del chat. null si no hay ninguno. */
+  async categoriaSocial(
+    canal: CanalMensajeria,
+    identificadorExterno: string,
+    categoriaId: string,
+  ): Promise<string | null> {
+    const productos = (await this.catalog.getProductos()).filter(
+      (p) => p.categoria_id === categoriaId,
+    );
+    const tarjetas = tarjetasDe(
+      productos,
+      obtenerCapacidades(canal).maxElementosTarjetas,
+    );
+    if (tarjetas.length === 0) return null;
+    await this.metaGraph.enviarTarjetasProductos(
+      canal,
+      identificadorExterno,
+      tarjetas,
+    );
+    return `Productos mostrados: ${tarjetas.map((t) => t.nombre).join(', ')}`;
   }
 
   /** Variante del primer producto destacado del catálogo, para la portada. */

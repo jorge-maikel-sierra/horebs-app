@@ -34,6 +34,7 @@ import {
   ConversacionesService,
   type CheckoutWhatsapp,
 } from './conversaciones.service';
+import { promocionActiva } from '../common/promocion';
 import { armarResumenPedido, pesos } from './resumen-pedido';
 
 export const TEXTO_PEDIR_DIRECCION =
@@ -340,6 +341,16 @@ export class CheckoutPreguntasService {
       return texto;
     }
 
+    // Solo Messenger e Instagram llevan el descuento; el momento en que se
+    // mostró queda guardado para respetar ese precio al crear el pedido.
+    const conPromocion =
+      ctx.canal !== undefined &&
+      ctx.canal !== 'whatsapp' &&
+      promocionActiva(new Date());
+    checkout.promocionCotizadaEn = conPromocion
+      ? new Date().toISOString()
+      : undefined;
+
     const { texto } = armarResumenPedido({
       nombreCompleto: `${checkout.nombre} ${checkout.apellido}`,
       lineas: lineasDeCarrito(disponibles),
@@ -348,6 +359,7 @@ export class CheckoutPreguntasService {
       costoDomicilio: COSTO_DOMICILIO_DEFAULT,
       entrega: textoEntrega(checkout.entrega),
       nota: checkout.nota,
+      promocion: conPromocion,
     });
 
     checkout.paso = 'pago';

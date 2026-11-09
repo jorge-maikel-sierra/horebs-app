@@ -72,7 +72,10 @@ export function elementosDeTarjetas(
   productos: TarjetaProducto[],
 ): ElementoTemplateSocial[] {
   return productos.slice(0, MAX_ELEMENTOS_TEMPLATE).map((p) => {
-    const subtitulo = p.descripcion ?? `Desde ${pesos(p.precioDesde)}`;
+    // El precio va primero: con solo la descripción el cliente no veía cuánto
+    // cuesta y lo preguntaba una y otra vez.
+    const desde = `Desde ${pesos(p.precioDesde)}`;
+    const subtitulo = p.descripcion ? `${desde} · ${p.descripcion}` : desde;
     const elem: ElementoTemplateSocial = {
       title: p.nombre.slice(0, MAX_LARGO_TEXTO_TEMPLATE),
       subtitle: subtitulo.slice(0, MAX_LARGO_TEXTO_TEMPLATE),

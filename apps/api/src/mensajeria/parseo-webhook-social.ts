@@ -78,11 +78,22 @@ function esMensajeIgnorado(
   return Boolean(msg.is_echo || msg.is_deleted || esPropio);
 }
 
+/**
+ * Ids de las opciones rápidas del pedido por botones (ped:), de las
+ * categorías (cat:) y del menú de inicio (mnu:): llegan como botón y no como
+ * el texto del título, porque llevan datos (la variante, la cantidad).
+ */
+export function esBotonSocial(id: string): boolean {
+  return (
+    id.startsWith('ped:') || id.startsWith('cat:') || id.startsWith('mnu:')
+  );
+}
+
 function resolverPayload(
   payload: string,
   titulo: string,
 ): { texto: string; entrada?: EntradaCheckout } {
-  if (esBotonCheckout(payload)) {
+  if (esBotonCheckout(payload) || esBotonSocial(payload)) {
     return { entrada: { tipo: 'boton', id: payload }, texto: titulo };
   }
   const botonPedir = textoBotonPedir(payload);

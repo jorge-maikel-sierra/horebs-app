@@ -56,6 +56,8 @@ export interface CheckoutWhatsapp {
   entrega?: string;
   /** Paso `adicionales`: el adicional ya elegido (id del producto) mientras se elige la pizza. */
   adicionalProductoId?: string;
+  /** ISO del momento en que se le mostró el resumen con el descuento del 20%; vale unas horas (`cotizacionVigente`). */
+  promocionCotizadaEn?: string;
 }
 
 export interface MensajeConversacion {
