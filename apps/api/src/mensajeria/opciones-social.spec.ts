@@ -1,11 +1,28 @@
 import {
+  BOTONES_ARMAR_PEDIDO,
+  BOTONES_INICIO,
+  BOTONES_TRAS_PRECIO,
   CANTIDADES_SOCIAL,
   leerCantidad,
   listaDePrecios,
   sumarItem,
 } from './opciones-social';
 
+// Meta corta a 20 caracteres el título de un botón; el cliente lo vería cortado.
+const MAX_TITULO_BOTON = 20;
+
 describe('opciones-social', () => {
+  it('ningún botón fijo pasa de 20 caracteres', () => {
+    const botones = [
+      ...BOTONES_INICIO,
+      ...BOTONES_TRAS_PRECIO,
+      ...BOTONES_ARMAR_PEDIDO,
+    ];
+    for (const { titulo } of botones) {
+      expect([...titulo].length).toBeLessThanOrEqual(MAX_TITULO_BOTON);
+    }
+  });
+
   it('ofrece los botones de cantidad del 1 al 4', () => {
     expect(CANTIDADES_SOCIAL).toEqual([1, 2, 3, 4]);
   });

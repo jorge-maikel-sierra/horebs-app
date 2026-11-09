@@ -53,7 +53,7 @@ export const BOTONES_TRAS_PRECIO: BotonRespuesta[] = BOTONES_INICIO.slice(
 
 export const BOTONES_ARMAR_PEDIDO: BotonRespuesta[] = [
   { id: BOTON_SOCIAL.mas, titulo: '➕ Agregar otro' },
-  { id: BOTON_SOCIAL.fin, titulo: '✅ Seguir con el pedido' },
+  { id: BOTON_SOCIAL.fin, titulo: '✅ Seguir pedido' },
   { id: BOTON_SOCIAL.vaciar, titulo: '🗑️ Vaciar' },
 ];
 
