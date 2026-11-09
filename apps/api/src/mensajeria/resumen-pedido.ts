@@ -1,3 +1,7 @@
+import {
+  descuentoSobrePizzas,
+  textoDescuentoAplicado,
+} from '../common/promocion';
 import { esAdicional } from './adicionales';
 
 export interface LineaPedido {
@@ -18,6 +22,8 @@ export interface DatosResumenPedido {
   entrega?: string;
   /** Nota del pedido (ej. qué sabores lleva una pizza mitad y mitad). */
   nota?: string;
+  /** Aplica el descuento del 20% a las pizzas (nunca al domicilio). */
+  promocion?: boolean;
 }
 
 const ETIQUETA_MODALIDAD: Record<string, string> = {
@@ -45,7 +51,16 @@ export function armarResumenPedido(datos: DatosResumenPedido): {
   );
   const esDomicilio = datos.modalidad === 'domicilio';
   const domicilio = esDomicilio ? datos.costoDomicilio : 0;
-  const total = subtotal + domicilio;
+  const descuento = datos.promocion
+    ? descuentoSobrePizzas(
+        datos.lineas.map((l) => ({
+          producto_nombre: l.productoNombre,
+          variante_nombre: l.varianteNombre,
+          subtotal: l.precioUnitario * l.cantidad,
+        })),
+      )
+    : 0;
+  const total = subtotal - descuento + domicilio;
   const adicionales = datos.lineas
     .filter((l) => esAdicional(l.productoNombre))
     .reduce((suma, l) => suma + l.precioUnitario * l.cantidad, 0);
@@ -58,6 +73,7 @@ export function armarResumenPedido(datos: DatosResumenPedido): {
         `- ${l.cantidad}x ${l.productoNombre}${l.varianteNombre ? ` (${l.varianteNombre})` : ''}: ${pesos(l.precioUnitario * l.cantidad)}`,
     ),
     adicionales > 0 ? `Adicionales: ${pesos(adicionales)}` : null,
+    descuento > 0 ? textoDescuentoAplicado(descuento) : null,
     esDomicilio
       ? `Domicilio a ${datos.direccion ?? 'dirección sin especificar'}: ${pesos(domicilio)}`
       : `Modalidad: ${ETIQUETA_MODALIDAD[datos.modalidad] ?? datos.modalidad}`,

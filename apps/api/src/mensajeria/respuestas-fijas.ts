@@ -1,6 +1,10 @@
 import { COSTO_DOMICILIO_DEFAULT } from '../common/costos';
-import { estadoAtencion, minutosBogota } from '../common/horario';
-import { MINUTOS_POR_HORA } from '../common/tiempo';
+import { estadoAtencion } from '../common/horario';
+import {
+  PROMO_PORCENTAJE,
+  diaSemanaBogota,
+  promocionActiva,
+} from '../common/promocion';
 import {
   DIRECCION,
   ESTADO_ATENCION_TEXTO,
@@ -30,15 +34,10 @@ export type IntencionFija =
   | 'pagos'
   | 'mitad';
 
-// Descuento confirmado por el dueño (nov 2026): solo miércoles y jueves, y
-// solo hasta las 8:00 p.m. (hora de Bogotá).
-export const DESCUENTO_PORCENTAJE = 20;
-const HORA_LIMITE_DESCUENTO = 20;
 const LUNES = 1;
 const MARTES = 2;
 const MIERCOLES = 3;
 const JUEVES = 4;
-const DIAS_CON_DESCUENTO = [MIERCOLES, JUEVES];
 const NOMBRES_DIA = [
   'domingo',
   'lunes',
@@ -48,13 +47,6 @@ const NOMBRES_DIA = [
   'viernes',
   'sábado',
 ];
-const DIA_BOGOTA = new Intl.DateTimeFormat('en-US', {
-  timeZone: 'America/Bogota',
-  weekday: 'short',
-});
-const INDICE_DIA = new Map(
-  ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d, i) => [d, i]),
-);
 const MAX_LARGO_SALUDO = 30;
 // Un mensaje largo trae los datos de un pedido (nombre, dirección, teléfono):
 // no es una pregunta y lo atiende el flujo de pedido, no una respuesta fija.
@@ -74,11 +66,6 @@ function normalizar(texto: string): string {
     .trim();
 }
 
-/** 0 = domingo … 6 = sábado, en hora de Bogotá. */
-export function diaSemanaBogota(ahora: Date): number {
-  return INDICE_DIA.get(DIA_BOGOTA.format(ahora)) ?? 0;
-}
-
 function proximoDiaConDescuento(dia: number): string {
   if (dia === MIERCOLES) return 'mañana jueves';
   if (dia === MARTES) return 'mañana miércoles';
@@ -89,21 +76,17 @@ function proximoDiaConDescuento(dia: number): string {
 /** Respuesta al "¿cómo aplico el 20% de descuento?": cambia con el día y la hora. */
 export function textoDescuento(ahora: Date): string {
   const dia = diaSemanaBogota(ahora);
-  const hayDescuentoHoy =
-    DIAS_CON_DESCUENTO.includes(dia) &&
-    minutosBogota(ahora) < HORA_LIMITE_DESCUENTO * MINUTOS_POR_HORA;
-  const regla = `El descuento del ${DESCUENTO_PORCENTAJE}% aplica solo los miércoles y jueves, hasta las 8:00 p.m.`;
-  if (hayDescuentoHoy) {
-    const hoy = NOMBRES_DIA.at(dia) ?? '';
-    return `¡Sí! 🎉 Hoy ${hoy} está activo el descuento del ${DESCUENTO_PORCENTAJE}%, hasta las 8:00 p.m.\n¿Quieres hacer tu pedido ahora?`;
+  const hoy = NOMBRES_DIA.at(dia) ?? '';
+  const alcance = `Es sobre el valor de tus pizzas (el domicilio no tiene descuento) y se aplica solo, al armar tu pedido por aquí.`;
+  if (promocionActiva(ahora)) {
+    return `¡Sí! 🎉 Hoy ${hoy} tienes ${PROMO_PORCENTAJE}% de descuento, hasta las 8:00 p.m.\n${alcance}\n¿Quieres hacer tu pedido ahora?`;
   }
-  const hoyDia = NOMBRES_DIA.at(dia) ?? '';
-  const cuando = proximoDiaConDescuento(dia);
+  const regla = `El descuento del ${PROMO_PORCENTAJE}% aplica solo los miércoles y jueves, hasta las 8:00 p.m.`;
   const sufijo =
     dia === JUEVES || dia === MIERCOLES
       ? 'Hoy ya terminó.'
-      : `Hoy ${hoyDia} no está activo.`;
-  return `${regla}\n${sufijo} Vuelve ${cuando} y aprovéchalo 🍕`;
+      : `Hoy ${hoy} no está activo.`;
+  return `${regla}\n${sufijo} Vuelve ${proximoDiaConDescuento(dia)} y aprovéchalo 🍕`;
 }
 
 function capitalizar(texto: string): string {

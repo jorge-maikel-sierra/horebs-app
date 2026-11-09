@@ -168,4 +168,32 @@ describe('armarResumenPedido', () => {
     });
     expect(texto).not.toMatch(/nequi|daviplata|cuenta|llave|\d{7,}/i);
   });
+
+  it('con promoción descuenta el 20% de las pizzas y no del domicilio ni de las bebidas', () => {
+    const { texto, total } = armarResumenPedido({
+      nombreCompleto: 'Jorge Sierra',
+      lineas: LINEAS,
+      modalidad: 'domicilio',
+      direccion: 'Calle 1',
+      costoDomicilio: 5000,
+      promocion: true,
+    });
+    // 35.000 de pizza - 7.000 + 8.000 de bebidas + 5.000 de domicilio.
+    expect(total).toBe(41000);
+    expect(texto).toContain('Descuento 20% en pizzas: -$7.000');
+    expect(texto).toContain('Domicilio a Calle 1: $5.000');
+    expect(texto).toContain('*Total: $41.000*');
+  });
+
+  it('sin promoción no muestra ninguna línea de descuento', () => {
+    const { texto, total } = armarResumenPedido({
+      nombreCompleto: 'Jorge Sierra',
+      lineas: LINEAS,
+      modalidad: 'retiro',
+      direccion: null,
+      costoDomicilio: 5000,
+    });
+    expect(total).toBe(43000);
+    expect(texto).not.toContain('Descuento');
+  });
 });

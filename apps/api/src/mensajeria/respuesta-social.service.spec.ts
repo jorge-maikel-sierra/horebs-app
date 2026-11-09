@@ -127,7 +127,7 @@ describe('RespuestaSocialService: respuestas fijas', () => {
     );
 
     expect(conOpciones[0].texto).toContain(
-      'Hoy miércoles está activo el descuento del 20%',
+      'Hoy miércoles tienes 20% de descuento',
     );
     expect(conOpciones[0].texto).toContain('hasta las 8:00 p.m.');
   });
@@ -172,7 +172,7 @@ describe('RespuestaSocialService: respuestas fijas', () => {
       CONVERSACION,
     );
 
-    expect(conOpciones[0].texto).toContain('descuento del 20%');
+    expect(conOpciones[0].texto).toContain('20% de descuento');
   });
 
   it('lo que no reconoce lo deja pasar para que responda Gemini', async () => {

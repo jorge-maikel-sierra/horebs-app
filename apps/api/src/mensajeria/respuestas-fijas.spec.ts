@@ -1,6 +1,6 @@
+import { diaSemanaBogota } from '../common/promocion';
 import {
   detectarIntencion,
-  diaSemanaBogota,
   textoDescuento,
   textoDomicilio,
   textoHorarioFijo,
@@ -17,12 +17,16 @@ const bogota = (dia: number, hora: string): Date =>
 describe('textoDescuento (20% solo miércoles y jueves hasta las 8:00 p.m.)', () => {
   it('el miércoles antes de las 8:00 p.m. está activo', () => {
     const texto = textoDescuento(bogota(4, '15:00'));
-    expect(texto).toContain('Hoy miércoles está activo el descuento del 20%');
+    expect(texto).toContain('Hoy miércoles tienes 20% de descuento');
     expect(texto).toContain('hasta las 8:00 p.m.');
+    expect(texto).toContain('sobre el valor de tus pizzas');
+    expect(texto).toContain('el domicilio no tiene descuento');
   });
 
   it('a las 7:59 p.m. todavía está activo y a las 8:00 p.m. ya no', () => {
-    expect(textoDescuento(bogota(4, '19:59'))).toContain('está activo');
+    expect(textoDescuento(bogota(4, '19:59'))).toContain(
+      'tienes 20% de descuento',
+    );
     const cerrado = textoDescuento(bogota(4, '20:00'));
     expect(cerrado).toContain('Hoy ya terminó');
     expect(cerrado).toContain('mañana jueves');
@@ -30,7 +34,7 @@ describe('textoDescuento (20% solo miércoles y jueves hasta las 8:00 p.m.)', ()
 
   it('el jueves antes de las 8:00 p.m. está activo; después, el próximo es el miércoles', () => {
     expect(textoDescuento(bogota(5, '10:00'))).toContain(
-      'Hoy jueves está activo',
+      'Hoy jueves tienes 20% de descuento',
     );
     const tarde = textoDescuento(bogota(5, '20:30'));
     expect(tarde).toContain('Hoy ya terminó');

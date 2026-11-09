@@ -361,3 +361,82 @@ describe('CheckoutPreguntasService · adicionales', () => {
     expect(envios.guardarCarrito).not.toHaveBeenCalled();
   });
 });
+
+describe('CheckoutPreguntasService · pago con descuento', () => {
+  const PIZZA = {
+    varianteId: 'hw-M',
+    productoNombre: 'Pizza Hawaiana',
+    varianteNombre: 'Mediana',
+    conTamanos: true,
+    cantidad: 1,
+    precio: 35000,
+  };
+  const CHECKOUT_PAGO: CheckoutWhatsapp = {
+    paso: 'hora',
+    modalidad: 'domicilio',
+    direccion: 'Calle 1',
+    nombre: 'Ana',
+    apellido: 'Pérez',
+  };
+
+  function crear() {
+    const envios = {
+      guardar: jest.fn().mockResolvedValue(undefined),
+      texto: jest.fn().mockResolvedValue(undefined),
+      botones: jest.fn().mockResolvedValue(undefined),
+    };
+    const servicio = new CheckoutPreguntasService(
+      {
+        obtenerCarrito: jest.fn().mockResolvedValue([]),
+      } as unknown as ConversacionesService,
+      {
+        resolverCarrito: jest
+          .fn()
+          .mockResolvedValue({ disponibles: [PIZZA], noDisponibles: 0 }),
+      } as unknown as CatalogService,
+      {} as PedidosConsultasService,
+      envios as unknown as CheckoutEnviosService,
+    );
+    return { servicio, envios };
+  }
+
+  afterEach(() => jest.useRealTimers());
+
+  // Noviembre de 2026: miércoles 4 y viernes 6, hora de Bogotá (UTC-5).
+  it('en Messenger un miércoles antes de las 8 p.m. el resumen lleva el 20% de la pizza, no del domicilio', async () => {
+    jest.useFakeTimers({ now: new Date('2026-11-04T15:00:00-05:00') });
+    const { servicio, envios } = crear();
+    const checkout = { ...CHECKOUT_PAGO };
+
+    const texto = await servicio.pago({ ...CTX, canal: 'messenger' }, checkout);
+
+    expect(texto).toContain('Descuento 20% en pizzas: -$7.000');
+    expect(texto).toContain('Domicilio a Calle 1: $5.000');
+    expect(texto).toContain('*Total: $33.000*');
+    expect(checkout.promocionCotizadaEn).toBe('2026-11-04T20:00:00.000Z');
+    expect(envios.guardar).toHaveBeenCalled();
+  });
+
+  it('un viernes no hay descuento y no queda cotización guardada', async () => {
+    jest.useFakeTimers({ now: new Date('2026-11-06T15:00:00-05:00') });
+    const { servicio } = crear();
+    const checkout = { ...CHECKOUT_PAGO, promocionCotizadaEn: 'vieja' };
+
+    const texto = await servicio.pago({ ...CTX, canal: 'instagram' }, checkout);
+
+    expect(texto).not.toContain('Descuento');
+    expect(texto).toContain('*Total: $40.000*');
+    expect(checkout.promocionCotizadaEn).toBeUndefined();
+  });
+
+  it('en WhatsApp no se aplica aunque sea miércoles', async () => {
+    jest.useFakeTimers({ now: new Date('2026-11-04T15:00:00-05:00') });
+    const { servicio } = crear();
+    const checkout = { ...CHECKOUT_PAGO };
+
+    const texto = await servicio.pago(CTX, checkout);
+
+    expect(texto).not.toContain('Descuento');
+    expect(checkout.promocionCotizadaEn).toBeUndefined();
+  });
+});

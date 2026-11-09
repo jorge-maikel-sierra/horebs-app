@@ -64,9 +64,26 @@ describe('datosPedidoWhatsapp', () => {
       metodo_pago: 'efectivo',
       notas: 'sin cebolla',
       programado_para: null,
+      aplicar_promocion: false,
       items: [{ variante_id: 'v-1', cantidad: 2 }],
       idempotency_key: 'wa:wamid.9',
     });
+  });
+
+  it('pide el descuento solo si el resumen con descuento se mostró hace poco', () => {
+    jest.useFakeTimers({ now: new Date('2026-11-04T20:00:00Z') });
+    try {
+      const hace = (min: number) =>
+        new Date(Date.now() - min * 60_000).toISOString();
+      const conPromo = (promocionCotizadaEn?: string) =>
+        armar({ ...CHECKOUT, promocionCotizadaEn }).aplicar_promocion;
+
+      expect(conPromo(hace(30))).toBe(true);
+      expect(conPromo(hace(121))).toBe(false);
+      expect(conPromo(undefined)).toBe(false);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('retirar no lleva dirección aunque haya una guardada', () => {

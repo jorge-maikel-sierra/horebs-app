@@ -45,6 +45,8 @@ export interface CrearPedidoWhatsappInput extends Omit<
   modalidad: 'domicilio' | 'retiro' | 'local';
   /** Reserva: hora de entrega (ISO). null/ausente = lo antes posible. */
   programado_para?: string | null;
+  /** Descuento del 20% sobre las pizzas (miércoles y jueves hasta las 8 p.m.): lo pide el checkout del bot de Messenger e Instagram. */
+  aplicar_promocion?: boolean;
 }
 
 export type CanalPedido = 'web' | 'whatsapp' | 'messenger' | 'instagram';
@@ -54,6 +56,7 @@ export type DatosPedido = Omit<CrearPedidoInput, 'cliente' | 'modalidad'> & {
   cliente: CrearPedidoWhatsappInput['cliente'] & { correo?: string };
   modalidad: CrearPedidoWhatsappInput['modalidad'];
   programado_para?: string | null;
+  aplicar_promocion?: boolean;
 };
 
 export interface ClienteBotDto {

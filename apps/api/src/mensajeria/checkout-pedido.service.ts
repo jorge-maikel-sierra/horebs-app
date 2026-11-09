@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { type franjaVigente } from '../common/horario';
+import { cotizacionVigente } from '../common/promocion';
 import { PedidosService } from '../pedidos/pedidos.service';
 import { AvisoEquipoService } from './aviso-equipo.service';
 import { ConfirmacionPedidoService } from './confirmacion-pedido.service';
@@ -54,6 +55,10 @@ export function datosPedidoWhatsapp(entrada: {
     metodo_pago: metodo,
     notas: checkout.nota,
     programado_para: franja.programadoPara,
+    aplicar_promocion: cotizacionVigente(
+      checkout.promocionCotizadaEn,
+      new Date(),
+    ),
     items: carrito.map((i) => ({
       variante_id: i.varianteId,
       cantidad: i.cantidad,

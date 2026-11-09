@@ -5,6 +5,7 @@ import { errorDeBase } from '../common/error-de-base';
 import { MailService } from '../mail/mail.service';
 import { InventarioService } from '../inventario/inventario.service';
 import { PuntosService, type CanjeCalculado } from '../clientes/puntos.service';
+import { promocionDePedido } from '../common/promocion';
 import { calcularItems, type ItemCalculado } from './calcular-items';
 import { normalizarTelefonoCO } from './normalizar-telefono';
 import {
@@ -97,7 +98,13 @@ export class PedidosService {
       input.items,
     );
     const costoDomicilio = costoDomicilioDeCheckout(input.modalidad);
-    const subtotal = subtotalItems + costoDomicilio;
+    // El descuento es solo sobre las pizzas: el domicilio se suma después.
+    const promo = promocionDePedido(
+      input.aplicar_promocion,
+      itemsCalculados,
+      input.notas,
+    );
+    const subtotal = subtotalItems - promo.descuento + costoDomicilio;
 
     const cliente = await this.guardarCliente(client, input.cliente);
     const canje = input.usar_puntos
@@ -107,13 +114,10 @@ export class PedidosService {
 
     const pedido = await this.insertarPedido(
       client,
-      payloadPedido(input, {
-        clienteId: cliente.id,
-        canal,
-        costoDomicilio,
-        total,
-        canje,
-      }),
+      payloadPedido(
+        { ...input, notas: promo.notas },
+        { clienteId: cliente.id, canal, costoDomicilio, total, canje },
+      ),
       input.idempotency_key,
     );
     // El insert chocó contra el unique de idempotency_key: ya existe un

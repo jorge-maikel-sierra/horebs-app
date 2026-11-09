@@ -90,6 +90,8 @@ pregunta; no se supone un valor razonable.
   `apps/api/src/common/costos.ts`) — fijo en el checkout web, y valor
   sugerido cuando el POS no especifica un costo manual. El domicilio
   **nunca** es gratis salvo que se decida una promoción puntual explícita.
+  No hay tarifa por zona: por ahora todos los pedidos pagan $5.000 (decisión
+  del dueño, nov 2026).
 - Tamaños de pizza: Personal = 6 porciones, 24 cm; Mediana = 8 porciones,
   30 cm; Grande = 12 porciones, 40 cm.
 - Pizza mitad y mitad: en cualquier tamaño el cliente puede pedir una pizza
@@ -101,9 +103,13 @@ pregunta; no se supone un valor razonable.
   de Bogotá); el resto de la semana no hay (confirmado por el dueño, nov
   2026). Es lo que más preguntan los clientes de Messenger e Instagram: el
   bot lo contesta con texto fijo según el día y la hora
-  (`mensajeria/respuestas-fijas.ts`), sin pasar por el modelo. Cómo se
-  aplica al total del pedido no está definido todavía: el bot solo informa
-  la regla.
+  (`mensajeria/respuestas-fijas.ts`), sin pasar por el modelo. Se aplica al
+  total solo en los pedidos de Messenger e Instagram y solo sobre el valor de
+  las pizzas (personal, mediana o grande): nunca sobre el domicilio, los
+  adicionales ni las bebidas (decisión del dueño, nov 2026;
+  `common/promocion.ts`). El resumen del bot muestra la línea del descuento y
+  el pedido la deja en `notas`; el precio mostrado vale 2 horas. En
+  WhatsApp, la web y el POS no se aplica automáticamente.
 - Descuento de la oferta de seguimiento por conversación abandonada: 10%
   (`DESCUENTO_OFERTA_PORCENTAJE` en `seguimiento.service.ts`) — se ofrece si
   el cliente no responde tras el recordatorio de las 3 horas.
