@@ -20,9 +20,12 @@ interface MetaAttachment {
 
 export interface MessengerEvento {
   sender?: { id?: string };
+  recipient?: { id?: string };
   message?: {
     text?: string;
     is_echo?: boolean;
+    /** En los ecos: la app que mandó el mensaje (la bandeja de Meta Business Suite tiene la suya). */
+    app_id?: number | string;
     is_self?: boolean;
     is_deleted?: boolean;
     mid?: string;
@@ -154,6 +157,14 @@ function mediaDeAttachment(
   if (att.type === 'audio') {
     return { id: url, tipo: 'audio', texto: '🎤 Nota de voz' };
   }
+  // Un PDF puede ser el comprobante de una transferencia; un video no se lee,
+  // pero se le contesta al cliente en vez de quedarse callado.
+  if (att.type === 'file') {
+    return { id: url, tipo: 'documento', texto: '📎 Archivo' };
+  }
+  if (att.type === 'video') {
+    return { id: url, tipo: 'video', texto: '🎬 Video' };
+  }
   return null;
 }
 
@@ -282,6 +293,54 @@ export function parsearMessengerOInstagram(
 ): EventoEntrante[] {
   return eventosDeCuenta(payload, canal, cuentaEsperadaId).flatMap(
     (evento) => eventoMessenger(evento, canal) ?? [],
+  );
+}
+
+/** Mensaje que una persona del equipo mandó desde la bandeja de Meta, no desde el bot. */
+export interface EcoHumano {
+  canal: 'messenger' | 'instagram';
+  identificadorExterno: string;
+  texto: string;
+  mensajeId: string | null;
+}
+
+function ecoHumano(
+  evento: MessengerEvento,
+  canal: 'messenger' | 'instagram',
+  appIdBot: string,
+): EcoHumano | null {
+  const msg = evento.message;
+  const cliente = evento.recipient?.id;
+  if (!msg?.is_echo || !cliente || msg.is_deleted) return null;
+  // Sin app_id no se sabe quién lo mandó: no se toca nada (antes de pausar
+  // al bot por error, mejor no pausarlo). El bot y el panel usan nuestra app.
+  if (msg.app_id === undefined || String(msg.app_id) === appIdBot) return null;
+  const texto =
+    msg.text?.trim() ||
+    (msg.attachments?.length ? '📎 Archivo enviado por el equipo' : '');
+  return texto
+    ? {
+        canal,
+        identificadorExterno: cliente,
+        texto,
+        mensajeId: msg.mid ?? null,
+      }
+    : null;
+}
+
+/**
+ * Ecos de mensajes que el equipo mandó desde Meta Business Suite (o la app
+ * de la página): sin esto el bot seguía contestando encima de la persona.
+ */
+export function parsearEcosHumanos(
+  payload: MessengerWebhookPayload,
+  canal: 'messenger' | 'instagram',
+  cuentaEsperadaId: string | undefined,
+  appIdBot: string | undefined,
+): EcoHumano[] {
+  if (!appIdBot) return [];
+  return eventosDeCuenta(payload, canal, cuentaEsperadaId).flatMap(
+    (evento) => ecoHumano(evento, canal, appIdBot) ?? [],
   );
 }
 

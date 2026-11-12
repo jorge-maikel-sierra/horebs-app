@@ -6,15 +6,19 @@ import {
 } from './checkout-whatsapp';
 import type { CanalMensajeria } from './conversaciones.service';
 import {
+  parsearEcosHumanos,
   parsearMessengerOInstagram,
   parsearReferidosSociales,
+  type EcoHumano,
   type MessengerWebhookPayload,
   type ReferidoSocial,
 } from './parseo-webhook-social';
 
 export {
+  parsearEcosHumanos,
   parsearMessengerOInstagram,
   parsearReferidosSociales,
+  type EcoHumano,
   type MessengerWebhookPayload,
   type ReferidoSocial,
 };
@@ -131,7 +135,7 @@ export interface WhatsappMensaje {
   audio?: { id: string; voice?: boolean };
 }
 
-export type TipoMedia = 'imagen' | 'documento' | 'audio';
+export type TipoMedia = 'imagen' | 'documento' | 'audio' | 'video';
 
 export function mediaDe(
   mensaje: WhatsappMensaje,

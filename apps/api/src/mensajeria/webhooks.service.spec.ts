@@ -1,3 +1,4 @@
+import type { ConfigService } from '@nestjs/config';
 import { createHmac } from 'crypto';
 import type { CatalogService } from '../catalog/catalog.service';
 import type { ConversacionesService } from './conversaciones.service';
@@ -51,6 +52,16 @@ function crearServicio(opciones: Opciones = {}) {
       ctwa.push(clid);
       return Promise.resolve();
     },
+    obtenerVentana: () =>
+      Promise.resolve({
+        conversacionId: 'cv-1',
+        estado: opciones.estado ?? 'bot',
+        ultimaInteraccion: new Date(),
+      }),
+    actualizarEstadoManual: (_id: string, estado: string) => {
+      llamadas.push(`estado:${estado}`);
+      return Promise.resolve();
+    },
     registrarMensaje: (_id: string, _dir: string, texto: string) => {
       llamadas.push('registrarMensaje');
       registrados.push(texto);
@@ -90,6 +101,7 @@ function crearServicio(opciones: Opciones = {}) {
     new RegistroEntranteService(
       conversaciones as unknown as ConversacionesService,
       origen as unknown as OrigenConversacionService,
+      { get: () => 'app-bot' } as unknown as ConfigService,
     ),
     catalog as unknown as CatalogService,
     medios as unknown as MediaEntranteService,
@@ -347,5 +359,59 @@ describe('WebhooksService.manejarEvento', () => {
       },
     ]);
     expect(llamadas).not.toContain('responder');
+  });
+
+  describe('respuestas del equipo desde Meta Business Suite (ecos)', () => {
+    const eco = (appId: string | undefined, texto = 'Ya te lo enviamos') => ({
+      object: 'page',
+      entry: [
+        {
+          messaging: [
+            {
+              sender: { id: 'page-1' },
+              recipient: { id: 'psid-9' },
+              message: {
+                mid: 'm-eco',
+                is_echo: true,
+                app_id: appId,
+                text: texto,
+              },
+            },
+          ],
+        },
+      ],
+    });
+    const esperar = () => new Promise((r) => setImmediate(r));
+
+    it('un eco de otra app pausa al bot y guarda el mensaje del equipo', async () => {
+      const { servicio, llamadas, registrados } = crearServicio();
+
+      servicio.procesarMessenger(eco('263902037430900'));
+      await esperar();
+      await esperar();
+
+      expect(llamadas).toContain('estado:derivado');
+      expect(registrados).toEqual(['Ya te lo enviamos']);
+      expect(llamadas).not.toContain('responder');
+    });
+
+    it('el eco de nuestra propia app (bot o panel) se ignora', async () => {
+      const { servicio, llamadas, registrados } = crearServicio();
+
+      servicio.procesarMessenger(eco('app-bot'));
+      await esperar();
+
+      expect(llamadas).not.toContain('estado:derivado');
+      expect(registrados).toEqual([]);
+    });
+
+    it('un eco sin app_id no pausa al bot (no se sabe quién lo mandó)', async () => {
+      const { servicio, llamadas } = crearServicio();
+
+      servicio.procesarMessenger(eco(undefined));
+      await esperar();
+
+      expect(llamadas).not.toContain('estado:derivado');
+    });
   });
 });

@@ -1,9 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { ConversacionesService } from './conversaciones.service';
 import type { ConversacionCompleta } from './conversaciones.tipos';
 import { origenDeProcedencia } from './origen-conversacion';
 import { OrigenConversacionService } from './origen-conversacion.service';
-import type { EventoEntrante, ReferidoSocial } from './parseo-webhook';
+import type {
+  EcoHumano,
+  EventoEntrante,
+  ReferidoSocial,
+} from './parseo-webhook';
 
 /**
  * Lo que se guarda de cada mensaje entrante antes de responder: el dedupe por
@@ -14,10 +19,16 @@ import type { EventoEntrante, ReferidoSocial } from './parseo-webhook';
 export class RegistroEntranteService {
   private readonly logger = new Logger(RegistroEntranteService.name);
 
+  /** Id de nuestra app de Meta: sus ecos son del bot o del panel, no de una persona. */
+  readonly appIdBot: string | undefined;
+
   constructor(
     private readonly conversaciones: ConversacionesService,
     private readonly origenes: OrigenConversacionService,
-  ) {}
+    config: ConfigService,
+  ) {
+    this.appIdBot = config.get<string>('META_APP_ID');
+  }
 
   async esDuplicado(evento: EventoEntrante): Promise<boolean> {
     if (!evento.mensajeId) return false;
@@ -77,6 +88,40 @@ export class RegistroEntranteService {
       referido.canal,
       referido.identificadorExterno,
       origen,
+    );
+  }
+
+  /**
+   * Alguien del equipo contestó desde Meta Business Suite: la conversación
+   * pasa a manos del equipo (el bot se calla) y el mensaje queda en el
+   * historial del panel. Se devuelve al bot desde el panel.
+   */
+  async registrarEcoHumano(eco: EcoHumano): Promise<void> {
+    if (eco.mensajeId) {
+      const repetido = await this.conversaciones.yaProcesado(
+        eco.canal,
+        eco.mensajeId,
+      );
+      if (repetido) return;
+    }
+    const conversacion = await this.conversaciones.obtenerVentana(
+      eco.canal,
+      eco.identificadorExterno,
+    );
+    if (!conversacion) return;
+    if (conversacion.estado !== 'derivado') {
+      await this.conversaciones.actualizarEstadoManual(
+        conversacion.conversacionId,
+        'derivado',
+      );
+      this.logger.log(
+        `El equipo respondió desde Meta — canal=${eco.canal} id=${eco.identificadorExterno}: el bot se pausa.`,
+      );
+    }
+    await this.conversaciones.registrarMensaje(
+      conversacion.conversacionId,
+      'saliente_humano',
+      eco.texto,
     );
   }
 

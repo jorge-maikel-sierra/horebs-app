@@ -4,11 +4,13 @@ import { CatalogService } from '../catalog/catalog.service';
 import { ColaPorClave } from './cola-por-clave';
 import { MediaEntranteService } from './media-entrante.service';
 import {
+  parsearEcosHumanos,
   parsearMessengerOInstagram,
   parsearReferidosSociales,
   parsearWhatsapp,
   textoCarritoCatalogo,
   type EventoEntrante,
+  type EcoHumano,
   type MessengerWebhookPayload,
   type ReferidoSocial,
   type WhatsappWebhookPayload,
@@ -72,6 +74,14 @@ export class WebhooksService {
     this.procesarReferidos(
       parsearReferidosSociales(payload, 'messenger', expectedPageId),
     );
+    this.procesarEcos(
+      parsearEcosHumanos(
+        payload,
+        'messenger',
+        expectedPageId,
+        this.registro.appIdBot,
+      ),
+    );
   }
 
   procesarInstagram(
@@ -84,6 +94,27 @@ export class WebhooksService {
     this.procesarReferidos(
       parsearReferidosSociales(payload, 'instagram', expectedInstagramId),
     );
+    this.procesarEcos(
+      parsearEcosHumanos(
+        payload,
+        'instagram',
+        expectedInstagramId,
+        this.registro.appIdBot,
+      ),
+    );
+  }
+
+  private procesarEcos(ecos: EcoHumano[]): void {
+    for (const eco of ecos) {
+      const clave = `${eco.canal}:${eco.identificadorExterno}`;
+      this.cola
+        .ejecutar(clave, () => this.registro.registrarEcoHumano(eco))
+        .catch((err) => {
+          this.logger.error(
+            `Error registrando la respuesta del equipo en ${eco.canal} (${eco.identificadorExterno}): ${(err as Error).message}`,
+          );
+        });
+    }
   }
 
   /** Van por la misma cola que los mensajes para no cruzarse con ellos. */
