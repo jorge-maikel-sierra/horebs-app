@@ -1,3 +1,5 @@
+import type { AtribucionWeb, AtribucionWebInput } from './atribucion-web';
+
 export interface CrearPedidoItemInput {
   variante_id: string;
   cantidad: number;
@@ -26,6 +28,8 @@ export interface CrearPedidoInput {
    * crear un pedido duplicado con el stock descontado dos veces.
    */
   idempotency_key?: string;
+  /** Cookies de Meta, UTM y URL del checkout web, para la API de conversiones. */
+  atribucion?: AtribucionWebInput;
 }
 
 /**
@@ -57,6 +61,7 @@ export type DatosPedido = Omit<CrearPedidoInput, 'cliente' | 'modalidad'> & {
   modalidad: CrearPedidoWhatsappInput['modalidad'];
   programado_para?: string | null;
   aplicar_promocion?: boolean;
+  atribucion_web?: AtribucionWeb | null;
 };
 
 export interface ClienteBotDto {

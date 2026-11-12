@@ -1,4 +1,6 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Req } from '@nestjs/common';
+import type { Request } from 'express';
+import { contextoHttp } from './atribucion-web';
 import { PedidosService } from './pedidos.service';
 import type { CrearPedidoInput, PedidoDto } from './pedidos.tipos';
 import { UuidPipe } from '../common/pipes/uuid.pipe';
@@ -12,8 +14,11 @@ export class PedidosController {
   // validan en `validar-pedido.ts` y `calcular-items.ts`.
   @Post()
   @Ubicacion('/pedidos/:id')
-  crear(@Body() body: CrearPedidoInput): Promise<PedidoDto> {
-    return this.pedidos.crear(body);
+  crear(
+    @Body() body: CrearPedidoInput,
+    @Req() req: Request,
+  ): Promise<PedidoDto> {
+    return this.pedidos.crear(body, contextoHttp(req));
   }
 
   @Get(':id')

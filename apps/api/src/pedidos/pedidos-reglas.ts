@@ -68,6 +68,7 @@ export function payloadPedido(
     total: montos.total,
     notas: input.notas ?? null,
     idempotency_key: input.idempotency_key ?? null,
+    ...(input.atribucion_web ? { atribucion_web: input.atribucion_web } : {}),
     puntos_canjeados: montos.canje.puntos,
     descuento_puntos: montos.canje.descuento,
   };

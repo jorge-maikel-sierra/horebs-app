@@ -1,3 +1,4 @@
+import { normalizarAtribucion, type ContextoHttp } from './atribucion-web';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { SupabaseService } from '../supabase/supabase.service';
@@ -47,9 +48,18 @@ export class PedidosService {
     private readonly puntos: PuntosService,
   ) {}
 
-  async crear(input: CrearPedidoInput): Promise<PedidoDto> {
+  async crear(
+    input: CrearPedidoInput,
+    http?: ContextoHttp,
+  ): Promise<PedidoDto> {
     validarDatosPedido(input, 'web');
-    return this.registrar(input, 'web');
+    return this.registrar(
+      {
+        ...input,
+        atribucion_web: normalizarAtribucion(input.atribucion, http),
+      },
+      'web',
+    );
   }
 
   /**
