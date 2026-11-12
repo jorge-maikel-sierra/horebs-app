@@ -93,7 +93,7 @@ describe('GeminiService.responder', () => {
     const { servicio } = crearServicio({ configurado: false });
 
     await expect(servicio.responder(CTX, 'hola')).resolves.toContain(
-      'escribí *humano*',
+      'escribe *humano*',
     );
   });
 
@@ -228,7 +228,7 @@ describe('GeminiService.responder', () => {
     const { servicio } = crearServicio({ configurado: false });
 
     await expect(servicio.responder(ctxInstagram, 'hola')).resolves.toContain(
-      'escribí "humano"',
+      'escribe "humano"',
     );
   });
 

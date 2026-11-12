@@ -256,7 +256,7 @@ describe('CheckoutWhatsappService', () => {
       expect(checkout.paso).toBe('modalidad');
       expect(envios.botones).toHaveBeenCalledWith(
         CTX,
-        '¿Cómo lo querés?',
+        '¿Cómo lo quieres?',
         expect.any(Array),
       );
     });
@@ -372,7 +372,7 @@ describe('CheckoutWhatsappService', () => {
       expect(envios.texto).toHaveBeenCalledWith(
         ctxSocial,
         expect.stringContaining(
-          'Porfa escribí un número de teléfono de 10 dígitos',
+          'Porfa escribe un número de teléfono de 10 dígitos',
         ),
       );
     });

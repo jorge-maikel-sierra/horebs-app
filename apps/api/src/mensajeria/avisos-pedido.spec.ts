@@ -42,13 +42,13 @@ describe('textoRecompra', () => {
 
   it('con saldo canjeable muestra cuánta plata representa', () => {
     expect(textoRecompra({ ganados: 70, saldo: 410, ...config })).toContain(
-      '⭐ Con esa compra sumaste 70 puntos y ya tenés 410: son *$20.500* para tu próxima compra.',
+      '⭐ Con esa compra sumaste 70 puntos y ya tienes 410: son *$20.500* para tu próxima compra.',
     );
   });
 
   it('bajo el mínimo dice desde cuánto se canjean', () => {
     expect(textoRecompra({ ganados: 40, saldo: 40, ...config })).toContain(
-      'ya vas en 40. Desde 100 los podés cambiar por descuento.',
+      'ya vas en 40. Desde 100 los puedes cambiar por descuento.',
     );
   });
 

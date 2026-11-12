@@ -28,8 +28,8 @@ export function textoRecompra(puntos: PuntosRecompra | null): string {
   const lineaPuntos =
     puntos && (puntos.ganados > 0 || puntos.saldo > 0)
       ? puntos.saldo >= puntos.minimoCanje
-        ? `⭐ Con esa compra sumaste ${puntos.ganados} puntos y ya tenés ${puntos.saldo}: son *${pesos(puntos.saldo * puntos.valorPuntoPesos)}* para tu próxima compra.`
-        : `⭐ Con esa compra sumaste ${puntos.ganados} puntos y ya vas en ${puntos.saldo}. Desde ${puntos.minimoCanje} los podés cambiar por descuento.`
+        ? `⭐ Con esa compra sumaste ${puntos.ganados} puntos y ya tienes ${puntos.saldo}: son *${pesos(puntos.saldo * puntos.valorPuntoPesos)}* para tu próxima compra.`
+        : `⭐ Con esa compra sumaste ${puntos.ganados} puntos y ya vas en ${puntos.saldo}. Desde ${puntos.minimoCanje} los puedes cambiar por descuento.`
       : null;
   return [
     '¿Qué tal estuvo tu pedido? 🍕',
@@ -67,7 +67,7 @@ export function textoAvisoEstado(p: PedidoParaAviso): string | null {
         ? `¡Que lo disfrutes! 🍕 Gracias por pedirnos.`
         : `🍕 Tu pedido *${numero}* está listo. ¡Que lo disfrutes!`;
     case 'cancelado':
-      return `Tu pedido *${numero}* fue cancelado. Si es un error, escribinos por acá.`;
+      return `Tu pedido *${numero}* fue cancelado. Si es un error, escríbenos por acá.`;
     default:
       return null;
   }

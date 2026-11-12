@@ -12,7 +12,7 @@ import { normalizarTelefonoCO } from '../pedidos/normalizar-telefono';
 
 // Horario del bot: 11:00 a.m. a 11:00 p.m. (ver common/horario.ts).
 export const MENSAJE_CERRADO =
-  'Estamos cerrados 😴 Tomamos pedidos de 11:00 a.m. a 11:00 p.m. (el local abre a las 4:00 p.m.). Escribinos desde las 11 y te lo dejamos reservado 🍕';
+  'Estamos cerrados 😴 Tomamos pedidos de 11:00 a.m. a 11:00 p.m. (el local abre a las 4:00 p.m.). Escríbenos desde las 11 y te lo dejamos reservado 🍕';
 
 export interface ContextoCheckout {
   /** wa_id del cliente — en WhatsApp es también su teléfono. */

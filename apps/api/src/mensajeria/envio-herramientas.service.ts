@@ -90,7 +90,7 @@ export class EnvioHerramientasService {
     );
     return enviado === 'catalogo'
       ? 'Menú enviado como catálogo de WhatsApp.'
-      : `Mirá nuestro catálogo completo con fotos y precios acá: ${URL_CATALOGO}`;
+      : `Mira nuestro catálogo completo con fotos y precios acá: ${URL_CATALOGO}`;
   }
 
   /**
@@ -202,7 +202,7 @@ export class EnvioHerramientasService {
       {
         encabezado:
           secciones.length === 1 ? secciones[0].titulo : NOMBRE_NEGOCIO,
-        cuerpo: 'Tocá un producto para ver el detalle y agregalo al carrito 🛒',
+        cuerpo: 'Toca un producto para ver el detalle y agrégalo al carrito 🛒',
         secciones: secciones.map((s) => ({
           titulo: s.titulo,
           retailerIds: s.productos.flatMap((p) => p.variantes.map((v) => v.id)),

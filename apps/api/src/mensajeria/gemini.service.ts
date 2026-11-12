@@ -68,8 +68,8 @@ export class GeminiService {
     const { canal, identificadorExterno } = ctx;
     if (!this.cliente.configurado) {
       return canal === 'whatsapp'
-        ? 'En este momento no puedo responder automáticamente — escribí *humano* para que te atienda alguien del equipo.'
-        : 'En este momento no puedo responder automáticamente — escribí "humano" para que te atienda alguien del equipo.';
+        ? 'En este momento no puedo responder automáticamente — escribe *humano* para que te atienda alguien del equipo.'
+        : 'En este momento no puedo responder automáticamente — escribe "humano" para que te atienda alguien del equipo.';
     }
 
     try {
@@ -86,8 +86,8 @@ export class GeminiService {
         );
         const avisoLimite =
           canal === 'whatsapp'
-            ? 'Estás mandando muchos mensajes seguidos — dame un momento o escribí *humano* para que te atienda alguien del equipo.'
-            : 'Estás mandando muchos mensajes seguidos — dame un momento o escribí "humano" para que te atienda alguien del equipo.';
+            ? 'Estás mandando muchos mensajes seguidos — dame un momento o escribe *humano* para que te atienda alguien del equipo.'
+            : 'Estás mandando muchos mensajes seguidos — dame un momento o escribe "humano" para que te atienda alguien del equipo.';
         return this.truncarParaWhatsapp(avisoLimite);
       }
 
@@ -100,8 +100,8 @@ export class GeminiService {
         `Error respondiendo a canal=${canal} id=${identificadorExterno}: ${(err as Error).message}`,
       );
       return canal === 'whatsapp'
-        ? 'Perdón, tuve un problema para procesar tu mensaje. Escribí *humano* para hablar con alguien del equipo.'
-        : 'Perdón, tuve un problema para procesar tu mensaje. Escribí "humano" para hablar con alguien del equipo.';
+        ? 'Perdón, tuve un problema para procesar tu mensaje. Escribe *humano* para hablar con alguien del equipo.'
+        : 'Perdón, tuve un problema para procesar tu mensaje. Escribe "humano" para hablar con alguien del equipo.';
     }
   }
 
@@ -236,8 +236,8 @@ export class GeminiService {
     const textoBruto =
       texto ??
       (ctx.canal === 'whatsapp'
-        ? 'Perdón, no pude procesar tu mensaje. Escribí *humano* para hablar con alguien del equipo.'
-        : 'Perdón, no pude procesar tu mensaje. Escribí "humano" para hablar con alguien del equipo.');
+        ? 'Perdón, no pude procesar tu mensaje. Escribe *humano* para hablar con alguien del equipo.'
+        : 'Perdón, no pude procesar tu mensaje. Escribe "humano" para hablar con alguien del equipo.');
 
     return ctx.canal === 'whatsapp'
       ? formatearParaWhatsapp(textoBruto)

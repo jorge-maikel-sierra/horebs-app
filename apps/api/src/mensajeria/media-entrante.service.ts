@@ -11,9 +11,9 @@ import type { EventoEntrante } from './parseo-webhook';
 
 // Respuesta fija cuando llega algo que el bot no sabe leer.
 export const MENSAJE_SOLO_TEXTO =
-  'Por ahora solo puedo leer mensajes de texto 🙏 ¿Me lo escribís?';
+  'Por ahora solo puedo leer mensajes de texto 🙏 ¿Me lo escribes?';
 export const MENSAJE_AUDIO_NO_ENTENDIDO =
-  'No pude escuchar bien tu audio 🙏 ¿Me lo escribís?';
+  'No pude escuchar bien tu audio 🙏 ¿Me lo escribes?';
 
 /** Lo que llega como archivo: notas de voz, fotos y documentos de WhatsApp. */
 @Injectable()

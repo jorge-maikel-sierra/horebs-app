@@ -34,7 +34,7 @@ import { pesos } from './resumen-pedido';
 
 const URL_CATALOGO = 'https://pizzeriahorebs.shop/catalogo';
 export const TEXTO_PIDE_ESCRITA =
-  'Para que el domiciliario llegue exacto, escribime la dirección con barrio y una referencia. La ubicación del teléfono suele quedar a unas cuadras 📍';
+  'Para que el domiciliario llegue exacto, escríbeme la dirección con barrio y una referencia. La ubicación del teléfono suele quedar a unas cuadras 📍';
 
 /**
  * Checkout del bot por botones: modalidad → dirección → nombre → hora de
@@ -95,7 +95,7 @@ export class CheckoutWhatsappService {
     if (await this.preguntas.ofrecerAdicionales(ctx, checkout, anotado)) return;
     await this.envios.botones(
       ctx,
-      `${anotado}\n\n¿Cómo lo querés?`,
+      `${anotado}\n\n¿Cómo lo quieres?`,
       BOTONES_MODALIDAD,
     );
   }
@@ -113,7 +113,7 @@ export class CheckoutWhatsappService {
       if (entrada.tipo === 'boton' && esBotonCheckout(entrada.id)) {
         await this.envios.texto(
           ctx,
-          'Ese pedido ya no está en curso. Si querés armar uno nuevo, pedime el menú 🍕',
+          'Ese pedido ya no está en curso. Si quieres armar uno nuevo, pídeme el menú 🍕',
         );
         return true;
       }
@@ -139,7 +139,7 @@ export class CheckoutWhatsappService {
       await this.envios.limpiar(ctx);
       await this.envios.texto(
         ctx,
-        'Listo, cancelé el pedido en curso. Si querés arrancar de nuevo, pedime el menú 🍕',
+        'Listo, cancelé el pedido en curso. Si quieres arrancar de nuevo, pídeme el menú 🍕',
       );
       return true;
     }
@@ -303,7 +303,7 @@ export class CheckoutWhatsappService {
     if (!telefono) {
       await this.envios.texto(
         ctx,
-        'Porfa escribí un número de teléfono de 10 dígitos (ej. 315 786 1208) para poder contactarte por el pedido 📱',
+        'Porfa escribe un número de teléfono de 10 dígitos (ej. 315 786 1208) para poder contactarte por el pedido 📱',
       );
       return true;
     }
@@ -407,7 +407,7 @@ export class CheckoutWhatsappService {
     switch (checkout.paso) {
       case 'modalidad':
         await this.envios.guardar(ctx, checkout);
-        await this.envios.botones(ctx, '¿Cómo lo querés?', BOTONES_MODALIDAD);
+        await this.envios.botones(ctx, '¿Cómo lo quieres?', BOTONES_MODALIDAD);
         return;
       case 'direccion':
         await this.preguntas.direccion(ctx, checkout);
@@ -442,7 +442,7 @@ export class CheckoutWhatsappService {
     if (!franja) {
       await this.envios.texto(
         ctx,
-        'Esa hora ya no está disponible 🙏 Elegí otra, porfa.',
+        'Esa hora ya no está disponible 🙏 Elige otra, porfa.',
       );
       await this.preguntas.hora(ctx, checkout);
       return;

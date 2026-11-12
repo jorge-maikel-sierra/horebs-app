@@ -131,7 +131,7 @@ export function interactivoCatalogo(miniaturaRetailerId?: string): Interactivo {
   return {
     type: 'catalog_message',
     body: {
-      text: 'Acá tenés nuestro menú 🍕 Elegí lo que quieras, agregalo al carrito y mandámelo por acá.',
+      text: 'Aquí tienes nuestro menú 🍕 Elige lo que quieras, agrégalo al carrito y mándamelo por acá.',
     },
     action: {
       name: 'catalog_message',
@@ -171,7 +171,7 @@ export function interactivoListaProductos(
 export function interactivoBotonCatalogo(url: string): Interactivo {
   return {
     type: 'cta_url',
-    body: { text: 'Mirá nuestro catálogo completo con fotos y precios 🍕' },
+    body: { text: 'Mira nuestro catálogo completo con fotos y precios 🍕' },
     action: {
       name: 'cta_url',
       parameters: { display_text: 'Ver catálogo', url },
