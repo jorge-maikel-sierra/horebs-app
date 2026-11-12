@@ -73,4 +73,29 @@ describe('ConversacionesService', () => {
       ).rejects.toThrow();
     });
   });
+
+  describe('candidatas al seguimiento', () => {
+    it('solo trae conversaciones con carrito o checkout empezado', async () => {
+      const filtros: string[] = [];
+      const consulta = {
+        select: () => consulta,
+        eq: () => consulta,
+        lt: () => consulta,
+        or: (filtro: string) => {
+          filtros.push(filtro);
+          return Promise.resolve({ data: [], error: null });
+        },
+      };
+      const supabase = { getClient: () => ({ from: () => consulta }) };
+      const servicio = new ConversacionesService(
+        supabase as unknown as SupabaseService,
+      );
+
+      await servicio.buscarInactivasSinSeguimiento(180);
+
+      expect(filtros).toEqual([
+        'carrito_pendiente.not.is.null,checkout.not.is.null',
+      ]);
+    });
+  });
 });

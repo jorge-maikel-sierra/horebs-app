@@ -20,10 +20,10 @@ import {
   CLAVE_OFERTA_MINUTOS,
   CLAVE_RECORDATORIO_MINUTOS,
   configuracionDeFilas,
+  FILTRO_CON_PEDIDO_EMPEZADO,
   haceMinutos,
   mapearVentana,
   payloadConfiguracionSeguimiento,
-  payloadCtwa,
   payloadDerivacion,
   payloadEstadoManual,
   payloadFrenoCosto,
@@ -139,7 +139,8 @@ export class ConversacionesService {
       .select('id, canal, identificador_externo, telefono, ultima_interaccion')
       .eq('estado', 'bot')
       .eq('seguimiento_etapa', etapa)
-      .lt(campo, limite);
+      .lt(campo, limite)
+      .or(FILTRO_CON_PEDIDO_EMPEZADO);
     if (error) throw errorDeBase(error);
     return data ?? [];
   }
@@ -374,26 +375,6 @@ export class ConversacionesService {
         onConflict: 'canal,identificador_externo',
       });
     if (error) throw errorDeBase(error);
-  }
-
-  async guardarCtwaClid(
-    canal: CanalMensajeria,
-    id: string,
-    ctwaClid: string,
-  ): Promise<void> {
-    await this.actualizarHilo(canal, id, payloadCtwa(ctwaClid));
-  }
-
-  async obtenerCtwa(
-    canal: CanalMensajeria,
-    id: string,
-  ): Promise<{ id: string; ctwaClid: string } | null> {
-    const f = await this.leerHilo<{ id: string; ctwa_clid: string | null }>(
-      canal,
-      id,
-      'id, ctwa_clid',
-    );
-    return f?.ctwa_clid ? { id: f.id, ctwaClid: f.ctwa_clid } : null;
   }
 
   /**

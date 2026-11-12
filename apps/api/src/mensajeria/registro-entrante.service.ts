@@ -147,7 +147,7 @@ export class RegistroEntranteService {
   private guardarCtwaClid(evento: EventoEntrante): void {
     const ctwaClid = evento.procedenciaAnuncio?.ctwaClid;
     if (evento.canal !== 'whatsapp' || !ctwaClid) return;
-    void this.conversaciones
+    void this.origenes
       .guardarCtwaClid(evento.canal, evento.identificadorExterno, ctwaClid)
       .catch((err: Error) =>
         this.logger.error(

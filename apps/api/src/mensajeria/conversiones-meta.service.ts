@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SupabaseService } from '../supabase/supabase.service';
-import { ConversacionesService } from './conversaciones.service';
+import { OrigenConversacionService } from './origen-conversacion.service';
 import { ConversionesSocialService } from './conversiones-social.service';
 import { MS_POR_SEGUNDO } from '../common/tiempo';
 import { enviarEventoUnaVez, postearEventoMeta } from './eventos-meta';
@@ -46,7 +46,7 @@ export class ConversionesMetaService {
   constructor(
     private readonly config: ConfigService,
     private readonly supabase: SupabaseService,
-    private readonly conversaciones: ConversacionesService,
+    private readonly origenes: OrigenConversacionService,
     private readonly social: ConversionesSocialService,
   ) {
     this.version = this.config.get<string>('META_GRAPH_API_VERSION') ?? 'v21.0';
@@ -84,7 +84,7 @@ export class ConversionesMetaService {
     }
     if (canal !== 'whatsapp') return;
     await this.protegido('LeadSubmitted', async () => {
-      const ctwa = await this.conversaciones.obtenerCtwa(
+      const ctwa = await this.origenes.obtenerCtwa(
         'whatsapp',
         identificadorExterno,
       );
@@ -110,7 +110,7 @@ export class ConversionesMetaService {
     const waId = waIdColombia(compra.telefono);
     if (!waId) return;
     await this.protegido('Purchase', async () => {
-      const ctwa = await this.conversaciones.obtenerCtwa('whatsapp', waId);
+      const ctwa = await this.origenes.obtenerCtwa('whatsapp', waId);
       if (!ctwa) return;
       await this.enviarUnaVez({
         evento: 'Purchase',

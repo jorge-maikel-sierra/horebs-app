@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { errorDeBase } from '../common/error-de-base';
 import { SupabaseService } from '../supabase/supabase.service';
+import { payloadCtwa } from './conversaciones-reglas';
 import type { CanalMensajeria } from './conversaciones.tipos';
 import {
   COLUMNAS_ORIGEN,
@@ -45,6 +46,61 @@ export class OrigenConversacionService {
       .eq('canal', canal)
       .eq('identificador_externo', identificadorExterno);
     if (ultimo.error) throw errorDeBase(ultimo.error);
+  }
+
+  /** Click-to-WhatsApp: el id del clic que pide la API de conversiones. */
+  async guardarCtwaClid(
+    canal: CanalMensajeria,
+    identificadorExterno: string,
+    ctwaClid: string,
+  ): Promise<void> {
+    const { error } = await this.supabase
+      .getClient()
+      .from('conversaciones_bot')
+      .update(payloadCtwa(ctwaClid))
+      .eq('canal', canal)
+      .eq('identificador_externo', identificadorExterno);
+    if (error) throw errorDeBase(error);
+  }
+
+  async obtenerCtwa(
+    canal: CanalMensajeria,
+    identificadorExterno: string,
+  ): Promise<{ id: string; ctwaClid: string } | null> {
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('conversaciones_bot')
+      .select('id, ctwa_clid')
+      .eq('canal', canal)
+      .eq('identificador_externo', identificadorExterno)
+      .maybeSingle<{ id: string; ctwa_clid: string | null }>();
+    if (error) throw errorDeBase(error);
+    return data?.ctwa_clid ? { id: data.id, ctwaClid: data.ctwa_clid } : null;
+  }
+
+  /**
+   * Lo que llevaba el último pedido (no cancelado) que salió de esta
+   * conversación, para ofrecer repetirlo. Vacío si nunca pidió por aquí.
+   */
+  async itemsDelUltimoPedido(
+    conversacionId: string,
+  ): Promise<{ varianteId: string; cantidad: number }[]> {
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('pedidos')
+      .select('items_pedido(variante_id, cantidad)')
+      .eq('conversacion_id', conversacionId)
+      .neq('estado', 'cancelado')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle<{
+        items_pedido: { variante_id: string; cantidad: number }[] | null;
+      }>();
+    if (error) throw errorDeBase(error);
+    return (data?.items_pedido ?? []).map((i) => ({
+      varianteId: i.variante_id,
+      cantidad: i.cantidad,
+    }));
   }
 
   async vincularPedido(

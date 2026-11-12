@@ -48,10 +48,6 @@ function crearServicio(opciones: Opciones = {}) {
         estado: opciones.estado ?? 'bot',
       });
     },
-    guardarCtwaClid: (_c: string, _id: string, clid: string) => {
-      ctwa.push(clid);
-      return Promise.resolve();
-    },
     obtenerVentana: () =>
       Promise.resolve({
         conversacionId: 'cv-1',
@@ -92,6 +88,10 @@ function crearServicio(opciones: Opciones = {}) {
   };
   const origenes: { canal: string; id: string; origen: unknown }[] = [];
   const origen = {
+    guardarCtwaClid: (_c: string, _id: string, clid: string) => {
+      ctwa.push(clid);
+      return Promise.resolve();
+    },
     registrar: (canal: string, id: string, o: unknown) => {
       origenes.push({ canal, id, origen: o });
       return Promise.resolve();

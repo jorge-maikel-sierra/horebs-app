@@ -197,3 +197,11 @@ export function payloadRegistroInteraccion(
     seguimiento_enviado_en: null,
   };
 }
+
+/**
+ * Solo se le hace seguimiento a quien de verdad empezó un pedido (armó
+ * carrito o entró al checkout). Antes le llegaba "¿sigues interesado?" a
+ * cualquiera que solo había saludado o preguntado el horario.
+ */
+export const FILTRO_CON_PEDIDO_EMPEZADO =
+  'carrito_pendiente.not.is.null,checkout.not.is.null';
