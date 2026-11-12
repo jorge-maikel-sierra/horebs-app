@@ -382,9 +382,7 @@ export class MetaGraphService {
         }
       }
     }
-    this.logger.error(
-      `Falló el envío: ${(ultimoError as Error).message}`,
-    );
+    this.logger.error(`Falló el envío: ${(ultimoError as Error).message}`);
     throw ultimoError;
   }
 }

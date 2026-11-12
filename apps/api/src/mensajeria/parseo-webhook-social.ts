@@ -304,6 +304,26 @@ export interface EcoHumano {
   mensajeId: string | null;
 }
 
+/**
+ * Sin app_id no se sabe quién lo mandó: no se toca nada (antes de pausar al
+ * bot por error, mejor no pausarlo). El bot y el panel usan nuestra app.
+ */
+function esEcoDeOtraApp(
+  msg: MessengerEvento['message'],
+  appIdBot: string,
+): boolean {
+  if (!msg?.is_echo || msg.is_deleted || msg.app_id === undefined) {
+    return false;
+  }
+  return String(msg.app_id) !== appIdBot;
+}
+
+function textoDeEco(msg: NonNullable<MessengerEvento['message']>): string {
+  const texto = msg.text?.trim();
+  if (texto) return texto;
+  return msg.attachments?.length ? '📎 Archivo enviado por el equipo' : '';
+}
+
 function ecoHumano(
   evento: MessengerEvento,
   canal: 'messenger' | 'instagram',
@@ -311,21 +331,15 @@ function ecoHumano(
 ): EcoHumano | null {
   const msg = evento.message;
   const cliente = evento.recipient?.id;
-  if (!msg?.is_echo || !cliente || msg.is_deleted) return null;
-  // Sin app_id no se sabe quién lo mandó: no se toca nada (antes de pausar
-  // al bot por error, mejor no pausarlo). El bot y el panel usan nuestra app.
-  if (msg.app_id === undefined || String(msg.app_id) === appIdBot) return null;
-  const texto =
-    msg.text?.trim() ||
-    (msg.attachments?.length ? '📎 Archivo enviado por el equipo' : '');
-  return texto
-    ? {
-        canal,
-        identificadorExterno: cliente,
-        texto,
-        mensajeId: msg.mid ?? null,
-      }
-    : null;
+  if (!msg || !cliente || !esEcoDeOtraApp(msg, appIdBot)) return null;
+  const texto = textoDeEco(msg);
+  if (!texto) return null;
+  return {
+    canal,
+    identificadorExterno: cliente,
+    texto,
+    mensajeId: msg.mid ?? null,
+  };
 }
 
 /**
