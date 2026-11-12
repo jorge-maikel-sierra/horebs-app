@@ -161,8 +161,13 @@ export function payloadCtwa(
 export function payloadSeguimiento(
   etapa: string,
   enviadoEn: string = new Date().toISOString(),
+  ofertaEntregada = false,
 ): Record<string, unknown> {
-  return { seguimiento_etapa: etapa, seguimiento_enviado_en: enviadoEn };
+  return {
+    seguimiento_etapa: etapa,
+    seguimiento_enviado_en: enviadoEn,
+    ...(ofertaEntregada ? { oferta_enviada_en: enviadoEn } : {}),
+  };
 }
 
 export function payloadMensaje(

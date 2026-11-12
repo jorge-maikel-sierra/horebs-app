@@ -1,3 +1,4 @@
+import { OFERTA_SEGUIMIENTO_PORCENTAJE } from '../common/promocion';
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { estadoAtencion } from '../common/horario';
@@ -18,16 +19,14 @@ import { dentroDeLaVentana } from './avisos-pedido';
 // 24h de WhatsApp (mensajes de sesión) — pasado ese límite, reenganchar a
 // un cliente requiere una plantilla paga aprobada por Meta, que este
 // módulo no implementa a propósito (ver README).
-// Descuento confirmado por el dueño (CLAUDE.md, sección 2): no se cambia sin su decisión.
-const DESCUENTO_OFERTA_PORCENTAJE = 10;
 
 /** Quien compró en este plazo no abandonó nada. */
 const HORAS_YA_COMPRO = 24;
 
 const TEXTO_RECORDATORIO =
-  '¡Hola! 🍕 Vimos que estabas armando algo con nosotros y quedó ahí colgado. ¿Seguís interesado? Escribinos y seguimos donde quedamos.';
+  '¡Hola! 🍕 Vimos que estabas armando algo con nosotros y quedó ahí colgado. ¿Sigues interesado? Escríbenos y seguimos donde quedamos.';
 
-const TEXTO_OFERTA = `¡Todavía estás a tiempo! Si retomás tu pedido ahora te dejamos un ${DESCUENTO_OFERTA_PORCENTAJE}% de descuento en cualquier pizza personal 🍕. Escribinos y te ayudamos a cerrarlo.`;
+const TEXTO_OFERTA = `¡Todavía estás a tiempo! Si retomas tu pedido ahora te dejamos un ${OFERTA_SEGUIMIENTO_PORCENTAJE}% de descuento en cualquier pizza personal 🍕. Escríbenos y te ayudamos a cerrarlo.`;
 
 /**
  * Seguimiento automático de conversaciones "abandonadas" — el cliente
@@ -93,7 +92,7 @@ export class SeguimientoService {
   /**
    * Quien hizo un pedido en las últimas 24h no abandonó nada: con el
    * checkout del bot el pedido queda registrado y la conversación sigue en
-   * `bot`, así que sin este corte le llegaría "¿seguís interesado?". Se
+   * `bot`, así que sin este corte le llegaría "¿sigues interesado?". Se
    * cierra el seguimiento para no volver a evaluarlo en cada corrida.
    * En Messenger e Instagram busca por el teléfono capturado en la conversación.
    */
@@ -176,6 +175,7 @@ export class SeguimientoService {
       c.canal,
       c.identificador_externo,
       envio.marca,
+      envio.marca === 'oferta_enviada',
     );
     this.logger.log(
       `${envio.nombre} enviado — canal=${c.canal} id=${c.identificador_externo}`,

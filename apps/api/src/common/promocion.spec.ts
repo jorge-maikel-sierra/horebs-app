@@ -1,6 +1,9 @@
 import {
   cotizacionVigente,
   descuentoSobrePizzas,
+  elegirPromocion,
+  ofertaSeguimientoVigente,
+  promocionDePedido,
   diaSemanaBogota,
   esPizza,
   promocionActiva,
@@ -111,5 +114,70 @@ describe('textoDescuentoAplicado', () => {
     expect(textoDescuentoAplicado(7000)).toBe(
       'Descuento 20% en pizzas: -$7.000',
     );
+  });
+});
+
+describe('oferta de seguimiento (10% en pizzas personales)', () => {
+  const LINEAS = [
+    {
+      producto_nombre: 'Pizza Hawaiana',
+      variante_nombre: 'Personal',
+      subtotal: 20000,
+    },
+    {
+      producto_nombre: 'Pizza Hawaiana',
+      variante_nombre: 'Grande',
+      subtotal: 50000,
+    },
+    {
+      producto_nombre: 'Adicional: Jamón',
+      variante_nombre: 'Personal',
+      subtotal: 5000,
+    },
+    { producto_nombre: 'Gaseosa', variante_nombre: null, subtotal: 4000 },
+  ];
+
+  it('descuenta el 10% solo de las pizzas personales', () => {
+    expect(descuentoSobrePizzas(LINEAS, 'seguimiento')).toBe(2000);
+  });
+
+  it('el 20% del día sigue tocando todas las pizzas', () => {
+    expect(descuentoSobrePizzas(LINEAS, 'dia')).toBe(14000);
+  });
+
+  it('el pedido con oferta anota el descuento para el equipo', () => {
+    const { descuento, notas } = promocionDePedido(
+      'seguimiento',
+      LINEAS,
+      'sin cebolla',
+    );
+    expect(descuento).toBe(2000);
+    expect(notas).toBe(
+      'sin cebolla | Oferta 10% en pizzas personales: -$2.000',
+    );
+  });
+
+  it('sin promoción no hay descuento', () => {
+    expect(promocionDePedido(undefined, LINEAS, undefined)).toEqual({
+      descuento: 0,
+      notas: undefined,
+    });
+  });
+
+  it('la oferta vale 24 horas desde que se mandó', () => {
+    const enviada = '2026-11-12T20:00:00.000Z';
+    expect(
+      ofertaSeguimientoVigente(enviada, new Date('2026-11-13T19:59:00Z')),
+    ).toBe(true);
+    expect(
+      ofertaSeguimientoVigente(enviada, new Date('2026-11-13T20:01:00Z')),
+    ).toBe(false);
+    expect(ofertaSeguimientoVigente(null, new Date())).toBe(false);
+  });
+
+  it('si aplican las dos, gana el 20% del día (no se acumulan)', () => {
+    expect(elegirPromocion(true, true)).toBe('dia');
+    expect(elegirPromocion(false, true)).toBe('seguimiento');
+    expect(elegirPromocion(false, false)).toBeUndefined();
   });
 });

@@ -51,6 +51,8 @@ export interface CrearPedidoWhatsappInput extends Omit<
   programado_para?: string | null;
   /** Descuento del 20% sobre las pizzas (miércoles y jueves hasta las 8 p.m.): lo pide el checkout del bot de Messenger e Instagram. */
   aplicar_promocion?: boolean;
+  /** Oferta del 10% del seguimiento: solo pizzas personales, no se suma al 20%. */
+  oferta_seguimiento?: boolean;
 }
 
 export type CanalPedido = 'web' | 'whatsapp' | 'messenger' | 'instagram';
@@ -61,6 +63,8 @@ export type DatosPedido = Omit<CrearPedidoInput, 'cliente' | 'modalidad'> & {
   modalidad: CrearPedidoWhatsappInput['modalidad'];
   programado_para?: string | null;
   aplicar_promocion?: boolean;
+  /** 10% en pizzas personales de la oferta del seguimiento (no se suma al 20%). */
+  oferta_seguimiento?: boolean;
   atribucion_web?: AtribucionWeb | null;
 };
 

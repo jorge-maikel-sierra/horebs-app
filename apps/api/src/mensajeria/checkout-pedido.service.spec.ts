@@ -67,6 +67,7 @@ describe('datosPedidoWhatsapp', () => {
       notas: 'sin cebolla',
       programado_para: null,
       aplicar_promocion: false,
+      oferta_seguimiento: false,
       items: [{ variante_id: 'v-1', cantidad: 2 }],
       idempotency_key: 'wa:wamid.9',
     });

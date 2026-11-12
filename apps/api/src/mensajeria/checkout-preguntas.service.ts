@@ -34,7 +34,11 @@ import {
   ConversacionesService,
   type CheckoutWhatsapp,
 } from './conversaciones.service';
-import { promocionActiva } from '../common/promocion';
+import {
+  elegirPromocion,
+  ofertaSeguimientoVigente,
+  promocionActiva,
+} from '../common/promocion';
 import { armarResumenPedido, pesos } from './resumen-pedido';
 
 export const TEXTO_PEDIR_DIRECCION =
@@ -79,7 +83,7 @@ export class CheckoutPreguntasService {
     const cuerpo =
       estadoAtencion(ahora) === 'reservas'
         ? 'Abrimos a las 4:00 p.m. 🕓 ¿Para qué hora te lo reservamos?'
-        : '¿Para cuándo lo querés?';
+        : '¿Para cuándo lo quieres?';
     await this.envios.lista(
       ctx,
       cuerpo,
@@ -93,9 +97,19 @@ export class CheckoutPreguntasService {
     ctx: ContextoCheckout,
     checkout: CheckoutWhatsapp,
   ): Promise<void> {
+    // En Messenger e Instagram el identificador es el PSID/IGSID, no un
+    // teléfono: se usa el que el cliente dio en un pedido anterior.
+    const telefono =
+      (ctx.canal ?? 'whatsapp') === 'whatsapp'
+        ? ctx.identificadorExterno
+        : ctx.telefono;
+    if (!telefono) {
+      await this.pedirDireccion(ctx, checkout);
+      return;
+    }
     const [ultimo, cliente] = await Promise.all([
-      this.consultas.ultimoPedidoPorTelefono(ctx.identificadorExterno),
-      this.consultas.clientePorTelefono(ctx.identificadorExterno),
+      this.consultas.ultimoPedidoPorTelefono(telefono),
+      this.consultas.clientePorTelefono(telefono),
     ]);
     const sugerida =
       (ultimo?.direccionEntrega ?? cliente?.direccion)?.trim() || null;
@@ -350,9 +364,16 @@ export class CheckoutPreguntasService {
       ctx.canal !== undefined &&
       ctx.canal !== 'whatsapp' &&
       promocionActiva(new Date());
-    checkout.promocionCotizadaEn = conPromocion
-      ? new Date().toISOString()
-      : undefined;
+    const promocion = elegirPromocion(
+      conPromocion,
+      ofertaSeguimientoVigente(
+        await this.envios.ofertaEnviadaEn(ctx),
+        new Date(),
+      ),
+    );
+    const ahora = new Date().toISOString();
+    checkout.promocionCotizadaEn = promocion === 'dia' ? ahora : undefined;
+    checkout.ofertaCotizadaEn = promocion === 'seguimiento' ? ahora : undefined;
 
     const { texto } = armarResumenPedido({
       nombreCompleto: `${checkout.nombre} ${checkout.apellido}`,
@@ -362,7 +383,7 @@ export class CheckoutPreguntasService {
       costoDomicilio: COSTO_DOMICILIO_DEFAULT,
       entrega: textoEntrega(checkout.entrega),
       nota: checkout.nota,
-      promocion: conPromocion,
+      promocion,
     });
 
     checkout.paso = 'pago';

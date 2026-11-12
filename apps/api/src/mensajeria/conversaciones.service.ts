@@ -332,12 +332,30 @@ export class ConversacionesService {
     return f?.carrito_pendiente ?? [];
   }
 
+  /** `ofertaEntregada`: la oferta del 10% le llegó al cliente y empieza a valer. */
   async marcarSeguimientoEnviado(
     canal: CanalMensajeria,
     id: string,
     etapa: EtapaSeguimiento,
+    ofertaEntregada = false,
   ): Promise<void> {
-    await this.actualizarHilo(canal, id, payloadSeguimiento(etapa));
+    await this.actualizarHilo(
+      canal,
+      id,
+      payloadSeguimiento(etapa, undefined, ofertaEntregada),
+    );
+  }
+
+  async obtenerOfertaEnviada(
+    canal: CanalMensajeria,
+    id: string,
+  ): Promise<string | null> {
+    const f = await this.leerHilo<{ oferta_enviada_en: string | null }>(
+      canal,
+      id,
+      'oferta_enviada_en',
+    );
+    return f?.oferta_enviada_en ?? null;
   }
 
   async guardarTelefono(

@@ -58,6 +58,8 @@ export interface CheckoutWhatsapp {
   adicionalProductoId?: string;
   /** ISO del momento en que se le mostró el resumen con el descuento del 20%; vale unas horas (`cotizacionVigente`). */
   promocionCotizadaEn?: string;
+  /** ISO del resumen que mostró la oferta del 10% del seguimiento; vale lo mismo que el del 20%. */
+  ofertaCotizadaEn?: string;
 }
 
 export interface MensajeConversacion {

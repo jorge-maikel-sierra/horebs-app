@@ -407,8 +407,9 @@ describe('CheckoutPreguntasService · pago con descuento', () => {
     apellido: 'Pérez',
   };
 
-  function crear() {
+  function crear(ofertaEnviadaEn: string | null = null) {
     const envios = {
+      ofertaEnviadaEn: jest.fn().mockResolvedValue(ofertaEnviadaEn),
       guardar: jest.fn().mockResolvedValue(undefined),
       texto: jest.fn().mockResolvedValue(undefined),
       botones: jest.fn().mockResolvedValue(undefined),
@@ -455,6 +456,31 @@ describe('CheckoutPreguntasService · pago con descuento', () => {
     expect(texto).not.toContain('Descuento');
     expect(texto).toContain('*Total: $40.000*');
     expect(checkout.promocionCotizadaEn).toBeUndefined();
+  });
+
+  it('con la oferta del seguimiento vigente, un viernes lleva el 10% de las pizzas personales', async () => {
+    jest.useFakeTimers({ now: new Date('2026-11-06T15:00:00-05:00') });
+    const { servicio } = crear('2026-11-06T10:00:00-05:00');
+    const checkout = { ...CHECKOUT_PAGO };
+
+    const texto = await servicio.pago({ ...CTX, canal: 'messenger' }, checkout);
+
+    // La pizza del carrito es mediana: la oferta no la toca.
+    expect(texto).not.toContain('Oferta');
+    expect(checkout.ofertaCotizadaEn).toBe('2026-11-06T20:00:00.000Z');
+    expect(checkout.promocionCotizadaEn).toBeUndefined();
+  });
+
+  it('un miércoles con oferta vigente gana el 20% y no se acumulan', async () => {
+    jest.useFakeTimers({ now: new Date('2026-11-04T15:00:00-05:00') });
+    const { servicio } = crear('2026-11-04T10:00:00-05:00');
+    const checkout = { ...CHECKOUT_PAGO };
+
+    const texto = await servicio.pago({ ...CTX, canal: 'messenger' }, checkout);
+
+    expect(texto).toContain('Descuento 20% en pizzas');
+    expect(texto).not.toContain('Oferta');
+    expect(checkout.ofertaCotizadaEn).toBeUndefined();
   });
 
   it('en WhatsApp no se aplica aunque sea miércoles', async () => {

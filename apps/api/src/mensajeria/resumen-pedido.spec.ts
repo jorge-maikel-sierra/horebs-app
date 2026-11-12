@@ -176,7 +176,7 @@ describe('armarResumenPedido', () => {
       modalidad: 'domicilio',
       direccion: 'Calle 1',
       costoDomicilio: 5000,
-      promocion: true,
+      promocion: 'dia',
     });
     // 35.000 de pizza - 7.000 + 8.000 de bebidas + 5.000 de domicilio.
     expect(total).toBe(41000);

@@ -6,7 +6,7 @@ import { errorDeBase } from '../common/error-de-base';
 import { MailService } from '../mail/mail.service';
 import { InventarioService } from '../inventario/inventario.service';
 import { PuntosService, type CanjeCalculado } from '../clientes/puntos.service';
-import { promocionDePedido } from '../common/promocion';
+import { elegirPromocion, promocionDePedido } from '../common/promocion';
 import { calcularItems, type ItemCalculado } from './calcular-items';
 import { normalizarTelefonoCO } from './normalizar-telefono';
 import {
@@ -110,7 +110,10 @@ export class PedidosService {
     const costoDomicilio = costoDomicilioDeCheckout(input.modalidad);
     // El descuento es solo sobre las pizzas: el domicilio se suma después.
     const promo = promocionDePedido(
-      input.aplicar_promocion,
+      elegirPromocion(
+        Boolean(input.aplicar_promocion),
+        Boolean(input.oferta_seguimiento),
+      ),
       itemsCalculados,
       input.notas,
     );

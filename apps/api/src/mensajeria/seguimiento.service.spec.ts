@@ -77,7 +77,7 @@ describe('SeguimientoService.ejecutar', () => {
     expect(metaGraph.enviarMensajeSesion).toHaveBeenCalledWith(
       'whatsapp',
       c.identificador_externo,
-      expect.stringContaining('Seguís interesado'),
+      expect.stringContaining('Sigues interesado'),
     );
     expect(conversaciones.registrarMensaje).toHaveBeenCalledWith(
       '1',
@@ -88,6 +88,7 @@ describe('SeguimientoService.ejecutar', () => {
       'whatsapp',
       c.identificador_externo,
       'recordatorio_enviado',
+      false,
     );
   });
 
@@ -104,6 +105,7 @@ describe('SeguimientoService.ejecutar', () => {
       'whatsapp',
       c.identificador_externo,
       'oferta_enviada',
+      true,
     );
   });
 
@@ -168,12 +170,13 @@ describe('SeguimientoService.ejecutar', () => {
     expect(metaGraph.enviarMensajeSesion).toHaveBeenCalledWith(
       'messenger',
       c.identificador_externo,
-      expect.stringContaining('Seguís interesado'),
+      expect.stringContaining('Sigues interesado'),
     );
     expect(conversaciones.marcarSeguimientoEnviado).toHaveBeenCalledWith(
       'messenger',
       c.identificador_externo,
       'recordatorio_enviado',
+      false,
     );
   });
 
@@ -191,6 +194,7 @@ describe('SeguimientoService.ejecutar', () => {
       'whatsapp',
       buena.identificador_externo,
       'recordatorio_enviado',
+      false,
     );
   });
 

@@ -59,6 +59,10 @@ export function datosPedidoWhatsapp(entrada: {
       checkout.promocionCotizadaEn,
       new Date(),
     ),
+    oferta_seguimiento: cotizacionVigente(
+      checkout.ofertaCotizadaEn,
+      new Date(),
+    ),
     items: carrito.map((i) => ({
       variante_id: i.varianteId,
       cantidad: i.cantidad,

@@ -128,6 +128,14 @@ export class CheckoutEnviosService {
     );
   }
 
+  /** Cuándo se le mandó la oferta del 10% (null si nunca). */
+  ofertaEnviadaEn(ctx: ContextoCheckout): Promise<string | null> {
+    return this.conversaciones.obtenerOfertaEnviada(
+      ctx.canal ?? 'whatsapp',
+      ctx.identificadorExterno,
+    );
+  }
+
   async guardar(
     ctx: ContextoCheckout,
     checkout: CheckoutWhatsapp,
