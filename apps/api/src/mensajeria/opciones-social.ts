@@ -18,6 +18,7 @@ export const BOTON_SOCIAL = {
   mas: 'ped:mas',
   fin: 'ped:fin',
   vaciar: 'ped:vaciar',
+  repetir: 'ped:repetir',
 } as const;
 
 export const PREFIJO_CATEGORIA = 'cat:';
@@ -41,6 +42,7 @@ export const BOTONES_INICIO: BotonRespuesta[] = [
   { id: BOTON_SOCIAL.menu, titulo: '🍕 Ver menú' },
   { id: BOTON_SOCIAL.pedir, titulo: '🛒 Hacer un pedido' },
   { id: BOTON_SOCIAL.horario, titulo: '🕓 Horario' },
+  { id: BOTON_SOCIAL.repetir, titulo: '🔁 Repetir pedido' },
   { id: BOTON_SOCIAL.descuento, titulo: '🎉 Descuento 20%' },
   { id: BOTON_SOCIAL.humano, titulo: '💬 Una persona' },
 ];

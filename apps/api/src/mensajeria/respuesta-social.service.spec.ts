@@ -113,6 +113,7 @@ describe('RespuestaSocialService: respuestas fijas', () => {
       'mnu:menu',
       'mnu:pedir',
       'mnu:horario',
+      'ped:repetir',
       'mnu:descuento',
       'mnu:humano',
     ]);

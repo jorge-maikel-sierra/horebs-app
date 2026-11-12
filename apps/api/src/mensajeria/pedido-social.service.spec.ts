@@ -6,7 +6,7 @@ import type {
 import type { CheckoutEnviosService } from './checkout-envios.service';
 import type { ContextoCheckout } from './checkout-whatsapp';
 import type { CheckoutWhatsappService } from './checkout-whatsapp.service';
-import type { ConversacionesService } from './conversaciones.service';
+import type { OrigenConversacionService } from './origen-conversacion.service';
 import type { ItemCarritoPendiente } from './conversaciones.tipos';
 import type { BotonRespuesta } from './mensajes-interactivos';
 import { PedidoSocialService } from './pedido-social.service';
@@ -52,7 +52,10 @@ const MENU: ProductoDto[] = [
   producto('p-ad', 'Adicional: Piña', [variante('v-ad', 'Única', 5000)]),
 ];
 
-function crearServicio(carritoInicial: ItemCarritoPendiente[] = []) {
+function crearServicio(
+  carritoInicial: ItemCarritoPendiente[] = [],
+  ultimoPedido: ItemCarritoPendiente[] = [],
+) {
   let carrito: ItemCarritoPendiente[] | null = carritoInicial;
   const botones: { cuerpo: string; opciones: BotonRespuesta[] }[] = [];
   const conOpciones: { texto: string; opciones: BotonRespuesta[] }[] = [];
@@ -72,12 +75,8 @@ function crearServicio(carritoInicial: ItemCarritoPendiente[] = []) {
         noDisponibles: 0,
       }),
   };
-  const conversaciones = {
-    obtenerCarrito: () => Promise.resolve(carrito ?? []),
-    guardarCarrito: (_c: string, _id: string, items: unknown) => {
-      carrito = items as ItemCarritoPendiente[] | null;
-      return Promise.resolve();
-    },
+  const origenes = {
+    itemsDelUltimoPedido: () => Promise.resolve(ultimoPedido),
   };
   const checkout = {
     iniciar: (_ctx: unknown, items: ItemCarritoResuelto[]) => {
@@ -86,6 +85,7 @@ function crearServicio(carritoInicial: ItemCarritoPendiente[] = []) {
     },
   };
   const envios = {
+    obtenerCarrito: () => Promise.resolve(carrito ?? []),
     guardarCarrito: (_ctx: unknown, items: unknown) => {
       carrito = items as ItemCarritoPendiente[] | null;
       return Promise.resolve();
@@ -105,7 +105,7 @@ function crearServicio(carritoInicial: ItemCarritoPendiente[] = []) {
   };
   const servicio = new PedidoSocialService(
     catalog as unknown as CatalogService,
-    conversaciones as unknown as ConversacionesService,
+    origenes as unknown as OrigenConversacionService,
     checkout as unknown as CheckoutWhatsappService,
     envios as unknown as CheckoutEnviosService,
   );
@@ -287,5 +287,30 @@ describe('PedidoSocialService: precios', () => {
 
     await expect(servicio.atenderBoton(CTX, 'ped:p:p-hw')).resolves.toBe(true);
     expect(botones[0].opciones).toHaveLength(3);
+  });
+});
+
+describe('PedidoSocialService: repetir el último pedido', () => {
+  it('arma el carrito con lo del último pedido y sigue al checkout', async () => {
+    const { servicio, iniciados } = crearServicio(
+      [],
+      [{ varianteId: 'v-hw-m', cantidad: 2 }],
+    );
+
+    await expect(servicio.atenderBoton(CTX, 'ped:repetir')).resolves.toBe(true);
+
+    expect(iniciados).toHaveLength(1);
+    expect(iniciados[0]).toEqual([
+      expect.objectContaining({ varianteId: 'v-hw-m', cantidad: 2 }),
+    ]);
+  });
+
+  it('si nunca pidió por este chat, se lo dice y ofrece el menú', async () => {
+    const { servicio, iniciados, conOpciones } = crearServicio();
+
+    await servicio.atenderBoton(CTX, 'ped:repetir');
+
+    expect(iniciados).toEqual([]);
+    expect(conOpciones[0]?.texto).toContain('Todavía no tienes pedidos');
   });
 });

@@ -5,7 +5,7 @@ import { buscarProductoUnico } from './busqueda-productos';
 import { CheckoutEnviosService } from './checkout-envios.service';
 import { listaItems, type ContextoCheckout } from './checkout-whatsapp';
 import { CheckoutWhatsappService } from './checkout-whatsapp.service';
-import { ConversacionesService } from './conversaciones.service';
+import { OrigenConversacionService } from './origen-conversacion.service';
 import {
   BOTON_SOCIAL,
   BOTONES_ARMAR_PEDIDO,
@@ -32,7 +32,7 @@ import {
 export class PedidoSocialService {
   constructor(
     private readonly catalog: CatalogService,
-    private readonly conversaciones: ConversacionesService,
+    private readonly origenes: OrigenConversacionService,
     private readonly checkout: CheckoutWhatsappService,
     private readonly envios: CheckoutEnviosService,
   ) {}
@@ -51,7 +51,7 @@ export class PedidoSocialService {
     return true;
   }
 
-  /** Los ids ped:p / ped:v / ped:q / ped:fin / ped:vaciar. false si el id no es de acá. */
+  /** Los ids ped:p / ped:v / ped:q / ped:fin / ped:vaciar / ped:repetir. false si el id no es de acá. */
   async atenderBoton(ctx: ContextoCheckout, id: string): Promise<boolean> {
     if (id.startsWith(PREFIJO_PRODUCTO_SOCIAL)) {
       return this.productoPorId(ctx, id.slice(PREFIJO_PRODUCTO_SOCIAL.length));
@@ -67,6 +67,7 @@ export class PedidoSocialService {
     }
     if (id === BOTON_SOCIAL.fin) return this.seguirConElPedido(ctx);
     if (id === BOTON_SOCIAL.vaciar) return this.vaciar(ctx);
+    if (id === BOTON_SOCIAL.repetir) return this.repetir(ctx);
     return false;
   }
 
@@ -142,11 +143,7 @@ export class PedidoSocialService {
     if (!lectura || !(await this.buscarVariante(lectura.varianteId))) {
       return false;
     }
-    const canal = ctx.canal ?? 'messenger';
-    const actual = await this.conversaciones.obtenerCarrito(
-      canal,
-      ctx.identificadorExterno,
-    );
+    const actual = await this.envios.obtenerCarrito(ctx);
     const carrito = sumarItem(actual, lectura.varianteId, lectura.cantidad);
     await this.envios.guardarCarrito(ctx, carrito);
     const { disponibles } = await this.catalog.resolverCarrito(carrito);
@@ -159,10 +156,7 @@ export class PedidoSocialService {
   }
 
   private async seguirConElPedido(ctx: ContextoCheckout): Promise<boolean> {
-    const carrito = await this.conversaciones.obtenerCarrito(
-      ctx.canal ?? 'messenger',
-      ctx.identificadorExterno,
-    );
+    const carrito = await this.envios.obtenerCarrito(ctx);
     if (carrito.length === 0) {
       await this.envios.textoConOpciones(
         ctx,
@@ -178,11 +172,7 @@ export class PedidoSocialService {
   }
 
   private async vaciar(ctx: ContextoCheckout): Promise<boolean> {
-    await this.conversaciones.guardarCarrito(
-      ctx.canal ?? 'messenger',
-      ctx.identificadorExterno,
-      null,
-    );
+    await this.envios.guardarCarrito(ctx, null);
     await this.envios.textoConOpciones(
       ctx,
       'Listo, vacié tu pedido. ¿Qué quieres hacer?',
@@ -201,5 +191,25 @@ export class PedidoSocialService {
       if (variante) return { producto, variante };
     }
     return null;
+  }
+
+  /**
+   * "Repetir pedido": arma el carrito con lo del último pedido que salió de
+   * esta conversación (con los precios de hoy) y sigue al checkout de siempre.
+   */
+  private async repetir(ctx: ContextoCheckout): Promise<boolean> {
+    const items = await this.origenes.itemsDelUltimoPedido(ctx.conversacionId);
+    if (items.length === 0) {
+      await this.envios.textoConOpciones(
+        ctx,
+        'Todavía no tienes pedidos con nosotros por este chat 🍕 ¿Qué quieres hacer?',
+        BOTONES_INICIO,
+      );
+      return true;
+    }
+    const { disponibles, noDisponibles } =
+      await this.catalog.resolverCarrito(items);
+    await this.checkout.iniciar(ctx, disponibles, noDisponibles, null);
+    return true;
   }
 }

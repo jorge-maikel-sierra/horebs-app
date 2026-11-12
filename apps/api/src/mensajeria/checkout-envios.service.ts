@@ -107,16 +107,24 @@ export class CheckoutEnviosService {
     );
   }
 
+  obtenerCarrito(ctx: ContextoCheckout): Promise<ItemCarritoPendiente[]> {
+    return this.conversaciones.obtenerCarrito(
+      ctx.canal ?? 'whatsapp',
+      ctx.identificadorExterno,
+    );
+  }
+
+  /** null vacía el carrito. */
   async guardarCarrito(
     ctx: ContextoCheckout,
-    items: ItemCarritoPendiente[],
+    items: ItemCarritoPendiente[] | null,
   ): Promise<void> {
     await this.conversaciones.guardarCarrito(
       ctx.canal ?? 'whatsapp',
       ctx.identificadorExterno,
       items,
     );
-    if (items.length > 0) this.avisarMeta(ctx, 'AddToCart');
+    if (items && items.length > 0) this.avisarMeta(ctx, 'AddToCart');
   }
 
   /** Paso del embudo para la API de conversiones (solo Messenger e Instagram). */
