@@ -112,6 +112,21 @@ export function esBotonSocial(id: string): boolean {
   );
 }
 
+/**
+ * Botón Empezar, menú persistente y rompehielos (perfil-meta.ts): se
+ * resuelven por su payload, que es fijo, y no por el título que manda Meta
+ * (puede llegar como "Get Started", "Empezar" o con emojis) para que caigan
+ * siempre en la respuesta fija y no en el modelo.
+ */
+const TEXTO_DE_PAYLOAD_PERFIL = new Map([
+  ['iniciar', 'hola'],
+  ['menu', 'quiero ver el menu'],
+  ['pedir', 'quiero hacer un pedido'],
+  ['horario', 'horario y ubicacion'],
+  ['consultar_pedido', 'quiero consultar mi pedido'],
+  ['humano', 'quiero hablar con una persona'],
+]);
+
 function resolverPayload(
   payload: string,
   titulo: string,
@@ -119,6 +134,8 @@ function resolverPayload(
   if (esBotonCheckout(payload) || esBotonSocial(payload)) {
     return { entrada: { tipo: 'boton', id: payload }, texto: titulo };
   }
+  const delPerfil = TEXTO_DE_PAYLOAD_PERFIL.get(payload);
+  if (delPerfil) return { texto: delPerfil };
   const botonPedir = textoBotonPedir(payload);
   if (botonPedir) {
     return { texto: botonPedir };

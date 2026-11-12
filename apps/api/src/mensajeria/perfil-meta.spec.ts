@@ -3,6 +3,7 @@ import {
   armarPerfilCanal,
   armarPerfilInstagram,
   armarPerfilMessenger,
+  urlPerfilMeta,
   enviarPerfilMeta,
   ICE_BREAKERS_INSTAGRAM,
   ITEMS_MENU_MESSENGER,
@@ -90,5 +91,25 @@ describe('perfil-meta', () => {
         enviarPerfilMeta('v21.0', 'token-test', 'instagram'),
       ).rejects.toThrow(ServiceUnavailableException);
     });
+  });
+});
+
+describe('perfil de Instagram', () => {
+  it('se configura con platform=instagram (sin eso Meta toca el de Messenger)', () => {
+    expect(urlPerfilMeta('v21.0', 'instagram')).toBe(
+      'https://graph.facebook.com/v21.0/me/messenger_profile?platform=instagram',
+    );
+    expect(urlPerfilMeta('v21.0', 'messenger')).toBe(
+      'https://graph.facebook.com/v21.0/me/messenger_profile',
+    );
+  });
+
+  it('lleva rompehielos y menú persistente sin composer_input_disabled', () => {
+    const perfil = armarPerfilInstagram() as {
+      persistent_menu: Record<string, unknown>[];
+    };
+    expect(perfil.persistent_menu[0]).not.toHaveProperty(
+      'composer_input_disabled',
+    );
   });
 });

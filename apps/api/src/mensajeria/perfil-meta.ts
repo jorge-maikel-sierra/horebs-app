@@ -45,13 +45,17 @@ export const ICE_BREAKERS_INSTAGRAM: IceBreaker[] = [
   { question: 'Consultar mi pedido 📦', payload: 'consultar_pedido' },
 ];
 
-export function armarPerfilMessenger(): Record<string, unknown> {
-  const items = ITEMS_MENU_MESSENGER.slice(0, MAX_ITEMS_MENU_PERSISTENTE).map(
+function itemsMenu(): ItemMenuPersistente[] {
+  return ITEMS_MENU_MESSENGER.slice(0, MAX_ITEMS_MENU_PERSISTENTE).map(
     (item) => ({
       ...item,
       title: item.title.slice(0, MAX_LARGO_TITULO_MENU),
     }),
   );
+}
+
+export function armarPerfilMessenger(): Record<string, unknown> {
+  const items = itemsMenu();
   return {
     get_started: { payload: 'iniciar' },
     persistent_menu: [
@@ -73,6 +77,8 @@ export function armarPerfilInstagram(): Record<string, unknown> {
         call_to_actions: items,
       },
     ],
+    // Instagram no admite composer_input_disabled en el menú persistente.
+    persistent_menu: [{ locale: 'default', call_to_actions: itemsMenu() }],
   };
 }
 
@@ -84,23 +90,30 @@ export function armarPerfilCanal(
     : armarPerfilInstagram();
 }
 
+/**
+ * El mismo endpoint sirve a los dos canales, pero sin `platform=instagram`
+ * Meta configura el perfil de Messenger: los rompehielos nunca llegaban a
+ * Instagram.
+ */
+export function urlPerfilMeta(version: string, canal: CanalMeta): string {
+  const base = `https://graph.facebook.com/${version}/me/messenger_profile`;
+  return canal === 'instagram' ? `${base}?platform=instagram` : base;
+}
+
 export async function enviarPerfilMeta(
   version: string,
   pageToken: string,
   canal: CanalMeta,
 ): Promise<void> {
   const cuerpo = armarPerfilCanal(canal);
-  const res = await fetch(
-    `https://graph.facebook.com/${version}/me/messenger_profile`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${pageToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(cuerpo),
+  const res = await fetch(urlPerfilMeta(version, canal), {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${pageToken}`,
+      'Content-Type': 'application/json',
     },
-  );
+    body: JSON.stringify(cuerpo),
+  });
   if (!res.ok) {
     const errorTexto = await res.text().catch(() => '');
     throw new ServiceUnavailableException(

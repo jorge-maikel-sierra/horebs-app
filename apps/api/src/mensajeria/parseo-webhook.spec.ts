@@ -6,6 +6,7 @@ import {
   textoCarritoCatalogo,
   type WhatsappWebhookPayload,
 } from './parseo-webhook';
+import { detectarIntencion } from './respuestas-fijas';
 
 const conMensajes = (
   mensajes: NonNullable<
@@ -216,7 +217,7 @@ describe('parsearMessengerOInstagram', () => {
     expect(eventos[2]?.texto).toBe('Pizzas');
   });
 
-  it('el menú persistente y Get Started llegan como texto con el título (o el payload)', () => {
+  it('el menú persistente y Empezar se resuelven por el payload, no por el título', () => {
     const eventos = parsearMessengerOInstagram(
       {
         entry: [
@@ -233,9 +234,37 @@ describe('parsearMessengerOInstagram', () => {
       },
       'messenger',
     );
-    expect(eventos[0]?.texto).toBe('Ver menú 🍕');
+    expect(eventos[0]?.texto).toBe('quiero ver el menu');
     expect(eventos[0]?.entrada).toBeUndefined();
-    expect(eventos[1]?.texto).toBe('iniciar');
+    expect(eventos[1]?.texto).toBe('hola');
+  });
+
+  it('cada botón del perfil cae en su respuesta fija, venga con el título que venga', () => {
+    const esperado = new Map([
+      ['iniciar', 'saludo'],
+      ['menu', 'menu'],
+      ['pedir', 'pedir'],
+      ['horario', 'horarioUbicacion'],
+      ['humano', 'humano'],
+    ]);
+    for (const [payload, intencion] of esperado) {
+      const [evento] = parsearMessengerOInstagram(
+        {
+          entry: [
+            {
+              messaging: [
+                {
+                  sender: { id: 'u' },
+                  postback: { payload, title: 'Get Started' },
+                },
+              ],
+            },
+          ],
+        },
+        'messenger',
+      );
+      expect(detectarIntencion(evento.texto)).toBe(intencion);
+    }
   });
 
   it('procesa attachments de imagen, audio y ubicación', () => {
