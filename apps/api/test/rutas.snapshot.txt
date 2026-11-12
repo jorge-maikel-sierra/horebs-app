@@ -6,6 +6,7 @@ DELETE /blog/comentarios/:id
 DELETE /blog/posts/:slug/likes/yo
 DELETE /nomina/adelantos/:id
 GET /
+GET /admin/anuncios
 GET /admin/blog
 GET /admin/clientes
 GET /admin/clientes/:id

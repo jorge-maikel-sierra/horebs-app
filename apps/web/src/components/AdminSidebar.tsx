@@ -17,6 +17,7 @@ import { useModulos } from '@/lib/use-modulos';
 import type { ModuloId } from '@/lib/modulos';
 import ThemeToggle from '@/components/ThemeToggle';
 import {
+  IconAnuncios,
   IconBlog,
   IconClientes,
   IconConfig,
@@ -310,6 +311,7 @@ const NAV_ADMIN: NavItem[] = [
     icon: IconInformes,
     modulo: 'informes',
   },
+  { href: '/admin/anuncios', label: 'Ventas por anuncio', icon: IconAnuncios },
   { href: '/admin/usuarios', label: 'Usuarios', icon: IconUsuarios },
   { href: '/admin/blog', label: 'Blog', icon: IconBlog, modulo: 'blog' },
   { href: '/admin/configuracion', label: 'Configuración', icon: IconConfig },
