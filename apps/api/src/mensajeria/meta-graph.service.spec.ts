@@ -197,4 +197,17 @@ describe('MetaGraphService — catálogo nativo', () => {
       crearServicio().enviarMensajeSesion('messenger', 'psid-3', 'hola'),
     ).resolves.not.toThrow();
   });
+
+  it('un 400 (ej. ventana cerrada) no se reintenta: un solo intento y falla', async () => {
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 400,
+      text: async () =>
+        JSON.stringify({ error: { code: 10, message: 'fuera de ventana' } }),
+    });
+    await expect(
+      crearServicio().enviarMensajeSesion('messenger', 'psid-4', 'hola'),
+    ).rejects.toThrow('respondió 400');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 });

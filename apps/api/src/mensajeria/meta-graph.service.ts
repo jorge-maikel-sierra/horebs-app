@@ -30,6 +30,7 @@ import {
   esErrorBusinessAi,
 } from './mensajes-meta-social';
 import { descargarMediaUrlDirecta, descargarMediaWhatsapp } from './meta-media';
+import { ErrorGraphPermanente, errorDeGraph } from './graph-errores';
 import { enviarPerfilMeta } from './perfil-meta';
 
 const REINTENTOS = 2;
@@ -319,7 +320,8 @@ export class MetaGraphService {
     );
     if (!res.ok) {
       const detalle = await res.text().catch(() => '');
-      throw new ServiceUnavailableException(
+      throw errorDeGraph(
+        res.status,
         `WhatsApp Graph API respondió ${res.status}: ${detalle}`,
       );
     }
@@ -356,7 +358,8 @@ export class MetaGraphService {
         );
         return;
       }
-      throw new ServiceUnavailableException(
+      throw errorDeGraph(
+        res.status,
         `Messenger/Instagram Graph API respondió ${res.status}: ${textoError}`,
       );
     }
@@ -370,6 +373,7 @@ export class MetaGraphService {
         return;
       } catch (err) {
         ultimoError = err;
+        if (err instanceof ErrorGraphPermanente) break;
         if (intento < REINTENTOS) {
           await new Promise((resolve) =>
             // eslint-disable-next-line security/detect-object-injection
@@ -379,7 +383,7 @@ export class MetaGraphService {
       }
     }
     this.logger.error(
-      `Falló el envío tras ${REINTENTOS + 1} intentos: ${(ultimoError as Error).message}`,
+      `Falló el envío: ${(ultimoError as Error).message}`,
     );
     throw ultimoError;
   }

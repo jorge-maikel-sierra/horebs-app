@@ -54,10 +54,16 @@ export async function descargarMediaUrlDirecta(
       `No se pudo descargar el archivo: ${archivo.status}`,
     );
   }
+  // Mismo tope que en WhatsApp: un video pesado no debe tumbar el proceso.
+  const anunciado = Number(archivo.headers.get('content-length') ?? 0);
+  if (anunciado > MAX_BYTES_MEDIA) {
+    throw new ServiceUnavailableException('El archivo pesa más de 10 MB.');
+  }
+  const datos = Buffer.from(await archivo.arrayBuffer());
+  if (datos.length > MAX_BYTES_MEDIA) {
+    throw new ServiceUnavailableException('El archivo pesa más de 10 MB.');
+  }
   const mimeHeader =
     archivo.headers.get('content-type') ?? 'application/octet-stream';
-  return {
-    datos: Buffer.from(await archivo.arrayBuffer()),
-    mime: mimeHeader.split(';')[0],
-  };
+  return { datos, mime: mimeHeader.split(';')[0] };
 }
