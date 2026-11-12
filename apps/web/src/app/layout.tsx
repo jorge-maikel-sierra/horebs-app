@@ -7,6 +7,7 @@ import "./globals.css";
 import { CartProvider } from "@/lib/cart-context";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
+import CapturaAtribucion from "@/components/CapturaAtribucion";
 import { restauranteJsonLd, jsonLdScript } from "@/lib/json-ld";
 
 const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID;
@@ -56,6 +57,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       {GTM_ID && <GoogleTagManager gtmId={GTM_ID} />}
       <body className="min-h-full flex flex-col font-sans">
+        <CapturaAtribucion />
         {GTM_ID && (
           <noscript>
             <iframe

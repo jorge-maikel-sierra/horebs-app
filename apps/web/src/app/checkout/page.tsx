@@ -9,6 +9,7 @@ import { useCart } from '@/lib/cart-context';
 import { formatPrecio } from '@/lib/formato';
 import { supabase } from '@/lib/supabase';
 import { trackBeginCheckout } from '@/lib/analytics';
+import { leerAtribucion } from '@/lib/atribucion';
 import { errorClass } from '@/lib/feedback-estilos';
 import ModalCargando from '@/components/ModalCargando';
 import { leerErrorApi } from '@/lib/error-api';
@@ -286,6 +287,7 @@ export default function CheckoutPage() {
           })),
           idempotency_key: idempotencyKey,
           usar_puntos: usarPuntos,
+          atribucion: leerAtribucion(),
         }),
       });
 
