@@ -56,8 +56,10 @@ export class MediaEntranteService {
     if (!media || !mensajeId) return false;
 
     const esAudio = media.tipo === 'audio';
+    const puedeSerComprobante =
+      media.tipo === 'imagen' || media.tipo === 'documento';
     if (
-      !esAudio &&
+      puedeSerComprobante &&
       (await this.guardarComprobante({
         canal: evento.canal,
         identificadorExterno: evento.identificadorExterno,

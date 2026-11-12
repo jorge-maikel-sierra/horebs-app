@@ -544,3 +544,36 @@ describe('entradaCheckoutDe', () => {
     ).toBeNull();
   });
 });
+
+describe('adjuntos de Messenger e Instagram que antes se ignoraban', () => {
+  const conAdjunto = (type: string) =>
+    parsearMessengerOInstagram(
+      {
+        entry: [
+          {
+            messaging: [
+              {
+                sender: { id: 'u-1' },
+                message: {
+                  mid: 'm-1',
+                  attachments: [{ type, payload: { url: 'https://x/a' } }],
+                },
+              },
+            ],
+          },
+        ],
+      },
+      'instagram',
+    )[0];
+
+  it('un PDF llega como documento (puede ser el comprobante)', () => {
+    expect(conAdjunto('file')?.media).toEqual({
+      id: 'https://x/a',
+      tipo: 'documento',
+    });
+  });
+
+  it('un video llega como video para que el bot le conteste', () => {
+    expect(conAdjunto('video')?.media?.tipo).toBe('video');
+  });
+});

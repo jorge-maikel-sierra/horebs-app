@@ -251,3 +251,23 @@ describe('MediaEntranteService.atenderArchivo', () => {
     expect(enviados).toEqual([]);
   });
 });
+
+describe('MediaEntranteService: videos', () => {
+  it('un video no se toma como comprobante y el bot le pide que escriba', async () => {
+    const { servicio, enviados, procesados } = crearServicio({
+      comprobante: true,
+    });
+
+    const atendido = await servicio.atenderArchivo(
+      evento({
+        canal: 'instagram',
+        media: { id: 'https://x/v.mp4', tipo: 'video' },
+      }),
+      conversacion('bot'),
+    );
+
+    expect(atendido).toBe(true);
+    expect(procesados).toEqual([]);
+    expect(enviados).toEqual([MENSAJE_SOLO_TEXTO]);
+  });
+});
