@@ -7,11 +7,15 @@ import { SupabaseService } from '../supabase/supabase.service';
 import { AvisoEquipoService } from './aviso-equipo.service';
 import type { CanalMensajeria } from './conversaciones.tipos';
 import { MetaGraphService } from './meta-graph.service';
-import type { EventoBold, PagoEstado, PedidoCobrado } from './pago-bold.tipos';
+import {
+  destinoAvisoPago,
+  type EventoBold,
+  type PagoEstado,
+  type PedidoCobrado,
+} from './pago-bold.tipos';
 import { pesos } from './resumen-pedido';
 
 const URL_CHECKOUT_BOLD = 'https://checkout.bold.co';
-const PREFIJO_WHATSAPP_CO = '57';
 
 /** Qué estado deja cada evento y desde cuáles se puede llegar a él. */
 const TRANSICIONES = new Map<
@@ -117,7 +121,9 @@ export class PagoBoldService {
       })
       .eq('bold_link_id', linkId)
       .in('pago_estado', transicion.desde)
-      .select('id, total, clientes(nombre, telefono)')
+      .select(
+        'id, total, clientes(nombre, telefono), conversaciones_bot(canal, identificador_externo)',
+      )
       .returns<PedidoCobrado[]>();
     if (error) throw errorDeBase(error);
     return data?.[0] ?? null;
@@ -128,14 +134,15 @@ export class PagoBoldService {
     pagado: boolean,
     linkId: string,
   ): Promise<void> {
-    if (!pedido.clientes?.telefono) return;
+    const destino = destinoAvisoPago(pedido);
+    if (!destino) return;
     const texto = pagado
-      ? textoPagoRecibido(pedido.clientes.nombre, pedido.total)
+      ? textoPagoRecibido(pedido.clientes?.nombre ?? '', pedido.total)
       : textoPagoRechazado(linkId);
     try {
       await this.metaGraph.enviarMensajeSesion(
-        'whatsapp',
-        `${PREFIJO_WHATSAPP_CO}${pedido.clientes.telefono}`,
+        destino.canal,
+        destino.identificadorExterno,
         texto,
       );
     } catch (err) {
