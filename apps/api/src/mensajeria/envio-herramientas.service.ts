@@ -8,6 +8,7 @@ import { obtenerCapacidades } from './capacidades-canal';
 import { textoDe } from './datos-pedido-bot';
 import type { CanalMensajeria } from './conversaciones.tipos';
 import { ConversacionesService } from './conversaciones.service';
+import { ConversionesSocialService } from './conversiones-social.service';
 import type { PasoFunctionCall } from './gemini-cliente.service';
 import { NOMBRE_NEGOCIO, URL_CATALOGO } from './gemini-prompt';
 import type { ContextoHerramienta } from './herramientas-bot.tipos';
@@ -29,6 +30,7 @@ export class EnvioHerramientasService {
     private readonly catalog: CatalogService,
     private readonly metaGraph: MetaGraphService,
     private readonly conversaciones: ConversacionesService,
+    private readonly conversiones: ConversionesSocialService,
   ) {}
 
   /**
@@ -114,6 +116,16 @@ export class EnvioHerramientasService {
       canal,
       identificadorExterno,
       tarjetas,
+    );
+    this.conversiones.avisarConversacion(
+      'ViewContent',
+      canal,
+      identificadorExterno,
+    );
+    this.conversiones.avisarConversacion(
+      'ViewContent',
+      canal,
+      identificadorExterno,
     );
     const conProductos = categorias.filter((c) =>
       productos.some((p) => p.categoria_id === c.id && !esAdicional(p.nombre)),

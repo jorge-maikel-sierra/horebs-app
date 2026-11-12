@@ -1,5 +1,6 @@
 import type { CatalogService, ProductoDto } from '../catalog/catalog.service';
 import type { ConversacionesService } from './conversaciones.service';
+import type { ConversionesSocialService } from './conversiones-social.service';
 import { EnvioHerramientasService } from './envio-herramientas.service';
 import type { PasoFunctionCall } from './gemini-cliente.service';
 import type { ContextoHerramienta } from './herramientas-bot.tipos';
@@ -91,10 +92,12 @@ function crearServicio(opciones: Opciones = {}) {
       return Promise.resolve();
     },
   };
+  const conversiones = { avisarConversacion: jest.fn() };
   const servicio = new EnvioHerramientasService(
     catalog as unknown as CatalogService,
     metaGraph as unknown as MetaGraphService,
     conversaciones as unknown as ConversacionesService,
+    conversiones as unknown as ConversionesSocialService,
   );
   return {
     servicio,

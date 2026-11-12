@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { AvisosPedidoService } from '../mensajeria/avisos-pedido.service';
 import { ConversionesMetaService } from '../mensajeria/conversiones-meta.service';
+import { ConversionesSocialService } from '../mensajeria/conversiones-social.service';
 import type { PedidoAdminDto } from './pedidos-admin.tipos';
 
 /**
@@ -9,13 +10,15 @@ import type { PedidoAdminDto } from './pedidos-admin.tipos';
  * ignora los de otros canales). Y el Purchase a Meta (Click-to-WhatsApp) sale
  * al entregar, no al crear: un pedido del bot cancelado no es una venta. Mismo
  * envío idempotente que las ventas del POS; si el cliente no llegó por un
- * anuncio, no sale.
+ * anuncio, no sale. Los pedidos de Messenger e Instagram mandan Purchase al
+ * entregar y OrderCanceled al cancelar, ligados al cliente por la conversación.
  */
 @Injectable()
 export class AvisosCambioPedidoService {
   constructor(
     private readonly avisosPedido: AvisosPedidoService,
     private readonly conversionesMeta: ConversionesMetaService,
+    private readonly conversionesSocial: ConversionesSocialService,
   ) {}
 
   avisar(
@@ -31,6 +34,17 @@ export class AvisosCambioPedidoService {
         pedidoId: pedido.id,
         total: pedido.total,
       });
+    }
+    if (pedido.canal === 'messenger' || pedido.canal === 'instagram') {
+      this.avisarSocial(pedido.id, nuevo);
+    }
+  }
+
+  private avisarSocial(pedidoId: string, nuevo: string): void {
+    if (nuevo === 'entregado') {
+      this.conversionesSocial.avisarPedidoPorId('Purchase', pedidoId);
+    } else if (nuevo === 'cancelado') {
+      this.conversionesSocial.avisarPedidoPorId('OrderCanceled', pedidoId);
     }
   }
 }

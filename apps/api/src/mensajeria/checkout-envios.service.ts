@@ -6,6 +6,8 @@ import {
   type CheckoutWhatsapp,
   type ItemCarritoPendiente,
 } from './conversaciones.service';
+import { ConversionesSocialService } from './conversiones-social.service';
+import type { EventoConversacion } from './conversiones-social';
 import type { BotonRespuesta } from './mensajes-interactivos';
 import { MetaGraphService } from './meta-graph.service';
 
@@ -19,6 +21,7 @@ export class CheckoutEnviosService {
   constructor(
     private readonly conversaciones: ConversacionesService,
     private readonly metaGraph: MetaGraphService,
+    private readonly conversiones: ConversionesSocialService,
   ) {}
 
   async texto(ctx: ContextoCheckout, texto: string): Promise<void> {
@@ -112,6 +115,16 @@ export class CheckoutEnviosService {
       ctx.canal ?? 'whatsapp',
       ctx.identificadorExterno,
       items,
+    );
+    if (items.length > 0) this.avisarMeta(ctx, 'AddToCart');
+  }
+
+  /** Paso del embudo para la API de conversiones (solo Messenger e Instagram). */
+  avisarMeta(ctx: ContextoCheckout, evento: EventoConversacion): void {
+    this.conversiones.avisarConversacion(
+      evento,
+      ctx.canal ?? 'whatsapp',
+      ctx.identificadorExterno,
     );
   }
 

@@ -14,6 +14,7 @@ import {
 const AHORA = '2026-11-12T18:00:00.000Z';
 
 const FILA_VACIA: FilaOrigenConversacion = {
+  id: 'conv-1',
   origen_fuente: null,
   origen_anuncio_id: null,
   origen_ref: null,
@@ -119,6 +120,7 @@ describe('payloads de origen', () => {
         ultimo_anuncio_id: 'ad-2',
       }),
     ).toEqual({
+      conversacion_id: 'conv-1',
       origen_fuente: 'ADS',
       origen_anuncio_id: 'ad-2',
       origen_ref: null,
@@ -133,14 +135,23 @@ describe('payloads de origen', () => {
         origen_ref: 'qr',
       }),
     ).toEqual({
+      conversacion_id: 'conv-1',
       origen_fuente: 'SHORTLINK',
       origen_anuncio_id: null,
       origen_ref: 'qr',
     });
   });
 
-  it('sin origen no hay nada que copiar', () => {
-    expect(payloadOrigenPedido(FILA_VACIA)).toBeNull();
+  it('sin origen igual liga el pedido a su conversación', () => {
+    expect(payloadOrigenPedido(FILA_VACIA)).toEqual({
+      conversacion_id: 'conv-1',
+      origen_fuente: null,
+      origen_anuncio_id: null,
+      origen_ref: null,
+    });
+  });
+
+  it('sin conversación no hay nada que copiar', () => {
     expect(payloadOrigenPedido(null)).toBeNull();
   });
 });

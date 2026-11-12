@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { CheckoutEnviosService } from './checkout-envios.service';
 import { textoConfirmacionPedido } from './confirmacion-pedido';
 import type { ContextoCheckout, MetodoPagoBot } from './checkout-whatsapp';
+import { ConversionesSocialService } from './conversiones-social.service';
 import { OrigenConversacionService } from './origen-conversacion.service';
 import { PagoBoldService } from './pago-bold.service';
 
@@ -18,6 +19,7 @@ export class ConfirmacionPedidoService {
     private readonly envios: CheckoutEnviosService,
     private readonly pagoBold: PagoBoldService,
     private readonly origenes: OrigenConversacionService,
+    private readonly conversiones: ConversionesSocialService,
   ) {}
 
   /** Cierra el checkout y confirma. Devuelve true si el cobro quedó pendiente de pago. */
@@ -31,6 +33,12 @@ export class ConfirmacionPedidoService {
     },
   ): Promise<boolean> {
     this.vincularOrigen(ctx, datos.pedido.id);
+    this.conversiones.avisarPedido('OrderCreated', {
+      canal: ctx.canal ?? 'whatsapp',
+      identificadorExterno: ctx.identificadorExterno,
+      pedidoId: datos.pedido.id,
+      total: datos.pedido.total,
+    });
     await this.envios.limpiar(ctx);
     const enlacePago =
       datos.metodo === 'tarjeta'

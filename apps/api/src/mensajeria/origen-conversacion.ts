@@ -12,6 +12,7 @@ export interface OrigenContacto {
 }
 
 export interface FilaOrigenConversacion {
+  id: string;
   origen_fuente: string | null;
   origen_anuncio_id: string | null;
   origen_ref: string | null;
@@ -21,7 +22,7 @@ export interface FilaOrigenConversacion {
 }
 
 export const COLUMNAS_ORIGEN =
-  'origen_fuente, origen_anuncio_id, origen_ref, ultimo_origen_fuente, ultimo_anuncio_id, ultimo_ref';
+  'id, origen_fuente, origen_anuncio_id, origen_ref, ultimo_origen_fuente, ultimo_anuncio_id, ultimo_ref';
 
 function recortar(valor: string | undefined): string | null {
   const limpio = valor?.trim();
@@ -81,27 +82,22 @@ export function payloadUltimoOrigen(
 }
 
 /**
- * Lo que se copia al pedido: el último toque (como la atribución por último
- * clic de Meta) y, si no lo hay, el primero. Null si la conversación no
- * tiene origen.
+ * Lo que se copia al pedido: la conversación de la que salió (la necesita la
+ * API de conversiones de Messenger e Instagram) y el último toque (como la
+ * atribución por último clic de Meta) o, si no lo hay, el primero. Null si la
+ * conversación no existe.
  */
 export function payloadOrigenPedido(
   fila: FilaOrigenConversacion | null,
 ): Record<string, unknown> | null {
   if (!fila) return null;
-  if (fila.ultimo_origen_fuente) {
-    return {
-      origen_fuente: fila.ultimo_origen_fuente,
-      origen_anuncio_id: fila.ultimo_anuncio_id,
-      origen_ref: fila.ultimo_ref,
-    };
-  }
-  if (fila.origen_fuente) {
-    return {
-      origen_fuente: fila.origen_fuente,
-      origen_anuncio_id: fila.origen_anuncio_id,
-      origen_ref: fila.origen_ref,
-    };
-  }
-  return null;
+  const usarUltimo = Boolean(fila.ultimo_origen_fuente);
+  return {
+    conversacion_id: fila.id,
+    origen_fuente: usarUltimo ? fila.ultimo_origen_fuente : fila.origen_fuente,
+    origen_anuncio_id: usarUltimo
+      ? fila.ultimo_anuncio_id
+      : fila.origen_anuncio_id,
+    origen_ref: usarUltimo ? fila.ultimo_ref : fila.origen_ref,
+  };
 }

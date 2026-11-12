@@ -38,6 +38,7 @@ function crearServicio(checkout: CheckoutWhatsapp | null) {
   const envios = {
     obtener: jest.fn().mockResolvedValue(checkout),
     guardarCarrito: jest.fn().mockResolvedValue(undefined),
+    avisarMeta: jest.fn(),
     texto: jest.fn().mockResolvedValue(undefined),
     botones: jest.fn().mockResolvedValue(undefined),
     guardar: jest.fn().mockResolvedValue(undefined),

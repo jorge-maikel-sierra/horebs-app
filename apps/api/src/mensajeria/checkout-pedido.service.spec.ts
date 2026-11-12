@@ -3,6 +3,7 @@ import type { AvisoEquipoService } from './aviso-equipo.service';
 import type { CheckoutEnviosService } from './checkout-envios.service';
 import { textoConfirmacionPedido } from './confirmacion-pedido';
 import { ConfirmacionPedidoService } from './confirmacion-pedido.service';
+import type { ConversionesSocialService } from './conversiones-social.service';
 import type { OrigenConversacionService } from './origen-conversacion.service';
 import type { PagoBoldService } from './pago-bold.service';
 import {
@@ -206,6 +207,9 @@ describe('CheckoutPedidoService.crear', () => {
         {
           vincularPedido: () => Promise.resolve(),
         } as unknown as OrigenConversacionService,
+        {
+          avisarPedido: () => undefined,
+        } as unknown as ConversionesSocialService,
       ),
     );
     return { servicio, conversaciones, avisoEquipo, envios, pagoBold };

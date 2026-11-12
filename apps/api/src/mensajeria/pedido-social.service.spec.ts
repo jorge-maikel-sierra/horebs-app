@@ -86,6 +86,10 @@ function crearServicio(carritoInicial: ItemCarritoPendiente[] = []) {
     },
   };
   const envios = {
+    guardarCarrito: (_ctx: unknown, items: unknown) => {
+      carrito = items as ItemCarritoPendiente[] | null;
+      return Promise.resolve();
+    },
     botones: (_ctx: unknown, cuerpo: string, opciones: BotonRespuesta[]) => {
       botones.push({ cuerpo, opciones });
       return Promise.resolve();

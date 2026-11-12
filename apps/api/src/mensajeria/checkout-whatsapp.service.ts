@@ -81,6 +81,7 @@ export class CheckoutWhatsappService {
         cantidad: i.cantidad,
       })),
     );
+    this.envios.avisarMeta(ctx, 'InitiateCheckout');
     const checkout: CheckoutWhatsapp = {
       paso: 'modalidad',
       ...(nota ? { nota } : {}),

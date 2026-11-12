@@ -1,16 +1,11 @@
-import {
-  Injectable,
-  Logger,
-  ServiceUnavailableException,
-} from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SupabaseService } from '../supabase/supabase.service';
 import { ConversacionesService } from './conversaciones.service';
-import { errorDeBase } from '../common/error-de-base';
+import { ConversionesSocialService } from './conversiones-social.service';
 import { MS_POR_SEGUNDO } from '../common/tiempo';
+import { enviarEventoUnaVez, postearEventoMeta } from './eventos-meta';
 
-const TIMEOUT_MS = 10_000;
-const LARGO_MAX_ERROR_GRAPH = 300;
 const DIGITOS_TELEFONO_COLOMBIA = 10;
 const MONEDA = 'COP';
 
@@ -52,6 +47,7 @@ export class ConversionesMetaService {
     private readonly config: ConfigService,
     private readonly supabase: SupabaseService,
     private readonly conversaciones: ConversacionesService,
+    private readonly social: ConversionesSocialService,
   ) {
     this.version = this.config.get<string>('META_GRAPH_API_VERSION') ?? 'v21.0';
     // El token de WhatsApp puede no tener el permiso
@@ -70,11 +66,22 @@ export class ConversionesMetaService {
     }
   }
 
-  /** Cliente listo para comprar: el bot lo derivó a una persona. */
+  /**
+   * Cliente listo para comprar: el bot lo derivó a una persona. Messenger e
+   * Instagram van por su propio servicio (otro dataset y otros ids).
+   */
   async notificarLead(
     canal: string,
     identificadorExterno: string,
   ): Promise<void> {
+    if (canal === 'messenger' || canal === 'instagram') {
+      this.social.avisarConversacion(
+        'LeadSubmitted',
+        canal,
+        identificadorExterno,
+      );
+      return;
+    }
     if (canal !== 'whatsapp') return;
     await this.protegido('LeadSubmitted', async () => {
       const ctwa = await this.conversaciones.obtenerCtwa(
@@ -151,33 +158,16 @@ export class ConversionesMetaService {
     }
   }
 
-  /**
-   * Reclama la clave (evento, referencia) ANTES de enviar: si otro proceso
-   * ya la tomó, no se manda de nuevo. Si el envío falla se libera la clave
-   * para que un próximo intento pueda reintentar.
-   */
   private async enviarUnaVez(e: EventoParaEnviar): Promise<void> {
-    const client = this.supabase.getClient();
-    const { error: claimError } = await client
-      .from('eventos_meta_enviados')
-      .insert({ evento: e.evento, referencia_id: e.referenciaId });
-    if (claimError) {
-      if (claimError.code === '23505') return; // ya enviado
-      throw errorDeBase(claimError);
-    }
-
-    try {
-      await this.enviar(e);
+    const enviado = await enviarEventoUnaVez(
+      this.supabase.getClient(),
+      { evento: e.evento, referenciaId: e.referenciaId },
+      () => this.enviar(e),
+    );
+    if (enviado) {
       this.logger.log(
         `Evento ${e.evento} enviado a Meta — referencia=${e.referenciaId}`,
       );
-    } catch (err) {
-      await client
-        .from('eventos_meta_enviados')
-        .delete()
-        .eq('evento', e.evento)
-        .eq('referencia_id', e.referenciaId);
-      throw err;
     }
   }
 
@@ -196,25 +186,14 @@ export class ConversionesMetaService {
       evento.custom_data = { currency: MONEDA, value: e.valor };
     }
 
-    // El token va en el header, no en la URL, para que no quede en logs.
-    const res = await fetch(
-      `https://graph.facebook.com/${this.version}/${this.datasetId}/events`,
+    await postearEventoMeta(
       {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${this.token}`,
-        },
-        body: JSON.stringify({ data: [evento] }),
-        signal: AbortSignal.timeout(TIMEOUT_MS),
+        version: this.version,
+        datasetId: this.datasetId ?? '',
+        token: this.token ?? '',
       },
+      evento,
     );
-    if (!res.ok) {
-      const cuerpo = await res.text().catch(() => '');
-      throw new ServiceUnavailableException(
-        `Graph API ${res.status}: ${cuerpo.slice(0, LARGO_MAX_ERROR_GRAPH)}`,
-      );
-    }
   }
 }
 

@@ -148,11 +148,7 @@ export class PedidoSocialService {
       ctx.identificadorExterno,
     );
     const carrito = sumarItem(actual, lectura.varianteId, lectura.cantidad);
-    await this.conversaciones.guardarCarrito(
-      canal,
-      ctx.identificadorExterno,
-      carrito,
-    );
+    await this.envios.guardarCarrito(ctx, carrito);
     const { disponibles } = await this.catalog.resolverCarrito(carrito);
     await this.envios.botones(
       ctx,

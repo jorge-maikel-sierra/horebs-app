@@ -22,6 +22,7 @@ import { DerivacionBotService } from './derivacion-bot.service';
 import { CalculoPedidoBotService } from './calculo-pedido-bot.service';
 import { ConversacionesService } from './conversaciones.service';
 import { ConversionesMetaService } from './conversiones-meta.service';
+import { ConversionesSocialService } from './conversiones-social.service';
 import { SeguimientoService } from './seguimiento.service';
 import { AvisoEquipoService } from './aviso-equipo.service';
 import { CheckoutWhatsappService } from './checkout-whatsapp.service';
@@ -60,6 +61,7 @@ import { RespuestaSocialService } from './respuesta-social.service';
     CalculoPedidoBotService,
     ConversacionesService,
     ConversionesMetaService,
+    ConversionesSocialService,
     SeguimientoService,
     AvisoEquipoService,
     CheckoutWhatsappService,
@@ -84,6 +86,7 @@ import { RespuestaSocialService } from './respuesta-social.service';
     AvisosPedidoService,
     ConversacionesService,
     ConversionesMetaService,
+    ConversionesSocialService,
     MetaGraphService,
   ],
 })

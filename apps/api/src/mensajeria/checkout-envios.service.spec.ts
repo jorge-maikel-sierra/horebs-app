@@ -1,4 +1,5 @@
 import type { ContextoCheckout } from './checkout-whatsapp';
+import type { ConversionesSocialService } from './conversiones-social.service';
 import { CheckoutEnviosService } from './checkout-envios.service';
 import type {
   CheckoutWhatsapp,
@@ -30,11 +31,13 @@ function crearServicio() {
     enviarLista: jest.fn().mockResolvedValue(undefined),
     enviarCatalogo: jest.fn().mockResolvedValue(undefined),
   };
+  const conversiones = { avisarConversacion: jest.fn() };
   const servicio = new CheckoutEnviosService(
     conversaciones as unknown as ConversacionesService,
     metaGraph as unknown as MetaGraphService,
+    conversiones as unknown as ConversionesSocialService,
   );
-  return { servicio, conversaciones, metaGraph };
+  return { servicio, conversaciones, metaGraph, conversiones };
 }
 
 describe('CheckoutEnviosService', () => {

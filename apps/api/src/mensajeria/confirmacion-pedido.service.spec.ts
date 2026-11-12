@@ -1,6 +1,7 @@
 import type { CheckoutEnviosService } from './checkout-envios.service';
 import type { ContextoCheckout } from './checkout-whatsapp';
 import { ConfirmacionPedidoService } from './confirmacion-pedido.service';
+import type { ConversionesSocialService } from './conversiones-social.service';
 import type { OrigenConversacionService } from './origen-conversacion.service';
 import type { PagoBoldService } from './pago-bold.service';
 
@@ -21,6 +22,7 @@ function crear(enlace: string | null) {
     texto: jest.fn().mockResolvedValue(undefined),
   };
   const pagoBold = { iniciarCobro: jest.fn().mockResolvedValue(enlace) };
+  const conversiones = { avisarPedido: jest.fn() };
   const origenes = {
     vincularPedido: jest.fn().mockResolvedValue(undefined),
   };
@@ -28,8 +30,9 @@ function crear(enlace: string | null) {
     envios as unknown as CheckoutEnviosService,
     pagoBold as unknown as PagoBoldService,
     origenes as unknown as OrigenConversacionService,
+    conversiones as unknown as ConversionesSocialService,
   );
-  return { servicio, envios, pagoBold, origenes };
+  return { servicio, envios, pagoBold, origenes, conversiones };
 }
 
 describe('ConfirmacionPedidoService', () => {
@@ -46,6 +49,22 @@ describe('ConfirmacionPedidoService', () => {
       CTX.identificadorExterno,
       DATOS.pedido.id,
     );
+  });
+
+  it('avisa OrderCreated con el total del pedido', async () => {
+    const { servicio, conversiones } = crear(null);
+
+    await servicio.confirmar(
+      { ...CTX, canal: 'messenger' },
+      { ...DATOS, metodo: 'efectivo' },
+    );
+
+    expect(conversiones.avisarPedido).toHaveBeenCalledWith('OrderCreated', {
+      canal: 'messenger',
+      identificadorExterno: CTX.identificadorExterno,
+      pedidoId: DATOS.pedido.id,
+      total: DATOS.pedido.total,
+    });
   });
 
   it('si no se puede copiar el origen, igual confirma el pedido', async () => {

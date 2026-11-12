@@ -42,6 +42,7 @@ function crearServicio(
   };
   const supabase = { getClient: () => ({ from: () => tabla }) };
   const conversaciones = { obtenerCtwa: jest.fn().mockResolvedValue(ctwa) };
+  const social = { avisarConversacion: jest.fn() };
   const valores = new Map(
     configurado
       ? Object.entries({
@@ -57,10 +58,12 @@ function crearServicio(
     config as never,
     supabase as never,
     conversaciones as never,
+    social as never,
   );
   return {
     servicio,
     conversaciones,
+    social,
     claves,
     getUltimoDelete: () => ultimoDelete,
   };
@@ -141,10 +144,15 @@ describe('ConversionesMetaService', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('LeadSubmitted no lleva custom_data y solo aplica a WhatsApp', async () => {
-    const { servicio } = crearServicio();
+  it('LeadSubmitted no lleva custom_data; Messenger va por la vía social', async () => {
+    const { servicio, social } = crearServicio();
     await servicio.notificarLead('messenger', 'psid-1');
     expect(fetchMock).not.toHaveBeenCalled();
+    expect(social.avisarConversacion).toHaveBeenCalledWith(
+      'LeadSubmitted',
+      'messenger',
+      'psid-1',
+    );
 
     await servicio.notificarLead('whatsapp', '573157861208');
     const evento = JSON.parse(fetchMock.mock.calls[0][1].body).data[0];
