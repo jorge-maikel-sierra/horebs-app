@@ -5,6 +5,8 @@ import { BoldModule } from '../bold/bold.module';
 import { MailModule } from '../mail/mail.module';
 import { PedidosModule } from '../pedidos/pedidos.module';
 import { BoldWebhookController } from './bold-webhook.controller';
+import { OrigenConversacionService } from './origen-conversacion.service';
+import { RegistroEntranteService } from './registro-entrante.service';
 import { ConfirmacionPedidoService } from './confirmacion-pedido.service';
 import { PagoBoldService } from './pago-bold.service';
 import { WebhooksController } from './webhooks.controller';
@@ -75,6 +77,8 @@ import { RespuestaSocialService } from './respuesta-social.service';
     RespuestaSocialService,
     PagoBoldService,
     ConfirmacionPedidoService,
+    OrigenConversacionService,
+    RegistroEntranteService,
   ],
   exports: [
     AvisosPedidoService,

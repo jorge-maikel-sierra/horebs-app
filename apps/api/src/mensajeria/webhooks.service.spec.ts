@@ -4,6 +4,8 @@ import type { ConversacionesService } from './conversaciones.service';
 import type { ConversacionCompleta } from './conversaciones.tipos';
 import type { MediaEntranteService } from './media-entrante.service';
 import type { EventoEntrante } from './parseo-webhook';
+import type { OrigenConversacionService } from './origen-conversacion.service';
+import { RegistroEntranteService } from './registro-entrante.service';
 import type { RespuestaBotService } from './respuesta-bot.service';
 import { WebhooksService } from './webhooks.service';
 
@@ -77,13 +79,23 @@ function crearServicio(opciones: Opciones = {}) {
       return Promise.resolve();
     },
   };
+  const origenes: { canal: string; id: string; origen: unknown }[] = [];
+  const origen = {
+    registrar: (canal: string, id: string, o: unknown) => {
+      origenes.push({ canal, id, origen: o });
+      return Promise.resolve();
+    },
+  };
   const servicio = new WebhooksService(
-    conversaciones as unknown as ConversacionesService,
+    new RegistroEntranteService(
+      conversaciones as unknown as ConversacionesService,
+      origen as unknown as OrigenConversacionService,
+    ),
     catalog as unknown as CatalogService,
     medios as unknown as MediaEntranteService,
     respuesta as unknown as RespuestaBotService,
   );
-  return { servicio, llamadas, registrados, ctwa, respuestas };
+  return { servicio, llamadas, registrados, ctwa, respuestas, origenes };
 }
 
 describe('WebhooksService.verificarFirma', () => {
@@ -259,5 +271,81 @@ describe('WebhooksService.manejarEvento', () => {
 
     expect(wa.ctwa).toEqual(['clid-1']);
     expect(messenger.ctwa).toEqual([]);
+  });
+
+  it('guarda el origen del anuncio de Instagram con su ref', async () => {
+    const { servicio, origenes } = crearServicio();
+
+    await servicio.manejarEvento(
+      evento({
+        canal: 'instagram',
+        identificadorExterno: 'igsid-1',
+        procedenciaAnuncio: {
+          esAnuncio: true,
+          anuncioId: 'ad-7',
+          fuente: 'ADS',
+          ref: 'promo_miercoles',
+        },
+      }),
+    );
+
+    expect(origenes).toEqual([
+      {
+        canal: 'instagram',
+        id: 'igsid-1',
+        origen: {
+          fuente: 'ADS',
+          anuncioId: 'ad-7',
+          ref: 'promo_miercoles',
+          titulo: null,
+        },
+      },
+    ]);
+  });
+
+  it('sin referral no guarda origen', async () => {
+    const { servicio, origenes } = crearServicio();
+
+    await servicio.manejarEvento(evento());
+
+    expect(origenes).toEqual([]);
+  });
+
+  it('un referral suelto de Messenger guarda el origen y no responde', async () => {
+    const { servicio, origenes, llamadas } = crearServicio();
+
+    servicio.procesarMessenger({
+      object: 'page',
+      entry: [
+        {
+          id: 'page-1',
+          messaging: [
+            {
+              sender: { id: 'psid-1' },
+              referral: {
+                source: 'SHORTLINK',
+                type: 'OPEN_THREAD',
+                ref: 'qr_caja',
+              },
+            },
+          ],
+        },
+      ],
+    });
+    await new Promise((r) => setImmediate(r));
+
+    expect(origenes).toEqual([
+      {
+        canal: 'messenger',
+        id: 'psid-1',
+        origen: {
+          fuente: 'SHORTLINK',
+          anuncioId: null,
+          ref: 'qr_caja',
+          titulo: null,
+        },
+      },
+    ]);
+    expect(llamadas).not.toContain('responder');
   });
 });

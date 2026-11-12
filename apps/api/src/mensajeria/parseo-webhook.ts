@@ -7,10 +7,17 @@ import {
 import type { CanalMensajeria } from './conversaciones.service';
 import {
   parsearMessengerOInstagram,
+  parsearReferidosSociales,
   type MessengerWebhookPayload,
+  type ReferidoSocial,
 } from './parseo-webhook-social';
 
-export { parsearMessengerOInstagram, type MessengerWebhookPayload };
+export {
+  parsearMessengerOInstagram,
+  parsearReferidosSociales,
+  type MessengerWebhookPayload,
+  type ReferidoSocial,
+};
 
 export interface ProcedenciaAnuncio {
   esAnuncio: boolean;
@@ -18,6 +25,9 @@ export interface ProcedenciaAnuncio {
   fuente?: string;
   /** Id del clic (solo Click-to-WhatsApp) — lo necesita la API de conversiones. */
   ctwaClid?: string;
+  /** Parámetro `ref` del anuncio o del enlace m.me / ig.me. */
+  ref?: string;
+  tituloAnuncio?: string;
 }
 
 export interface CarritoCatalogo {
@@ -93,6 +103,9 @@ export interface MetaReferral {
   ctwa_clid?: string;
   source?: string;
   ad_id?: string;
+  ref?: string;
+  type?: string;
+  ads_context_data?: { ad_title?: string; post_id?: string };
 }
 
 export interface WhatsappMensaje {

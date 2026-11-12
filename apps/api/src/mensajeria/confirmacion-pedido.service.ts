@@ -1,18 +1,23 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { CheckoutEnviosService } from './checkout-envios.service';
 import { textoConfirmacionPedido } from './confirmacion-pedido';
 import type { ContextoCheckout, MetodoPagoBot } from './checkout-whatsapp';
+import { OrigenConversacionService } from './origen-conversacion.service';
 import { PagoBoldService } from './pago-bold.service';
 
 /**
  * Lo que el cliente recibe al terminar el checkout: la confirmación del pedido
- * y, si paga con tarjeta, el enlace de Bold para cobrarlo en el momento.
+ * y, si paga con tarjeta, el enlace de Bold para cobrarlo en el momento. El
+ * pedido queda marcado con el anuncio o enlace del que llegó el cliente.
  */
 @Injectable()
 export class ConfirmacionPedidoService {
+  private readonly logger = new Logger(ConfirmacionPedidoService.name);
+
   constructor(
     private readonly envios: CheckoutEnviosService,
     private readonly pagoBold: PagoBoldService,
+    private readonly origenes: OrigenConversacionService,
   ) {}
 
   /** Cierra el checkout y confirma. Devuelve true si el cobro quedó pendiente de pago. */
@@ -25,6 +30,7 @@ export class ConfirmacionPedidoService {
       metodo: MetodoPagoBot;
     },
   ): Promise<boolean> {
+    this.vincularOrigen(ctx, datos.pedido.id);
     await this.envios.limpiar(ctx);
     const enlacePago =
       datos.metodo === 'tarjeta'
@@ -38,6 +44,21 @@ export class ConfirmacionPedidoService {
       textoConfirmacionPedido({ ...datos, enlacePago }),
     );
     return Boolean(enlacePago);
+  }
+
+  /** Fire-and-forget: es un dato para medir; no debe frenar la confirmación. */
+  private vincularOrigen(ctx: ContextoCheckout, pedidoId: string): void {
+    void this.origenes
+      .vincularPedido(
+        ctx.canal ?? 'whatsapp',
+        ctx.identificadorExterno,
+        pedidoId,
+      )
+      .catch((err: Error) =>
+        this.logger.error(
+          `No se pudo copiar el origen al pedido ${pedidoId}: ${err.message}`,
+        ),
+      );
   }
 
   async noSePudoRegistrar(ctx: ContextoCheckout): Promise<void> {

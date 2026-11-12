@@ -64,7 +64,30 @@ function procedenciaMessenger(
     esAnuncio: referral.source === 'ADS' || Boolean(referral.ad_id),
     anuncioId: referral.ad_id,
     fuente: referral.source,
+    ref: referral.ref,
+    tituloAnuncio: referral.ads_context_data?.ad_title,
   };
+}
+
+/** Clic en un anuncio o en un enlace m.me / ig.me desde un hilo que ya existía. */
+export interface ReferidoSocial {
+  canal: 'messenger' | 'instagram';
+  identificadorExterno: string;
+  procedencia: ProcedenciaAnuncio;
+}
+
+function referidoSuelto(
+  evento: MessengerEvento,
+  canal: 'messenger' | 'instagram',
+): ReferidoSocial | null {
+  const remitente = evento?.sender?.id;
+  if (!remitente || evento.message || evento.postback || !evento.referral) {
+    return null;
+  }
+  const procedencia = procedenciaMessenger(evento);
+  return procedencia
+    ? { canal, identificadorExterno: remitente, procedencia }
+    : null;
 }
 
 function esMensajeIgnorado(
@@ -218,11 +241,11 @@ function eventoMessenger(
   };
 }
 
-export function parsearMessengerOInstagram(
+function eventosDeCuenta(
   payload: MessengerWebhookPayload,
   canal: 'messenger' | 'instagram',
   cuentaEsperadaId?: string,
-): EventoEntrante[] {
+): MessengerEvento[] {
   const objetoEsperado = canal === 'messenger' ? 'page' : 'instagram';
   if (payload?.object && payload.object !== objetoEsperado) {
     return [];
@@ -231,8 +254,31 @@ export function parsearMessengerOInstagram(
     if (cuentaEsperadaId && entry?.id && entry.id !== cuentaEsperadaId) {
       return [];
     }
-    return (entry?.messaging ?? []).flatMap(
-      (evento) => eventoMessenger(evento, canal) ?? [],
-    );
+    return entry?.messaging ?? [];
   });
+}
+
+export function parsearMessengerOInstagram(
+  payload: MessengerWebhookPayload,
+  canal: 'messenger' | 'instagram',
+  cuentaEsperadaId?: string,
+): EventoEntrante[] {
+  return eventosDeCuenta(payload, canal, cuentaEsperadaId).flatMap(
+    (evento) => eventoMessenger(evento, canal) ?? [],
+  );
+}
+
+/**
+ * Los `messaging_referrals` (Messenger) y `messaging_referral` (Instagram)
+ * llegan sin mensaje: el cliente abrió el chat desde un anuncio o un enlace
+ * pero todavía no escribió. No se responden; solo se guarda de dónde vino.
+ */
+export function parsearReferidosSociales(
+  payload: MessengerWebhookPayload,
+  canal: 'messenger' | 'instagram',
+  cuentaEsperadaId?: string,
+): ReferidoSocial[] {
+  return eventosDeCuenta(payload, canal, cuentaEsperadaId).flatMap(
+    (evento) => referidoSuelto(evento, canal) ?? [],
+  );
 }

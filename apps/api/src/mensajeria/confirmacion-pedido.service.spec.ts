@@ -1,6 +1,7 @@
 import type { CheckoutEnviosService } from './checkout-envios.service';
 import type { ContextoCheckout } from './checkout-whatsapp';
 import { ConfirmacionPedidoService } from './confirmacion-pedido.service';
+import type { OrigenConversacionService } from './origen-conversacion.service';
 import type { PagoBoldService } from './pago-bold.service';
 
 const CTX: ContextoCheckout = {
@@ -20,14 +21,42 @@ function crear(enlace: string | null) {
     texto: jest.fn().mockResolvedValue(undefined),
   };
   const pagoBold = { iniciarCobro: jest.fn().mockResolvedValue(enlace) };
+  const origenes = {
+    vincularPedido: jest.fn().mockResolvedValue(undefined),
+  };
   const servicio = new ConfirmacionPedidoService(
     envios as unknown as CheckoutEnviosService,
     pagoBold as unknown as PagoBoldService,
+    origenes as unknown as OrigenConversacionService,
   );
-  return { servicio, envios, pagoBold };
+  return { servicio, envios, pagoBold, origenes };
 }
 
 describe('ConfirmacionPedidoService', () => {
+  it('marca el pedido con el origen de la conversación del canal', async () => {
+    const { servicio, origenes } = crear(null);
+
+    await servicio.confirmar(
+      { ...CTX, canal: 'instagram' },
+      { ...DATOS, metodo: 'efectivo' },
+    );
+
+    expect(origenes.vincularPedido).toHaveBeenCalledWith(
+      'instagram',
+      CTX.identificadorExterno,
+      DATOS.pedido.id,
+    );
+  });
+
+  it('si no se puede copiar el origen, igual confirma el pedido', async () => {
+    const { servicio, envios, origenes } = crear(null);
+    origenes.vincularPedido.mockRejectedValue(new Error('base caída'));
+
+    await servicio.confirmar(CTX, { ...DATOS, metodo: 'efectivo' });
+
+    expect(envios.texto).toHaveBeenCalled();
+  });
+
   it('con tarjeta cobra por Bold, manda el enlace y dice que el pago quedó pendiente', async () => {
     const { servicio, envios } = crear('https://checkout.bold.co/LNK_1');
 
