@@ -47,6 +47,8 @@ export interface MessengerWebhookPayload {
   entry?: {
     id?: string;
     messaging?: MessengerEvento[];
+    /** Comentarios de posts y anuncios (campos `feed` y `comments`). */
+    changes?: { field?: string; value?: Record<string, unknown> }[];
   }[];
 }
 

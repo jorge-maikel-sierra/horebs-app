@@ -144,6 +144,22 @@ export class MetaGraphService {
     return descargarMediaWhatsapp(this.version, this.whatsappToken, mediaId);
   }
 
+  /**
+   * Respuesta privada a un comentario de Facebook o Instagram: va al mismo
+   * endpoint de mensajes de la página, con el comentario como destinatario.
+   */
+  async enviarRespuestaPrivada(
+    comentarioId: string,
+    texto: string,
+  ): Promise<void> {
+    await this.conReintentos(() =>
+      this.postSocial({
+        recipient: { comment_id: comentarioId },
+        message: { text: texto },
+      }),
+    );
+  }
+
   async enviarMensajeSesion(
     canal: CanalMensajeria,
     destinatarioId: string,

@@ -17,6 +17,7 @@ import type {
   MessengerWebhookPayload,
   WhatsappWebhookPayload,
 } from './parseo-webhook';
+import { ComentariosService } from './comentarios.service';
 import { WebhooksService } from './webhooks.service';
 
 /**
@@ -37,6 +38,7 @@ export class WebhooksController {
   constructor(
     private readonly webhooks: WebhooksService,
     private readonly config: ConfigService,
+    private readonly comentarios: ComentariosService,
   ) {}
 
   @Get('whatsapp')
@@ -67,10 +69,9 @@ export class WebhooksController {
   recibirMessenger(@Req() req: RawBodyRequest<Request>): { ok: boolean } {
     this.verificarFirmaOFallar(req);
     const pageId = this.config.get<string>('MESSENGER_PAGE_ID');
-    this.webhooks.procesarMessenger(
-      req.body as MessengerWebhookPayload,
-      pageId,
-    );
+    const payload = req.body as MessengerWebhookPayload;
+    this.webhooks.procesarMessenger(payload, pageId);
+    this.comentarios.procesar(payload.entry, 'messenger');
     return { ok: true };
   }
 
@@ -79,7 +80,9 @@ export class WebhooksController {
   recibirInstagram(@Req() req: RawBodyRequest<Request>): { ok: boolean } {
     this.verificarFirmaOFallar(req);
     const igId = this.config.get<string>('INSTAGRAM_ACCOUNT_ID');
-    this.webhooks.procesarInstagram(req.body as MessengerWebhookPayload, igId);
+    const payload = req.body as MessengerWebhookPayload;
+    this.webhooks.procesarInstagram(payload, igId);
+    this.comentarios.procesar(payload.entry, 'instagram');
     return { ok: true };
   }
 
