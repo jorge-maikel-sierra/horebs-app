@@ -4,6 +4,10 @@ const SITIO_URL = 'https://pizzeriahorebs.shop';
 const MARCA = 'Pizzería Horebs';
 const MONEDA = 'COP';
 const DECIMALES_PRECIO = 2;
+// Taxonomía de Google que Meta acepta: Food, Beverages & Tobacco > Food Items.
+const CATEGORIA_GOOGLE_COMIDA = '422';
+// Etiqueta para armar conjuntos de productos con los ancla (Especial, Hawaiana).
+const ETIQUETA_DESTACADO = 'destacado';
 
 export const COLUMNAS_FEED = [
   'id',
@@ -19,6 +23,9 @@ export const COLUMNAS_FEED = [
   'sale_price',
   'status',
   'custom_label_0',
+  'google_product_category',
+  'product_type',
+  'custom_label_1',
 ] as const;
 
 type ProductoDelFeed = ProductoDto & { imagen_url: string; slug: string };
@@ -41,6 +48,7 @@ export function filasDeProducto(
 ): string[][] {
   const esGrupoDeVariantes = producto.variantes.length > 1;
   const link = `${SITIO_URL}/menu/${producto.slug}`;
+  const categoria = nombreCategoria.get(producto.categoria_id) ?? '';
   const descripcion =
     producto.descripcion?.trim() ||
     `${producto.nombre} — Pizzería Horebs, Riohacha.`;
@@ -65,7 +73,10 @@ export function filasDeProducto(
       esGrupoDeVariantes ? producto.id : '',
       tieneOferta ? precioFeed(oferta) : '',
       'active',
-      nombreCategoria.get(producto.categoria_id) ?? '',
+      categoria,
+      CATEGORIA_GOOGLE_COMIDA,
+      categoria,
+      producto.destacado ? ETIQUETA_DESTACADO : '',
     ];
   });
 }

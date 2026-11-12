@@ -55,6 +55,9 @@ describe('filasDeProducto', () => {
       '',
       'active',
       'Pizzas',
+      '422',
+      'Pizzas',
+      '',
     ]);
   });
 
@@ -115,5 +118,15 @@ describe('csvDeFilas', () => {
     const csv = csvDeFilas([['a', 'b,c']]);
 
     expect(csv.split('\n')).toEqual([COLUMNAS_FEED.join(','), 'a,"b,c"']);
+  });
+});
+
+describe('etiquetas del feed para segmentar anuncios', () => {
+  it('un producto destacado lleva la etiqueta para los conjuntos de producto', () => {
+    const [fila] = filasDeProducto(producto({ destacado: true }), CATEGORIAS);
+    const columnas = new Map(COLUMNAS_FEED.map((c, i) => [c, fila.at(i)]));
+    expect(columnas.get('custom_label_1')).toBe('destacado');
+    expect(columnas.get('google_product_category')).toBe('422');
+    expect(columnas.get('product_type')).toBe('Pizzas');
   });
 });
