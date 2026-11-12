@@ -1,4 +1,8 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import type { ConversacionesService } from '../mensajeria/conversaciones.service';
 import type { ConversacionCompleta } from '../mensajeria/conversaciones.tipos';
 import type { MetaGraphService } from '../mensajeria/meta-graph.service';
@@ -8,7 +12,24 @@ const CONVERSACION = {
   id: 'cv-1',
   canal: 'whatsapp',
   identificador_externo: '573157861208',
+  ultima_interaccion: new Date().toISOString(),
 } as ConversacionCompleta;
+
+describe('SeguimientoAdminService: ventana de 24 h', () => {
+  it('pasadas 24 h desde el último mensaje del cliente no deja escribir (409)', async () => {
+    const vieja = {
+      ...CONVERSACION,
+      canal: 'messenger',
+      ultima_interaccion: new Date(Date.now() - 25 * 3_600_000).toISOString(),
+    } as ConversacionCompleta;
+    const { servicio, enviados } = crearServicio(vieja);
+
+    await expect(
+      servicio.enviarMensajeHumano('cv-1', 'hola', 'u-1'),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(enviados).toEqual([]);
+  });
+});
 
 function crearServicio(
   conversacion: ConversacionCompleta | null = CONVERSACION,

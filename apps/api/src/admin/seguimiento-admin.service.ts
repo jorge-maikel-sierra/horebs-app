@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   Logger,
   NotFoundException,
@@ -10,6 +11,7 @@ import type {
   EstadoConversacion,
   MensajeConversacion,
 } from '../mensajeria/conversaciones.tipos';
+import { dentroDeLaVentana } from '../mensajeria/avisos-pedido';
 import { MetaGraphService } from '../mensajeria/meta-graph.service';
 
 const LIMITE_MENSAJE = 4096;
@@ -90,6 +92,19 @@ export class SeguimientoAdminService {
     return this.conversaciones.listarMensajes(id);
   }
 
+  /**
+   * Meta rechaza cualquier mensaje libre pasadas 24 h desde el último del
+   * cliente: se avisa claro en vez de dejar que falle en Graph.
+   */
+  private exigirVentanaAbierta(conversacion: ConversacionCompleta): void {
+    const ultima = new Date(conversacion.ultima_interaccion);
+    if (!dentroDeLaVentana(ultima, new Date())) {
+      throw new ConflictException(
+        'Pasaron más de 24 horas desde el último mensaje del cliente: Meta no deja escribirle por este chat hasta que él vuelva a escribir. Contáctalo por teléfono si es urgente.',
+      );
+    }
+  }
+
   /** Un admin/empleado le contesta directo a un cliente derivado — resuelve
    * canal/identificador_externo sin que el frontend tenga que conocerlos,
    * manda el mensaje real vía Graph API, y lo deja registrado como
@@ -113,6 +128,7 @@ export class SeguimientoAdminService {
     if (!conversacion) {
       throw new NotFoundException('Conversación no encontrada.');
     }
+    this.exigirVentanaAbierta(conversacion);
 
     try {
       await this.metaGraph.enviarMensajeSesion(
