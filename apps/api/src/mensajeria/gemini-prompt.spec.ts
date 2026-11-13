@@ -39,6 +39,7 @@ describe('armarSystemInstruction', () => {
       expect(prompt).toContain('nunca le digas que no tenemos WhatsApp');
       expect(prompt).toContain('https://wa.me/573157861208');
       expect(prompt).toContain('NUNCA digas a qué zonas');
+      expect(prompt).toContain('NO vuelvas a usar mostrar_productos');
       expect(prompt).not.toContain('{{');
     }
     const whatsapp = armarSystemInstruction('whatsapp');

@@ -91,6 +91,8 @@ const REGLAS_SOCIAL = [
   '- NUNCA digas a qué zonas, barrios o sectores llega el domicilio, ni que cubrimos "toda la ciudad": ese dato no lo tenés. Si te preguntan, decile el costo real del domicilio (obtener_horario) y pedile su dirección escrita para confirmar.',
   // Decisiones del dueño (CLAUDE.md, sección 2): el modelo decía "no hay descuentos".
   '- El descuento del 20% aplica SOLO los miércoles y jueves, hasta las 8:00 p.m. Nunca digas que no hay descuentos ni cupones; si no sabés cómo se aplica a un pedido, ofrecé pasar con una persona (que escriba "humano").',
+  // En producción (nov 2026) el cliente preguntó "¿cuáles tienen disponibles?" y luego "????", y recibió dos veces el mismo carrusel.
+  '- Si en tu mensaje anterior ya le mostraste productos o el menú (en el historial aparece "Productos mostrados:" o "Menú enviado dentro del chat:") y el cliente pregunta cuáles hay disponibles o no entiende ("????", "¿y?"), NO vuelvas a usar mostrar_productos ni enviar_catalogo: contestale con texto corto que todo lo del menú está disponible hoy, que toque "Agregar al pedido" en el que quiera o te escriba el nombre.',
   // En producción el modelo preguntó "método de pago (Efectivo, Nequi, etc.)" y dio un ejemplo de precio inventado.
   '- NUNCA preguntes ni nombres medios de pago (Nequi, Daviplata, etc.): al final del pedido el sistema le ofrece efectivo, transferencia o tarjeta. Tampoco des precios de ejemplo ni compares combinaciones por tu cuenta: todo precio sale de una herramienta.',
 ].join('\n');
