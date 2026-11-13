@@ -10,15 +10,12 @@ import {
   BOTON_SOCIAL,
   BOTONES_ARMAR_PEDIDO,
   BOTONES_INICIO,
-  BOTONES_TRAS_PRECIO,
   PREFIJO_CANTIDAD_SOCIAL,
   PREFIJO_PRODUCTO_SOCIAL,
   PREFIJO_VARIANTE_SOCIAL,
   botonesDeCantidad,
   botonesDeTamano,
   leerCantidad,
-  lineaDePrecios,
-  listaDePrecios,
   sumarItem,
 } from './opciones-social';
 
@@ -69,27 +66,6 @@ export class PedidoSocialService {
     if (id === BOTON_SOCIAL.vaciar) return this.vaciar(ctx);
     if (id === BOTON_SOCIAL.repetir) return this.repetir(ctx);
     return false;
-  }
-
-  /** Precio de un producto (si lo nombró) o la lista completa de precios. */
-  async responderPrecios(ctx: ContextoCheckout, texto: string): Promise<void> {
-    const productos = await this.catalog.getProductos();
-    const { encontrado } = buscarProductoUnico(texto, productos);
-    if (encontrado && !esAdicional(encontrado.nombre)) {
-      await this.envios.textoConOpciones(ctx, lineaDePrecios(encontrado), [
-        {
-          id: `${PREFIJO_PRODUCTO_SOCIAL}${encontrado.id}`,
-          titulo: '🛒 Pedir esta',
-        },
-        ...BOTONES_TRAS_PRECIO,
-      ]);
-      return;
-    }
-    await this.envios.textoConOpciones(
-      ctx,
-      listaDePrecios(productos),
-      BOTONES_INICIO,
-    );
   }
 
   private async productoPorId(

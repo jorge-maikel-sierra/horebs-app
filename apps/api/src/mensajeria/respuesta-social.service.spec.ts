@@ -1,11 +1,11 @@
 import type { CheckoutEnviosService } from './checkout-envios.service';
 import type { ConversacionCompleta } from './conversaciones.tipos';
 import type { DerivacionBotService } from './derivacion-bot.service';
-import type { EnvioHerramientasService } from './envio-herramientas.service';
 import type { BotonRespuesta } from './mensajes-interactivos';
 import type { EventoEntrante } from './parseo-webhook';
 import type { PedidoSocialService } from './pedido-social.service';
 import { RespuestaSocialService } from './respuesta-social.service';
+import type { VitrinaSocialService } from './vitrina-social.service';
 
 const CONVERSACION = { id: 'cv-1', estado: 'bot' } as ConversacionCompleta;
 
@@ -23,8 +23,7 @@ function evento(extra: Partial<EventoEntrante> = {}): EventoEntrante {
 
 interface Opciones {
   inicioProducto?: boolean;
-  menu?: string | null;
-  categoria?: string | null;
+  categoria?: boolean;
   atiendePedido?: boolean;
 }
 
@@ -56,25 +55,19 @@ function crearServicio(opciones: Opciones = {}) {
       llamadas.push(`boton:${id}`);
       return Promise.resolve(opciones.atiendePedido ?? false);
     },
-    responderPrecios: () => {
+  };
+  const vitrina = {
+    precios: () => {
       llamadas.push('precios');
       return Promise.resolve();
     },
-  };
-  const menu = {
-    menuSocial: () => {
-      llamadas.push('menu');
-      return Promise.resolve(
-        opciones.menu === undefined ? 'Menú enviado' : opciones.menu,
-      );
+    enviarMenu: (_c: unknown, paraPedir: boolean) => {
+      llamadas.push(paraPedir ? 'menu:pedir' : 'menu');
+      return Promise.resolve();
     },
-    categoriaSocial: (_c: string, _id: string, categoriaId: string) => {
+    mostrarCategoria: (_c: unknown, categoriaId: string) => {
       llamadas.push(`categoria:${categoriaId}`);
-      return Promise.resolve(
-        opciones.categoria === undefined
-          ? 'Productos mostrados'
-          : opciones.categoria,
-      );
+      return Promise.resolve(opciones.categoria ?? true);
     },
   };
   const derivacion = {
@@ -86,7 +79,7 @@ function crearServicio(opciones: Opciones = {}) {
   const servicio = new RespuestaSocialService(
     envios as unknown as CheckoutEnviosService,
     pedido as unknown as PedidoSocialService,
-    menu as unknown as EnvioHerramientasService,
+    vitrina as unknown as VitrinaSocialService,
     derivacion as unknown as DerivacionBotService,
   );
   return { servicio, textos, conOpciones, registrados, llamadas };
@@ -191,8 +184,8 @@ describe('RespuestaSocialService: respuestas fijas', () => {
 });
 
 describe('RespuestaSocialService: menú, pedido y persona', () => {
-  it('"el menú" manda las tarjetas dentro del chat y lo deja en el historial', async () => {
-    const { servicio, llamadas, registrados, conOpciones } = crearServicio();
+  it('"el menú" manda el menú de la vitrina', async () => {
+    const { servicio, llamadas, conOpciones } = crearServicio();
 
     await servicio.atender(
       evento({ texto: 'Me regalas el menú' }),
@@ -200,30 +193,29 @@ describe('RespuestaSocialService: menú, pedido y persona', () => {
     );
 
     expect(llamadas).toEqual(['menu']);
-    expect(registrados).toEqual(['Menú enviado']);
     expect(conOpciones).toEqual([]);
   });
 
-  it('"hacer un pedido" manda el menú y dice dónde tocar', async () => {
-    const { servicio, textos } = crearServicio();
+  it('"hacer un pedido" manda el menú para pedir', async () => {
+    const { servicio, llamadas } = crearServicio();
 
     await servicio.atender(
       evento({ texto: 'Hacer un pedido 🛵' }),
       CONVERSACION,
     );
 
-    expect(textos[0]).toContain('Toca «Agregar al pedido»');
+    expect(llamadas).toEqual(['menu:pedir']);
   });
 
-  it('si el menú no se puede mostrar, ofrece hablar con una persona', async () => {
-    const { servicio, conOpciones } = crearServicio({ menu: null });
+  it('si piden el WhatsApp manda el enlace que abre el chat', async () => {
+    const { servicio, conOpciones } = crearServicio();
 
-    await servicio.atender(evento({ texto: 'menú' }), CONVERSACION);
-
-    expect(conOpciones[0].texto).toContain(
-      'Por ahora no puedo mostrarte el menú',
+    await servicio.atender(
+      evento({ texto: 'Cuál es el número de WhatsApp' }),
+      CONVERSACION,
     );
-    expect(conOpciones[0].opciones.map((o) => o.id)).toEqual(['mnu:humano']);
+
+    expect(conOpciones[0].texto).toContain('https://wa.me/573157861208');
   });
 
   it('"agregar al pedido" de una tarjeta inicia el pedido por botones', async () => {
@@ -249,7 +241,7 @@ describe('RespuestaSocialService: menú, pedido y persona', () => {
     ).resolves.toBe(false);
   });
 
-  it('la pregunta por precios la contesta el pedido social', async () => {
+  it('la pregunta por precios la contesta la vitrina', async () => {
     const { servicio, llamadas } = crearServicio();
 
     await servicio.atender(
@@ -281,9 +273,9 @@ describe('RespuestaSocialService: menú, pedido y persona', () => {
         CONVERSACION,
       ),
     ).resolves.toBe(true);
-    expect(ok.registrados).toEqual(['Productos mostrados']);
+    expect(ok.llamadas).toEqual(['categoria:cat-1']);
 
-    const vacia = crearServicio({ categoria: null });
+    const vacia = crearServicio({ categoria: false });
     await expect(
       vacia.servicio.atender(
         evento({ entrada: { tipo: 'boton', id: 'cat:cat-9' } }),

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import {
   CatalogService,
   entraEnCatalogoMeta,
+  type ProductoDto,
 } from '../catalog/catalog.service';
 import { esAdicional } from './adicionales';
 import { obtenerCapacidades } from './capacidades-canal';
@@ -159,6 +160,30 @@ export class EnvioHerramientasService {
       canal,
       identificadorExterno,
       tarjetas,
+    );
+    return `Productos mostrados: ${tarjetas.map((t) => t.nombre).join(', ')}`;
+  }
+
+  /** Unos productos puntuales (las más pedidas) como tarjetas dentro del chat. null si no hay ninguno. */
+  async tarjetasSocial(
+    canal: CanalMensajeria,
+    identificadorExterno: string,
+    productos: ProductoDto[],
+  ): Promise<string | null> {
+    const tarjetas = tarjetasDe(
+      productos,
+      obtenerCapacidades(canal).maxElementosTarjetas,
+    );
+    if (tarjetas.length === 0) return null;
+    await this.metaGraph.enviarTarjetasProductos(
+      canal,
+      identificadorExterno,
+      tarjetas,
+    );
+    this.conversiones.avisarConversacion(
+      'ViewContent',
+      canal,
+      identificadorExterno,
     );
     return `Productos mostrados: ${tarjetas.map((t) => t.nombre).join(', ')}`;
   }

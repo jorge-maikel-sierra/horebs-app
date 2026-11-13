@@ -1,5 +1,4 @@
 import type { ProductoDto } from '../catalog/catalog.service';
-import { esAdicional } from './adicionales';
 import type { ItemCarritoPendiente } from './conversaciones.tipos';
 import type { BotonRespuesta } from './mensajes-interactivos';
 import { pesos } from './resumen-pedido';
@@ -97,11 +96,19 @@ export function lineaDePrecios(producto: ProductoDto): string {
   return `${producto.nombre}: ${precios}`;
 }
 
-export function listaDePrecios(productos: ProductoDto[]): string {
-  const lineas = productos
-    .filter((p) => !esAdicional(p.nombre))
-    .map((p) => `• ${lineaDePrecios(p)}`);
-  return `Estos son nuestros precios 🍕\n${lineas.join('\n')}`;
+/**
+ * Tras sugerir las más pedidas: un botón por pizza ("🍕 Hawaiana", sin el
+ * "Pizza " para que quepa en una opción rápida), el menú completo y una persona.
+ */
+export function botonesMasPedidas(pizzas: ProductoDto[]): BotonRespuesta[] {
+  return [
+    ...pizzas.map((p) => ({
+      id: `${PREFIJO_PRODUCTO_SOCIAL}${p.id}`,
+      titulo: `🍕 ${p.nombre.replace(/^Pizza (de )?/i, '')}`,
+    })),
+    { id: BOTON_SOCIAL.menu, titulo: '📋 Ver menú completo' },
+    { id: BOTON_SOCIAL.humano, titulo: '💬 Una persona' },
+  ];
 }
 
 /** Suma una cantidad al carrito; si la variante ya estaba, la acumula hasta el tope. */

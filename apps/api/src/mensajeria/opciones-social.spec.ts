@@ -4,7 +4,7 @@ import {
   BOTONES_TRAS_PRECIO,
   CANTIDADES_SOCIAL,
   leerCantidad,
-  listaDePrecios,
+  botonesMasPedidas,
   sumarItem,
 } from './opciones-social';
 
@@ -55,36 +55,27 @@ describe('opciones-social', () => {
     expect(leerCantidad(':2')).toBeNull();
   });
 
-  it('la lista de precios omite los adicionales y usa el precio de oferta si hay', () => {
-    const texto = listaDePrecios([
-      {
-        id: 'p1',
-        nombre: 'Pizza Margarita',
-        descripcion: null,
-        imagen_url: null,
-        destacado: false,
-        categoria_id: 'c',
-        slug: null,
-        ventas_historicas: null,
-        variantes: [
-          { id: 'v1', nombre: 'Personal', precio: 12000, precio_oferta: 10000 },
-        ],
-      },
-      {
-        id: 'p2',
-        nombre: 'Adicional: Piña',
-        descripcion: null,
-        imagen_url: null,
-        destacado: false,
-        categoria_id: 'c',
-        slug: null,
-        ventas_historicas: null,
-        variantes: [
-          { id: 'v2', nombre: 'Personal', precio: 5000, precio_oferta: null },
-        ],
-      },
+  it('los botones de las más pedidas abren cada pizza y ofrecen el menú completo', () => {
+    const pizza = (id: string, nombre: string) => ({
+      id,
+      nombre,
+      descripcion: null,
+      imagen_url: null,
+      destacado: false,
+      categoria_id: 'c',
+      slug: null,
+      ventas_historicas: null,
+      variantes: [],
+    });
+    const botones = botonesMasPedidas([
+      pizza('p1', 'Pizza Horebs Especial'),
+      pizza('p2', 'Pizza de Jamón y Queso'),
     ]);
-    expect(texto).toContain('• Pizza Margarita: Personal $10.000');
-    expect(texto).not.toContain('Adicional');
+    expect(botones).toEqual([
+      { id: 'ped:p:p1', titulo: '🍕 Horebs Especial' },
+      { id: 'ped:p:p2', titulo: '🍕 Jamón y Queso' },
+      { id: 'mnu:menu', titulo: '📋 Ver menú completo' },
+      { id: 'mnu:humano', titulo: '💬 Una persona' },
+    ]);
   });
 });

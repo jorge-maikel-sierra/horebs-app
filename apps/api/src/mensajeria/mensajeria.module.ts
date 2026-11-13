@@ -41,6 +41,8 @@ import { RespuestaBotService } from './respuesta-bot.service';
 import { AtencionDeterministaService } from './atencion-determinista.service';
 import { PedidoSocialService } from './pedido-social.service';
 import { RespuestaSocialService } from './respuesta-social.service';
+import { MasPedidasService } from './mas-pedidas.service';
+import { VitrinaSocialService } from './vitrina-social.service';
 
 @Module({
   imports: [
@@ -81,6 +83,8 @@ import { RespuestaSocialService } from './respuesta-social.service';
     AtencionDeterministaService,
     PedidoSocialService,
     RespuestaSocialService,
+    MasPedidasService,
+    VitrinaSocialService,
     PagoBoldService,
     ConfirmacionPedidoService,
     OrigenConversacionService,

@@ -3,7 +3,6 @@ import { CheckoutEnviosService } from './checkout-envios.service';
 import type { ContextoCheckout } from './checkout-whatsapp';
 import type { ConversacionCompleta } from './conversaciones.tipos';
 import { DerivacionBotService } from './derivacion-bot.service';
-import { EnvioHerramientasService } from './envio-herramientas.service';
 import {
   BOTON_SOCIAL,
   BOTONES_INICIO,
@@ -17,6 +16,7 @@ import {
   textoDeIntencion,
   type IntencionFija,
 } from './respuestas-fijas';
+import { VitrinaSocialService } from './vitrina-social.service';
 
 const INTENCION_DE_BOTON = new Map<string, IntencionFija>([
   [BOTON_SOCIAL.menu, 'menu'],
@@ -39,7 +39,7 @@ export class RespuestaSocialService {
   constructor(
     private readonly envios: CheckoutEnviosService,
     private readonly pedido: PedidoSocialService,
-    private readonly menu: EnvioHerramientasService,
+    private readonly vitrina: VitrinaSocialService,
     private readonly derivacion: DerivacionBotService,
   ) {}
 
@@ -73,10 +73,13 @@ export class RespuestaSocialService {
     id: string,
   ): Promise<boolean> {
     if (id.startsWith(PREFIJO_CATEGORIA)) {
-      return this.mostrarCategoria(ctx, id.slice(PREFIJO_CATEGORIA.length));
+      return this.vitrina.mostrarCategoria(
+        ctx,
+        id.slice(PREFIJO_CATEGORIA.length),
+      );
     }
     if (id === BOTON_SOCIAL.mas) {
-      await this.enviarMenu(ctx, false);
+      await this.vitrina.enviarMenu(ctx, false);
       return true;
     }
     const intencion = INTENCION_DE_BOTON.get(id);
@@ -93,53 +96,12 @@ export class RespuestaSocialService {
     texto: string,
   ): Promise<void> {
     if (intencion === 'humano') return this.pasarAUnaPersona(ctx);
-    if (intencion === 'menu') return this.enviarMenu(ctx, false);
-    if (intencion === 'pedir') return this.enviarMenu(ctx, true);
-    if (intencion === 'precios')
-      return this.pedido.responderPrecios(ctx, texto);
+    if (intencion === 'menu') return this.vitrina.enviarMenu(ctx, false);
+    if (intencion === 'pedir') return this.vitrina.enviarMenu(ctx, true);
+    if (intencion === 'precios') return this.vitrina.precios(ctx, texto);
     const respuesta = textoDeIntencion(intencion, new Date());
     if (respuesta) {
       await this.envios.textoConOpciones(ctx, respuesta, BOTONES_INICIO);
-    }
-  }
-
-  private async mostrarCategoria(
-    ctx: ContextoCheckout,
-    categoriaId: string,
-  ): Promise<boolean> {
-    const registro = await this.menu.categoriaSocial(
-      ctx.canal ?? 'messenger',
-      ctx.identificadorExterno,
-      categoriaId,
-    );
-    if (!registro) return false;
-    await this.envios.registrar(ctx, registro);
-    return true;
-  }
-
-  /** El menú como tarjetas dentro del chat; con `paraPedir`, avisa dónde tocar. */
-  private async enviarMenu(
-    ctx: ContextoCheckout,
-    paraPedir: boolean,
-  ): Promise<void> {
-    const registro = await this.menu.menuSocial(
-      ctx.canal ?? 'messenger',
-      ctx.identificadorExterno,
-    );
-    if (!registro) {
-      await this.envios.textoConOpciones(
-        ctx,
-        'Por ahora no puedo mostrarte el menú por aquí 😕 ¿Quieres hablar con una persona?',
-        BOTONES_INICIO.slice(-1),
-      );
-      return;
-    }
-    await this.envios.registrar(ctx, registro);
-    if (paraPedir) {
-      await this.envios.texto(
-        ctx,
-        'Toca «Agregar al pedido» en el producto que quieras 👆',
-      );
     }
   }
 

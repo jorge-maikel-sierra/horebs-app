@@ -257,31 +257,7 @@ describe('PedidoSocialService: armar y seguir con el pedido', () => {
   });
 });
 
-describe('PedidoSocialService: precios', () => {
-  it('si nombra un producto, da sus precios y ofrece pedirlo', async () => {
-    const { servicio, conOpciones } = crearServicio();
-
-    await servicio.responderPrecios(CTX, 'Precio de la hawaiana');
-
-    expect(conOpciones[0].texto).toBe(
-      'Pizza Hawaiana: Personal $20.000 · Mediana $35.000 · Grande $45.000',
-    );
-    expect(conOpciones[0].opciones[0]).toEqual({
-      id: 'ped:p:p-hw',
-      titulo: '🛒 Pedir esta',
-    });
-  });
-
-  it('si no nombra ninguno, manda la lista completa sin los adicionales', async () => {
-    const { servicio, conOpciones } = crearServicio();
-
-    await servicio.responderPrecios(CTX, 'Que precio tienen las pizzas');
-
-    expect(conOpciones[0].texto).toContain('• Pizza Hawaiana:');
-    expect(conOpciones[0].texto).toContain('• Panzerotti: Única $12.000');
-    expect(conOpciones[0].texto).not.toContain('Adicional');
-  });
-
+describe('PedidoSocialService: botón de un producto', () => {
   it('"Pedir esta" abre el pedido del producto por su id', async () => {
     const { servicio, botones } = crearServicio();
 
