@@ -4,7 +4,10 @@ import type { ConversacionCompleta } from './conversaciones.tipos';
 import type { GeminiService } from './gemini.service';
 import type { MetaGraphService } from './meta-graph.service';
 import type { EventoEntrante } from './parseo-webhook';
-import { RespuestaBotService } from './respuesta-bot.service';
+import {
+  RespuestaBotService,
+  TEXTO_RETOMAR_PEDIDO,
+} from './respuesta-bot.service';
 
 const CONVERSACION = { id: 'cv-1', estado: 'bot' } as ConversacionCompleta;
 
@@ -23,6 +26,8 @@ function evento(extra: Partial<EventoEntrante> = {}): EventoEntrante {
 interface Opciones {
   atiendeDeterminista?: boolean;
   respuestaGemini?: string | null;
+  carrito?: { varianteId: string; cantidad: number }[];
+  checkout?: { paso: string } | null;
 }
 
 function crearServicio(opciones: Opciones = {}) {
@@ -47,12 +52,23 @@ function crearServicio(opciones: Opciones = {}) {
       enviados.push(texto);
       return Promise.resolve();
     },
+    enviarBotones: (
+      _c: string,
+      _id: string,
+      cuerpo: string,
+      botones: { id: string }[],
+    ) => {
+      enviados.push(`${cuerpo} [${botones.map((b) => b.id).join(',')}]`);
+      return Promise.resolve();
+    },
   };
   const conversaciones = {
     registrarMensaje: (_id: string, _dir: string, texto: string) => {
       registrados.push(texto);
       return Promise.resolve();
     },
+    obtenerCarrito: () => Promise.resolve(opciones.carrito ?? []),
+    obtenerCheckout: () => Promise.resolve(opciones.checkout ?? null),
   };
   const determinista = {
     atender: () => {
@@ -104,5 +120,51 @@ describe('RespuestaBotService.responder', () => {
 
     expect(enviados).toEqual([]);
     expect(registrados).toEqual([]);
+  });
+
+  it('en Messenger, si quedó un carrito a medias, ofrece seguir con el pedido tras la respuesta de Gemini', async () => {
+    const { servicio, enviados, registrados } = crearServicio({
+      respuestaGemini: 'La personal trae 6 porciones.',
+      carrito: [{ varianteId: 'v-1', cantidad: 1 }],
+    });
+
+    await servicio.responder(
+      evento({ canal: 'messenger', identificadorExterno: 'psid-1' }),
+      CONVERSACION,
+      null,
+    );
+
+    expect(enviados).toEqual([
+      'La personal trae 6 porciones.',
+      `${TEXTO_RETOMAR_PEDIDO} [ped:mas,ped:fin,ped:vaciar]`,
+    ]);
+    expect(registrados).toContain(TEXTO_RETOMAR_PEDIDO);
+  });
+
+  it('no ofrece seguir si no hay carrito, si ya está en el checkout o si es WhatsApp', async () => {
+    const sinCarrito = crearServicio();
+    await sinCarrito.servicio.responder(
+      evento({ canal: 'messenger', identificadorExterno: 'psid-1' }),
+      CONVERSACION,
+      null,
+    );
+    expect(sinCarrito.enviados).toHaveLength(1);
+
+    const enCheckout = crearServicio({
+      carrito: [{ varianteId: 'v-1', cantidad: 1 }],
+      checkout: { paso: 'modalidad' },
+    });
+    await enCheckout.servicio.responder(
+      evento({ canal: 'instagram', identificadorExterno: 'igsid-1' }),
+      CONVERSACION,
+      null,
+    );
+    expect(enCheckout.enviados).toHaveLength(1);
+
+    const whatsapp = crearServicio({
+      carrito: [{ varianteId: 'v-1', cantidad: 1 }],
+    });
+    await whatsapp.servicio.responder(evento(), CONVERSACION, null);
+    expect(whatsapp.enviados).toHaveLength(1);
   });
 });

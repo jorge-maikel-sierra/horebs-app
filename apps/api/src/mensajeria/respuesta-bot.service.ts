@@ -5,6 +5,7 @@ import { ConversacionesService } from './conversaciones.service';
 import type { ConversacionCompleta } from './conversaciones.tipos';
 import { GeminiService } from './gemini.service';
 import { MetaGraphService } from './meta-graph.service';
+import { BOTONES_ARMAR_PEDIDO } from './opciones-social';
 import type { EventoEntrante } from './parseo-webhook';
 
 /** Carrito del catálogo de WhatsApp ya cruzado con lo que hay en la base. */
@@ -12,6 +13,9 @@ export interface CarritoValidado {
   disponibles: ItemCarritoResuelto[];
   noDisponibles: number;
 }
+
+export const TEXTO_RETOMAR_PEDIDO =
+  '¿Seguimos con tu pedido? 🛒 Lo que ya elegiste sigue guardado.';
 
 /**
  * Cómo responde el bot a un mensaje que sí le toca: primero lo determinístico
@@ -54,16 +58,49 @@ export class RespuestaBotService {
     );
     // null = la herramienta (ej. el botón de catálogo) ya mandó el mensaje
     // y ya lo dejó registrado ella misma (ver gemini.service.ts).
-    if (respuesta === null) return;
-    await this.metaGraph.enviarMensajeSesion(
+    if (respuesta !== null) {
+      await this.metaGraph.enviarMensajeSesion(
+        evento.canal,
+        evento.identificadorExterno,
+        respuesta,
+      );
+      await this.conversaciones.registrarMensaje(
+        conversacion.id,
+        'saliente_bot',
+        respuesta,
+      );
+    }
+    await this.retomarPedido(evento, conversacion);
+  }
+
+  /**
+   * Messenger e Instagram: si el cliente preguntó algo a mitad del pedido por
+   * botones (porciones, domicilio…), Gemini le contesta pero no sabe en qué
+   * paso iba. En producción el carrito quedó abandonado así: se le ofrecen de
+   * nuevo los botones para seguir. Con el checkout ya empezado no hace falta:
+   * ese flujo atiende sus propias respuestas.
+   */
+  private async retomarPedido(
+    evento: EventoEntrante,
+    conversacion: ConversacionCompleta,
+  ): Promise<void> {
+    if (evento.canal === 'whatsapp') return;
+    const id = evento.identificadorExterno;
+    const [carrito, checkout] = await Promise.all([
+      this.conversaciones.obtenerCarrito(evento.canal, id),
+      this.conversaciones.obtenerCheckout(evento.canal, id),
+    ]);
+    if (carrito.length === 0 || checkout) return;
+    await this.metaGraph.enviarBotones(
       evento.canal,
-      evento.identificadorExterno,
-      respuesta,
+      id,
+      TEXTO_RETOMAR_PEDIDO,
+      BOTONES_ARMAR_PEDIDO,
     );
     await this.conversaciones.registrarMensaje(
       conversacion.id,
       'saliente_bot',
-      respuesta,
+      TEXTO_RETOMAR_PEDIDO,
     );
   }
 }
