@@ -123,11 +123,6 @@ export class EnvioHerramientasService {
       canal,
       identificadorExterno,
     );
-    this.conversiones.avisarConversacion(
-      'ViewContent',
-      canal,
-      identificadorExterno,
-    );
     const conProductos = categorias.filter((c) =>
       productos.some((p) => p.categoria_id === c.id && !esAdicional(p.nombre)),
     );

@@ -106,6 +106,7 @@ function crearServicio(opciones: Opciones = {}) {
     catalogosEnviados,
     tarjetasEnviadas,
     botonesEnviados,
+    conversiones,
   };
 }
 
@@ -199,6 +200,35 @@ describe('EnvioHerramientasService.mandoElMensaje', () => {
 
     await expect(
       servicio.categoriaSocial('messenger', 'psid-1', 'cat-9'),
+    ).resolves.toBeNull();
+    expect(tarjetasEnviadas).toHaveLength(1);
+  });
+
+  it('el menú en Messenger avisa ViewContent una sola vez', async () => {
+    const { servicio, conversiones } = crearServicio();
+
+    await servicio.menuSocial('messenger', 'psid-1');
+
+    expect(conversiones.avisarConversacion).toHaveBeenCalledTimes(1);
+  });
+
+  it('tarjetasSocial manda justo esos productos y avisa ViewContent', async () => {
+    const { servicio, tarjetasEnviadas, conversiones } = crearServicio();
+
+    await expect(
+      servicio.tarjetasSocial('messenger', 'psid-1', [
+        producto('p-9', 'Horebs Especial'),
+      ]),
+    ).resolves.toBe('Productos mostrados: Horebs Especial');
+    expect(tarjetasEnviadas).toHaveLength(1);
+    expect(conversiones.avisarConversacion).toHaveBeenCalledWith(
+      'ViewContent',
+      'messenger',
+      'psid-1',
+    );
+
+    await expect(
+      servicio.tarjetasSocial('messenger', 'psid-1', []),
     ).resolves.toBeNull();
     expect(tarjetasEnviadas).toHaveLength(1);
   });
