@@ -1,6 +1,7 @@
 import { diaSemanaBogota } from '../common/promocion';
 import {
   detectarIntencion,
+  textoWhatsapp,
   textoDescuento,
   textoDomicilio,
   textoHorarioFijo,
@@ -113,6 +114,17 @@ describe('detectarIntencion con mensajes reales de clientes', () => {
       'mitad',
     ],
     ['¿Se puede mitad y mitad?', 'mitad'],
+    ['Cuál es el número de WhatsApp', 'whatsapp'],
+    [
+      'Hola buenas noches deseo su número de contacto para hacer pedido',
+      'whatsapp',
+    ],
+    ['tienen whatsapp?', 'whatsapp'],
+    ['Me regalas el número?', 'whatsapp'],
+    ['mi número es 3008392278', null],
+    ['3008392278', null],
+    ['cuál es el número de mi pedido', null],
+    ['¿Qué zonas cubren para entrega a domicilio?', 'domicilio'],
   ];
 
   it.each(casos)('"%s" → %s', (texto, esperado) => {
@@ -142,5 +154,11 @@ describe('detectarIntencion con mensajes reales de clientes', () => {
         'Hola buenas tardes mi nombre es Carlos y vi la publicidad del 20% de descuento en Facebook, ¿cómo lo aplico?',
       ),
     ).toBe('descuento');
+  });
+});
+
+describe('textoWhatsapp', () => {
+  it('manda el enlace que abre el chat de WhatsApp del negocio (315 786 1208)', () => {
+    expect(textoWhatsapp()).toContain('https://wa.me/573157861208');
   });
 });

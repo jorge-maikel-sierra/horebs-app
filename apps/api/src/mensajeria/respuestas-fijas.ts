@@ -1,3 +1,4 @@
+import { ENLACE_WHATSAPP_NEGOCIO } from '../common/contacto';
 import { COSTO_DOMICILIO_DEFAULT } from '../common/costos';
 import { estadoAtencion } from '../common/horario';
 import {
@@ -22,6 +23,7 @@ import { pesos } from './resumen-pedido';
 export type IntencionFija =
   | 'saludo'
   | 'humano'
+  | 'whatsapp'
   | 'descuento'
   | 'pedir'
   | 'menu'
@@ -106,6 +108,10 @@ export function textoDomicilio(): string {
   return `El domicilio cuesta ${pesos(COSTO_DOMICILIO_DEFAULT)} 🛵\nAl armar tu pedido me escribes tu dirección (calle o carrera, barrio y una referencia).`;
 }
 
+export function textoWhatsapp(): string {
+  return `Claro 👇 Toca este enlace y se te abre nuestro chat de WhatsApp:\n${ENLACE_WHATSAPP_NEGOCIO}\nSi prefieres, aquí mismo también te tomo el pedido 🍕`;
+}
+
 export function textoTamanos(): string {
   const lineas = TAMANOS_PIZZA.split('. ')
     .map((l) => l.replace(/\.$/, ''))
@@ -134,6 +140,7 @@ const TEXTOS = new Map<IntencionFija, (ahora: Date) => string>([
     (ahora) => `${textoHorarioFijo(ahora)}\n${textoUbicacion()}`,
   ],
   ['ubicacion', textoUbicacion],
+  ['whatsapp', textoWhatsapp],
   ['domicilio', textoDomicilio],
   ['tamanos', textoTamanos],
   ['pagos', textoPagos],
@@ -153,6 +160,22 @@ const dice =
   (t: string): boolean =>
     reglas.every((r) => r.test(t));
 
+const PALABRA_WHATSAPP = /\b(whatsapp|whatsap|wasap|wsp|wpp|watsap)\b/;
+const PALABRA_NUMERO = /\b(numero|telefono|celular|contacto)\b/;
+const PIDE_EL_DATO =
+  /\b(su|sus|tu|el|cual|cuales|tienen|dame|deme|regalame|regala|pasame|pasa|deseo|quiero|necesito|da|das|envia|enviame|manda|mandame)\b/;
+// "mi número es…", "300 839 2278" o "el número de mi pedido": no piden el contacto del negocio.
+const NO_ES_CONTACTO =
+  /\bmi (numero|telefono|celular|whatsapp)\b|\d{7,}|\bnumero de (mi |su |tu |el )?(pedido|orden|cuenta|guia)\b/;
+
+/** "¿Cuál es el número de WhatsApp?", "deseo su número de contacto": pide el contacto del negocio. */
+function pideWhatsapp(t: string): boolean {
+  if (NO_ES_CONTACTO.test(t)) return false;
+  return (
+    PALABRA_WHATSAPP.test(t) || (PALABRA_NUMERO.test(t) && PIDE_EL_DATO.test(t))
+  );
+}
+
 const REGLAS: [IntencionFija, (t: string) => boolean][] = [
   [
     'humano',
@@ -160,6 +183,7 @@ const REGLAS: [IntencionFija, (t: string) => boolean][] = [
       /\b(humano|asesor|agente|una persona|alguien del equipo|hablar con (alguien|una persona|un humano))\b/,
     ),
   ],
+  ['whatsapp', pideWhatsapp],
   [
     'descuento',
     dice(
@@ -180,10 +204,13 @@ const REGLAS: [IntencionFija, (t: string) => boolean][] = [
     'domicilio',
     (t) =>
       (/\b(domicilio|envio|llegan|reparten)\b/.test(t) &&
-        /\b(cuanto|costo|valor|sale|cuesta|barrio|zona|cobran|casa)\b/.test(
+        /\b(cuanto|costo|valor|sale|cuesta|barrios?|zonas?|cubren|cobertura|cobran|casa)\b/.test(
           t,
         )) ||
-      (/\b(cuanto|costo|valor)\b/.test(t) && /\b(domicilio|envio)\b/.test(t)),
+      (/\b(cuanto|costo|valor)\b/.test(t) && /\b(domicilio|envio)\b/.test(t)) ||
+      /\b(que|cuales) (zonas|barrios|sectores) (cubren|llegan|reparten)\b/.test(
+        t,
+      ),
   ],
   ['precios', dice(/\b(precio|precios|cuanto (cuesta|vale|valen|sale|es))\b/)],
   [
@@ -245,8 +272,8 @@ function esPreguntaMitad(t: string): boolean {
   );
 }
 
-// Estas dos se contestan aunque el mensaje sea largo: pasan primero.
-const SIEMPRE: IntencionFija[] = ['humano', 'descuento'];
+// Estas se contestan aunque el mensaje sea largo: pasan primero.
+const SIEMPRE: IntencionFija[] = ['humano', 'whatsapp', 'descuento'];
 
 /** La intención del mensaje, o null si no es de las que se contestan con texto fijo. */
 export function detectarIntencion(texto: string): IntencionFija | null {

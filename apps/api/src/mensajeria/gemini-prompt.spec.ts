@@ -32,15 +32,17 @@ describe('armarSystemInstruction', () => {
     }
   });
 
-  it('en Messenger e Instagram prohíbe mandar al cliente a WhatsApp o a la web', () => {
+  it('en Messenger e Instagram no manda al cliente a otro canal, pero da el enlace de WhatsApp si lo pide', () => {
     for (const canal of ['messenger', 'instagram'] as const) {
       const prompt = armarSystemInstruction(canal);
-      expect(prompt).toContain('NUNCA le digas que pida por WhatsApp');
-      expect(prompt).toContain('puede escribir "humano"');
+      expect(prompt).toContain('NUNCA le sugieras por tu cuenta');
+      expect(prompt).toContain('nunca le digas que no tenemos WhatsApp');
+      expect(prompt).toContain('https://wa.me/573157861208');
+      expect(prompt).toContain('NUNCA digas a qué zonas');
       expect(prompt).not.toContain('{{');
     }
     const whatsapp = armarSystemInstruction('whatsapp');
-    expect(whatsapp).not.toContain('NUNCA le digas que pida por WhatsApp');
+    expect(whatsapp).not.toContain('NUNCA le sugieras por tu cuenta');
     expect(whatsapp).not.toContain('{{');
   });
 
