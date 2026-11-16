@@ -196,6 +196,20 @@ describe('WebhooksService.procesarMessenger', () => {
 });
 
 describe('WebhooksService.manejarEvento', () => {
+  it('si el cliente manda lo mismo dos veces en segundos, se contesta una sola vez', async () => {
+    const { servicio, llamadas, registrados } = crearServicio();
+
+    await servicio.manejarEvento(
+      evento({ mensajeId: 'mid.a', texto: '¿Precio?' }),
+    );
+    await servicio.manejarEvento(
+      evento({ mensajeId: 'mid.b', texto: '¿Precio?' }),
+    );
+
+    expect(llamadas.filter((l) => l === 'responder')).toHaveLength(1);
+    expect(registrados).toEqual(['¿Precio?', '¿Precio?']);
+  });
+
   it('un mensaje nuevo se registra y le responde el bot', async () => {
     const { servicio, llamadas, registrados } = crearServicio();
 

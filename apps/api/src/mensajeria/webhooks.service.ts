@@ -158,6 +158,12 @@ export class WebhooksService {
       );
       return;
     }
+    if (this.registro.esRepeticion(evento)) {
+      this.logger.log(
+        `Mensaje repetido en segundos, ya se contestó — canal=${evento.canal} id=${evento.identificadorExterno}`,
+      );
+      return;
+    }
     await this.respuesta.responder(evento, conversacion, carrito);
   }
 

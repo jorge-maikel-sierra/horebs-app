@@ -4,6 +4,7 @@ import { ConversacionesService } from './conversaciones.service';
 import type { ConversacionCompleta } from './conversaciones.tipos';
 import { origenDeProcedencia } from './origen-conversacion';
 import { OrigenConversacionService } from './origen-conversacion.service';
+import { esRepeticion, type UltimoMensaje } from './repeticion';
 import type {
   EcoHumano,
   EventoEntrante,
@@ -28,6 +29,20 @@ export class RegistroEntranteService {
     config: ConfigService,
   ) {
     this.appIdBot = config.get<string>('META_APP_ID');
+  }
+
+  private readonly ultimos = new Map<string, UltimoMensaje>();
+
+  /** Mismo texto (o mismo botón) del mismo cliente hace menos de 10 s: no se vuelve a contestar. */
+  esRepeticion(evento: EventoEntrante): boolean {
+    const contenido =
+      evento.entrada?.tipo === 'boton' ? evento.entrada.id : evento.texto;
+    return esRepeticion(
+      this.ultimos,
+      `${evento.canal}:${evento.identificadorExterno}`,
+      contenido,
+      Date.now(),
+    );
   }
 
   async esDuplicado(evento: EventoEntrante): Promise<boolean> {
