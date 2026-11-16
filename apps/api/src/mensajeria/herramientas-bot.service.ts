@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { CatalogService } from '../catalog/catalog.service';
+import { CatalogService, type ProductoDto } from '../catalog/catalog.service';
 import { COSTO_DOMICILIO_DEFAULT } from '../common/costos';
 import { estadoAtencion } from '../common/horario';
 import { PedidosConsultasService } from '../pedidos/pedidos-consultas.service';
@@ -10,6 +10,7 @@ import { textoDe } from './datos-pedido-bot';
 import type { CanalMensajeria } from './conversaciones.tipos';
 import { DerivacionBotService } from './derivacion-bot.service';
 import type { ContextoHerramienta } from './herramientas-bot.tipos';
+import { elegirMasPedidas } from './mas-pedidas';
 import {
   DIRECCION,
   ESTADO_ATENCION_TEXTO,
@@ -132,10 +133,30 @@ export class HerramientasBotService {
   private async textoProducto(nombreBuscado: string): Promise<string> {
     const productos = await this.catalog.getProductos();
     const { encontrado, error } = buscarProductoUnico(nombreBuscado, productos);
+    if (error?.startsWith('No se ')) {
+      return `${error} ${await this.sugerenciaSinProducto(productos)}`;
+    }
     if (error) {
       return `${error} Si no se puede resolver, ofrecé mandarle el menú completo con enviar_catalogo.`;
     }
     return textoDetalleProducto(encontrado!);
+  }
+
+  /**
+   * En producción (nov 2026) un cliente pidió "pizza mexicana", el bot ofreció
+   * el menú y le reenvió el mismo que ya tenía: ahora sugiere las que más se
+   * venden (respaldo por ventas históricas, sin consultar el ranking en vivo).
+   */
+  private async sugerenciaSinProducto(
+    productos: ProductoDto[],
+  ): Promise<string> {
+    const pizzas = elegirMasPedidas(
+      [],
+      productos,
+      await this.catalog.getCategorias(),
+    );
+    const nombres = pizzas.map((p) => p.nombre).join(', ');
+    return `Decile al cliente, en una línea, que ese producto no lo tenemos y sugerile en su lugar estas, que son las más pedidas: ${nombres}. Preguntale cuál quiere. NO le ofrezcas ni le mandes el menú completo (ya lo puede tener), salvo que él lo pida.`;
   }
 
   private async textoPedido(telefono: string | null): Promise<string> {

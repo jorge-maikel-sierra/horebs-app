@@ -1,6 +1,7 @@
 import { ENLACE_WHATSAPP_NEGOCIO } from '../common/contacto';
 import type { EstadoAtencion } from '../common/horario';
 import type { CanalMensajeria } from './conversaciones.tipos';
+import { TEXTO_TAMANOS } from './tamanos-pizza';
 
 /**
  * Datos de negocio y contrato con el modelo: el prompt del sistema y las
@@ -28,10 +29,7 @@ export const URL_CATALOGO = 'https://pizzeriahorebs.shop/catalogo';
 // Igual criterio que HORARIO/DIRECCION — dato real de CLAUDE.md, entregado
 // solo a través de obtener_tamanos_pizza. Antes no existía en ningún lado
 // del sistema, así que el modelo lo inventaba cuando le preguntaban.
-export const TAMANOS_PIZZA =
-  'Personal: 6 porciones, 24 centímetros de diámetro. ' +
-  'Mediana: 8 porciones, 30 centímetros de diámetro. ' +
-  'Grande: 12 porciones, 40 centímetros de diámetro.';
+export const TAMANOS_PIZZA = TEXTO_TAMANOS;
 
 // Se agrega a todo resultado fallido de calcular_pedido. En producción
 // (oct 2026), con calcular_pedido fallando, el modelo inventó un total
@@ -52,7 +50,7 @@ const REGLAS_BASE = `Reglas estrictas:
 - El objetivo de la conversación es cerrar la venta ahí mismo, sin que el cliente tenga que salir del chat — nunca le mandes links a otra página ni le digas que pida por el sitio web.
 - Si el cliente pide el menú, la carta o el catálogo, o pregunta en general qué venden, usá enviar_catalogo — le llega el menú completo dentro del chat, con fotos, precios y carrito.
 - Si el cliente pide opciones de una categoría o una recomendación (por ejemplo "qué pizzas tienen", "algo para tomar", "qué me recomendás"), usá mostrar_productos — le llega una lista con foto, precio por tamaño y botón para agregar al carrito. NO listes productos ni precios vos en el mensaje, eso ya lo manda la herramienta.
-- Si el cliente pregunta por un producto específico (por ejemplo "cuánto vale la pizza hawaiana", "tienen pizza margarita personal"), usá consultar_producto con el nombre de ese producto. Si la herramienta te dice que no lo encontró, decile simplemente que no tenemos ese producto en el menú y ofrecele mandarle el menú — nunca le preguntes de qué local o pizzería está hablando, vos ya sabés que sos el asistente de Pizzería Horebs.
+- Si el cliente pregunta por un producto específico (por ejemplo "cuánto vale la pizza hawaiana", "tienen pizza margarita personal"), usá consultar_producto con el nombre de ese producto. Si la herramienta te dice que no lo encontró, decile que no tenemos ese producto y seguí la sugerencia que te devuelve la herramienta (las pizzas más pedidas) — nunca le preguntes de qué local o pizzería está hablando, vos ya sabés que sos el asistente de Pizzería Horebs.
 - Cuando el mensaje del cliente empiece con "Envié mi carrito del catálogo:", esos son los productos, tamaños y cantidades de su pedido (ya validados contra el menú) — NO se los vuelvas a preguntar ni le muestres el menú de nuevo. Confirmale en una línea lo que eligió y seguí el flujo de toma de pedido desde el paso 2 (modalidad, dirección si es domicilio, nombre completo). Ese carrito queda guardado en el sistema: al llamar calcular_pedido NO repitas sus productos en items (dejá items vacío, o poné solo lo que el cliente agregue aparte por escrito). Si quiere cambiar algo del carrito, pedile que lo edite y lo vuelva a mandar desde el catálogo. Si el mensaje dice que algún producto ya no está disponible, avisale con amabilidad y preguntale si quiere reemplazarlo. Si dice que ninguno está disponible, pedile disculpas y ofrecele mandarle el menú con enviar_catalogo. Si trae una "Nota:", tenela en cuenta.
 - Nunca inventes opciones, sabores, tamaños ni productos: solo ofrecé las opciones exactas que te devolvió una herramienta. Si una herramienta te lista opciones, copialas tal cual.
 - Cuando el mensaje del cliente sea "Quiero pedir <nombre de producto>" (esto pasa cuando toca el botón "Agregar al pedido" de una tarjeta), tratalo como el inicio de un pedido de ese producto — seguí el flujo normal de toma de pedido de abajo, preguntando el tamaño si el producto tiene más de uno.

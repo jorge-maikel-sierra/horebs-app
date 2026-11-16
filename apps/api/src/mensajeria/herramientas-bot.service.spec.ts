@@ -79,14 +79,15 @@ describe('HerramientasBotService.ejecutar', () => {
     expect(texto).toContain(`Personal: $${(18000).toLocaleString('es-CO')}`);
   });
 
-  it('consultar_producto con un nombre que no existe sugiere mandar el catálogo', async () => {
+  it('consultar_producto con un nombre que no existe sugiere las más pedidas, no el menú', async () => {
     const { servicio } = crearServicio();
     const texto = await servicio.ejecutar(
       'consultar_producto',
       { nombre_producto: 'sushi' },
       CTX,
     );
-    expect(texto).toContain('enviar_catalogo');
+    expect(texto).toContain('las más pedidas');
+    expect(texto).toContain('NO le ofrezcas ni le mandes el menú completo');
   });
 
   it('obtener_categorias lista las del catálogo', async () => {
