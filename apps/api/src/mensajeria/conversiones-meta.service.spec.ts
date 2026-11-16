@@ -136,11 +136,12 @@ describe('ConversionesMetaService', () => {
 
   it('no envía nada si la conversación no vino de un anuncio', async () => {
     const { servicio } = crearServicio({ ctwa: null });
-    await servicio.notificarCompra({
+    const porAnuncio = await servicio.notificarCompra({
       telefono: '3157861208',
       pedidoId: 'ped-1',
       total: 1000,
     });
+    expect(porAnuncio).toBe(false);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -174,7 +175,7 @@ describe('ConversionesMetaService', () => {
         pedidoId: 'ped-1',
         total: 1000,
       }),
-    ).resolves.toBeUndefined();
+    ).resolves.toBe(true);
     expect(getUltimoDelete()).toEqual({
       evento: 'Purchase',
       referencia_id: 'ped-1',

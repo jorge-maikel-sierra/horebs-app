@@ -102,6 +102,7 @@ describe('armarVentaDto', () => {
         metodo_pago: 'efectivo',
         total: 36000,
         created_at: '2026-11-01T20:00:00Z',
+        origen_venta: null,
       },
       cliente: {
         id: 'c-1',

@@ -23,6 +23,7 @@ import { HerramientasBotService } from './herramientas-bot.service';
 import { DerivacionBotService } from './derivacion-bot.service';
 import { CalculoPedidoBotService } from './calculo-pedido-bot.service';
 import { ConversacionesService } from './conversaciones.service';
+import { ConversionesCajaService } from './conversiones-caja.service';
 import { ConversionesMetaService } from './conversiones-meta.service';
 import { ConversionesSocialService } from './conversiones-social.service';
 import { ConversionesWebService } from './conversiones-web.service';
@@ -67,6 +68,7 @@ import { ToqueInteresService } from './toque-interes.service';
     DerivacionBotService,
     CalculoPedidoBotService,
     ConversacionesService,
+    ConversionesCajaService,
     ConversionesMetaService,
     ConversionesSocialService,
     ConversionesWebService,
@@ -99,6 +101,7 @@ import { ToqueInteresService } from './toque-interes.service';
   exports: [
     AvisosPedidoService,
     ConversacionesService,
+    ConversionesCajaService,
     ConversionesMetaService,
     ConversionesSocialService,
     ConversionesWebService,

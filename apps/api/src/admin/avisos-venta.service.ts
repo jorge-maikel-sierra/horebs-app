@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { MailService } from '../mail/mail.service';
-import { ConversionesMetaService } from '../mensajeria/conversiones-meta.service';
+import { ConversionesCajaService } from '../mensajeria/conversiones-caja.service';
 import type {
   FilaClienteVenta,
   FilaPedidoVenta,
@@ -9,14 +9,15 @@ import type {
 
 /**
  * Lo que sale hacia afuera cuando el POS registra una venta. Ninguno espera ni
- * puede tumbar la venta: el Purchase a Meta (atribuido por teléfono si el
- * cliente llegó por un anuncio Click-to-WhatsApp) y el correo al domiciliario.
+ * puede tumbar la venta: el Purchase a Meta (por el anuncio Click-to-WhatsApp
+ * si el cliente llegó así, y si no con sus datos cifrados) y el correo al
+ * domiciliario.
  */
 @Injectable()
 export class AvisosVentaService {
   constructor(
     private readonly mail: MailService,
-    private readonly conversionesMeta: ConversionesMetaService,
+    private readonly conversionesCaja: ConversionesCajaService,
   ) {}
 
   avisar(venta: {
@@ -26,10 +27,17 @@ export class AvisosVentaService {
     notas: string | null;
   }): void {
     const { pedido, cliente, items, notas } = venta;
-    this.conversionesMeta.avisarCompra({
-      telefono: cliente.telefono,
+    this.conversionesCaja.avisarVenta({
       pedidoId: pedido.id,
       total: Number(pedido.total),
+      modalidad: pedido.modalidad,
+      origen: pedido.origen_venta,
+      creadoEn: new Date(pedido.created_at),
+      cliente,
+      items: items.map((i) => ({
+        varianteId: i.variante_id,
+        cantidad: i.cantidad,
+      })),
     });
 
     if (pedido.modalidad !== 'domicilio' || !pedido.direccion_entrega) return;

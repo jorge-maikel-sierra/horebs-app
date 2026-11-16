@@ -100,18 +100,21 @@ export class ConversionesMetaService {
   /**
    * Venta registrada por el equipo. Se liga a la conversación por teléfono
    * (el POS guarda 10 dígitos locales; el wa_id de WhatsApp trae el 57).
-   * Si ese cliente nunca llegó por un anuncio, no hay nada que enviar.
+   * Si ese cliente nunca llegó por un anuncio, no hay nada que enviar y
+   * devuelve false (la caja manda entonces su propio Purchase).
    */
   async notificarCompra(compra: {
     telefono: string | null | undefined;
     pedidoId: string;
     total: number;
-  }): Promise<void> {
+  }): Promise<boolean> {
     const waId = waIdColombia(compra.telefono);
-    if (!waId) return;
+    if (!waId) return false;
+    let llegoPorAnuncio = false;
     await this.protegido('Purchase', async () => {
       const ctwa = await this.origenes.obtenerCtwa('whatsapp', waId);
       if (!ctwa) return;
+      llegoPorAnuncio = true;
       await this.enviarUnaVez({
         evento: 'Purchase',
         referenciaId: compra.pedidoId,
@@ -119,6 +122,7 @@ export class ConversionesMetaService {
         valor: compra.total,
       });
     });
+    return llegoPorAnuncio;
   }
 
   /**

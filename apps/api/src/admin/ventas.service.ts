@@ -25,7 +25,7 @@ import {
 
 const CLIENTE_SELECT = 'id, nombre, apellido, telefono, correo, cedula';
 const PEDIDO_VENTA_SELECT =
-  'id, modalidad, direccion_entrega, costo_domicilio, metodo_pago, total, created_at';
+  'id, modalidad, direccion_entrega, costo_domicilio, metodo_pago, total, created_at, origen_venta';
 const SIN_CANJE: CanjeDeVenta = { puntos: 0, descuento: 0 };
 
 /** Lo que `registrarPedido` necesita para insertar el pedido de la venta. */
@@ -156,6 +156,7 @@ export class VentasService {
         registrado_por: venta.registradoPor,
         total: venta.total,
         notas: input.notas ?? null,
+        origen_venta: input.origen ?? null,
         puntos_canjeados: canje.puntos,
         descuento_puntos: canje.descuento,
       })

@@ -21,6 +21,16 @@ export interface ItemVentaCalculado {
   subtotal: number;
 }
 
+/** Cómo llegó la venta a la caja: la persona en el local o el canal del que pidió. */
+export const ORIGENES_VENTA = [
+  'mostrador',
+  'whatsapp',
+  'llamada',
+  'messenger',
+  'instagram',
+] as const;
+export type OrigenVenta = (typeof ORIGENES_VENTA)[number];
+
 export interface CrearVentaInput {
   cliente: {
     nombre: string;
@@ -34,6 +44,7 @@ export interface CrearVentaInput {
   costo_domicilio?: number;
   metodo_pago: 'efectivo' | 'transferencia' | 'tarjeta';
   notas?: string;
+  origen?: OrigenVenta;
   items: ItemVentaInput[];
   usar_puntos?: boolean;
 }
@@ -84,6 +95,7 @@ export interface FilaPedidoVenta {
   metodo_pago: string;
   total: number;
   created_at: string;
+  origen_venta: OrigenVenta | null;
 }
 
 export interface PedidoAdminDto {

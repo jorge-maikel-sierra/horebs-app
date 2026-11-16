@@ -1,5 +1,5 @@
 import type { MailService } from '../mail/mail.service';
-import type { ConversionesMetaService } from '../mensajeria/conversiones-meta.service';
+import type { ConversionesCajaService } from '../mensajeria/conversiones-caja.service';
 import { AvisosVentaService } from './avisos-venta.service';
 import type {
   FilaClienteVenta,
@@ -45,35 +45,43 @@ function pedido(cambios: Partial<FilaPedidoVenta> = {}): FilaPedidoVenta {
     metodo_pago: 'efectivo',
     total: 40000,
     created_at: '2026-11-01T20:00:00Z',
+    origen_venta: null,
     ...cambios,
   };
 }
 
 function crearServicio() {
   const mail = { enviarNotificacionDomicilio: jest.fn() };
-  const conversionesMeta = { avisarCompra: jest.fn() };
+  const conversionesCaja = { avisarVenta: jest.fn() };
   const servicio = new AvisosVentaService(
     mail as unknown as MailService,
-    conversionesMeta as unknown as ConversionesMetaService,
+    conversionesCaja as unknown as ConversionesCajaService,
   );
-  return { servicio, mail, conversionesMeta };
+  return { servicio, mail, conversionesCaja };
 }
 
 describe('AvisosVentaService.avisar', () => {
-  it('toda venta avisa la compra a Meta con el teléfono y el total', () => {
-    const { servicio, conversionesMeta, mail } = crearServicio();
+  it('toda venta avisa la compra a Meta con el cliente, el total, el origen y las variantes', () => {
+    const { servicio, conversionesCaja, mail } = crearServicio();
 
     servicio.avisar({
-      pedido: pedido(),
+      pedido: pedido({ origen_venta: 'llamada' }),
       cliente: CLIENTE,
       items: ITEMS,
       notas: null,
     });
 
-    expect(conversionesMeta.avisarCompra).toHaveBeenCalledWith({
-      telefono: '573157861208',
+    expect(conversionesCaja.avisarVenta).toHaveBeenCalledWith({
       pedidoId: 'ped-1',
       total: 40000,
+      modalidad: 'local',
+      origen: 'llamada',
+      creadoEn: new Date('2026-11-01T20:00:00Z'),
+      cliente: CLIENTE,
+      items: [
+        { varianteId: 'v-1', cantidad: 2 },
+        { varianteId: null, cantidad: 1 },
+      ],
     });
     expect(mail.enviarNotificacionDomicilio).not.toHaveBeenCalled();
   });

@@ -9,7 +9,11 @@ import {
   opcional,
   texto,
 } from '../common/validacion';
-import { ESTADOS_PEDIDO, MODALIDADES_VENTA } from './pedidos-admin.tipos';
+import {
+  ESTADOS_PEDIDO,
+  MODALIDADES_VENTA,
+  ORIGENES_VENTA,
+} from './pedidos-admin.tipos';
 
 /** `cliente` e `items` traen objetos anidados: el service los valida campo por campo. */
 export const ESQUEMA_VENTA: Esquema = {
@@ -19,6 +23,7 @@ export const ESQUEMA_VENTA: Esquema = {
   costo_domicilio: opcional(numero({ min: 0 })),
   metodo_pago: enumerado(METODOS_PAGO),
   notas: opcional(texto({ max: 1000 })),
+  origen: opcional(enumerado([...ORIGENES_VENTA])),
   items: lista(),
   usar_puntos: opcional(booleano()),
 };

@@ -59,6 +59,11 @@ describe('ESQUEMA_VENTA', () => {
     ).toEqual([]);
   });
 
+  it('el origen de la venta es opcional, pero si viene tiene que ser uno de los conocidos', () => {
+    expect(campos({ ...VENTA, origen: 'llamada' })).toEqual([]);
+    expect(campos({ ...VENTA, origen: 'paloma' })).toEqual(['origen']);
+  });
+
   it('exige cliente, modalidad, método de pago e items', () => {
     expect(campos({})).toEqual([
       'cliente',
