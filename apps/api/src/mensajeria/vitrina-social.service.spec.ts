@@ -49,6 +49,7 @@ const MENU = [
 interface Opciones {
   masPedidas?: ProductoDto[];
   menu?: string | null;
+  historial?: string[];
 }
 
 function crearServicio(opciones: Opciones = {}) {
@@ -56,6 +57,7 @@ function crearServicio(opciones: Opciones = {}) {
   const textos: string[] = [];
   const registrados: string[] = [];
   const tarjetas: string[][] = [];
+  const intereses: string[] = [];
   const envios = {
     texto: (_c: unknown, t: string) => {
       textos.push(t);
@@ -69,6 +71,10 @@ function crearServicio(opciones: Opciones = {}) {
       registrados.push(t);
       return Promise.resolve();
     },
+    marcarInteres: (_c: unknown, productoId: string) => {
+      intereses.push(productoId);
+    },
+    ultimosMensajesBot: () => Promise.resolve(opciones.historial ?? []),
   };
   const menu = {
     menuSocial: () =>
@@ -89,23 +95,24 @@ function crearServicio(opciones: Opciones = {}) {
     envios as unknown as CheckoutEnviosService,
     menu as unknown as EnvioHerramientasService,
   );
-  return { servicio, conOpciones, textos, registrados, tarjetas };
+  return { servicio, conOpciones, textos, registrados, tarjetas, intereses };
 }
 
 describe('VitrinaSocialService: precios', () => {
-  it('si nombra un producto, da sus precios y ofrece pedirlo', async () => {
-    const { servicio, conOpciones, tarjetas } = crearServicio();
+  it('si nombra un producto, manda su foto, los tamaños con porciones y botones directos al carrito', async () => {
+    const { servicio, conOpciones, tarjetas, intereses } = crearServicio();
 
     await servicio.precios(CTX, 'Precio de la hawaiana');
 
-    expect(conOpciones[0].texto).toBe(
-      'Pizza Hawaiana: Personal $20.000 · Mediana $35.000 · Grande $45.000',
-    );
-    expect(conOpciones[0].opciones[0]).toEqual({
-      id: 'ped:p:p-hw',
-      titulo: '🛒 Pedir esta',
-    });
-    expect(tarjetas).toEqual([]);
+    expect(tarjetas).toEqual([['Pizza Hawaiana']]);
+    expect(conOpciones[0].texto).toContain('• Personal $20.000 (6 porciones)');
+    expect(conOpciones[0].opciones.map((o) => o.id)).toEqual([
+      'ped:v:v-hw-p',
+      'ped:v:v-hw-m',
+      'ped:v:v-hw-g',
+      'mnu:menu',
+    ]);
+    expect(intereses).toEqual(['p-hw']);
   });
 
   it('si no nombra ninguno, sugiere las más pedidas en vez de la lista completa', async () => {
@@ -134,6 +141,43 @@ describe('VitrinaSocialService: precios', () => {
 
     expect(registrados).toEqual(['Menú enviado']);
     expect(conOpciones).toEqual([]);
+  });
+});
+
+describe('VitrinaSocialService: porciones y tamaños', () => {
+  it('con una pizza en la conversación, contesta ese tamaño de esa pizza', async () => {
+    const { servicio, conOpciones, intereses } = crearServicio({
+      historial: ['Pizza Hawaiana 🍕\n• Personal $20.000'],
+    });
+
+    await servicio.tamanos(CTX, 'Cuantas porciones trae la mediana');
+
+    expect(conOpciones[0].texto).toContain(
+      'La Pizza Hawaiana mediana trae 8 porciones (30 cm) y vale $35.000',
+    );
+    expect(conOpciones[0].opciones[0]).toEqual({
+      id: 'ped:v:v-hw-m',
+      titulo: '🛒 Pedir mediana',
+    });
+    expect(intereses).toEqual(['p-hw']);
+  });
+
+  it('sin tamaño, muestra los tamaños de esa pizza con sus porciones', async () => {
+    const { servicio, conOpciones } = crearServicio({
+      historial: ['Pizza Hawaiana 🍕'],
+    });
+
+    await servicio.tamanos(CTX, 'cuantas porciones trae');
+
+    expect(conOpciones[0].texto).toContain('• Grande $45.000 (12 porciones)');
+  });
+
+  it('sin una pizza clara, manda la tabla de tamaños de siempre', async () => {
+    const { servicio, conOpciones } = crearServicio();
+
+    await servicio.tamanos(CTX, 'cuantas porciones trae la mediana');
+
+    expect(conOpciones[0].texto).toContain('Así son nuestras pizzas');
   });
 });
 

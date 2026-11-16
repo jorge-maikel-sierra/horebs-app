@@ -43,6 +43,8 @@ import { PedidoSocialService } from './pedido-social.service';
 import { RespuestaSocialService } from './respuesta-social.service';
 import { MasPedidasService } from './mas-pedidas.service';
 import { VitrinaSocialService } from './vitrina-social.service';
+import { InteresProductoService } from './interes-producto.service';
+import { ToqueInteresService } from './toque-interes.service';
 
 @Module({
   imports: [
@@ -85,6 +87,8 @@ import { VitrinaSocialService } from './vitrina-social.service';
     RespuestaSocialService,
     MasPedidasService,
     VitrinaSocialService,
+    InteresProductoService,
+    ToqueInteresService,
     PagoBoldService,
     ConfirmacionPedidoService,
     OrigenConversacionService,

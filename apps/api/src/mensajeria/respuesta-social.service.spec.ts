@@ -65,6 +65,10 @@ function crearServicio(opciones: Opciones = {}) {
       llamadas.push(paraPedir ? 'menu:pedir' : 'menu');
       return Promise.resolve();
     },
+    tamanos: () => {
+      llamadas.push('tamanos');
+      return Promise.resolve();
+    },
     mostrarCategoria: (_c: unknown, categoriaId: string) => {
       llamadas.push(`categoria:${categoriaId}`);
       return Promise.resolve(opciones.categoria ?? true);
@@ -239,6 +243,17 @@ describe('RespuestaSocialService: menú, pedido y persona', () => {
         CONVERSACION,
       ),
     ).resolves.toBe(false);
+  });
+
+  it('la pregunta por porciones la contesta la vitrina (con la pizza de la conversación)', async () => {
+    const { servicio, llamadas } = crearServicio();
+
+    await servicio.atender(
+      evento({ texto: 'Cuantas porciones trae la mediana' }),
+      CONVERSACION,
+    );
+
+    expect(llamadas).toEqual(['tamanos']);
   });
 
   it('la pregunta por precios la contesta la vitrina', async () => {

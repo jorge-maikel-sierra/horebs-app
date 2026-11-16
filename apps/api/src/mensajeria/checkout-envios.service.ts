@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { obtenerCapacidades } from './capacidades-canal';
 import type { ContextoCheckout } from './checkout-whatsapp';
 import {
@@ -7,6 +7,7 @@ import {
   type ItemCarritoPendiente,
 } from './conversaciones.service';
 import { ConversionesSocialService } from './conversiones-social.service';
+import { InteresProductoService } from './interes-producto.service';
 import type { EventoConversacion } from './conversiones-social';
 import type { BotonRespuesta } from './mensajes-interactivos';
 import { MetaGraphService } from './meta-graph.service';
@@ -18,11 +19,29 @@ import { MetaGraphService } from './meta-graph.service';
  */
 @Injectable()
 export class CheckoutEnviosService {
+  private readonly logger = new Logger(CheckoutEnviosService.name);
+
   constructor(
     private readonly conversaciones: ConversacionesService,
     private readonly metaGraph: MetaGraphService,
     private readonly conversiones: ConversionesSocialService,
+    private readonly interes: InteresProductoService,
   ) {}
+
+  /** El producto que vio el cliente: no frena la respuesta si no se puede guardar. */
+  marcarInteres(ctx: ContextoCheckout, productoId: string): void {
+    this.interes
+      .marcar(ctx.conversacionId, productoId)
+      .catch((err: unknown) =>
+        this.logger.warn(
+          `No se pudo guardar el producto visto: ${err instanceof Error ? err.message : String(err)}`,
+        ),
+      );
+  }
+
+  ultimosMensajesBot(ctx: ContextoCheckout): Promise<string[]> {
+    return this.interes.ultimosMensajesBot(ctx.conversacionId);
+  }
 
   async texto(ctx: ContextoCheckout, texto: string): Promise<void> {
     await this.metaGraph.enviarMensajeSesion(

@@ -99,6 +99,7 @@ export class RespuestaSocialService {
     if (intencion === 'menu') return this.vitrina.enviarMenu(ctx, false);
     if (intencion === 'pedir') return this.vitrina.enviarMenu(ctx, true);
     if (intencion === 'precios') return this.vitrina.precios(ctx, texto);
+    if (intencion === 'tamanos') return this.vitrina.tamanos(ctx, texto);
     const respuesta = textoDeIntencion(intencion, new Date());
     if (respuesta) {
       await this.envios.textoConOpciones(ctx, respuesta, BOTONES_INICIO);

@@ -34,8 +34,6 @@ export const CANTIDADES_SOCIAL = Array.from(
 // Mismo tope que valida calcular_pedido para un carrito.
 export const MAX_CANTIDAD_ITEM = 20;
 
-const PRIMERAS_OPCIONES = 2;
-
 /** Lo que se ofrece al terminar una respuesta fija: mantiene al cliente en el camino de la venta. */
 export const BOTONES_INICIO: BotonRespuesta[] = [
   { id: BOTON_SOCIAL.menu, titulo: '🍕 Ver menú' },
@@ -45,12 +43,6 @@ export const BOTONES_INICIO: BotonRespuesta[] = [
   { id: BOTON_SOCIAL.descuento, titulo: '🎉 Descuento 20%' },
   { id: BOTON_SOCIAL.humano, titulo: '💬 Una persona' },
 ];
-
-/** Tras mostrar el precio de un producto: ver el menú y hacer un pedido. */
-export const BOTONES_TRAS_PRECIO: BotonRespuesta[] = BOTONES_INICIO.slice(
-  0,
-  PRIMERAS_OPCIONES,
-);
 
 export const BOTONES_ARMAR_PEDIDO: BotonRespuesta[] = [
   { id: BOTON_SOCIAL.mas, titulo: '➕ Agregar otro' },

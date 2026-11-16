@@ -1,3 +1,4 @@
+import type { InteresProductoService } from './interes-producto.service';
 import type { ContextoCheckout } from './checkout-whatsapp';
 import type { ConversionesSocialService } from './conversiones-social.service';
 import { CheckoutEnviosService } from './checkout-envios.service';
@@ -32,12 +33,17 @@ function crearServicio() {
     enviarCatalogo: jest.fn().mockResolvedValue(undefined),
   };
   const conversiones = { avisarConversacion: jest.fn() };
+  const interes = {
+    marcar: jest.fn().mockResolvedValue(undefined),
+    ultimosMensajesBot: jest.fn().mockResolvedValue(['hola']),
+  };
   const servicio = new CheckoutEnviosService(
     conversaciones as unknown as ConversacionesService,
     metaGraph as unknown as MetaGraphService,
     conversiones as unknown as ConversionesSocialService,
+    interes as unknown as InteresProductoService,
   );
-  return { servicio, conversaciones, metaGraph, conversiones };
+  return { servicio, conversaciones, metaGraph, conversiones, interes };
 }
 
 describe('CheckoutEnviosService', () => {
@@ -247,4 +253,25 @@ describe('CheckoutEnviosService', () => {
       '3157861208',
     );
   });
+
+  it('marcarInteres guarda el producto visto y no rompe si falla', async () => {
+    const { servicio, interes } = crearServicio();
+    interes.marcar.mockRejectedValueOnce(new Error('caída'));
+
+    servicio.marcarInteres(CTX_INTERES, 'p-1');
+    await Promise.resolve();
+
+    expect(interes.marcar).toHaveBeenCalledWith('cv-1', 'p-1');
+    await expect(servicio.ultimosMensajesBot(CTX_INTERES)).resolves.toEqual([
+      'hola',
+    ]);
+  });
 });
+
+const CTX_INTERES = {
+  canal: 'messenger' as const,
+  identificadorExterno: 'psid-1',
+  conversacionId: 'cv-1',
+  mensajeId: 'mid.1',
+  telefono: null,
+};
