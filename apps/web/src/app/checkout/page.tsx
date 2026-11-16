@@ -13,6 +13,7 @@ import { leerAtribucion } from '@/lib/atribucion';
 import { errorClass } from '@/lib/feedback-estilos';
 import ModalCargando from '@/components/ModalCargando';
 import { leerErrorApi } from '@/lib/error-api';
+import { marcarCompraNueva } from '@/components/TrackPurchase';
 
 function IconPaquete() {
   return (
@@ -308,6 +309,7 @@ export default function CheckoutPage() {
           });
       }
       clear();
+      marcarCompraNueva(pedido.id);
       router.push(`/pedido/${pedido.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo crear el pedido.');
