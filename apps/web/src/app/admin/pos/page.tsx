@@ -55,6 +55,17 @@ type SaldoPuntos = {
 
 type Modalidad = 'local' | 'retiro' | 'domicilio';
 
+// De dónde llegó la venta: en el local o el canal del que pidió. Por defecto
+// "en el local", así la venta normal no suma ningún toque.
+type OrigenVenta = 'mostrador' | 'whatsapp' | 'llamada' | 'messenger' | 'instagram';
+const ORIGENES_VENTA: { valor: OrigenVenta; etiqueta: string }[] = [
+  { valor: 'mostrador', etiqueta: 'En el local' },
+  { valor: 'whatsapp', etiqueta: 'WhatsApp' },
+  { valor: 'llamada', etiqueta: 'Llamada' },
+  { valor: 'messenger', etiqueta: 'Messenger' },
+  { valor: 'instagram', etiqueta: 'Instagram' },
+];
+
 type TurnoDto = {
   id: string;
   monto_inicial: number;
@@ -305,6 +316,7 @@ function PosInterno() {
   const [metodoPago, setMetodoPago] = useState<
     'efectivo' | 'transferencia' | 'tarjeta'
   >('efectivo');
+  const [origen, setOrigen] = useState<OrigenVenta>('mostrador');
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mensaje, setMensaje] = useState<string | null>(null);
@@ -599,6 +611,7 @@ function PosInterno() {
             modalidad === 'domicilio' ? direccionEntrega : undefined,
           costo_domicilio: modalidad === 'domicilio' ? costoDomicilio : undefined,
           metodo_pago: metodoPago,
+          origen,
           items: items.map((i) =>
             i.varianteId
               ? {
@@ -640,6 +653,7 @@ function PosInterno() {
       setDireccionEntrega('');
       setCostoDomicilio(NEGOCIO.costoDomicilio);
       setMetodoPago('efectivo');
+      setOrigen('mostrador');
       setSaldoPuntos(null);
       setUsarPuntos(false);
     } catch (err) {
@@ -1136,6 +1150,29 @@ function PosInterno() {
                   icon={<IconTarjeta />}
                   label="Tarjeta"
                 />
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend className="text-sm font-bold text-zinc-900 dark:text-zinc-50">
+                ¿Cómo llegó el pedido?
+              </legend>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {ORIGENES_VENTA.map((o) => (
+                  <button
+                    key={o.valor}
+                    type="button"
+                    onClick={() => setOrigen(o.valor)}
+                    aria-pressed={origen === o.valor}
+                    className={`btn-press rounded-full border px-3 py-1.5 text-xs font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand-orange/60 ${
+                      origen === o.valor
+                        ? 'border-brand-orange bg-brand-orange/10 text-accent-ink ring-1 ring-brand-orange'
+                        : 'border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-300 dark:hover:border-zinc-700'
+                    }`}
+                  >
+                    {o.etiqueta}
+                  </button>
+                ))}
               </div>
             </fieldset>
 
