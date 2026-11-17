@@ -21,7 +21,45 @@ type Origen = {
   ventas: number;
 };
 
-type Tablero = { desde: string; origenes: Origen[] };
+type Campana = {
+  campana_id: string;
+  nombre: string;
+  gasto: number;
+  impresiones: number;
+  clics: number;
+  pedidos: number;
+  ventas: number;
+  clientes_nuevos: number;
+  costo_por_pedido: number | null;
+  costo_por_cliente_nuevo: number | null;
+  roas: number | null;
+};
+
+type General = {
+  gasto_total: number;
+  ventas_totales: number;
+  pedidos_totales: number;
+  pedidos_atribuidos: number;
+  roas_general: number | null;
+};
+
+type Tablero = {
+  desde: string;
+  origenes: Origen[];
+  general: General;
+  campanas: Campana[];
+  gasto_hasta: string | null;
+};
+
+type Sincronizacion = { estado: 'sincronizado' | 'apagado'; filas: number };
+
+function veces(valor: number | null): string {
+  return valor === null ? '—' : `${valor.toLocaleString('es-CO')}x`;
+}
+
+function pesos(valor: number | null): string {
+  return valor === null ? '—' : formatPrecio(valor);
+}
 
 const RANGOS = [
   { dias: 7, etiqueta: '7 días' },
@@ -76,6 +114,8 @@ function TableroAnuncios() {
   const [tablero, setTablero] = useState<Tablero | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sincronizando, setSincronizando] = useState(false);
+  const [aviso, setAviso] = useState<string | null>(null);
 
   const cargar = useCallback(async (rango: number) => {
     setCargando(true);
@@ -95,6 +135,26 @@ function TableroAnuncios() {
     const id = setTimeout(() => void cargar(dias), 0);
     return () => clearTimeout(id);
   }, [cargar, dias]);
+
+  async function sincronizar() {
+    setSincronizando(true);
+    setAviso(null);
+    try {
+      const res = await adminFetch('/admin/anuncios/sincronizaciones', { method: 'POST' });
+      if (!res.ok) throw new Error(await leerErrorApi(res, 'No se pudo sincronizar con Meta.'));
+      const r = (await res.json()) as Sincronizacion;
+      setAviso(
+        r.estado === 'apagado'
+          ? 'Meta no está conectado: faltan META_AD_ACCOUNT_ID y el token con permiso ads_read en Railway.'
+          : `Listo: ${r.filas} filas de gasto al día.`,
+      );
+      await cargar(dias);
+    } catch (err) {
+      setAviso(err instanceof Error ? err.message : 'No se pudo sincronizar con Meta.');
+    } finally {
+      setSincronizando(false);
+    }
+  }
 
   const origenes = tablero?.origenes ?? [];
   const totales = origenes.reduce(
@@ -147,6 +207,70 @@ function TableroAnuncios() {
         <CargandoSkeleton filas={5} />
       ) : (
         <>
+          {tablero && (
+            <section aria-label="Gasto y retorno" className="mt-6">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+                  Gasto y retorno
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => void sincronizar()}
+                  disabled={sincronizando}
+                  className={`min-h-11 rounded-lg border border-zinc-300 px-4 text-sm font-semibold text-zinc-800 hover:bg-zinc-100 disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-900 ${ANILLO}`}
+                >
+                  {sincronizando ? 'Sincronizando…' : 'Sincronizar con Meta'}
+                </button>
+              </div>
+              {aviso && (
+                <p role="status" className="mt-2 text-sm text-zinc-700 dark:text-zinc-300">
+                  {aviso}
+                </p>
+              )}
+              <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <Cifra etiqueta="Gasto en anuncios" valor={formatPrecio(tablero.general.gasto_total)} />
+                <Cifra etiqueta="Ventas de todos los canales" valor={formatPrecio(tablero.general.ventas_totales)} />
+                <Cifra etiqueta="Retorno general" valor={veces(tablero.general.roas_general)} />
+                <Cifra
+                  etiqueta="Pedidos atribuidos"
+                  valor={`${tablero.general.pedidos_atribuidos} de ${tablero.general.pedidos_totales}`}
+                />
+              </div>
+              <p className="mt-2 text-xs text-zinc-600 dark:text-zinc-400">
+                {tablero.gasto_hasta
+                  ? `Gasto sincronizado hasta el ${tablero.gasto_hasta}. `
+                  : 'Todavía no hay gasto de Meta sincronizado. '}
+                El retorno general divide todas las ventas entre el gasto; el de cada campaña solo
+                cuenta los pedidos que se le pudieron atribuir.
+              </p>
+              {tablero.campanas.length > 0 && (
+                <ul className="mt-4 divide-y divide-zinc-200 overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-950">
+                  {tablero.campanas.map((c) => (
+                    <li key={c.campana_id} className="grid gap-3 p-4 sm:grid-cols-[1fr_repeat(5,6.5rem)] sm:items-center">
+                      <p className="truncate font-semibold text-zinc-900 dark:text-zinc-50">{c.nombre}</p>
+                      <dl className="contents">
+                        {[
+                          ['Gasto', formatPrecio(c.gasto)],
+                          ['Pedidos', String(c.pedidos)],
+                          ['Costo por pedido', pesos(c.costo_por_pedido)],
+                          ['Clientes nuevos', String(c.clientes_nuevos)],
+                          ['Retorno', veces(c.roas)],
+                        ].map(([etiqueta, valor]) => (
+                          <div key={etiqueta} className="flex justify-between gap-2 sm:block sm:text-right">
+                            <dt className="text-xs text-zinc-600 dark:text-zinc-400">{etiqueta}</dt>
+                            <dd className="text-sm font-semibold tabular-nums text-zinc-900 dark:text-zinc-50">
+                              {valor}
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          )}
+
           <section aria-label="Totales" className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Cifra etiqueta="Conversaciones" valor={String(totales.conversaciones)} />
             <Cifra etiqueta="Pedidos" valor={String(totales.pedidos)} />

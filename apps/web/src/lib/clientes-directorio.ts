@@ -20,6 +20,8 @@ export type ClienteDirectorio = {
   total_pedidos: number;
   total_gastado: number;
   ultimo_pedido: string | null;
+  primer_pedido: string | null;
+  primer_origen: string | null;
 };
 
 export type Directorio = {

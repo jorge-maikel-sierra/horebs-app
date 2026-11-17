@@ -8,6 +8,7 @@ import { formatPrecio, formatHora, formatFecha } from '@/lib/formato';
 import CargandoSkeleton from '@/components/CargandoSkeleton';
 import { leerErrorApi } from '@/lib/error-api';
 import { NEGOCIO } from '@/lib/negocio';
+import SelectorCampana from '@/components/pos/SelectorCampana';
 
 type Variante = {
   id: string;
@@ -317,6 +318,7 @@ function PosInterno() {
     'efectivo' | 'transferencia' | 'tarjeta'
   >('efectivo');
   const [origen, setOrigen] = useState<OrigenVenta>('mostrador');
+  const [campanaId, setCampanaId] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mensaje, setMensaje] = useState<string | null>(null);
@@ -612,6 +614,8 @@ function PosInterno() {
           costo_domicilio: modalidad === 'domicilio' ? costoDomicilio : undefined,
           metodo_pago: metodoPago,
           origen,
+          origen_campana_id:
+            origen !== 'mostrador' && campanaId ? campanaId : undefined,
           items: items.map((i) =>
             i.varianteId
               ? {
@@ -654,6 +658,7 @@ function PosInterno() {
       setCostoDomicilio(NEGOCIO.costoDomicilio);
       setMetodoPago('efectivo');
       setOrigen('mostrador');
+      setCampanaId('');
       setSaldoPuntos(null);
       setUsarPuntos(false);
     } catch (err) {
@@ -1175,6 +1180,10 @@ function PosInterno() {
                 ))}
               </div>
             </fieldset>
+
+            {origen !== 'mostrador' && (
+              <SelectorCampana valor={campanaId} onCambio={setCampanaId} />
+            )}
 
             {error && (
               <p

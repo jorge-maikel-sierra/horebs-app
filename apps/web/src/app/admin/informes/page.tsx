@@ -27,6 +27,7 @@ import {
   rangoAnterior,
 } from '@/lib/informes-rango';
 import { leerErrorApi } from '@/lib/error-api';
+import { ORIGEN_LABEL } from '@/lib/origen-venta';
 
 type InformeDia = { fecha: string; total: number; pedidos: number };
 type InformeDesglose = { clave: string; total: number; pedidos: number };
@@ -56,6 +57,7 @@ type InformeDto = {
   por_metodo_pago: InformeDesglose[];
   por_modalidad: InformeDesglose[];
   por_canal: InformeDesglose[];
+  por_origen: InformeDesglose[];
   top_productos: InformeProducto[];
   por_categoria: InformeCategoria[];
   clientes: {
@@ -688,6 +690,12 @@ function InformesPageInterno() {
             </Panel>
             <Panel titulo="Canal de venta">
               <ListaDesglose items={informe.por_canal} etiquetas={CANAL_LABEL} />
+            </Panel>
+            <Panel
+              titulo="Origen de la venta"
+              subtitulo="De dónde llegó el pedido; la caja lo registra desde el 17 nov"
+            >
+              <ListaDesglose items={informe.por_origen} etiquetas={ORIGEN_LABEL} />
             </Panel>
           </div>
 

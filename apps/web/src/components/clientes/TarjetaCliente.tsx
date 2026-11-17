@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { CSSProperties } from 'react';
 import Resaltado from '@/components/pedidos/Resaltado';
 import { formatPrecio } from '@/lib/formato';
+import { etiquetaOrigen } from '@/lib/origen-venta';
 import {
   claseAvatar,
   clienteDesde,
@@ -126,6 +127,12 @@ export default function TarjetaCliente({
         <p className="inline-flex w-fit items-center gap-1.5 rounded-full bg-brand-yellow/30 px-2.5 py-0.5 text-xs font-bold text-amber-800 tabular-nums dark:bg-brand-yellow/15 dark:text-brand-yellow">
           <IconEstrella />
           {NUMERO.format(c.puntos_actuales)} puntos
+        </p>
+      )}
+
+      {compro && c.primer_origen && (
+        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+          Primer pedido: {etiquetaOrigen(c.primer_origen)}
         </p>
       )}
 
