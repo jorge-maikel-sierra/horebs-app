@@ -1,3 +1,4 @@
+import { origenDePedido } from './informes-origen';
 import type { PedidoUnificado } from './informes.tipos';
 
 interface ClienteAnidado {
@@ -14,6 +15,7 @@ export interface PedidoVivoFila {
   metodo_pago: string;
   modalidad: string;
   canal: string;
+  origen_venta: string | null;
   created_at: string;
   clientes: ClienteAnidado | null;
 }
@@ -40,6 +42,7 @@ export function unificarPedidoVivo(p: PedidoVivoFila): PedidoUnificado {
     metodo_pago: p.metodo_pago,
     modalidad: p.modalidad,
     canal: p.canal,
+    origen: origenDePedido(p.origen_venta, p.canal),
     creado_en: p.created_at,
     telefono: p.clientes?.telefono ?? null,
     nombre_cliente: nombreDe(p.clientes),
@@ -57,6 +60,7 @@ export function unificarPedidoHistorico(
     metodo_pago: p.metodo_pago,
     modalidad: p.modalidad,
     canal: p.canal,
+    origen: origenDePedido(null, p.canal),
     creado_en: p.creado_en,
     telefono: p.historico_clientes?.telefono ?? null,
     nombre_cliente: nombreDe(p.historico_clientes),

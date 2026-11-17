@@ -21,6 +21,7 @@ function pedido(extra: Partial<PedidoUnificado> = {}): PedidoUnificado {
     metodo_pago: 'efectivo',
     modalidad: 'local',
     canal: 'pos',
+    origen: 'caja_sin_origen',
     creado_en: '2026-10-10T20:00:00.000Z',
     telefono: null,
     nombre_cliente: null,

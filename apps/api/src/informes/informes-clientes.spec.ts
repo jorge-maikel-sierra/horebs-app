@@ -8,6 +8,7 @@ const pedido = (telefono: string | null, total: number): PedidoUnificado => ({
   metodo_pago: 'efectivo',
   modalidad: 'domicilio',
   canal: 'web',
+  origen: 'web',
   creado_en: '2026-10-20T15:00:00.000Z',
   telefono,
   nombre_cliente: null,

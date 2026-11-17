@@ -15,6 +15,7 @@ describe('unificarPedidoVivo', () => {
     metodo_pago: 'efectivo',
     modalidad: 'domicilio',
     canal: 'web',
+    origen_venta: null,
     created_at: '2026-10-20T15:00:00.000Z',
     clientes: CLIENTE,
   };
@@ -27,6 +28,7 @@ describe('unificarPedidoVivo', () => {
       metodo_pago: 'efectivo',
       modalidad: 'domicilio',
       canal: 'web',
+      origen: 'web',
       creado_en: '2026-10-20T15:00:00.000Z',
       telefono: '3157861208',
       nombre_cliente: 'Ana Pérez',

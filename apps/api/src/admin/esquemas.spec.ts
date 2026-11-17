@@ -64,6 +64,14 @@ describe('ESQUEMA_VENTA', () => {
     expect(campos({ ...VENTA, origen: 'paloma' })).toEqual(['origen']);
   });
 
+  it('la campaña de origen es opcional y es un texto corto', () => {
+    expect(campos({ ...VENTA, origen_campana_id: '120210' })).toEqual([]);
+    expect(campos({ ...VENTA, origen_campana_id: 5 })).toEqual([
+      'origen_campana_id',
+    ]);
+    expect(campos({ ...VENTA, campana: 'x' })).toEqual(['campana']);
+  });
+
   it('exige cliente, modalidad, método de pago e items', () => {
     expect(campos({})).toEqual([
       'cliente',

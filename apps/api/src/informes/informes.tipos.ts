@@ -75,6 +75,7 @@ export interface InformeDto {
   por_metodo_pago: InformeDesgloseDto[];
   por_modalidad: InformeDesgloseDto[];
   por_canal: InformeDesgloseDto[];
+  por_origen: InformeDesgloseDto[];
   top_productos: InformeProductoDto[];
   por_categoria: InformeCategoriaDto[];
   clientes: InformeClientesDto;
@@ -97,6 +98,8 @@ export interface PedidoUnificado {
   metodo_pago: string;
   modalidad: string;
   canal: string;
+  /** De dónde llegó la venta (ver `origenDePedido`). */
+  origen: string;
   creado_en: string;
   telefono: string | null;
   nombre_cliente: string | null;
@@ -125,6 +128,7 @@ export interface TotalesPedidos {
   porMetodo: Map<string, Acumulador>;
   porModalidad: Map<string, Acumulador>;
   porCanal: Map<string, Acumulador>;
+  porOrigen: Map<string, Acumulador>;
   ventasBrutas: number;
   costoDomicilioTotal: number;
 }

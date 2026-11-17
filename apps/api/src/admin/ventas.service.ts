@@ -157,6 +157,7 @@ export class VentasService {
         total: venta.total,
         notas: input.notas ?? null,
         origen_venta: input.origen ?? null,
+        origen_campana_id: input.origen_campana_id ?? null,
         puntos_canjeados: canje.puntos,
         descuento_puntos: canje.descuento,
       })

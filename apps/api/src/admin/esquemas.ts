@@ -24,6 +24,7 @@ export const ESQUEMA_VENTA: Esquema = {
   metodo_pago: enumerado(METODOS_PAGO),
   notas: opcional(texto({ max: 1000 })),
   origen: opcional(enumerado([...ORIGENES_VENTA])),
+  origen_campana_id: opcional(texto({ max: 64 })),
   items: lista(),
   usar_puntos: opcional(booleano()),
 };

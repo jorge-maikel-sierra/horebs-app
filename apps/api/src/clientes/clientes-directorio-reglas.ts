@@ -1,3 +1,4 @@
+import { origenDePedido } from '../informes/informes-origen';
 import type {
   ClienteDirectorioDto,
   Coincidencia,
@@ -46,7 +47,13 @@ const ORDENES: OrdenCliente[] = [
 
 const ES_ALFANUMERICO = /[\p{L}\p{N}]/u;
 const ES_TELEFONICO = /^[+\d][\d\s().-]*$/;
-const SIN_PEDIDOS: MetricasCliente = { n: 0, gastado: 0, ultimo: null };
+const SIN_PEDIDOS: MetricasCliente = {
+  n: 0,
+  gastado: 0,
+  ultimo: null,
+  primero: null,
+  primer_origen: null,
+};
 
 /** Minúsculas y sin tildes: "José" y "jose" son lo mismo al buscar. */
 export function plegar(texto: string): string {
@@ -245,6 +252,8 @@ export function publica(f: FilaDirectorio): ClienteDirectorioDto {
     total_pedidos: f.total_pedidos,
     total_gastado: f.total_gastado,
     ultimo_pedido: f.ultimo_pedido,
+    primer_pedido: f.primer_pedido,
+    primer_origen: f.primer_origen,
   };
 }
 
@@ -301,6 +310,10 @@ export function metricasDePedidos(
     m.n += 1;
     m.gastado += p.total;
     if (!m.ultimo || p.created_at > m.ultimo) m.ultimo = p.created_at;
+    if (!m.primero || p.created_at < m.primero) {
+      m.primero = p.created_at;
+      m.primer_origen = origenDePedido(p.origen_venta, p.canal);
+    }
     metricas.set(p.cliente_id, m);
   }
   return metricas;
@@ -339,6 +352,8 @@ export function filaDeCliente(
     total_pedidos: m.n,
     total_gastado: m.gastado,
     ultimo_pedido: m.ultimo,
+    primer_pedido: m.primero,
+    primer_origen: m.primer_origen,
     ...camposDeBusqueda(c),
   };
 }

@@ -17,6 +17,9 @@ export interface ClienteDirectorioDto {
   total_pedidos: number;
   total_gastado: number;
   ultimo_pedido: string | null;
+  primer_pedido: string | null;
+  /** De dónde llegó su primer pedido (ver `origenDePedido`). */
+  primer_origen: string | null;
 }
 
 /** Totales de toda la base, sin filtros. */
@@ -80,15 +83,20 @@ export interface FilaPedidoDirectorio {
   cliente_id: string | null;
   total: number;
   created_at: string;
+  canal: string;
+  origen_venta: string | null;
 }
 
 export interface MetricasCliente {
   n: number;
   gastado: number;
   ultimo: string | null;
+  primero: string | null;
+  primer_origen: string | null;
 }
 
 export const CLIENTE_DIRECTORIO_SELECT =
   'id, nombre, apellido, telefono, direccion, correo, cedula, created_at, puntos_actuales';
 
-export const PEDIDO_DIRECTORIO_SELECT = 'cliente_id, total, created_at';
+export const PEDIDO_DIRECTORIO_SELECT =
+  'cliente_id, total, created_at, canal, origen_venta';

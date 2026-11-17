@@ -1,4 +1,12 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { FechaPipe } from '../common/pipes/fecha.pipe';
@@ -6,11 +14,19 @@ import {
   AnunciosAdminService,
   type TableroAnunciosDto,
 } from './anuncios-admin.service';
+import type { CampanaReciente } from './anuncios-gasto';
+import {
+  AnunciosMetaService,
+  type ResultadoSincronizacion,
+} from './anuncios-meta.service';
 
 @Controller('admin/anuncios')
 @UseGuards(RolesGuard)
 export class AnunciosAdminController {
-  constructor(private readonly anuncios: AnunciosAdminService) {}
+  constructor(
+    private readonly anuncios: AnunciosAdminService,
+    private readonly meta: AnunciosMetaService,
+  ) {}
 
   /** `?desde=AAAA-MM-DD` (por defecto, los últimos 30 días). */
   @Get()
@@ -19,5 +35,22 @@ export class AnunciosAdminController {
     @Query('desde', new FechaPipe('desde')) desde?: string,
   ): Promise<TableroAnunciosDto> {
     return this.anuncios.tablero(desde);
+  }
+
+  /** Alimenta el selector de campaña de la caja. */
+  @Get('campanas-recientes')
+  @Roles('admin', 'empleado')
+  campanasRecientes(): Promise<CampanaReciente[]> {
+    return this.anuncios.campanasRecientes();
+  }
+
+  /** Trae el gasto de Meta ahora mismo (el cron lo hace cada día a las 6:00 a.m.). */
+  @Post('sincronizaciones')
+  @HttpCode(HttpStatus.OK)
+  @Roles('admin')
+  sincronizar(
+    @Query('desde', new FechaPipe('desde')) desde?: string,
+  ): Promise<ResultadoSincronizacion> {
+    return this.meta.sincronizar(desde);
   }
 }

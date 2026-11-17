@@ -45,6 +45,8 @@ export interface CrearVentaInput {
   metodo_pago: 'efectivo' | 'transferencia' | 'tarjeta';
   notas?: string;
   origen?: OrigenVenta;
+  /** Campaña de Meta que trajo la venta, la que elige la caja (opcional). */
+  origen_campana_id?: string;
   items: ItemVentaInput[];
   usar_puntos?: boolean;
 }

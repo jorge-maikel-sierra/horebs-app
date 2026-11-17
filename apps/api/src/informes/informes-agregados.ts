@@ -70,6 +70,7 @@ export function totalizarPedidos(
     porMetodo: new Map(),
     porModalidad: new Map(),
     porCanal: new Map(),
+    porOrigen: new Map(),
     ventasBrutas: 0,
     costoDomicilioTotal: 0,
   };
@@ -84,6 +85,7 @@ export function totalizarPedidos(
     acumular(totales.porMetodo, p.metodo_pago, p.total);
     acumular(totales.porModalidad, p.modalidad, p.total);
     acumular(totales.porCanal, p.canal, p.total);
+    acumular(totales.porOrigen, p.origen, p.total);
   }
   return totales;
 }

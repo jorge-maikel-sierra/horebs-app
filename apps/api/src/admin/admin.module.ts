@@ -1,5 +1,6 @@
 import { AnunciosAdminController } from './anuncios-admin.controller';
 import { AnunciosAdminService } from './anuncios-admin.service';
+import { AnunciosMetaService } from './anuncios-meta.service';
 import { Module } from '@nestjs/common';
 import { AvisosCambioPedidoService } from './avisos-cambio-pedido.service';
 import { AvisosVentaService } from './avisos-venta.service';
@@ -54,6 +55,7 @@ import { PedidosModule } from '../pedidos/pedidos.module';
     SeguimientoAdminService,
     ModulosService,
     AnunciosAdminService,
+    AnunciosMetaService,
   ],
 })
 export class AdminModule {}

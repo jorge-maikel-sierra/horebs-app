@@ -48,7 +48,12 @@ function fila(
 ): FilaDirectorio {
   return filasDeDirectorio(
     [cliente(id, extra)],
-    pedidos.map((p) => ({ cliente_id: id, ...p })),
+    pedidos.map((p) => ({
+      cliente_id: id,
+      canal: 'pos',
+      origen_venta: null,
+      ...p,
+    })),
   )[0];
 }
 
@@ -203,10 +208,34 @@ describe('ordenar', () => {
 describe('métricas por cliente', () => {
   it('suma pedidos, gasto y el último pedido; ignora los sin cliente', () => {
     const metricas = metricasDePedidos([
-      { cliente_id: 'c-1', total: 100, created_at: '2026-10-02T00:00:00.000Z' },
-      { cliente_id: 'c-1', total: 50, created_at: '2026-10-05T00:00:00.000Z' },
-      { cliente_id: 'c-1', total: 25, created_at: '2026-10-01T00:00:00.000Z' },
-      { cliente_id: null, total: 999, created_at: '2026-10-09T00:00:00.000Z' },
+      {
+        cliente_id: 'c-1',
+        total: 100,
+        created_at: '2026-10-02T00:00:00.000Z',
+        canal: 'pos',
+        origen_venta: null,
+      },
+      {
+        cliente_id: 'c-1',
+        total: 50,
+        created_at: '2026-10-05T00:00:00.000Z',
+        canal: 'pos',
+        origen_venta: null,
+      },
+      {
+        cliente_id: 'c-1',
+        total: 25,
+        created_at: '2026-10-01T00:00:00.000Z',
+        canal: 'pos',
+        origen_venta: 'llamada',
+      },
+      {
+        cliente_id: null,
+        total: 999,
+        created_at: '2026-10-09T00:00:00.000Z',
+        canal: 'pos',
+        origen_venta: null,
+      },
     ]);
 
     expect(metricas.size).toBe(1);
@@ -214,6 +243,8 @@ describe('métricas por cliente', () => {
       n: 3,
       gastado: 175,
       ultimo: '2026-10-05T00:00:00.000Z',
+      primero: '2026-10-01T00:00:00.000Z',
+      primer_origen: 'llamada',
     });
   });
 
@@ -228,6 +259,8 @@ describe('métricas por cliente', () => {
       total_pedidos: 0,
       total_gastado: 0,
       ultimo_pedido: null,
+      primer_pedido: null,
+      primer_origen: null,
     });
   });
 });

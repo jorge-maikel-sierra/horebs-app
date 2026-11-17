@@ -102,6 +102,7 @@ export class InformesService {
       por_metodo_pago: serializarMapa(totales.porMetodo),
       por_modalidad: serializarMapa(totales.porModalidad),
       por_canal: serializarCanales(totales.porCanal),
+      por_origen: serializarMapa(totales.porOrigen),
       top_productos: items.topProductos,
       por_categoria: items.porCategoria,
       clientes,
@@ -229,7 +230,7 @@ export class InformesService {
       client
         .from('pedidos')
         .select(
-          'id, total, costo_domicilio, metodo_pago, modalidad, canal, created_at, clientes(telefono, nombre, apellido)',
+          'id, total, costo_domicilio, metodo_pago, modalidad, canal, origen_venta, created_at, clientes(telefono, nombre, apellido)',
         )
         .neq('estado', 'cancelado')
         .gte('created_at', desdeISO)
