@@ -86,6 +86,8 @@ export interface FilaClienteVenta {
   telefono: string | null;
   correo: string | null;
   cedula: string | null;
+  ciudad: string;
+  departamento: string;
 }
 
 /** El pedido recién creado por una venta del POS. */

@@ -23,7 +23,8 @@ import {
   type DatosClienteVenta,
 } from './venta-reglas';
 
-const CLIENTE_SELECT = 'id, nombre, apellido, telefono, correo, cedula';
+const CLIENTE_SELECT =
+  'id, nombre, apellido, telefono, correo, cedula, ciudad, departamento';
 const PEDIDO_VENTA_SELECT =
   'id, modalidad, direccion_entrega, costo_domicilio, metodo_pago, total, created_at, origen_venta';
 const SIN_CANJE: CanjeDeVenta = { puntos: 0, descuento: 0 };

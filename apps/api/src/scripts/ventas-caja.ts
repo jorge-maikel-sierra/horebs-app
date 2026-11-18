@@ -17,7 +17,7 @@ interface FilaVentaCaja {
 const TAMANO_PAGINA = 1000;
 
 const COLUMNAS =
-  'id, total, modalidad, origen_venta, created_at, clientes(id, nombre, apellido, telefono, correo), items_pedido(variante_id, cantidad)';
+  'id, total, modalidad, origen_venta, created_at, clientes(id, nombre, apellido, telefono, correo, ciudad, departamento), items_pedido(variante_id, cantidad)';
 
 async function leerPagina(
   client: SupabaseClient,

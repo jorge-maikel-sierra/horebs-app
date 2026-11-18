@@ -54,6 +54,7 @@ describe('userDataCaja', () => {
       fn: [sha256('anamaría')],
       ln: [sha256('pérez')],
       ct: [sha256('riohacha')],
+      st: [sha256('laguajira')],
       country: [sha256('co')],
       external_id: [sha256('c-1')],
     });

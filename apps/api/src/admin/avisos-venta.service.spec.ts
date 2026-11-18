@@ -14,6 +14,8 @@ const CLIENTE: FilaClienteVenta = {
   telefono: '573157861208',
   correo: null,
   cedula: null,
+  ciudad: 'Riohacha',
+  departamento: 'La Guajira',
 };
 const ITEMS: ItemVentaCalculado[] = [
   {

@@ -44,6 +44,8 @@ export function cambiosDeCliente(
     direccion: borrable(cambios.direccion),
     correo: borrable(cambios.correo),
     cedula: borrable(cambios.cedula),
+    ciudad: cambios.ciudad?.trim(),
+    departamento: cambios.departamento?.trim(),
   };
   return Object.fromEntries(
     Object.entries(columnas).filter(

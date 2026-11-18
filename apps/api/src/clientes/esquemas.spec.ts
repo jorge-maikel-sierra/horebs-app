@@ -8,6 +8,12 @@ const campos = (cuerpo: object) =>
   validarObjeto(ESQUEMA_EDITAR_CLIENTE, cuerpo).map((e) => e.campo);
 
 describe('ESQUEMA_EDITAR_CLIENTE', () => {
+  it('ciudad y departamento se pueden cambiar pero no vaciar (la base no admite nulos)', () => {
+    expect(campos({ ciudad: 'Maicao', departamento: 'La Guajira' })).toEqual([]);
+    expect(campos({ ciudad: '' })).toEqual(['ciudad']);
+    expect(campos({ pais: 'CO' })).toEqual(['pais']);
+  });
+
   it('acepta el body del panel, con cadena vacía para borrar un dato', () => {
     expect(
       campos({

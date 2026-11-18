@@ -24,4 +24,6 @@ export const ESQUEMA_EDITAR_CLIENTE: Esquema = {
   direccion: TEXTO_BORRABLE,
   correo: TEXTO_BORRABLE,
   cedula: opcional(texto({ min: 0, max: 30 })),
+  ciudad: opcional(texto({ max: 80 })),
+  departamento: opcional(texto({ max: 80 })),
 };

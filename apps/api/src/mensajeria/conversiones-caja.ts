@@ -1,9 +1,13 @@
 import { MS_POR_DIA, MS_POR_SEGUNDO } from '../common/tiempo';
 import type { OrigenVenta } from '../admin/pedidos-admin.tipos';
-import { nombreParaMeta, sha256, telefonoParaMeta } from './conversiones-web';
+import {
+  nombreParaMeta,
+  sha256,
+  telefonoParaMeta,
+  ubicacionParaMeta,
+} from './conversiones-web';
 
 const MONEDA = 'COP';
-const CIUDAD = 'riohacha';
 const PAIS = 'co';
 // Meta rechaza eventos viejos: 7 días en general y 62 los de tienda física.
 const DIAS_MAX_EVENTO = 7;
@@ -23,6 +27,8 @@ export interface VentaCajaParaEvento {
     apellido: string | null;
     telefono: string | null;
     correo: string | null;
+    ciudad?: string | null;
+    departamento?: string | null;
   };
   items: { varianteId: string | null; cantidad: number }[];
 }
@@ -56,7 +62,7 @@ export function userDataCaja(
     em: hashear(correo),
     fn: hashear(nombreParaMeta(cliente.nombre)),
     ln: hashear(nombreParaMeta(cliente.apellido)),
-    ct: hashear(CIUDAD),
+    ...ubicacionParaMeta(cliente.ciudad, cliente.departamento),
     country: hashear(PAIS),
     external_id: hashear(cliente.id),
   };

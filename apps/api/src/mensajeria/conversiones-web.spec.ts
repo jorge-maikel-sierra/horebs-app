@@ -47,6 +47,7 @@ describe('conversiones-web', () => {
       fn: [sha256('maríajosé')],
       ln: [sha256('núñez')],
       ct: [sha256('riohacha')],
+      st: [sha256('laguajira')],
       country: [sha256('co')],
       external_id: [sha256('cli-1')],
       client_ip_address: '181.50.1.2',

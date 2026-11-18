@@ -6,6 +6,9 @@ export interface ClienteDto {
   direccion: string | null;
   correo: string | null;
   cedula: string | null;
+  /** Todo cliente nace en Riohacha, La Guajira (única sede); no admite vacío. */
+  ciudad: string;
+  departamento: string;
 }
 
 export interface ClienteDetalleDto extends ClienteDto {
@@ -37,6 +40,8 @@ export interface EditarClienteInput {
   direccion?: string;
   correo?: string;
   cedula?: string;
+  ciudad?: string;
+  departamento?: string;
 }
 
 export type FilaCliente = ClienteDto;
@@ -75,7 +80,7 @@ export interface FilaPedidoCliente {
 }
 
 export const SELECT_CLIENTE =
-  'id, nombre, apellido, telefono, direccion, correo, cedula';
+  'id, nombre, apellido, telefono, direccion, correo, cedula, ciudad, departamento';
 
 export const SELECT_CLIENTE_DETALLE = `${SELECT_CLIENTE}, created_at, puntos_actuales, puntos_ultima_actividad`;
 

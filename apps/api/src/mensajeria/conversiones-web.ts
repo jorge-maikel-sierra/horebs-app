@@ -5,8 +5,10 @@ import type { AtribucionWeb } from '../pedidos/atribucion-web';
 const MONEDA = 'COP';
 const SITIO_URL = 'https://pizzeriahorebs.shop';
 const DIGITOS_TELEFONO_COLOMBIA = 10;
-// El negocio solo vende en Riohacha (Colombia): ciudad y país son fijos.
-const CIUDAD = 'riohacha';
+// El negocio solo vende en Riohacha, La Guajira (Colombia): todo cliente nace
+// con esa ciudad y ese departamento; estos valores cubren un dato ausente.
+const CIUDAD_META = 'riohacha';
+const DEPARTAMENTO_META = 'laguajira';
 const PAIS = 'co';
 
 export interface PedidoWebParaEvento {
@@ -18,6 +20,8 @@ export interface PedidoWebParaEvento {
     apellido: string | null;
     telefono: string | null;
     correo: string | null;
+    ciudad?: string | null;
+    departamento?: string | null;
   } | null;
   items: { varianteId: string; cantidad: number }[];
   atribucion: AtribucionWeb | null;
@@ -41,6 +45,17 @@ export function nombreParaMeta(nombre: string | null): string | null {
     .toLowerCase()
     .replace(/[^\p{L}]/gu, '');
   return limpio || null;
+}
+
+/** Ciudad y departamento cifrados; `st` va sin espacios ni tildes, como pide Meta fuera de EE. UU. */
+export function ubicacionParaMeta(
+  ciudad?: string | null,
+  departamento?: string | null,
+): { ct: string[]; st: string[] } {
+  return {
+    ct: [sha256(nombreParaMeta(ciudad ?? null) ?? CIUDAD_META)],
+    st: [sha256(nombreParaMeta(departamento ?? null) ?? DEPARTAMENTO_META)],
+  };
 }
 
 function correoParaMeta(correo: string | null | undefined): string | null {
@@ -68,7 +83,7 @@ export function userDataWeb(
     ph: hasheado(telefonoParaMeta(c?.telefono ?? null)),
     fn: hasheado(nombreParaMeta(c?.nombre ?? null)),
     ln: hasheado(nombreParaMeta(c?.apellido ?? null)),
-    ct: hasheado(CIUDAD),
+    ...ubicacionParaMeta(c?.ciudad, c?.departamento),
     country: hasheado(PAIS),
     external_id: hasheado(pedido.clienteId),
     client_ip_address: a.ip,

@@ -41,6 +41,12 @@ describe('edición de cliente', () => {
     expect(cambiosDeCliente({})).toEqual({});
   });
 
+  it('recorta ciudad y departamento sin volverlos null', () => {
+    expect(
+      cambiosDeCliente({ ciudad: ' Riohacha ', departamento: ' La Guajira ' }),
+    ).toEqual({ ciudad: 'Riohacha', departamento: 'La Guajira' });
+  });
+
   it('recorta el nombre y vuelve null el texto en blanco de los demás campos', () => {
     expect(
       cambiosDeCliente({
