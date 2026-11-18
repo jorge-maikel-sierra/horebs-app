@@ -3,17 +3,19 @@
 import { useEffect, useState } from 'react';
 import { adminFetch } from '@/lib/admin-fetch';
 
-type Campana = { id: string; nombre: string };
+type Campana = { id: string; nombre: string; sugerida: boolean };
 
 /**
  * "¿Por qué anuncio llegó?" — solo aparece si Meta ya sincronizó campañas con
- * gasto. Es opcional: sin elegir, la venta queda sin campaña.
+ * gasto. Queda elegida la campaña del mes (la que más gastó este mes) y se
+ * puede cambiar o dejar en «Ninguno / no sé». `valor` en null significa que
+ * todavía no se ha elegido nada: ahí se pone la del mes.
  */
 export default function SelectorCampana({
   valor,
   onCambio,
 }: {
-  valor: string;
+  valor: string | null;
   onCambio: (id: string) => void;
 }) {
   const [campanas, setCampanas] = useState<Campana[]>([]);
@@ -35,6 +37,12 @@ export default function SelectorCampana({
     };
   }, []);
 
+  useEffect(() => {
+    if (valor !== null) return;
+    const delMes = campanas.find((c) => c.sugerida);
+    if (delMes) onCambio(delMes.id);
+  }, [valor, campanas, onCambio]);
+
   if (campanas.length === 0) return null;
 
   return (
@@ -43,7 +51,7 @@ export default function SelectorCampana({
         ¿Por qué anuncio llegó?
       </span>
       <select
-        value={valor}
+        value={valor ?? ''}
         onChange={(e) => onCambio(e.target.value)}
         className="mt-2 min-h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none focus-visible:ring-2 focus-visible:ring-brand-orange/60 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50"
       >

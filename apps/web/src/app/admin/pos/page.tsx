@@ -318,7 +318,8 @@ function PosInterno() {
     'efectivo' | 'transferencia' | 'tarjeta'
   >('efectivo');
   const [origen, setOrigen] = useState<OrigenVenta>('mostrador');
-  const [campanaId, setCampanaId] = useState('');
+  // null = todavía no elegida: el selector deja la campaña del mes; '' = «Ninguno».
+  const [campanaId, setCampanaId] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mensaje, setMensaje] = useState<string | null>(null);
@@ -658,7 +659,7 @@ function PosInterno() {
       setCostoDomicilio(NEGOCIO.costoDomicilio);
       setMetodoPago('efectivo');
       setOrigen('mostrador');
-      setCampanaId('');
+      setCampanaId(null);
       setSaldoPuntos(null);
       setUsarPuntos(false);
     } catch (err) {
