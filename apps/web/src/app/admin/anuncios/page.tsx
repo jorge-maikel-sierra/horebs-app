@@ -287,7 +287,7 @@ function TableroAnuncios() {
                           ['Gasto', formatPrecio(c.gasto)],
                           ['Conversaciones', String(c.conversaciones)],
                           ['Costo por conversación', pesos(c.costo_por_conversacion)],
-                          ['Frecuencia', c.frecuencia === null ? '—' : String(c.frecuencia)],
+                          ['Frecuencia diaria', c.frecuencia === null ? '—' : String(c.frecuencia)],
                           ['Pedidos atribuidos', String(c.pedidos)],
                           ['Costo por pedido', pesos(c.costo_por_pedido)],
                           ['Clientes nuevos', String(c.clientes_nuevos)],

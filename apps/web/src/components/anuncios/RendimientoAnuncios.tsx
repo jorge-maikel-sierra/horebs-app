@@ -98,7 +98,7 @@ export default function RendimientoAnuncios({ anuncios }: { anuncios: AnuncioRen
                   ['Conversaciones', String(a.conversaciones)],
                   ['Costo por conversación', pesos(a.costo_por_conversacion)],
                   ['CTR', a.ctr === null ? '—' : `${a.ctr}%`],
-                  ['Frecuencia', a.frecuencia === null ? '—' : String(a.frecuencia)],
+                  ['Frecuencia diaria', a.frecuencia === null ? '—' : String(a.frecuencia)],
                   ['Pedidos del bot', String(a.pedidos)],
                 ].map(([etiqueta, valor]) => (
                   <div key={etiqueta}>
