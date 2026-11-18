@@ -13,6 +13,8 @@ export type FormCliente = {
   correo: string;
   cedula: string;
   direccion: string;
+  ciudad: string;
+  departamento: string;
 };
 
 export type ErroresCliente = Partial<Record<keyof FormCliente, string>>;
@@ -29,6 +31,8 @@ const CAMPOS: {
   { clave: 'correo', etiqueta: 'Correo', tipo: 'email' },
   { clave: 'cedula', etiqueta: 'Cédula' },
   { clave: 'direccion', etiqueta: 'Dirección', ancho: true },
+  { clave: 'ciudad', etiqueta: 'Ciudad' },
+  { clave: 'departamento', etiqueta: 'Departamento' },
 ];
 
 function Fila({
@@ -113,6 +117,11 @@ export default function DatosContacto({
             icono={<IconPin tamano={15} />}
             etiqueta="Dirección"
             valor={cliente.direccion}
+          />
+          <Fila
+            icono={<IconPin tamano={15} />}
+            etiqueta="Ciudad"
+            valor={`${cliente.ciudad}, ${cliente.departamento}`}
           />
         </dl>
       </section>

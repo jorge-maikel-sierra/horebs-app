@@ -6,6 +6,11 @@ import RequireRol from '@/components/RequireRol';
 import { adminFetch } from '@/lib/admin-fetch';
 import { leerErrorApi } from '@/lib/error-api';
 import { formatPrecio } from '@/lib/formato';
+import CohortesRecompra from '@/components/anuncios/CohortesRecompra';
+import PublicosMeta from '@/components/anuncios/PublicosMeta';
+import RendimientoAnuncios, {
+  type AnuncioRendimiento,
+} from '@/components/anuncios/RendimientoAnuncios';
 
 type Origen = {
   clave: string;
@@ -27,12 +32,18 @@ type Campana = {
   gasto: number;
   impresiones: number;
   clics: number;
+  conversaciones: number;
+  costo_por_conversacion: number | null;
+  frecuencia: number | null;
   pedidos: number;
   ventas: number;
   clientes_nuevos: number;
   costo_por_pedido: number | null;
   costo_por_cliente_nuevo: number | null;
   roas: number | null;
+  utilidad_bruta: number;
+  cobertura_costos: number | null;
+  retorno_utilidad: number | null;
 };
 
 type General = {
@@ -41,6 +52,10 @@ type General = {
   pedidos_totales: number;
   pedidos_atribuidos: number;
   roas_general: number | null;
+  utilidad_bruta: number;
+  margen_pct: number | null;
+  cobertura_costos: number | null;
+  utilidad_tras_anuncios: number | null;
 };
 
 type Tablero = {
@@ -48,6 +63,7 @@ type Tablero = {
   origenes: Origen[];
   general: General;
   campanas: Campana[];
+  anuncios: AnuncioRendimiento[];
   gasto_hasta: string | null;
 };
 
@@ -236,6 +252,24 @@ function TableroAnuncios() {
                   valor={`${tablero.general.pedidos_atribuidos} de ${tablero.general.pedidos_totales}`}
                 />
               </div>
+              <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <Cifra
+                  etiqueta="Utilidad bruta"
+                  valor={tablero.general.cobertura_costos ? formatPrecio(tablero.general.utilidad_bruta) : '—'}
+                />
+                <Cifra etiqueta="Utilidad tras anuncios" valor={pesos(tablero.general.utilidad_tras_anuncios)} />
+                <Cifra
+                  etiqueta="Margen"
+                  valor={tablero.general.margen_pct === null ? '—' : `${tablero.general.margen_pct}%`}
+                />
+                <Cifra
+                  etiqueta="Ventas con costo"
+                  valor={tablero.general.cobertura_costos === null ? '—' : `${tablero.general.cobertura_costos}%`}
+                />
+              </div>
+              <p className="mt-2 text-xs text-zinc-600 dark:text-zinc-400">
+                La utilidad sale de los costos que cargas en Costos y margen; sin costos no hay utilidad.
+              </p>
               <p className="mt-2 text-xs text-zinc-600 dark:text-zinc-400">
                 {tablero.gasto_hasta
                   ? `Gasto sincronizado hasta el ${tablero.gasto_hasta}. `
@@ -246,18 +280,24 @@ function TableroAnuncios() {
               {tablero.campanas.length > 0 && (
                 <ul className="mt-4 divide-y divide-zinc-200 overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-950">
                   {tablero.campanas.map((c) => (
-                    <li key={c.campana_id} className="grid gap-3 p-4 sm:grid-cols-[1fr_repeat(5,6.5rem)] sm:items-center">
+                    <li key={c.campana_id} className="p-4">
                       <p className="truncate font-semibold text-zinc-900 dark:text-zinc-50">{c.nombre}</p>
-                      <dl className="contents">
+                      <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4 lg:grid-cols-6">
                         {[
                           ['Gasto', formatPrecio(c.gasto)],
-                          ['Pedidos', String(c.pedidos)],
+                          ['Conversaciones', String(c.conversaciones)],
+                          ['Costo por conversación', pesos(c.costo_por_conversacion)],
+                          ['Frecuencia', c.frecuencia === null ? '—' : String(c.frecuencia)],
+                          ['Pedidos atribuidos', String(c.pedidos)],
                           ['Costo por pedido', pesos(c.costo_por_pedido)],
                           ['Clientes nuevos', String(c.clientes_nuevos)],
-                          ['Retorno', veces(c.roas)],
+                          ['Retorno sobre ventas', veces(c.roas)],
+                          ['Utilidad bruta', c.cobertura_costos ? formatPrecio(c.utilidad_bruta) : '—'],
+                          ['Retorno sobre utilidad', veces(c.retorno_utilidad)],
+                          ['Costos cargados', c.cobertura_costos === null ? '—' : `${c.cobertura_costos}%`],
                         ].map(([etiqueta, valor]) => (
-                          <div key={etiqueta} className="flex justify-between gap-2 sm:block sm:text-right">
-                            <dt className="text-xs text-zinc-600 dark:text-zinc-400">{etiqueta}</dt>
+                          <div key={etiqueta}>
+                            <dt className="text-[11px] text-zinc-600 dark:text-zinc-400">{etiqueta}</dt>
                             <dd className="text-sm font-semibold tabular-nums text-zinc-900 dark:text-zinc-50">
                               {valor}
                             </dd>
@@ -323,6 +363,10 @@ function TableroAnuncios() {
           <p className="mt-3 text-xs text-zinc-600 dark:text-zinc-400">
             Conversaciones por su primer anuncio o enlace; pedidos por el último antes de pedir.
           </p>
+
+          <RendimientoAnuncios anuncios={tablero?.anuncios ?? []} />
+          <CohortesRecompra desde={tablero?.desde ?? fechaHaceDias(dias)} />
+          <PublicosMeta />
         </>
       )}
     </div>

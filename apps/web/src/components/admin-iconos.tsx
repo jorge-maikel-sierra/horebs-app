@@ -136,3 +136,12 @@ export function IconAnuncios(p: PropsIcono = {}) {
     </Svg>
   );
 }
+
+export function IconCostos(p: PropsIcono = {}) {
+  return (
+    <Svg {...p}>
+      <path d="M12 3v18" />
+      <path d="M16.5 7.5c-.8-1.2-2.3-2-4.5-2-2.6 0-4 1.2-4 3s1.4 2.5 4 3 4 1.2 4 3-1.4 3-4 3c-2.3 0-3.9-.9-4.7-2.3" />
+    </Svg>
+  );
+}

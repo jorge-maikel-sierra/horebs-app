@@ -142,6 +142,8 @@ export type ClienteDetalle = {
   total_pedidos: number;
   total_gastado: number;
   ultimo_pedido: string | null;
+  ciudad: string;
+  departamento: string;
 };
 
 export type MovimientoPuntos = {

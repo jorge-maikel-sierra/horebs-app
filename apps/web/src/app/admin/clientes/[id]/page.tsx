@@ -45,6 +45,8 @@ const FORM_VACIO: FormCliente = {
   correo: '',
   cedula: '',
   direccion: '',
+  ciudad: '',
+  departamento: '',
 };
 
 const leer = <T,>(ruta: string) =>
@@ -105,6 +107,8 @@ export default function DetalleClientePage() {
       correo: cliente.correo ?? '',
       cedula: cliente.cedula ?? '',
       direccion: cliente.direccion ?? '',
+      ciudad: cliente.ciudad,
+      departamento: cliente.departamento,
     });
     setErrores({});
     setErrorGeneral(null);
@@ -140,6 +144,8 @@ export default function DetalleClientePage() {
           direccion: form.direccion,
           correo: form.correo,
           cedula: form.cedula,
+          ciudad: form.ciudad,
+          departamento: form.departamento,
         }),
       });
       if (!res.ok) {
