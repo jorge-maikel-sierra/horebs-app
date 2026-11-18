@@ -10,6 +10,7 @@ GET /
 GET /admin/anuncios
 GET /admin/anuncios/campanas-recientes
 GET /admin/anuncios/cohortes
+GET /admin/audiencias
 GET /admin/blog
 GET /admin/clientes
 GET /admin/clientes/:id
@@ -74,6 +75,7 @@ PATCH /inventario/subrecetas/:id
 PATCH /nomina/empleados/:id
 PATCH /turnos/actual
 POST /admin/anuncios/sincronizaciones
+POST /admin/audiencias/sincronizaciones
 POST /admin/blog
 POST /admin/clientes/:id/movimientos-puntos
 POST /admin/seguimiento/conversaciones/:id/mensajes
