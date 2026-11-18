@@ -1,6 +1,7 @@
 import {
   campanaDePedido,
   campanasRecientes,
+  rendimientoPorAnuncio,
   rendimientoPorCampana,
   resumenGeneral,
   type FilaGastoDia,
@@ -16,6 +17,9 @@ const gasto = (extra: Partial<FilaGastoDia> = {}): FilaGastoDia => ({
   impresiones: 100,
   alcance: 80,
   clics: 5,
+  frecuencia: 1.5,
+  conversaciones: 4,
+  clics_enlace: 3,
   ...extra,
 });
 
@@ -133,5 +137,91 @@ describe('campanasRecientes', () => {
     expect(
       campanasRecientes([gasto(), gasto({ fecha: '2026-11-11' })]),
     ).toEqual([{ id: 'c-1', nombre: 'Noviembre' }]);
+  });
+});
+
+describe('mensajes y frecuencia por campaña', () => {
+  it('suma conversaciones, calcula el costo de cada una y pondera la frecuencia por impresiones', () => {
+    const [c] = rendimientoPorCampana(
+      [
+        gasto({
+          gasto: '8000',
+          impresiones: 100,
+          frecuencia: 1,
+          conversaciones: 2,
+        }),
+        gasto({
+          fecha: '2026-11-11',
+          gasto: '2000',
+          impresiones: 300,
+          frecuencia: 2,
+          conversaciones: 3,
+        }),
+      ],
+      [],
+      new Set(),
+    );
+    expect(c.conversaciones).toBe(5);
+    expect(c.costo_por_conversacion).toBe(2000);
+    expect(c.frecuencia).toBe(1.75);
+  });
+
+  it('sin conversaciones no hay costo por conversación', () => {
+    const [c] = rendimientoPorCampana(
+      [gasto({ conversaciones: 0 })],
+      [],
+      new Set(),
+    );
+    expect(c.costo_por_conversacion).toBeNull();
+  });
+});
+
+describe('rendimientoPorAnuncio', () => {
+  const creativo = {
+    anuncio_id: 'a-1',
+    nombre: 'Reel Horebs',
+    estado: 'ACTIVE',
+    miniatura_url: 'https://x/y.jpg',
+    titulo: '20% en la Especial',
+    texto: null,
+  };
+
+  it('une el gasto con su creativo y calcula CTR y costo por conversación', () => {
+    const [a] = rendimientoPorAnuncio(
+      [
+        gasto({
+          gasto: '6000',
+          impresiones: 1000,
+          clics_enlace: 20,
+          conversaciones: 3,
+        }),
+      ],
+      [creativo],
+      [
+        pedido({ origen_anuncio_id: 'a-1' }),
+        pedido({ id: 'p-2', origen_anuncio_id: 'a-1', estado: 'cancelado' }),
+      ],
+    );
+    expect(a).toMatchObject({
+      nombre: 'Reel Horebs',
+      miniatura_url: 'https://x/y.jpg',
+      ctr: 2,
+      costo_por_conversacion: 2000,
+      pedidos: 1,
+      campana: 'Noviembre',
+    });
+  });
+
+  it('sin creativo sincronizado usa el id como nombre y ordena por gasto', () => {
+    const filas = rendimientoPorAnuncio(
+      [
+        gasto({ anuncio_id: 'a-1', gasto: '10' }),
+        gasto({ anuncio_id: 'a-2', gasto: '99' }),
+      ],
+      [],
+      [],
+    );
+    expect(filas.map((f) => f.nombre)).toEqual(['a-2', 'a-1']);
+    expect(filas[0].miniatura_url).toBeNull();
   });
 });

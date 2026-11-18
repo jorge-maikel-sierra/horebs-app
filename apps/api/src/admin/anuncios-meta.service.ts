@@ -7,9 +7,11 @@ import { fechaHaceDias } from './anuncios-reglas';
 import {
   DIAS_HISTORICO_META,
   DIAS_REPASO_META,
+  filasDeCreativos,
   filasDeInsights,
+  urlCreativos,
   urlInsights,
-  type FilaAnuncioDiario,
+  type AnuncioMeta,
   type InsightMeta,
 } from './anuncios-meta';
 
@@ -21,17 +23,18 @@ export interface ResultadoSincronizacion {
   desde: string;
   hasta: string;
   filas: number;
+  creativos: number;
 }
 
-interface PaginaInsights {
-  data?: InsightMeta[];
+interface PaginaMeta<T> {
+  data?: T[];
   paging?: { next?: string };
 }
 
 /**
- * Trae de la Marketing API el gasto diario por anuncio y lo guarda en
- * `anuncios_meta_diario`. Sin `META_AD_ACCOUNT_ID` y un token con `ads_read`
- * queda apagado y la plataforma sigue igual.
+ * Trae de la Marketing API el gasto diario por anuncio (con mensajes
+ * iniciados y frecuencia) y el creativo de cada uno. Sin `META_AD_ACCOUNT_ID`
+ * y un token con `ads_read` queda apagado y la plataforma sigue igual.
  */
 @Injectable()
 export class AnunciosMetaService {
@@ -56,7 +59,7 @@ export class AnunciosMetaService {
     try {
       const r = await this.sincronizar(fechaHaceDias(DIAS_REPASO_META));
       this.logger.log(
-        `Anuncios de Meta: ${r.estado}, ${r.filas} filas (${r.desde} a ${r.hasta})`,
+        `Anuncios de Meta: ${r.estado}, ${r.filas} filas y ${r.creativos} creativos (${r.desde} a ${r.hasta})`,
       );
     } catch (err) {
       this.logger.error(
@@ -69,26 +72,54 @@ export class AnunciosMetaService {
     const inicio = desde ?? fechaHaceDias(DIAS_HISTORICO_META);
     const hasta = fechaHaceDias(0);
     if (!this.cuenta || !this.token) {
-      return { estado: 'apagado', desde: inicio, hasta, filas: 0 };
+      return {
+        estado: 'apagado',
+        desde: inicio,
+        hasta,
+        filas: 0,
+        creativos: 0,
+      };
     }
-    const filas = await this.traer(this.cuenta, this.token, inicio, hasta);
-    await this.guardar(filas);
+    const insights = await this.paginar<InsightMeta>(
+      urlInsights(this.cuenta, inicio, hasta),
+      this.token,
+    );
+    const filas = filasDeInsights(insights);
+    await this.guardar('anuncios_meta_diario', 'fecha,anuncio_id', filas);
+    const creativos = await this.sincronizarCreativos(this.cuenta, this.token);
     return {
       estado: 'sincronizado',
       desde: inicio,
       hasta,
       filas: filas.length,
+      creativos,
     };
   }
 
-  private async traer(
+  /** El creativo es un adorno del tablero: si falla, el gasto ya guardado no se pierde. */
+  private async sincronizarCreativos(
     cuenta: string,
     token: string,
-    desde: string,
-    hasta: string,
-  ): Promise<FilaAnuncioDiario[]> {
-    const insights: InsightMeta[] = [];
-    let url: string | undefined = urlInsights(cuenta, desde, hasta);
+  ): Promise<number> {
+    try {
+      const anuncios = await this.paginar<AnuncioMeta>(
+        urlCreativos(cuenta),
+        token,
+      );
+      const filas = filasDeCreativos(anuncios);
+      await this.guardar('anuncios_meta_creativos', 'anuncio_id', filas);
+      return filas.length;
+    } catch (err) {
+      this.logger.warn(
+        `No se pudieron traer los creativos: ${(err as Error).message}`,
+      );
+      return 0;
+    }
+  }
+
+  private async paginar<T>(primera: string, token: string): Promise<T[]> {
+    const todos: T[] = [];
+    let url: string | undefined = primera;
     for (let pagina = 0; url && pagina < MAX_PAGINAS; pagina += 1) {
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
@@ -96,14 +127,18 @@ export class AnunciosMetaService {
       if (!res.ok) {
         throw new Error(`Marketing API ${res.status}: ${await res.text()}`);
       }
-      const cuerpo = (await res.json()) as PaginaInsights;
-      insights.push(...(cuerpo.data ?? []));
+      const cuerpo = (await res.json()) as PaginaMeta<T>;
+      todos.push(...(cuerpo.data ?? []));
       url = cuerpo.paging?.next;
     }
-    return filasDeInsights(insights);
+    return todos;
   }
 
-  private async guardar(filas: FilaAnuncioDiario[]): Promise<void> {
+  private async guardar(
+    tabla: string,
+    conflicto: string,
+    filas: object[],
+  ): Promise<void> {
     const ahora = new Date().toISOString();
     for (let i = 0; i < filas.length; i += LOTE_GUARDADO) {
       const lote = filas
@@ -111,8 +146,8 @@ export class AnunciosMetaService {
         .map((f) => ({ ...f, actualizado_en: ahora }));
       const { error } = await this.supabase
         .getClient()
-        .from('anuncios_meta_diario')
-        .upsert(lote, { onConflict: 'fecha,anuncio_id' });
+        .from(tabla)
+        .upsert(lote, { onConflict: conflicto });
       if (error) throw errorDeBase(error);
     }
   }

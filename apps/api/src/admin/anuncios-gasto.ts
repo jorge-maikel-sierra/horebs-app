@@ -11,6 +11,18 @@ export interface FilaGastoDia {
   impresiones: number;
   alcance: number;
   clics: number;
+  frecuencia: number | string;
+  conversaciones: number;
+  clics_enlace: number;
+}
+
+export interface FilaCreativo {
+  anuncio_id: string;
+  nombre: string | null;
+  estado: string | null;
+  miniatura_url: string | null;
+  titulo: string | null;
+  texto: string | null;
 }
 
 export interface FilaPedidoTablero {
@@ -29,6 +41,11 @@ export interface CampanaRendimientoDto {
   gasto: number;
   impresiones: number;
   clics: number;
+  conversaciones: number;
+  /** Gasto entre conversaciones iniciadas que cuenta Meta (incluye las del WhatsApp del local). */
+  costo_por_conversacion: number | null;
+  /** Promedio ponderado por impresiones: la frecuencia real no se puede sumar entre días. */
+  frecuencia: number | null;
   pedidos: number;
   ventas: number;
   clientes_nuevos: number;
@@ -101,6 +118,8 @@ interface AcumuladoCampana {
   gasto: number;
   impresiones: number;
   clics: number;
+  conversaciones: number;
+  frecuenciaPorImpresion: number;
   pedidos: number;
   ventas: number;
   nuevos: Set<string>;
@@ -112,6 +131,8 @@ function acumuladoVacio(nombre: string): AcumuladoCampana {
     gasto: 0,
     impresiones: 0,
     clics: 0,
+    conversaciones: 0,
+    frecuenciaPorImpresion: 0,
     pedidos: 0,
     ventas: 0,
     nuevos: new Set(),
@@ -127,6 +148,8 @@ function acumularGasto(gasto: FilaGastoDia[]): Map<string, AcumuladoCampana> {
     actual.gasto += Number(g.gasto);
     actual.impresiones += g.impresiones;
     actual.clics += g.clics;
+    actual.conversaciones += g.conversaciones;
+    actual.frecuenciaPorImpresion += Number(g.frecuencia) * g.impresiones;
     campanas.set(g.campana_id, actual);
   }
   return campanas;
@@ -157,6 +180,9 @@ export function rendimientoPorCampana(
       gasto: redondear(c.gasto),
       impresiones: c.impresiones,
       clics: c.clics,
+      conversaciones: c.conversaciones,
+      costo_por_conversacion: dividir(c.gasto, c.conversaciones),
+      frecuencia: dividir(c.frecuenciaPorImpresion, c.impresiones),
       pedidos: c.pedidos,
       ventas: c.ventas,
       clientes_nuevos: c.nuevos.size,
@@ -190,4 +216,95 @@ export function campanasRecientes(gasto: FilaGastoDia[]): CampanaReciente[] {
     id: c.campana_id,
     nombre: c.nombre,
   }));
+}
+
+export interface AnuncioRendimientoDto {
+  anuncio_id: string;
+  nombre: string;
+  estado: string | null;
+  miniatura_url: string | null;
+  titulo: string | null;
+  campana: string;
+  gasto: number;
+  impresiones: number;
+  clics_enlace: number;
+  /** Clics en el enlace entre impresiones, en porcentaje. */
+  ctr: number | null;
+  conversaciones: number;
+  costo_por_conversacion: number | null;
+  frecuencia: number | null;
+  /** Pedidos del bot que llegaron por este anuncio (los de caja se atribuyen a la campaña). */
+  pedidos: number;
+}
+
+interface AcumuladoAnuncio {
+  campana: string;
+  nombre: string;
+  gasto: number;
+  impresiones: number;
+  clicsEnlace: number;
+  conversaciones: number;
+  frecuenciaPorImpresion: number;
+}
+
+function acumularAnuncios(
+  gasto: FilaGastoDia[],
+): Map<string, AcumuladoAnuncio> {
+  const anuncios = new Map<string, AcumuladoAnuncio>();
+  for (const g of gasto) {
+    const actual = anuncios.get(g.anuncio_id) ?? {
+      campana: g.campana_nombre ?? g.campana_id,
+      nombre: g.anuncio_id,
+      gasto: 0,
+      impresiones: 0,
+      clicsEnlace: 0,
+      conversaciones: 0,
+      frecuenciaPorImpresion: 0,
+    };
+    actual.gasto += Number(g.gasto);
+    actual.impresiones += g.impresiones;
+    actual.clicsEnlace += g.clics_enlace;
+    actual.conversaciones += g.conversaciones;
+    actual.frecuenciaPorImpresion += Number(g.frecuencia) * g.impresiones;
+    anuncios.set(g.anuncio_id, actual);
+  }
+  return anuncios;
+}
+
+/** Cada anuncio con su creativo, lo que gastó y lo que costó cada conversación; de más a menos gasto. */
+export function rendimientoPorAnuncio(
+  gasto: FilaGastoDia[],
+  creativos: FilaCreativo[],
+  pedidos: FilaPedidoTablero[],
+): AnuncioRendimientoDto[] {
+  const porCreativo = new Map(creativos.map((c) => [c.anuncio_id, c]));
+  const pedidosPorAnuncio = new Map<string, number>();
+  for (const p of pedidos) {
+    if (!p.origen_anuncio_id || p.estado === 'cancelado') continue;
+    pedidosPorAnuncio.set(
+      p.origen_anuncio_id,
+      (pedidosPorAnuncio.get(p.origen_anuncio_id) ?? 0) + 1,
+    );
+  }
+  return [...acumularAnuncios(gasto).entries()]
+    .map(([id, a]) => {
+      const creativo = porCreativo.get(id);
+      return {
+        anuncio_id: id,
+        nombre: creativo?.nombre ?? a.nombre,
+        estado: creativo?.estado ?? null,
+        miniatura_url: creativo?.miniatura_url ?? null,
+        titulo: creativo?.titulo ?? null,
+        campana: a.campana,
+        gasto: redondear(a.gasto),
+        impresiones: a.impresiones,
+        clics_enlace: a.clicsEnlace,
+        ctr: dividir(a.clicsEnlace * CENTESIMAS, a.impresiones),
+        conversaciones: a.conversaciones,
+        costo_por_conversacion: dividir(a.gasto, a.conversaciones),
+        frecuencia: dividir(a.frecuenciaPorImpresion, a.impresiones),
+        pedidos: pedidosPorAnuncio.get(id) ?? 0,
+      };
+    })
+    .sort((a, b) => b.gasto - a.gasto);
 }

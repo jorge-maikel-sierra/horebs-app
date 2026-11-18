@@ -4,10 +4,13 @@ import { inicioDiaBogota } from '../common/horario';
 import { SupabaseService } from '../supabase/supabase.service';
 import {
   campanasRecientes,
+  rendimientoPorAnuncio,
   rendimientoPorCampana,
   resumenGeneral,
+  type AnuncioRendimientoDto,
   type CampanaRendimientoDto,
   type CampanaReciente,
+  type FilaCreativo,
   type FilaGastoDia,
   type FilaPedidoTablero,
   type ResumenGeneralDto,
@@ -26,6 +29,7 @@ export interface TableroAnunciosDto {
   origenes: RendimientoOrigenDto[];
   general: ResumenGeneralDto;
   campanas: CampanaRendimientoDto[];
+  anuncios: AnuncioRendimientoDto[];
   /** Último día con gasto sincronizado; null si Meta aún no se ha conectado. */
   gasto_hasta: string | null;
 }
@@ -33,9 +37,19 @@ export interface TableroAnunciosDto {
 const COLUMNAS_PEDIDO =
   'id, total, estado, cliente_id, origen_fuente, origen_anuncio_id, origen_ref, origen_campana_id, atribucion_web';
 const COLUMNAS_GASTO =
-  'fecha, anuncio_id, campana_id, campana_nombre, gasto, impresiones, alcance, clics';
+  'fecha, anuncio_id, campana_id, campana_nombre, gasto, impresiones, alcance, clics, frecuencia, conversaciones, clics_enlace';
+const COLUMNAS_CREATIVO =
+  'anuncio_id, nombre, estado, miniatura_url, titulo, texto';
 
 type FilaPedidoCompleta = FilaPedidoOrigen & FilaPedidoTablero;
+
+interface DatosTablero {
+  conversaciones: FilaConversacionOrigen[];
+  pedidos: FilaPedidoCompleta[];
+  gasto: FilaGastoDia[];
+  nuevos: Set<string>;
+  creativos: FilaCreativo[];
+}
 
 /** Ventas, conversaciones y gasto por anuncio, campaña o enlace con `ref`. */
 @Injectable()
@@ -44,53 +58,61 @@ export class AnunciosAdminService {
 
   async tablero(desde?: string): Promise<TableroAnunciosDto> {
     const dia = desde ?? fechaHaceDias(DIAS_TABLERO_DEFECTO);
-    const inicio = inicioDiaBogota(dia);
-    const client = this.supabase.getClient();
-
-    const [conversaciones, pedidos, gasto, nuevos] = await Promise.all([
-      client
-        .from('conversaciones_bot')
-        .select('origen_fuente, origen_anuncio_id, origen_ref, origen_titulo')
-        .gte('origen_capturado_en', inicio)
-        .returns<FilaConversacionOrigen[]>(),
-      client
-        .from('pedidos')
-        .select(COLUMNAS_PEDIDO)
-        .gte('created_at', inicio)
-        .returns<FilaPedidoCompleta[]>(),
-      client
-        .from('anuncios_meta_diario')
-        .select(COLUMNAS_GASTO)
-        .gte('fecha', dia)
-        .returns<FilaGastoDia[]>(),
-      client
-        .from('clientes')
-        .select('id')
-        .gte('created_at', inicio)
-        .returns<{ id: string }[]>(),
-    ]);
-    for (const r of [conversaciones, pedidos, gasto, nuevos]) {
-      if (r.error) throw errorDeBase(r.error);
-    }
-    const filasPedido = pedidos.data ?? [];
-    const filasGasto = gasto.data ?? [];
-
+    const d = await this.cargar(dia, inicioDiaBogota(dia));
     return {
       desde: dia,
       origenes: rendimientoPorOrigen(
-        conversaciones.data ?? [],
-        filasPedido.filter((p) => p.origen_fuente !== null),
+        d.conversaciones,
+        d.pedidos.filter((p) => p.origen_fuente !== null),
       ),
-      general: resumenGeneral(filasGasto, filasPedido),
-      campanas: rendimientoPorCampana(
-        filasGasto,
-        filasPedido,
-        new Set((nuevos.data ?? []).map((c) => c.id)),
-      ),
-      gasto_hasta: filasGasto.reduce<string | null>(
+      general: resumenGeneral(d.gasto, d.pedidos),
+      campanas: rendimientoPorCampana(d.gasto, d.pedidos, d.nuevos),
+      anuncios: rendimientoPorAnuncio(d.gasto, d.creativos, d.pedidos),
+      gasto_hasta: d.gasto.reduce<string | null>(
         (max, g) => (max === null || g.fecha > max ? g.fecha : max),
         null,
       ),
+    };
+  }
+
+  private async cargar(dia: string, inicio: string): Promise<DatosTablero> {
+    const client = this.supabase.getClient();
+    const [conversaciones, pedidos, gasto, nuevos, creativos] =
+      await Promise.all([
+        client
+          .from('conversaciones_bot')
+          .select('origen_fuente, origen_anuncio_id, origen_ref, origen_titulo')
+          .gte('origen_capturado_en', inicio)
+          .returns<FilaConversacionOrigen[]>(),
+        client
+          .from('pedidos')
+          .select(COLUMNAS_PEDIDO)
+          .gte('created_at', inicio)
+          .returns<FilaPedidoCompleta[]>(),
+        client
+          .from('anuncios_meta_diario')
+          .select(COLUMNAS_GASTO)
+          .gte('fecha', dia)
+          .returns<FilaGastoDia[]>(),
+        client
+          .from('clientes')
+          .select('id')
+          .gte('created_at', inicio)
+          .returns<{ id: string }[]>(),
+        client
+          .from('anuncios_meta_creativos')
+          .select(COLUMNAS_CREATIVO)
+          .returns<FilaCreativo[]>(),
+      ]);
+    for (const r of [conversaciones, pedidos, gasto, nuevos, creativos]) {
+      if (r.error) throw errorDeBase(r.error);
+    }
+    return {
+      conversaciones: conversaciones.data ?? [],
+      pedidos: pedidos.data ?? [],
+      gasto: gasto.data ?? [],
+      nuevos: new Set((nuevos.data ?? []).map((c) => c.id)),
+      creativos: creativos.data ?? [],
     };
   }
 
