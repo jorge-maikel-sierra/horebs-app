@@ -138,10 +138,48 @@ describe('resumenGeneral', () => {
 });
 
 describe('campanasRecientes', () => {
+  const otra = (extra: Partial<FilaGastoDia> = {}) =>
+    gasto({
+      campana_id: 'c-2',
+      campana_nombre: 'Octubre',
+      anuncio_id: 'a-2',
+      ...extra,
+    });
+
   it('lista cada campaña una vez, con su nombre', () => {
-    expect(
-      campanasRecientes([gasto(), gasto({ fecha: '2026-11-11' })]),
-    ).toEqual([{ id: 'c-1', nombre: 'Noviembre' }]);
+    const r = campanasRecientes(
+      [gasto(), gasto({ fecha: '2026-11-11' })],
+      '2026-11-17',
+    );
+    expect(r).toEqual([{ id: 'c-1', nombre: 'Noviembre', sugerida: true }]);
+  });
+
+  it('sugiere la campaña que más gastó este mes, aunque otra haya gastado más antes', () => {
+    const r = campanasRecientes(
+      [
+        otra({ fecha: '2026-10-20', gasto: '900000' }),
+        otra({ fecha: '2026-11-02', gasto: '1000' }),
+        gasto({ fecha: '2026-11-05', gasto: '5000' }),
+      ],
+      '2026-11-17',
+    );
+    expect(r.find((c) => c.sugerida)?.id).toBe('c-1');
+    expect(r.filter((c) => c.sugerida)).toHaveLength(1);
+  });
+
+  it('sin gasto este mes sugiere la del último día con gasto', () => {
+    const r = campanasRecientes(
+      [
+        otra({ fecha: '2026-10-20', gasto: '900000' }),
+        gasto({ fecha: '2026-10-31', gasto: '5000' }),
+      ],
+      '2026-11-01',
+    );
+    expect(r.find((c) => c.sugerida)?.id).toBe('c-1');
+  });
+
+  it('sin gasto no hay campañas ni sugerida', () => {
+    expect(campanasRecientes([], '2026-11-17')).toEqual([]);
   });
 });
 

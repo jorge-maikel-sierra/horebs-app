@@ -1,3 +1,4 @@
+import { fechaHaceDias } from './anuncios-reglas';
 import {
   redondearUno,
   resumenRentabilidad,
@@ -86,9 +87,12 @@ export interface ResumenGeneralDto {
 export interface CampanaReciente {
   id: string;
   nombre: string;
+  /** La campaña del mes: la caja la deja elegida por defecto. */
+  sugerida: boolean;
 }
 
 const CENTESIMAS = 100;
+const LARGO_MES = 7;
 
 function redondear(valor: number): number {
   return Math.round(valor * CENTESIMAS) / CENTESIMAS;
@@ -267,11 +271,38 @@ export function resumenGeneral(
   };
 }
 
-/** Campañas con gasto en el período, para el selector de la caja; las de más gasto primero. */
-export function campanasRecientes(gasto: FilaGastoDia[]): CampanaReciente[] {
+/**
+ * La campaña del mes en curso: la que más gastó este mes. Si todavía no hay
+ * gasto este mes (primer día, o Meta aún no sincroniza), la del último día con gasto.
+ */
+export function campanaSugerida(
+  gasto: FilaGastoDia[],
+  hoy: string,
+): string | null {
+  const mes = hoy.slice(0, LARGO_MES);
+  const delMes = gasto.filter((g) => g.fecha.startsWith(mes));
+  const ultimoDia = gasto.reduce(
+    (max, g) => (g.fecha > max ? g.fecha : max),
+    '',
+  );
+  const base =
+    delMes.length > 0 ? delMes : gasto.filter((g) => g.fecha === ultimoDia);
+  return rendimientoPorCampana(base, [], new Set())[0]?.campana_id ?? null;
+}
+
+/**
+ * Campañas con gasto en el período, para el selector de la caja; las de más
+ * gasto primero y la del mes marcada como sugerida.
+ */
+export function campanasRecientes(
+  gasto: FilaGastoDia[],
+  hoy: string = fechaHaceDias(0),
+): CampanaReciente[] {
+  const sugerida = campanaSugerida(gasto, hoy);
   return rendimientoPorCampana(gasto, [], new Set()).map((c) => ({
     id: c.campana_id,
     nombre: c.nombre,
+    sugerida: c.campana_id === sugerida,
   }));
 }
 
