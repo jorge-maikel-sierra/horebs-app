@@ -9,7 +9,9 @@ const campos = (cuerpo: object) =>
 
 describe('ESQUEMA_EDITAR_CLIENTE', () => {
   it('ciudad y departamento se pueden cambiar pero no vaciar (la base no admite nulos)', () => {
-    expect(campos({ ciudad: 'Maicao', departamento: 'La Guajira' })).toEqual([]);
+    expect(campos({ ciudad: 'Maicao', departamento: 'La Guajira' })).toEqual(
+      [],
+    );
     expect(campos({ ciudad: '' })).toEqual(['ciudad']);
     expect(campos({ pais: 'CO' })).toEqual(['pais']);
   });

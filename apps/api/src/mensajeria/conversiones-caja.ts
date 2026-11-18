@@ -62,7 +62,7 @@ export function userDataCaja(
     em: hashear(correo),
     fn: hashear(nombreParaMeta(cliente.nombre)),
     ln: hashear(nombreParaMeta(cliente.apellido)),
-    ...ubicacionParaMeta(cliente.ciudad, cliente.departamento),
+    ...ubicacionParaMeta(cliente),
     country: hashear(PAIS),
     external_id: hashear(cliente.id),
   };

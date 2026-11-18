@@ -1,6 +1,8 @@
 import { AnunciosAdminController } from './anuncios-admin.controller';
 import { AnunciosAdminService } from './anuncios-admin.service';
 import { AnunciosMetaService } from './anuncios-meta.service';
+import { CostosAdminController } from './costos-admin.controller';
+import { CostosAdminService } from './costos-admin.service';
 import { Module } from '@nestjs/common';
 import { AvisosCambioPedidoService } from './avisos-cambio-pedido.service';
 import { AvisosVentaService } from './avisos-venta.service';
@@ -44,6 +46,7 @@ import { PedidosModule } from '../pedidos/pedidos.module';
     SeguimientoAdminController,
     MensajeriaAdminController,
     AnunciosAdminController,
+    CostosAdminController,
   ],
   providers: [
     VentasService,
@@ -56,6 +59,7 @@ import { PedidosModule } from '../pedidos/pedidos.module';
     ModulosService,
     AnunciosAdminService,
     AnunciosMetaService,
+    CostosAdminService,
   ],
 })
 export class AdminModule {}

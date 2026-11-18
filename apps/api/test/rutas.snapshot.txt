@@ -1,5 +1,6 @@
 DELETE /admin/blog/:id
 DELETE /admin/clientes/:id
+DELETE /admin/costos/variantes/:id
 DELETE /admin/pedidos/:id
 DELETE /admin/usuarios/:id
 DELETE /blog/comentarios/:id
@@ -15,6 +16,8 @@ GET /admin/clientes/:id/movimientos-puntos
 GET /admin/clientes/:id/pedidos
 GET /admin/clientes/directorio
 GET /admin/configuracion
+GET /admin/costos
+GET /admin/costos/rentabilidad
 GET /admin/modulos
 GET /admin/pedidos
 GET /admin/pedidos/:id/comprobante
@@ -57,6 +60,7 @@ GET /webhooks/whatsapp
 PATCH /admin/blog/:id
 PATCH /admin/clientes/:id
 PATCH /admin/configuracion
+PATCH /admin/costos/variantes/:id
 PATCH /admin/modulos/:id
 PATCH /admin/pedidos/:id
 PATCH /admin/puntos/configuracion

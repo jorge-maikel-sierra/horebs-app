@@ -49,13 +49,12 @@ export function nombreParaMeta(nombre: string | null): string | null {
 
 /** Ciudad y departamento cifrados; `st` va sin espacios ni tildes, como pide Meta fuera de EE. UU. */
 export function ubicacionParaMeta(
-  ciudad?: string | null,
-  departamento?: string | null,
+  cliente?: { ciudad?: string | null; departamento?: string | null } | null,
 ): { ct: string[]; st: string[] } {
-  return {
-    ct: [sha256(nombreParaMeta(ciudad ?? null) ?? CIUDAD_META)],
-    st: [sha256(nombreParaMeta(departamento ?? null) ?? DEPARTAMENTO_META)],
-  };
+  const ciudad = nombreParaMeta(cliente?.ciudad ?? null) ?? CIUDAD_META;
+  const departamento =
+    nombreParaMeta(cliente?.departamento ?? null) ?? DEPARTAMENTO_META;
+  return { ct: [sha256(ciudad)], st: [sha256(departamento)] };
 }
 
 function correoParaMeta(correo: string | null | undefined): string | null {
@@ -83,7 +82,7 @@ export function userDataWeb(
     ph: hasheado(telefonoParaMeta(c?.telefono ?? null)),
     fn: hasheado(nombreParaMeta(c?.nombre ?? null)),
     ln: hasheado(nombreParaMeta(c?.apellido ?? null)),
-    ...ubicacionParaMeta(c?.ciudad, c?.departamento),
+    ...ubicacionParaMeta(c),
     country: hasheado(PAIS),
     external_id: hasheado(pedido.clienteId),
     client_ip_address: a.ip,

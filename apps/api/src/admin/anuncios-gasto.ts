@@ -1,3 +1,10 @@
+import {
+  redondearUno,
+  resumenRentabilidad,
+  utilidadDePedido,
+  type FilaItemCosto,
+} from './rentabilidad';
+
 /**
  * Gasto de los anuncios cruzado con las ventas: por campaña y en general.
  * Puro, sin Nest. Los pedidos cancelados no suman ventas.
@@ -33,6 +40,7 @@ export interface FilaPedidoTablero {
   origen_anuncio_id: string | null;
   origen_campana_id: string | null;
   atribucion_web: { utm_campaign?: string } | null;
+  items_pedido: FilaItemCosto[] | null;
 }
 
 export interface CampanaRendimientoDto {
@@ -53,6 +61,12 @@ export interface CampanaRendimientoDto {
   costo_por_pedido: number | null;
   costo_por_cliente_nuevo: number | null;
   roas: number | null;
+  /** Ventas de productos menos su costo, en los pedidos atribuidos con costo completo. */
+  utilidad_bruta: number;
+  /** Qué parte de las ventas atribuidas ya tiene costo cargado; sin eso la utilidad no es confiable. */
+  cobertura_costos: number | null;
+  /** Utilidad bruta entre gasto: lo que deja cada peso invertido. */
+  retorno_utilidad: number | null;
 }
 
 export interface ResumenGeneralDto {
@@ -62,6 +76,11 @@ export interface ResumenGeneralDto {
   pedidos_atribuidos: number;
   /** Ventas de todos los canales entre el gasto: la cifra completa mientras la atribución sea parcial. */
   roas_general: number | null;
+  utilidad_bruta: number;
+  margen_pct: number | null;
+  cobertura_costos: number | null;
+  /** Utilidad bruta menos el gasto en anuncios; null mientras no haya costos cargados. */
+  utilidad_tras_anuncios: number | null;
 }
 
 export interface CampanaReciente {
@@ -122,6 +141,9 @@ interface AcumuladoCampana {
   frecuenciaPorImpresion: number;
   pedidos: number;
   ventas: number;
+  ventasProductos: number;
+  ventasConCosto: number;
+  utilidad: number;
   nuevos: Set<string>;
 }
 
@@ -135,6 +157,9 @@ function acumuladoVacio(nombre: string): AcumuladoCampana {
     frecuenciaPorImpresion: 0,
     pedidos: 0,
     ventas: 0,
+    ventasProductos: 0,
+    ventasConCosto: 0,
+    utilidad: 0,
     nuevos: new Set(),
   };
 }
@@ -155,6 +180,49 @@ function acumularGasto(gasto: FilaGastoDia[]): Map<string, AcumuladoCampana> {
   return campanas;
 }
 
+function sumarPedido(
+  fila: AcumuladoCampana,
+  p: FilaPedidoTablero,
+  clientesNuevos: Set<string>,
+): void {
+  fila.pedidos += 1;
+  fila.ventas += Number(p.total);
+  const u = utilidadDePedido(p.items_pedido);
+  if (u) {
+    fila.ventasProductos += u.ventas;
+    if (u.completo) {
+      fila.ventasConCosto += u.ventas;
+      fila.utilidad += u.utilidad;
+    }
+  }
+  if (p.cliente_id && clientesNuevos.has(p.cliente_id)) {
+    fila.nuevos.add(p.cliente_id);
+  }
+}
+
+function campanaDto(id: string, c: AcumuladoCampana): CampanaRendimientoDto {
+  return {
+    campana_id: id,
+    nombre: c.nombre,
+    gasto: redondear(c.gasto),
+    impresiones: c.impresiones,
+    clics: c.clics,
+    conversaciones: c.conversaciones,
+    costo_por_conversacion: dividir(c.gasto, c.conversaciones),
+    frecuencia: dividir(c.frecuenciaPorImpresion, c.impresiones),
+    pedidos: c.pedidos,
+    ventas: c.ventas,
+    clientes_nuevos: c.nuevos.size,
+    costo_por_pedido: dividir(c.gasto, c.pedidos),
+    costo_por_cliente_nuevo: dividir(c.gasto, c.nuevos.size),
+    roas: dividir(c.ventas, c.gasto),
+    utilidad_bruta: c.utilidad,
+    cobertura_costos: dividir(c.ventasConCosto * CENTESIMAS, c.ventasProductos),
+    retorno_utilidad:
+      c.ventasConCosto > 0 ? dividir(c.utilidad, c.gasto) : null,
+  };
+}
+
 /** Cada campaña con su gasto, sus pedidos atribuidos y lo que cuesta cada uno; de más a menos gasto. */
 export function rendimientoPorCampana(
   gasto: FilaGastoDia[],
@@ -167,29 +235,10 @@ export function rendimientoPorCampana(
     const campana = campanaDePedido(p, idx);
     const fila = campana ? campanas.get(campana) : undefined;
     if (!fila || p.estado === 'cancelado') continue;
-    fila.pedidos += 1;
-    fila.ventas += Number(p.total);
-    if (p.cliente_id && clientesNuevos.has(p.cliente_id)) {
-      fila.nuevos.add(p.cliente_id);
-    }
+    sumarPedido(fila, p, clientesNuevos);
   }
   return [...campanas.entries()]
-    .map(([id, c]) => ({
-      campana_id: id,
-      nombre: c.nombre,
-      gasto: redondear(c.gasto),
-      impresiones: c.impresiones,
-      clics: c.clics,
-      conversaciones: c.conversaciones,
-      costo_por_conversacion: dividir(c.gasto, c.conversaciones),
-      frecuencia: dividir(c.frecuenciaPorImpresion, c.impresiones),
-      pedidos: c.pedidos,
-      ventas: c.ventas,
-      clientes_nuevos: c.nuevos.size,
-      costo_por_pedido: dividir(c.gasto, c.pedidos),
-      costo_por_cliente_nuevo: dividir(c.gasto, c.nuevos.size),
-      roas: dividir(c.ventas, c.gasto),
-    }))
+    .map(([id, c]) => campanaDto(id, c))
     .sort((a, b) => b.gasto - a.gasto);
 }
 
@@ -201,12 +250,20 @@ export function resumenGeneral(
   const vigentes = pedidos.filter((p) => p.estado !== 'cancelado');
   const gastoTotal = gasto.reduce((s, g) => s + Number(g.gasto), 0);
   const ventas = vigentes.reduce((s, p) => s + Number(p.total), 0);
+  const rentabilidad = resumenRentabilidad(vigentes);
   return {
     gasto_total: redondear(gastoTotal),
     ventas_totales: ventas,
     pedidos_totales: vigentes.length,
     pedidos_atribuidos: vigentes.filter((p) => campanaDePedido(p, idx)).length,
     roas_general: dividir(ventas, gastoTotal),
+    utilidad_bruta: rentabilidad.utilidad_bruta,
+    margen_pct: rentabilidad.margen_pct,
+    cobertura_costos: rentabilidad.cobertura_costos,
+    utilidad_tras_anuncios:
+      rentabilidad.ventas_con_costo > 0
+        ? redondearUno(rentabilidad.utilidad_bruta - gastoTotal)
+        : null,
   };
 }
 

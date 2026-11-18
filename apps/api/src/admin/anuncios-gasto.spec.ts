@@ -31,6 +31,7 @@ const pedido = (extra: Partial<FilaPedidoTablero> = {}): FilaPedidoTablero => ({
   origen_anuncio_id: null,
   origen_campana_id: null,
   atribucion_web: null,
+  items_pedido: null,
   ...extra,
 });
 
@@ -124,6 +125,10 @@ describe('resumenGeneral', () => {
       pedidos_totales: 2,
       pedidos_atribuidos: 1,
       roas_general: 5,
+      utilidad_bruta: 0,
+      margen_pct: null,
+      cobertura_costos: null,
+      utilidad_tras_anuncios: null,
     });
   });
 
@@ -223,5 +228,64 @@ describe('rendimientoPorAnuncio', () => {
     );
     expect(filas.map((f) => f.nombre)).toEqual(['a-2', 'a-1']);
     expect(filas[0].miniatura_url).toBeNull();
+  });
+});
+
+describe('utilidad por campaña y general', () => {
+  const conCosto = (subtotal: number, costo: number | null) => [
+    {
+      cantidad: 1,
+      subtotal,
+      variantes_producto: costo === null ? null : { costo },
+    },
+  ];
+
+  it('calcula utilidad, cobertura y retorno sobre utilidad de los pedidos atribuidos', () => {
+    const [c] = rendimientoPorCampana(
+      [gasto({ gasto: '10000' })],
+      [
+        pedido({
+          origen_campana_id: 'c-1',
+          items_pedido: conCosto(40000, 10000),
+        }),
+        pedido({
+          id: 'p-2',
+          origen_campana_id: 'c-1',
+          items_pedido: conCosto(60000, null),
+        }),
+      ],
+      new Set(),
+    );
+    expect(c.utilidad_bruta).toBe(30000);
+    expect(c.cobertura_costos).toBe(40);
+    expect(c.retorno_utilidad).toBe(3);
+  });
+
+  it('sin costos cargados no hay retorno sobre utilidad', () => {
+    const [c] = rendimientoPorCampana(
+      [gasto()],
+      [
+        pedido({
+          origen_campana_id: 'c-1',
+          items_pedido: conCosto(40000, null),
+        }),
+      ],
+      new Set(),
+    );
+    expect(c.retorno_utilidad).toBeNull();
+    expect(c.cobertura_costos).toBe(0);
+  });
+
+  it('general: utilidad tras anuncios resta el gasto total', () => {
+    const r = resumenGeneral(
+      [gasto({ gasto: '10000' })],
+      [pedido({ items_pedido: conCosto(40000, 10000) })],
+    );
+    expect(r).toMatchObject({
+      utilidad_bruta: 30000,
+      margen_pct: 75,
+      cobertura_costos: 100,
+      utilidad_tras_anuncios: 20000,
+    });
   });
 });

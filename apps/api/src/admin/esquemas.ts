@@ -29,6 +29,11 @@ export const ESQUEMA_VENTA: Esquema = {
   usar_puntos: opcional(booleano()),
 };
 
+/** Costo de producto de una variante en pesos; quitarlo es un DELETE. */
+export const ESQUEMA_COSTO: Esquema = {
+  costo: numero({ min: 0 }),
+};
+
 export const ESQUEMA_MODULO: Esquema = {
   activo: booleano(),
 };

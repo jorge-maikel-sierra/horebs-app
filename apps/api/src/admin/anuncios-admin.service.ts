@@ -35,7 +35,7 @@ export interface TableroAnunciosDto {
 }
 
 const COLUMNAS_PEDIDO =
-  'id, total, estado, cliente_id, origen_fuente, origen_anuncio_id, origen_ref, origen_campana_id, atribucion_web';
+  'id, total, estado, cliente_id, origen_fuente, origen_anuncio_id, origen_ref, origen_campana_id, atribucion_web, items_pedido(cantidad, subtotal, variantes_producto(costo))';
 const COLUMNAS_GASTO =
   'fecha, anuncio_id, campana_id, campana_nombre, gasto, impresiones, alcance, clics, frecuencia, conversaciones, clics_enlace';
 const COLUMNAS_CREATIVO =

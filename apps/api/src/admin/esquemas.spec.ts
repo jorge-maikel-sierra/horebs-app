@@ -1,6 +1,7 @@
 import { validarObjeto } from '../common/validacion';
 import {
   ESQUEMA_CONFIGURACION_CORREOS,
+  ESQUEMA_COSTO,
   ESQUEMA_PERFIL_MENSAJERIA,
   ESQUEMA_VENTA,
 } from './esquemas';
@@ -70,6 +71,16 @@ describe('ESQUEMA_VENTA', () => {
       'origen_campana_id',
     ]);
     expect(campos({ ...VENTA, campana: 'x' })).toEqual(['campana']);
+  });
+
+  it('el costo de una variante es un número no negativo y no admite otros campos', () => {
+    const costo = (cuerpo: object) =>
+      validarObjeto(ESQUEMA_COSTO, cuerpo).map((e) => e.campo);
+    expect(costo({ costo: 12000 })).toEqual([]);
+    expect(costo({ costo: 0 })).toEqual([]);
+    expect(costo({ costo: -1 })).toEqual(['costo']);
+    expect(costo({ costo: '12000' })).toEqual(['costo']);
+    expect(costo({ costo: 1, precio: 2 })).toEqual(['precio']);
   });
 
   it('exige cliente, modalidad, método de pago e items', () => {
