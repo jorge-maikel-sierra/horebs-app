@@ -1,6 +1,7 @@
 import { AnunciosAdminController } from './anuncios-admin.controller';
 import { AnunciosAdminService } from './anuncios-admin.service';
 import { AnunciosMetaService } from './anuncios-meta.service';
+import { CohortesAdminService } from './cohortes-admin.service';
 import { CostosAdminController } from './costos-admin.controller';
 import { CostosAdminService } from './costos-admin.service';
 import { Module } from '@nestjs/common';
@@ -60,6 +61,7 @@ import { PedidosModule } from '../pedidos/pedidos.module';
     AnunciosAdminService,
     AnunciosMetaService,
     CostosAdminService,
+    CohortesAdminService,
   ],
 })
 export class AdminModule {}

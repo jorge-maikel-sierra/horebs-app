@@ -9,6 +9,7 @@ DELETE /nomina/adelantos/:id
 GET /
 GET /admin/anuncios
 GET /admin/anuncios/campanas-recientes
+GET /admin/anuncios/cohortes
 GET /admin/blog
 GET /admin/clientes
 GET /admin/clientes/:id

@@ -16,6 +16,10 @@ import {
 } from './anuncios-admin.service';
 import type { CampanaReciente } from './anuncios-gasto';
 import {
+  CohortesAdminService,
+  type CohortesDto,
+} from './cohortes-admin.service';
+import {
   AnunciosMetaService,
   type ResultadoSincronizacion,
 } from './anuncios-meta.service';
@@ -26,6 +30,7 @@ export class AnunciosAdminController {
   constructor(
     private readonly anuncios: AnunciosAdminService,
     private readonly meta: AnunciosMetaService,
+    private readonly cohortes: CohortesAdminService,
   ) {}
 
   /** `?desde=AAAA-MM-DD` (por defecto, los últimos 30 días). */
@@ -35,6 +40,15 @@ export class AnunciosAdminController {
     @Query('desde', new FechaPipe('desde')) desde?: string,
   ): Promise<TableroAnunciosDto> {
     return this.anuncios.tablero(desde);
+  }
+
+  /** Recompra por mes de la primera compra y por campaña; `?desde=AAAA-MM-DD` (por defecto, 90 días). */
+  @Get('cohortes')
+  @Roles('admin')
+  consultarCohortes(
+    @Query('desde', new FechaPipe('desde')) desde?: string,
+  ): Promise<CohortesDto> {
+    return this.cohortes.consultar(desde);
   }
 
   /** Alimenta el selector de campaña de la caja. */

@@ -98,12 +98,12 @@ function dividir(numerador: number, denominador: number): number | null {
   return denominador > 0 ? redondear(numerador / denominador) : null;
 }
 
-interface Indices {
+export interface Indices {
   campanaDeAnuncio: Map<string, string>;
   campanaPorNombre: Map<string, string>;
 }
 
-function indices(gasto: FilaGastoDia[]): Indices {
+export function indices(gasto: FilaGastoDia[]): Indices {
   const campanaDeAnuncio = new Map<string, string>();
   const campanaPorNombre = new Map<string, string>();
   for (const g of gasto) {
