@@ -4,23 +4,19 @@ import { useState } from 'react';
 import { IconPedidos } from '@/components/admin-iconos';
 import CargandoSkeleton from '@/components/CargandoSkeleton';
 import GraficoColumnas from '@/components/informes/GraficoColumnas';
-import { HeroVentas, TarjetaKpi } from '@/components/informes/TarjetasResumen';
 import AccesosModulos from '@/components/panel/AccesosModulos';
 import EncabezadoPanel from '@/components/panel/EncabezadoPanel';
-import {
-  IconAlerta,
-  IconArticulos,
-  IconMoneda,
-  IconTicket,
-  IconWhatsapp,
-} from '@/components/panel/iconos';
+import EtiquetaPanel from '@/components/panel/EtiquetaPanel';
+import { IconAlerta, IconWhatsapp } from '@/components/panel/iconos';
 import PanelCaja from '@/components/panel/PanelCaja';
 import PanelNomina, {
   type FilaTableroNomina,
 } from '@/components/panel/PanelNomina';
+import SeccionHoy, {
+  type InformeResumen,
+} from '@/components/panel/SeccionHoy';
 import SeccionPanel from '@/components/panel/SeccionPanel';
 import TarjetaAtencion from '@/components/panel/TarjetaAtencion';
-import TarjetaTurno from '@/components/panel/TarjetaTurno';
 import { formatPrecio, type UnidadMedida } from '@/lib/formato';
 import {
   etiquetaCorta,
@@ -60,16 +56,6 @@ type InsumoBajo = {
 };
 type ConversacionBot = { id: string; estado: 'bot' | 'derivado' };
 
-type InformeResumen = {
-  resumen: {
-    ventas_brutas: number;
-    pedidos: number;
-    articulos_vendidos: number;
-    ticket_promedio: number;
-  };
-  serie_diaria: { fecha: string; total: number; pedidos: number }[];
-};
-
 const ESTADO_PEDIDO_LABEL: Record<string, string> = {
   pendiente: 'pendiente',
   confirmado: 'confirmado',
@@ -82,14 +68,6 @@ const COLUMNAS_ATENCION: Record<number, string> = {
   2: 'sm:grid-cols-2',
   3: 'sm:grid-cols-3',
 };
-
-function Etiqueta({ id, children }: { id: string; children: React.ReactNode }) {
-  return (
-    <h2 id={id} className="text-xs font-bold tracking-wider text-zinc-500 uppercase dark:text-zinc-400">
-      {children}
-    </h2>
-  );
-}
 
 export default function AdminPage() {
   const { rol } = useRol();
@@ -200,8 +178,6 @@ export default function AdminPage() {
   ].filter(Boolean);
 
   // ---- Hoy ----
-  const informeHoy = ventasHoy.datos;
-  const informeAyer = ventasAyer.datos;
   const serie7 = ventas7.datos?.serie_diaria ?? [];
   const turnoAbierto = turno.datos?.turno ?? null;
   const resumenTurno = turno.datos?.resumen;
@@ -243,7 +219,7 @@ export default function AdminPage() {
               aria-labelledby="panel-atencion"
               className="animate-fade-up delay-1"
             >
-              <Etiqueta id="panel-atencion">Atención requerida</Etiqueta>
+              <EtiquetaPanel id="panel-atencion">Atención requerida</EtiquetaPanel>
               <div
                 className={`mt-3 grid gap-4 ${COLUMNAS_ATENCION[tarjetasAtencion.length]}`}
               >
@@ -253,123 +229,20 @@ export default function AdminPage() {
           )}
 
           {(verInformes || verCaja) && (
-            <section
-              aria-labelledby="panel-hoy"
-              className="animate-fade-up delay-2"
-            >
-              <Etiqueta id="panel-hoy">Hoy</Etiqueta>
-              {verInformes ? (
-                <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
-                  <div className="col-span-2 lg:row-span-2">
-                    {ventasHoy.cargando ? (
-                      <div className="skeleton h-full min-h-56 w-full rounded-3xl" />
-                    ) : informeHoy ? (
-                      <HeroVentas
-                        icono={<IconMoneda />}
-                        valor={formatPrecio(informeHoy.resumen.ventas_brutas)}
-                        periodo="Ventas brutas de hoy"
-                        delta={null}
-                        vs=""
-                        serie={serie7.map((d) => d.total)}
-                        etiquetaNota="Ayer"
-                        mejorDia={
-                          informeAyer
-                            ? formatPrecio(informeAyer.resumen.ventas_brutas)
-                            : undefined
-                        }
-                      />
-                    ) : (
-                      <p
-                        role="alert"
-                        className="flex h-full min-h-56 items-center justify-center rounded-3xl border border-zinc-200 p-6 text-center text-sm text-red-600 dark:border-zinc-800 dark:text-red-400"
-                      >
-                        No se pudieron cargar las ventas de hoy.
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Reserva el lugar de las KPI mientras cargan: sin esto la
-                      tarjeta del turno salta de casilla al llegar los datos. */}
-                  {ventasHoy.cargando &&
-                    Array.from({ length: verCaja ? 3 : 4 }, (_, i) => (
-                      <div
-                        key={i}
-                        aria-hidden="true"
-                        className="skeleton min-h-36 rounded-2xl"
-                      />
-                    ))}
-                  {informeHoy && (
-                    <>
-                      <TarjetaKpi
-                        icono={<IconPedidos tamano={20} />}
-                        label="Pedidos"
-                        valor={String(informeHoy.resumen.pedidos)}
-                        detalle={
-                          informeAyer
-                            ? `Ayer: ${informeAyer.resumen.pedidos}`
-                            : undefined
-                        }
-                        tono="azul"
-                        serie={serie7.map((d) => d.pedidos)}
-                      />
-                      <TarjetaKpi
-                        icono={<IconTicket />}
-                        label="Ticket promedio"
-                        valor={formatPrecio(informeHoy.resumen.ticket_promedio)}
-                        detalle={
-                          informeAyer
-                            ? `Ayer: ${formatPrecio(informeAyer.resumen.ticket_promedio)}`
-                            : undefined
-                        }
-                        tono="amarillo"
-                        serie={serie7.map((d) =>
-                          d.pedidos ? d.total / d.pedidos : 0,
-                        )}
-                      />
-                      <TarjetaKpi
-                        icono={<IconArticulos />}
-                        label="Artículos vendidos"
-                        valor={String(informeHoy.resumen.articulos_vendidos)}
-                        detalle={
-                          informeAyer
-                            ? `Ayer: ${informeAyer.resumen.articulos_vendidos}`
-                            : undefined
-                        }
-                        tono="verde"
-                      />
-                    </>
-                  )}
-                  {verCaja ? (
-                    <TarjetaTurno
-                      cargando={turno.cargando}
-                      fallo={turno.fallo}
-                      abiertoEn={turnoAbierto?.abierto_en ?? null}
-                      totalVentas={resumenTurno?.total_ventas ?? 0}
-                    />
-                  ) : (
-                    informeHoy && (
-                      <TarjetaKpi
-                        icono={<IconMoneda />}
-                        label="Ventas 7 días"
-                        valor={formatPrecio(
-                          ventas7.datos?.resumen.ventas_brutas ?? 0,
-                        )}
-                        detalle={`${ventas7.datos?.resumen.pedidos ?? 0} pedidos`}
-                      />
-                    )
-                  )}
-                </div>
-              ) : (
-                <div className="mt-3 max-w-sm">
-                  <TarjetaTurno
-                    cargando={turno.cargando}
-                    fallo={turno.fallo}
-                    abiertoEn={turnoAbierto?.abierto_en ?? null}
-                    totalVentas={resumenTurno?.total_ventas ?? 0}
-                  />
-                </div>
-              )}
-            </section>
+            <SeccionHoy
+              verInformes={verInformes}
+              verCaja={verCaja}
+              cargandoHoy={ventasHoy.cargando}
+              informeHoy={ventasHoy.datos}
+              informeAyer={ventasAyer.datos}
+              informe7={ventas7.datos}
+              turno={{
+                cargando: turno.cargando,
+                fallo: turno.fallo,
+                abiertoEn: turnoAbierto?.abierto_en ?? null,
+                totalVentas: resumenTurno?.total_ventas ?? 0,
+              }}
+            />
           )}
 
           {(hayVentas || hayDerecha) && (
@@ -437,7 +310,7 @@ export default function AdminPage() {
             aria-labelledby="panel-accesos"
             className="animate-fade-up delay-4"
           >
-            <Etiqueta id="panel-accesos">Ir a</Etiqueta>
+            <EtiquetaPanel id="panel-accesos">Ir a</EtiquetaPanel>
             <div className="mt-3">
               <AccesosModulos rol={rol} />
             </div>
