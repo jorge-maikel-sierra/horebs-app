@@ -33,21 +33,30 @@ const SCRIPT_SRC_TAGS =
 const CONNECT_SRC_TAGS =
   'https://www.googletagmanager.com https://www.google-analytics.com https://analytics.google.com https://td.doubleclick.net https://googleads.g.doubleclick.net https://www.facebook.com';
 
+// PostHog (src/instrumentation-client.ts): manda los eventos al host de
+// ingesta y baja sus extensiones (replay, encuestas) del host de assets
+// de la misma región (us.i.posthog.com → us-assets.i.posthog.com). Opcional:
+// sin la variable PostHog no se inicia y no hace falta abrir nada.
+const POSTHOG_HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST ?? '';
+const POSTHOG_ORIGINS = POSTHOG_HOST
+  ? `${POSTHOG_HOST} ${POSTHOG_HOST.replace('.i.posthog.com', '-assets.i.posthog.com')}`
+  : '';
+
 // React usa eval() en modo dev para reconstruir stack traces (HMR, overlay
 // de errores) — nunca en producción. Sin esto el CSP rompe `next dev`.
 // En producción Vercel sirve Speed Insights desde el propio dominio
 // (ruta con hash único), pero en dev carga directo de va.vercel-scripts.com.
 const SCRIPT_SRC =
   process.env.NODE_ENV === 'development'
-    ? `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://va.vercel-scripts.com ${SCRIPT_SRC_TAGS}`
-    : `script-src 'self' 'unsafe-inline' ${SCRIPT_SRC_TAGS}`;
+    ? `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://va.vercel-scripts.com ${SCRIPT_SRC_TAGS} ${POSTHOG_ORIGINS}`
+    : `script-src 'self' 'unsafe-inline' ${SCRIPT_SRC_TAGS} ${POSTHOG_ORIGINS}`;
 
 // En dev, apps/web/.env.local apunta NEXT_PUBLIC_API_URL a localhost:3000
 // (el NestJS local) en vez de la API de Railway.
 const CONNECT_SRC =
   process.env.NODE_ENV === 'development'
-    ? `connect-src 'self' ${SUPABASE_ORIGIN} ${API_ORIGIN} http://localhost:3000 https://vitals.vercel-insights.com https://va.vercel-scripts.com ${CONNECT_SRC_TAGS}`
-    : `connect-src 'self' ${SUPABASE_ORIGIN} ${API_ORIGIN} https://vitals.vercel-insights.com https://va.vercel-scripts.com ${CONNECT_SRC_TAGS}`;
+    ? `connect-src 'self' ${SUPABASE_ORIGIN} ${API_ORIGIN} http://localhost:3000 https://vitals.vercel-insights.com https://va.vercel-scripts.com ${CONNECT_SRC_TAGS} ${POSTHOG_ORIGINS}`
+    : `connect-src 'self' ${SUPABASE_ORIGIN} ${API_ORIGIN} https://vitals.vercel-insights.com https://va.vercel-scripts.com ${CONNECT_SRC_TAGS} ${POSTHOG_ORIGINS}`;
 
 const CSP = [
   "default-src 'self'",
