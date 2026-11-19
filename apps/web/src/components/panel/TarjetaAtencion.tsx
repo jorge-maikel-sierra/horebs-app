@@ -67,7 +67,14 @@ export default function TarjetaAtencion({
           {etiqueta}
         </p>
         <p className="mt-1 text-3xl leading-none sm:text-4xl font-extrabold tracking-tight tabular-nums text-zinc-900 dark:text-zinc-50">
-          {cargando ? '…' : (valor ?? '—')}
+          {cargando ? (
+            <span
+              aria-hidden="true"
+              className="skeleton inline-block h-[1em] w-12 rounded-lg align-top"
+            />
+          ) : (
+            (valor ?? '—')
+          )}
         </p>
         <p className="mt-1.5 truncate text-xs text-zinc-500 dark:text-zinc-400">
           {cargando ? 'Cargando…' : detalle}
