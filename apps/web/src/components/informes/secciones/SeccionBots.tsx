@@ -79,11 +79,11 @@ export default function SeccionBots({ informe, anterior, vs }: ContextoSeccion) 
         />
       </div>
 
-      <div className="mt-4 grid gap-4 @3xl:grid-cols-12">
-        <Panel className="@3xl:col-span-7" titulo="Embudo" subtitulo="De la conversación a la entrega">
+      <div className="mt-4 grid gap-4 @2xl:grid-cols-2 @4xl:grid-cols-12">
+        <Panel className="@4xl:col-span-7" titulo="Embudo" subtitulo="De la conversación a la entrega">
           <EmbudoBot bot={b} />
         </Panel>
-        <Panel className="@3xl:col-span-5" titulo="Fidelización" subtitulo="Lo que hace volver al cliente">
+        <Panel className="@4xl:col-span-5" titulo="Fidelización" subtitulo="Lo que hace volver al cliente">
           <Cifras
             filas={[
               { etiqueta: 'Toques en "Pedir lo mismo"', valor: b.repetir_toques },

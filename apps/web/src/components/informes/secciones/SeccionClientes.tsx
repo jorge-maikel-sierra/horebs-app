@@ -55,9 +55,9 @@ export default function SeccionClientes({ informe, anterior, vs, etiqueta }: Con
         </div>
       </div>
 
-      <div className="mt-4 grid gap-4 @3xl:grid-cols-12">
+      <div className="mt-4 grid gap-4 @2xl:grid-cols-2 @4xl:grid-cols-12">
         <Panel
-          className="@3xl:col-span-7"
+          className="@4xl:col-span-7"
           titulo="Clientes nuevos por día"
           subtitulo="Primera compra registrada"
         >
@@ -76,7 +76,7 @@ export default function SeccionClientes({ informe, anterior, vs, etiqueta }: Con
           />
         </Panel>
         <Panel
-          className="@3xl:col-span-5"
+          className="@4xl:col-span-5"
           titulo="Clientes con más gasto"
           subtitulo="Ranking por total comprado en el período"
         >
