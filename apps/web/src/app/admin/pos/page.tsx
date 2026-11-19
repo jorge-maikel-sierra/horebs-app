@@ -8,7 +8,7 @@ import { formatPrecio, formatHora, formatFecha } from '@/lib/formato';
 import CargandoSkeleton from '@/components/CargandoSkeleton';
 import { leerErrorApi } from '@/lib/error-api';
 import { NEGOCIO } from '@/lib/negocio';
-import SelectorCampana from '@/components/pos/SelectorCampana';
+import SelectorCampana, { camposCampana } from '@/components/pos/SelectorCampana';
 
 type Variante = {
   id: string;
@@ -58,10 +58,18 @@ type Modalidad = 'local' | 'retiro' | 'domicilio';
 
 // De dónde llegó la venta: en el local o el canal del que pidió. Por defecto
 // "en el local", así la venta normal no suma ningún toque.
-type OrigenVenta = 'mostrador' | 'whatsapp' | 'llamada' | 'messenger' | 'instagram';
+// 'whatsapp' es el número de WhatsApp Business del local; el bot es otro número.
+type OrigenVenta =
+  | 'mostrador'
+  | 'whatsapp'
+  | 'whatsapp_bot'
+  | 'llamada'
+  | 'messenger'
+  | 'instagram';
 const ORIGENES_VENTA: { valor: OrigenVenta; etiqueta: string }[] = [
   { valor: 'mostrador', etiqueta: 'En el local' },
-  { valor: 'whatsapp', etiqueta: 'WhatsApp' },
+  { valor: 'whatsapp', etiqueta: 'WhatsApp Business' },
+  { valor: 'whatsapp_bot', etiqueta: 'Bot WhatsApp' },
   { valor: 'llamada', etiqueta: 'Llamada' },
   { valor: 'messenger', etiqueta: 'Messenger' },
   { valor: 'instagram', etiqueta: 'Instagram' },
@@ -318,7 +326,7 @@ function PosInterno() {
     'efectivo' | 'transferencia' | 'tarjeta'
   >('efectivo');
   const [origen, setOrigen] = useState<OrigenVenta>('mostrador');
-  // null = todavía no elegida: el selector deja la campaña del mes; '' = «Ninguno».
+  // null = todavía no elegida: el selector sugiere una según el origen; '' = «Ninguna».
   const [campanaId, setCampanaId] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -615,8 +623,7 @@ function PosInterno() {
           costo_domicilio: modalidad === 'domicilio' ? costoDomicilio : undefined,
           metodo_pago: metodoPago,
           origen,
-          origen_campana_id:
-            origen !== 'mostrador' && campanaId ? campanaId : undefined,
+          ...camposCampana(campanaId),
           items: items.map((i) =>
             i.varianteId
               ? {
@@ -1168,7 +1175,10 @@ function PosInterno() {
                   <button
                     key={o.valor}
                     type="button"
-                    onClick={() => setOrigen(o.valor)}
+                    onClick={() => {
+                      setOrigen(o.valor);
+                      setCampanaId(null);
+                    }}
                     aria-pressed={origen === o.valor}
                     className={`btn-press rounded-full border px-3 py-1.5 text-xs font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand-orange/60 ${
                       origen === o.valor
@@ -1182,9 +1192,11 @@ function PosInterno() {
               </div>
             </fieldset>
 
-            {origen !== 'mostrador' && (
-              <SelectorCampana valor={campanaId} onCambio={setCampanaId} />
-            )}
+            <SelectorCampana
+              valor={campanaId}
+              origen={origen}
+              onCambio={setCampanaId}
+            />
 
             {error && (
               <p

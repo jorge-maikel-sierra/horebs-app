@@ -1,7 +1,8 @@
 /** Cómo se llama en pantalla cada origen de venta (lo que devuelve el API en `origen`). */
 export const ORIGEN_LABEL: Record<string, string> = {
   mostrador: 'En el local',
-  whatsapp: 'WhatsApp',
+  whatsapp: 'Bot de WhatsApp',
+  whatsapp_business: 'WhatsApp Business',
   llamada: 'Llamada',
   messenger: 'Messenger',
   instagram: 'Instagram',
