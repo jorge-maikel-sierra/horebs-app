@@ -382,7 +382,10 @@ export default function CheckoutPage() {
       </div>
 
       {session ? (
-        <div className="animate-fade-up delay-2 mt-6 flex items-center gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+        <div
+          data-ph-mask
+          className="animate-fade-up delay-2 mt-6 flex items-center gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800"
+        >
           {avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element -- URL externa de Google, no vale la pena optimizarla con next/image.
             <img

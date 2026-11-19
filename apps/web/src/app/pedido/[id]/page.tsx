@@ -180,7 +180,7 @@ export default async function PedidoConfirmacionPage({
           {pedido.modalidad === 'domicilio' && pedido.direccion_entrega && (
             <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:gap-4">
               <dt className="shrink-0 text-[11px] tracking-wide text-zinc-500 uppercase dark:text-zinc-400">Dirección</dt>
-              <dd className="font-medium text-zinc-900 sm:text-right dark:text-zinc-50">{pedido.direccion_entrega}</dd>
+              <dd data-ph-mask className="font-medium text-zinc-900 sm:text-right dark:text-zinc-50">{pedido.direccion_entrega}</dd>
             </div>
           )}
           <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:gap-4">
