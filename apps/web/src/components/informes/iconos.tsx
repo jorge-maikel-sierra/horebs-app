@@ -103,3 +103,33 @@ export function IconChat() {
     </Icono>
   );
 }
+
+export function IconMegafono() {
+  return (
+    <Icono>
+      <path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1Z" />
+      <path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13" />
+    </Icono>
+  );
+}
+
+export function IconPorcentaje() {
+  return (
+    <Icono>
+      <path d="M19 5 5 19" />
+      <circle cx="7" cy="7" r="2.5" />
+      <circle cx="17" cy="17" r="2.5" />
+    </Icono>
+  );
+}
+
+export function IconRefrescar({ tamano = 18 }: { tamano?: number }) {
+  return (
+    <Icono tamano={tamano}>
+      <path d="M20 11a8 8 0 0 0-14.6-4.5L4 8" />
+      <path d="M4 4v4h4" />
+      <path d="M4 13a8 8 0 0 0 14.6 4.5L20 16" />
+      <path d="M20 20v-4h-4" />
+    </Icono>
+  );
+}

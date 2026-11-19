@@ -1,8 +1,10 @@
 export default function ErrorInforme({
   mensaje,
   onReintentar,
+  titulo = 'No pudimos cargar el informe',
 }: {
   mensaje: string;
+  titulo?: string;
   onReintentar: () => void;
 }) {
   return (
@@ -12,7 +14,7 @@ export default function ErrorInforme({
     >
       <div>
         <p className="text-sm font-semibold text-red-700 dark:text-red-400">
-          No pudimos cargar el informe
+          {titulo}
         </p>
         <p className="mt-0.5 text-sm text-red-600 dark:text-red-400">{mensaje}</p>
       </div>

@@ -12,20 +12,30 @@ export const VISTAS: { key: VistaInforme; label: string }[] = [
   { key: 'bots', label: 'Bots' },
 ];
 
-export const idPanel = (v: VistaInforme) => `panel-informe-${v}`;
-const idPestana = (v: VistaInforme) => `pestana-informe-${v}`;
+export const idPanel = (v: string, grupo = 'informe') => `panel-${grupo}-${v}`;
+const idPestana = (v: string, grupo = 'informe') => `pestana-${grupo}-${v}`;
 
-export default function PestanasInforme({
+/**
+ * Pestañas ARIA con indicador animado. `grupo` separa los ids y el
+ * `layoutId` cuando la usan varias páginas (informes, anuncios).
+ */
+export default function PestanasInforme<T extends string = VistaInforme>({
   vistas,
   activa,
   onCambiar,
+  grupo = 'informe',
+  etiqueta = 'Secciones del informe',
+  className = '',
 }: {
-  vistas: { key: VistaInforme; label: string }[];
-  activa: VistaInforme;
-  onCambiar: (v: VistaInforme) => void;
+  vistas: { key: T; label: string }[];
+  activa: T;
+  onCambiar: (v: T) => void;
+  grupo?: string;
+  etiqueta?: string;
+  className?: string;
 }) {
   const reducir = useReducedMotion();
-  const refs = useRef<Partial<Record<VistaInforme, HTMLButtonElement | null>>>({});
+  const refs = useRef<Partial<Record<T, HTMLButtonElement | null>>>({});
 
   // Patrón ARIA de pestañas: flechas, Inicio y Fin mueven el foco y activan.
   function onKeyDown(e: KeyboardEvent) {
@@ -46,9 +56,9 @@ export default function PestanasInforme({
   return (
     <div
       role="tablist"
-      aria-label="Secciones del informe"
+      aria-label={etiqueta}
       onKeyDown={onKeyDown}
-      className="flex rounded-xl bg-zinc-100 p-1 dark:bg-zinc-900"
+      className={`flex rounded-xl bg-zinc-100 p-1 dark:bg-zinc-900 ${className}`}
     >
       {vistas.map((v) => {
         const sel = v.key === activa;
@@ -58,11 +68,11 @@ export default function PestanasInforme({
             ref={(el) => {
               refs.current[v.key] = el;
             }}
-            id={idPestana(v.key)}
+            id={idPestana(v.key, grupo)}
             type="button"
             role="tab"
             aria-selected={sel}
-            aria-controls={idPanel(v.key)}
+            aria-controls={idPanel(v.key, grupo)}
             tabIndex={sel ? 0 : -1}
             onClick={() => onCambiar(v.key)}
             className={`relative h-9 flex-1 rounded-lg px-3 text-sm font-semibold whitespace-nowrap outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand-orange/60 @xl:flex-none @xl:px-4 ${
@@ -73,7 +83,7 @@ export default function PestanasInforme({
           >
             {sel && (
               <motion.span
-                layoutId="pestana-informe-activa"
+                layoutId={`pestana-${grupo}-activa`}
                 transition={reducir ? { duration: 0 } : { type: 'spring', bounce: 0.18, duration: 0.4 }}
                 className="absolute inset-0 rounded-lg bg-white shadow-sm dark:bg-zinc-700"
               />
@@ -86,6 +96,11 @@ export default function PestanasInforme({
   );
 }
 
-export function propsPanel(v: VistaInforme) {
-  return { id: idPanel(v), role: 'tabpanel', 'aria-labelledby': idPestana(v), tabIndex: -1 } as const;
+export function propsPanel(v: string, grupo = 'informe') {
+  return {
+    id: idPanel(v, grupo),
+    role: 'tabpanel',
+    'aria-labelledby': idPestana(v, grupo),
+    tabIndex: -1,
+  } as const;
 }
