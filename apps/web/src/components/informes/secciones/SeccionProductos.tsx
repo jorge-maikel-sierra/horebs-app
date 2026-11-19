@@ -6,8 +6,12 @@ import { plural, type ContextoSeccion } from '@/components/informes/informes.tip
 
 export default function SeccionProductos({ informe }: ContextoSeccion) {
   return (
-    <div className="mt-4 grid gap-4 lg:grid-cols-2">
-      <Panel titulo="Productos más vendidos" subtitulo="Ranking por ingresos en el período">
+    <div className="mt-4 grid gap-4 @3xl:grid-cols-12">
+      <Panel
+        className="@3xl:col-span-7"
+        titulo="Productos más vendidos"
+        subtitulo="Ranking por ingresos en el período"
+      >
         <RankingBarras
           numerado
           tono="azul"
@@ -20,7 +24,7 @@ export default function SeccionProductos({ informe }: ContextoSeccion) {
           }))}
         />
       </Panel>
-      <Panel titulo="Ventas por categoría">
+      <Panel className="@3xl:col-span-5" titulo="Ventas por categoría">
         <RankingBarras
           tono="azul"
           vacio="Sin ventas por categoría en este rango."

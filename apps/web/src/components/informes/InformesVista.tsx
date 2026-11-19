@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import CargandoSkeleton from '@/components/CargandoSkeleton';
+import ErrorInforme from '@/components/informes/ErrorInforme';
+import SkeletonInforme from '@/components/informes/SkeletonInforme';
 import FiltroPeriodo from '@/components/informes/FiltroPeriodo';
 import SeccionBots from '@/components/informes/secciones/SeccionBots';
 import SeccionClientes from '@/components/informes/secciones/SeccionClientes';
@@ -20,7 +21,7 @@ export default function InformesVista() {
   const [preset, setPreset] = useState<RangoPreset>('7dias');
   const [rango, setRango] = useState(() => calcularRango('7dias'));
   const { desde, hasta } = rango;
-  const { informe, anterior, cargando, error } = useInforme(desde, hasta);
+  const { informe, anterior, cargando, error, reintentar } = useInforme(desde, hasta);
 
   function aplicarPreset(p: RangoPreset) {
     setPreset(p);
@@ -38,7 +39,9 @@ export default function InformesVista() {
   const ctx = informe ? { informe, anterior, vs, etiqueta } : null;
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
+    // @container: la grilla responde al ancho real del contenido, que cambia
+    // con la barra lateral (256px abierta, 72px colapsada), no al de la ventana.
+    <div className="@container p-4 sm:p-6 lg:p-8">
       <header className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
         <div>
           <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">Informes</h1>
@@ -66,16 +69,21 @@ export default function InformesVista() {
         />
       </div>
 
-      {cargando && <CargandoSkeleton filas={8} />}
-      {error && <p className="mt-8 text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && <ErrorInforme mensaje={error} onReintentar={reintentar} />}
+      {!error && !ctx && <SkeletonInforme />}
 
-      {!cargando && !error && ctx && (
-        <>
+      {!error && ctx && (
+        // Al cambiar de período el informe anterior queda visible y atenuado
+        // hasta que llega el nuevo: sin volver al skeleton ni saltos de scroll.
+        <div
+          aria-busy={cargando}
+          className={`transition-opacity duration-200 ${cargando ? 'pointer-events-none opacity-50' : ''}`}
+        >
           <SeccionResumen {...ctx} />
           <SeccionProductos {...ctx} />
           <SeccionClientes {...ctx} />
           <SeccionBots {...ctx} />
-        </>
+        </div>
       )}
     </div>
   );

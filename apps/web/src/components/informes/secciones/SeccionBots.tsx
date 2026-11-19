@@ -35,7 +35,7 @@ export default function SeccionBots({ informe, anterior, vs }: ContextoSeccion) 
       <h2 className="mt-8 text-lg font-bold text-zinc-900 dark:text-zinc-50">
         Bots de mensajería (WhatsApp, Messenger, Instagram)
       </h2>
-      <div className="mt-3 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      <div className="mt-3 grid grid-cols-2 gap-3 @2xl:grid-cols-4 @2xl:gap-4">
         <TarjetaKpi
           tono="azul"
           icono={<IconChat />}
@@ -75,7 +75,7 @@ export default function SeccionBots({ informe, anterior, vs }: ContextoSeccion) 
         />
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+      <div className="mt-4 grid gap-4 @2xl:grid-cols-2">
         <Panel titulo="Embudo" subtitulo="De la conversación a la entrega">
           <ListaValores
             filas={[

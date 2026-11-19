@@ -21,7 +21,7 @@ export default function SeccionClientes({ informe, anterior, vs, etiqueta }: Con
     <>
       <h2 className="mt-8 text-lg font-bold text-zinc-900 dark:text-zinc-50">Clientes</h2>
 
-      <div className="mt-3 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
+      <div className="mt-3 grid grid-cols-2 gap-3 @2xl:grid-cols-3 @2xl:gap-4">
         <TarjetaKpi
           tono="verde"
           icono={<IconClienteNuevo />}
@@ -45,7 +45,7 @@ export default function SeccionClientes({ informe, anterior, vs, etiqueta }: Con
           delta={calcularDelta(c.recurrentes, ca?.recurrentes)}
           vs={vs}
         />
-        <div className="col-span-2 lg:col-span-1">
+        <div className="col-span-2 @2xl:col-span-1">
           <TarjetaKpi
             tono="amarillo"
             icono={<IconTicket />}
@@ -57,8 +57,12 @@ export default function SeccionClientes({ informe, anterior, vs, etiqueta }: Con
         </div>
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <Panel titulo="Clientes nuevos por día" subtitulo="Primera compra registrada">
+      <div className="mt-4 grid gap-4 @3xl:grid-cols-12">
+        <Panel
+          className="@3xl:col-span-7"
+          titulo="Clientes nuevos por día"
+          subtitulo="Primera compra registrada"
+        >
           <GraficoColumnas
             tono="azul"
             nombreValor="Clientes nuevos"
@@ -73,7 +77,11 @@ export default function SeccionClientes({ informe, anterior, vs, etiqueta }: Con
             formatoEje={(n) => String(n)}
           />
         </Panel>
-        <Panel titulo="Clientes con más gasto" subtitulo="Ranking por total comprado en el período">
+        <Panel
+          className="@3xl:col-span-5"
+          titulo="Clientes con más gasto"
+          subtitulo="Ranking por total comprado en el período"
+        >
           <RankingBarras
             numerado
             tono="azul"

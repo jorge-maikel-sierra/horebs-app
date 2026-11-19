@@ -80,8 +80,10 @@ export default function SeccionResumen({ informe, anterior, vs, etiqueta }: Cont
 
   return (
     <>
-      <div className="animate-fade-up mt-5 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <div className="col-span-2 lg:row-span-2">
+      {/* Teléfono: hero y KPIs 2×2. Tablet: hero a lo ancho y 4 KPIs en fila.
+          Escritorio: hero a la izquierda (5/12) y KPIs 2×2 a la derecha. */}
+      <div className="animate-fade-up mt-5 grid gap-3 @2xl:gap-4 @4xl:grid-cols-12">
+        <div className="@4xl:col-span-5">
           <HeroVentas
             icono={<IconMoneda />}
             valor={formatPrecio(r.ventas_brutas)}
@@ -96,41 +98,43 @@ export default function SeccionResumen({ informe, anterior, vs, etiqueta }: Cont
             }
           />
         </div>
-        <TarjetaKpi
-          tono="azul"
-          icono={<IconPedidos />}
-          label="Pedidos"
-          valor={String(r.pedidos)}
-          delta={calcularDelta(r.pedidos, ra?.pedidos)}
-          vs={vs}
-          serie={informe.serie_diaria.map((d) => d.pedidos)}
-        />
-        <TarjetaKpi
-          tono="amarillo"
-          icono={<IconTicket />}
-          label="Ticket promedio"
-          valor={formatPrecio(r.ticket_promedio)}
-          delta={calcularDelta(r.ticket_promedio, ra?.ticket_promedio)}
-          vs={vs}
-          serie={informe.serie_diaria.map((d) => (d.pedidos ? d.total / d.pedidos : 0))}
-        />
-        <TarjetaKpi
-          tono="verde"
-          icono={<IconArticulos />}
-          label="Artículos vendidos"
-          valor={String(r.articulos_vendidos)}
-          delta={calcularDelta(r.articulos_vendidos, ra?.articulos_vendidos)}
-          vs={vs}
-        />
-        <TarjetaKpi
-          tono="naranja"
-          icono={<IconTendencia />}
-          label="Promedio diario"
-          valor={formatPrecio(r.promedio_diario)}
-          delta={calcularDelta(r.promedio_diario, ra?.promedio_diario)}
-          vs={vs}
-        />
-        <div className="col-span-2 lg:col-span-4">
+        <div className="grid grid-cols-2 gap-3 @2xl:grid-cols-4 @2xl:gap-4 @4xl:col-span-7 @4xl:grid-cols-2">
+          <TarjetaKpi
+            tono="azul"
+            icono={<IconPedidos />}
+            label="Pedidos"
+            valor={String(r.pedidos)}
+            delta={calcularDelta(r.pedidos, ra?.pedidos)}
+            vs={vs}
+            serie={informe.serie_diaria.map((d) => d.pedidos)}
+          />
+          <TarjetaKpi
+            tono="amarillo"
+            icono={<IconTicket />}
+            label="Ticket promedio"
+            valor={formatPrecio(r.ticket_promedio)}
+            delta={calcularDelta(r.ticket_promedio, ra?.ticket_promedio)}
+            vs={vs}
+            serie={informe.serie_diaria.map((d) => (d.pedidos ? d.total / d.pedidos : 0))}
+          />
+          <TarjetaKpi
+            tono="verde"
+            icono={<IconArticulos />}
+            label="Artículos vendidos"
+            valor={String(r.articulos_vendidos)}
+            delta={calcularDelta(r.articulos_vendidos, ra?.articulos_vendidos)}
+            vs={vs}
+          />
+          <TarjetaKpi
+            tono="naranja"
+            icono={<IconTendencia />}
+            label="Promedio diario"
+            valor={formatPrecio(r.promedio_diario)}
+            delta={calcularDelta(r.promedio_diario, ra?.promedio_diario)}
+            vs={vs}
+          />
+        </div>
+        <div className="@4xl:col-span-12">
           <TiraDomicilio
             icono={<IconMoto />}
             valor={formatPrecio(r.costo_domicilio_total)}
@@ -145,7 +149,7 @@ export default function SeccionResumen({ informe, anterior, vs, etiqueta }: Cont
         </Panel>
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-3">
+      <div className="mt-4 grid gap-4 @2xl:grid-cols-2 @5xl:grid-cols-4">
         {desgloses.map((d) => (
           <Panel key={d.titulo} titulo={d.titulo} subtitulo={d.subtitulo}>
             <RankingBarras

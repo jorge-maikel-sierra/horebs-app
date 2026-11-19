@@ -151,7 +151,7 @@ export function TarjetaKpi({
 }) {
   const t = TONOS[tono];
   const tarjeta = (
-    <div className="card-gradient card-interactive relative flex h-full min-w-0 flex-col justify-between overflow-hidden rounded-2xl border border-zinc-200 p-4 sm:p-5 dark:border-zinc-800">
+    <div className="@container card-gradient card-interactive relative flex h-full min-w-0 flex-col justify-between overflow-hidden rounded-2xl border border-zinc-200 p-4 sm:p-5 dark:border-zinc-800">
       <div>
         <div className="flex items-start justify-between gap-2">
           <span
@@ -164,7 +164,7 @@ export function TarjetaKpi({
         <p className="mt-3 text-[11px] leading-tight font-semibold tracking-wider text-zinc-500 uppercase dark:text-zinc-400">
           {label}
         </p>
-        <p className="mt-1 [overflow-wrap:anywhere] text-xl font-extrabold tracking-tight tabular-nums text-zinc-900 sm:text-2xl dark:text-zinc-50">
+        <p className="mt-1 [overflow-wrap:anywhere] text-lg font-extrabold tracking-tight tabular-nums text-zinc-900 @[11rem]:text-xl @[14rem]:text-2xl dark:text-zinc-50">
           {valor}
         </p>
         {detalle && (
