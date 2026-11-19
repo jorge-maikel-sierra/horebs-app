@@ -1,6 +1,7 @@
 'use client';
 
 import { sendGTMEvent } from '@next/third-parties/google';
+import posthog from 'posthog-js';
 
 const MONEDA = 'COP';
 
@@ -28,6 +29,16 @@ function limpiarEcommerceAnterior() {
   sendGTMEvent({ ecommerce: null });
 }
 
+/**
+ * Empuja el evento de ecommerce al dataLayer de GTM y el mismo evento, con los
+ * mismos nombres de GA4, a PostHog (si está iniciado en `instrumentation-client.ts`).
+ */
+function medirEcommerce(event: string, ecommerce: Record<string, unknown>) {
+  limpiarEcommerceAnterior();
+  sendGTMEvent({ event, ecommerce });
+  if (posthog.__loaded) posthog.capture(event, ecommerce);
+}
+
 function itemAGA4(item: ItemCarrito, quantity: number): ItemGA4 {
   return {
     item_id: item.varianteId,
@@ -39,10 +50,10 @@ function itemAGA4(item: ItemCarrito, quantity: number): ItemGA4 {
 }
 
 /**
- * Único punto de entrada de medición del sitio: todo se empuja al
- * dataLayer de GTM. El Pixel de Facebook, GA4 y Google Ads se
- * configuran como tags DENTRO de GTM (leyendo estos mismos eventos),
- * no acá — así hay un solo medidor cargado en el sitio, nunca dos.
+ * Único punto de entrada de medición del sitio: cada evento va al dataLayer
+ * de GTM y a PostHog. El Pixel de Facebook, GA4 y Google Ads se configuran
+ * como tags DENTRO de GTM (leyendo estos mismos eventos), no acá; PostHog
+ * se inicia una sola vez en `instrumentation-client.ts`.
  */
 export function trackViewItem(producto: {
   nombre: string;
@@ -63,19 +74,14 @@ export function trackViewItem(producto: {
   );
   const value = Math.min(...items.map((i) => i.price));
 
-  limpiarEcommerceAnterior();
-  sendGTMEvent({ event: 'view_item', ecommerce: { currency: MONEDA, value, items } });
+  medirEcommerce('view_item', { currency: MONEDA, value, items });
 }
 
 export function trackAddToCart(item: ItemCarrito, cantidad: number) {
   const ga4Item = itemAGA4(item, cantidad);
   const value = item.precio * cantidad;
 
-  limpiarEcommerceAnterior();
-  sendGTMEvent({
-    event: 'add_to_cart',
-    ecommerce: { currency: MONEDA, value, items: [ga4Item] },
-  });
+  medirEcommerce('add_to_cart', { currency: MONEDA, value, items: [ga4Item] });
 }
 
 export function trackBeginCheckout(items: (ItemCarrito & { cantidad: number })[], value: number) {
@@ -83,11 +89,7 @@ export function trackBeginCheckout(items: (ItemCarrito & { cantidad: number })[]
 
   const ga4Items = items.map((i) => itemAGA4(i, i.cantidad));
 
-  limpiarEcommerceAnterior();
-  sendGTMEvent({
-    event: 'begin_checkout',
-    ecommerce: { currency: MONEDA, value, items: ga4Items },
-  });
+  medirEcommerce('begin_checkout', { currency: MONEDA, value, items: ga4Items });
 }
 
 export function trackPurchase(pedido: {
@@ -117,20 +119,17 @@ export function trackPurchase(pedido: {
     ),
   );
 
-  limpiarEcommerceAnterior();
-  sendGTMEvent({
-    event: 'purchase',
-    ecommerce: {
-      transaction_id: pedido.id,
-      currency: MONEDA,
-      value: pedido.total,
-      shipping: pedido.costoDomicilio,
-      items: ga4Items,
-    },
+  medirEcommerce('purchase', {
+    transaction_id: pedido.id,
+    currency: MONEDA,
+    value: pedido.total,
+    shipping: pedido.costoDomicilio,
+    items: ga4Items,
   });
 }
 
 /** WhatsApp es el canal de contacto principal del sitio — se trackea como lead. */
 export function trackContact() {
   sendGTMEvent({ event: 'generate_lead', method: 'whatsapp' });
+  if (posthog.__loaded) posthog.capture('generate_lead', { method: 'whatsapp' });
 }
