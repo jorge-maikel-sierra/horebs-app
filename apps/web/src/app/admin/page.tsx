@@ -6,16 +6,18 @@ import CargandoSkeleton from '@/components/CargandoSkeleton';
 import GraficoColumnas from '@/components/informes/GraficoColumnas';
 import { HeroVentas, TarjetaKpi } from '@/components/informes/TarjetasResumen';
 import AccesosModulos from '@/components/panel/AccesosModulos';
-import CajaTurno from '@/components/panel/CajaTurno';
 import EncabezadoPanel from '@/components/panel/EncabezadoPanel';
 import {
   IconAlerta,
   IconArticulos,
-  IconCheck,
   IconMoneda,
   IconTicket,
   IconWhatsapp,
 } from '@/components/panel/iconos';
+import PanelCaja from '@/components/panel/PanelCaja';
+import PanelNomina, {
+  type FilaTableroNomina,
+} from '@/components/panel/PanelNomina';
 import SeccionPanel from '@/components/panel/SeccionPanel';
 import TarjetaAtencion from '@/components/panel/TarjetaAtencion';
 import TarjetaTurno from '@/components/panel/TarjetaTurno';
@@ -68,11 +70,6 @@ type InformeResumen = {
   serie_diaria: { fecha: string; total: number; pedidos: number }[];
 };
 
-type TableroFila = {
-  empleado: { nombre: string };
-  semana: { neto_pagar: number; estado: 'en_curso' | 'liquidada' };
-};
-
 const ESTADO_PEDIDO_LABEL: Record<string, string> = {
   pendiente: 'pendiente',
   confirmado: 'confirmado',
@@ -86,9 +83,9 @@ const COLUMNAS_ATENCION: Record<number, string> = {
   3: 'sm:grid-cols-3',
 };
 
-function Etiqueta({ children }: { children: React.ReactNode }) {
+function Etiqueta({ id, children }: { id: string; children: React.ReactNode }) {
   return (
-    <h2 className="text-xs font-bold tracking-wider text-zinc-500 uppercase dark:text-zinc-400">
+    <h2 id={id} className="text-xs font-bold tracking-wider text-zinc-500 uppercase dark:text-zinc-400">
       {children}
     </h2>
   );
@@ -127,7 +124,7 @@ export default function AdminPage() {
   const ventas7 = useCarga<InformeResumen>(
     verInformes ? `/informes?desde=${sumarDias(hoy, -6)}&hasta=${hoy}` : null,
   );
-  const nomina = useCarga<TableroFila[]>(verNomina ? '/nomina/tablero' : null);
+  const nomina = useCarga<FilaTableroNomina[]>(verNomina ? '/nomina/tablero' : null);
 
   // ---- Atención requerida ----
   const activos = pedidos.datos?.filter(
@@ -209,85 +206,28 @@ export default function AdminPage() {
   const turnoAbierto = turno.datos?.turno ?? null;
   const resumenTurno = turno.datos?.resumen;
 
-  // ---- Nómina ----
-  const enCurso =
-    nomina.datos?.filter((f) => f.semana.estado === 'en_curso') ?? [];
-  const pendiente = enCurso.reduce((s, f) => s + f.semana.neto_pagar, 0);
-  const liquidadas =
-    nomina.datos?.filter((f) => f.semana.estado === 'liquidada').length ?? 0;
-
   const hayVentas = verInformes;
   const hayDerecha = verCaja || verNomina;
 
   const panelCaja = verCaja && (
-    <SeccionPanel
-      titulo="Caja del turno"
-      subtitulo="Reparto por método de pago"
-      enlace={{ href: '/admin/pos', texto: 'Punto de venta' }}
-    >
-      {turno.cargando ? (
-        <CargandoSkeleton filas={2} />
-      ) : turno.fallo ? (
-        <p className="text-sm text-red-600 dark:text-red-400">
-          No se pudo cargar el turno.
-        </p>
-      ) : !turnoAbierto ? (
-        <p className="rounded-xl bg-zinc-100 px-3 py-3 text-sm text-zinc-600 dark:bg-zinc-800/70 dark:text-zinc-300">
-          No hay un turno abierto. Al abrirlo desde el punto de venta verás aquí
-          cómo se reparte lo cobrado.
-        </p>
-      ) : (
-        <CajaTurno
-          montos={{
-            efectivo: resumenTurno?.total_efectivo ?? 0,
-            transferencia: resumenTurno?.total_transferencia ?? 0,
-            tarjeta: resumenTurno?.total_tarjeta ?? 0,
-          }}
-        />
-      )}
-    </SeccionPanel>
+    <PanelCaja
+      cargando={turno.cargando}
+      fallo={turno.fallo}
+      abierto={turnoAbierto !== null}
+      montos={{
+        efectivo: resumenTurno?.total_efectivo ?? 0,
+        transferencia: resumenTurno?.total_transferencia ?? 0,
+        tarjeta: resumenTurno?.total_tarjeta ?? 0,
+      }}
+    />
   );
 
   const panelNomina = verNomina && (
-    <SeccionPanel
-      titulo="Nómina de la semana"
-      enlace={{ href: '/admin/nomina', texto: 'Ver nómina' }}
-    >
-      {nomina.cargando ? (
-        <CargandoSkeleton filas={1} />
-      ) : !nomina.datos || nomina.datos.length === 0 ? (
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">
-          {nomina.fallo
-            ? 'No se pudo cargar la nómina.'
-            : 'No hay trabajadores activos registrados.'}
-        </p>
-      ) : (
-        <div className="grid grid-cols-2 gap-3">
-          <div className="min-w-0 rounded-xl bg-zinc-100 p-3 dark:bg-zinc-800/70">
-            <p className="text-[11px] font-semibold tracking-wider text-zinc-500 uppercase dark:text-zinc-400">
-              Por pagar
-            </p>
-            <p className="mt-1 [overflow-wrap:anywhere] text-lg font-extrabold tabular-nums text-zinc-900 dark:text-zinc-50">
-              {formatPrecio(pendiente)}
-            </p>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              {enCurso.length} en curso
-            </p>
-          </div>
-          <div className="min-w-0 rounded-xl bg-zinc-100 p-3 dark:bg-zinc-800/70">
-            <p className="flex items-center gap-1 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase dark:text-zinc-400">
-              <IconCheck /> Liquidadas
-            </p>
-            <p className="mt-1 text-lg font-extrabold tabular-nums text-zinc-900 dark:text-zinc-50">
-              {liquidadas}
-            </p>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              esta semana
-            </p>
-          </div>
-        </div>
-      )}
-    </SeccionPanel>
+    <PanelNomina
+      cargando={nomina.cargando}
+      fallo={nomina.fallo}
+      filas={nomina.datos}
+    />
   );
 
   return (
@@ -299,8 +239,11 @@ export default function AdminPage() {
       ) : (
         <div className="mt-8 space-y-8">
           {tarjetasAtencion.length > 0 && (
-            <section className="animate-fade-up delay-1">
-              <Etiqueta>Atención requerida</Etiqueta>
+            <section
+              aria-labelledby="panel-atencion"
+              className="animate-fade-up delay-1"
+            >
+              <Etiqueta id="panel-atencion">Atención requerida</Etiqueta>
               <div
                 className={`mt-3 grid gap-4 ${COLUMNAS_ATENCION[tarjetasAtencion.length]}`}
               >
@@ -310,8 +253,11 @@ export default function AdminPage() {
           )}
 
           {(verInformes || verCaja) && (
-            <section className="animate-fade-up delay-2">
-              <Etiqueta>Hoy</Etiqueta>
+            <section
+              aria-labelledby="panel-hoy"
+              className="animate-fade-up delay-2"
+            >
+              <Etiqueta id="panel-hoy">Hoy</Etiqueta>
               {verInformes ? (
                 <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
                   <div className="col-span-2 lg:row-span-2">
@@ -333,12 +279,25 @@ export default function AdminPage() {
                         }
                       />
                     ) : (
-                      <p className="rounded-3xl border border-zinc-200 p-6 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+                      <p
+                        role="alert"
+                        className="flex h-full min-h-56 items-center justify-center rounded-3xl border border-zinc-200 p-6 text-center text-sm text-red-600 dark:border-zinc-800 dark:text-red-400"
+                      >
                         No se pudieron cargar las ventas de hoy.
                       </p>
                     )}
                   </div>
 
+                  {/* Reserva el lugar de las KPI mientras cargan: sin esto la
+                      tarjeta del turno salta de casilla al llegar los datos. */}
+                  {ventasHoy.cargando &&
+                    Array.from({ length: verCaja ? 3 : 4 }, (_, i) => (
+                      <div
+                        key={i}
+                        aria-hidden="true"
+                        className="skeleton min-h-36 rounded-2xl"
+                      />
+                    ))}
                   {informeHoy && (
                     <>
                       <TarjetaKpi
@@ -414,7 +373,7 @@ export default function AdminPage() {
           )}
 
           {(hayVentas || hayDerecha) && (
-            <section
+            <div
               className={`animate-fade-up delay-3 grid gap-4 ${
                 hayVentas && hayDerecha ? 'lg:grid-cols-3' : ''
               }`}
@@ -436,8 +395,11 @@ export default function AdminPage() {
                   {ventas7.cargando ? (
                     <CargandoSkeleton filas={3} />
                   ) : !ventas7.datos ? (
-                    <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                      Sin datos.
+                    <p
+                      role="alert"
+                      className="text-sm text-red-600 dark:text-red-400"
+                    >
+                      No se pudieron cargar las ventas de la semana.
                     </p>
                   ) : (
                     <GraficoColumnas
@@ -468,11 +430,14 @@ export default function AdminPage() {
                   {panelNomina}
                 </div>
               )}
-            </section>
+            </div>
           )}
 
-          <section className="animate-fade-up delay-4">
-            <Etiqueta>Ir a</Etiqueta>
+          <section
+            aria-labelledby="panel-accesos"
+            className="animate-fade-up delay-4"
+          >
+            <Etiqueta id="panel-accesos">Ir a</Etiqueta>
             <div className="mt-3">
               <AccesosModulos rol={rol} />
             </div>
