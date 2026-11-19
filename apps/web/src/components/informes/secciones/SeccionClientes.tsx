@@ -19,9 +19,7 @@ export default function SeccionClientes({ informe, anterior, vs, etiqueta }: Con
 
   return (
     <>
-      <h2 className="mt-8 text-lg font-bold text-zinc-900 dark:text-zinc-50">Clientes</h2>
-
-      <div className="mt-3 grid grid-cols-2 gap-3 @2xl:grid-cols-3 @2xl:gap-4">
+      <div className="animate-fade-up mt-5 grid grid-cols-2 gap-3 @2xl:grid-cols-3 @2xl:gap-4">
         <TarjetaKpi
           tono="verde"
           icono={<IconClienteNuevo />}

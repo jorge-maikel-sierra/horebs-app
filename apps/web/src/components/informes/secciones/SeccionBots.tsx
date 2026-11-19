@@ -32,10 +32,10 @@ export default function SeccionBots({ informe, anterior, vs }: ContextoSeccion) 
 
   return (
     <>
-      <h2 className="mt-8 text-lg font-bold text-zinc-900 dark:text-zinc-50">
-        Bots de mensajería (WhatsApp, Messenger, Instagram)
-      </h2>
-      <div className="mt-3 grid grid-cols-2 gap-3 @2xl:grid-cols-4 @2xl:gap-4">
+      <p className="mt-5 text-sm text-zinc-500 dark:text-zinc-400">
+        Lo que hicieron los bots de WhatsApp, Messenger e Instagram en el período.
+      </p>
+      <div className="animate-fade-up mt-3 grid grid-cols-2 gap-3 @2xl:grid-cols-4 @2xl:gap-4">
         <TarjetaKpi
           tono="azul"
           icono={<IconChat />}

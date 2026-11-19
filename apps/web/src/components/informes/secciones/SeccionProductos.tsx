@@ -6,7 +6,7 @@ import { plural, type ContextoSeccion } from '@/components/informes/informes.tip
 
 export default function SeccionProductos({ informe }: ContextoSeccion) {
   return (
-    <div className="mt-4 grid gap-4 @3xl:grid-cols-12">
+    <div className="animate-fade-up mt-5 grid gap-4 @3xl:grid-cols-12">
       <Panel
         className="@3xl:col-span-7"
         titulo="Productos más vendidos"

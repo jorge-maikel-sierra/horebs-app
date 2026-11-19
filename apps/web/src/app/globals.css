@@ -331,6 +331,19 @@ body {
 .animate-fade-up {
   animation: fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+
+/* Barra fina de "actualizando" bajo la barra de pestañas de informes. */
+@keyframes barra-carga {
+  from {
+    left: -33%;
+  }
+  to {
+    left: 100%;
+  }
+}
+.animate-barra-carga {
+  animation: barra-carga 1s ease-in-out infinite;
+}
 .animate-fade-in {
   animation: fade-in 0.5s ease-out both;
 }
@@ -561,6 +574,7 @@ body {
   .animate-badge-bump,
   .resultado-item,
   .animate-desplegar,
+  .animate-barra-carga,
   .skeleton {
     animation: none !important;
   }
