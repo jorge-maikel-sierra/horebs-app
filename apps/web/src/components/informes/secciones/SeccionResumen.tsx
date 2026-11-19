@@ -2,21 +2,13 @@
 
 import { formatPrecio } from '@/lib/formato';
 import { calcularDelta, etiquetaCorta, etiquetaLarga, etiquetaRango, formatoEjePesos } from '@/lib/informes-rango';
-import { ORIGEN_LABEL } from '@/lib/origen-venta';
+import Destacados from '@/components/informes/Destacados';
 import GraficoColumnas from '@/components/informes/GraficoColumnas';
+import MezclaVentas from '@/components/informes/MezclaVentas';
 import Panel from '@/components/informes/Panel';
-import RankingBarras from '@/components/informes/RankingBarras';
-import { HeroVentas, TarjetaKpi, TiraDomicilio } from '@/components/informes/TarjetasResumen';
-import { IconArticulos, IconMoneda, IconMoto, IconPedidos, IconTendencia, IconTicket } from '@/components/informes/iconos';
-import {
-  CANAL_LABEL,
-  METODO_PAGO_LABEL,
-  MODALIDAD_LABEL,
-  plural,
-  type ContextoSeccion,
-  type InformeDesglose,
-  type InformeDia,
-} from '@/components/informes/informes.tipos';
+import { HeroVentas, TarjetaKpi } from '@/components/informes/TarjetasResumen';
+import { IconArticulos, IconMoneda, IconPedidos, IconTendencia, IconTicket } from '@/components/informes/iconos';
+import { plural, type ContextoSeccion, type InformeDia } from '@/components/informes/informes.tipos';
 
 function formatDiaCorto(fechaISO: string) {
   if (fechaISO.length === 7) {
@@ -49,15 +41,6 @@ export function GraficoVentasDiarias({ datos }: { datos: InformeDia[] }) {
   );
 }
 
-function filasDesglose(items: InformeDesglose[], etiquetas: Record<string, string>) {
-  const totalGeneral = items.reduce((s, i) => s + i.total, 0) || 1;
-  return items.map((i) => ({
-    clave: i.clave,
-    etiqueta: etiquetas[i.clave] ?? i.clave,
-    valor: i.total,
-    detalle: `${Math.round((i.total / totalGeneral) * 100)}% · ${plural(i.pedidos, 'pedido')}`,
-  }));
-}
 
 export default function SeccionResumen({ informe, anterior, vs, etiqueta }: ContextoSeccion) {
   const r = informe.resumen;
@@ -66,17 +49,6 @@ export default function SeccionResumen({ informe, anterior, vs, etiqueta }: Cont
     (mejor, d) => (!mejor || d.total > mejor.total ? d : mejor),
     null,
   );
-  const desgloses = [
-    { titulo: 'Método de pago', items: informe.por_metodo_pago, etiquetas: METODO_PAGO_LABEL },
-    { titulo: 'Modalidad', items: informe.por_modalidad, etiquetas: MODALIDAD_LABEL },
-    { titulo: 'Canal de venta', items: informe.por_canal, etiquetas: CANAL_LABEL },
-    {
-      titulo: 'Origen de la venta',
-      subtitulo: 'De dónde llegó el pedido; la caja lo registra desde el 17 nov',
-      items: informe.por_origen,
-      etiquetas: ORIGEN_LABEL,
-    },
-  ];
 
   return (
     <>
@@ -134,31 +106,25 @@ export default function SeccionResumen({ informe, anterior, vs, etiqueta }: Cont
             vs={vs}
           />
         </div>
-        <div className="@4xl:col-span-12">
-          <TiraDomicilio
-            icono={<IconMoto />}
-            valor={formatPrecio(r.costo_domicilio_total)}
-            porcentaje={r.ventas_brutas > 0 ? (r.costo_domicilio_total / r.ventas_brutas) * 100 : 0}
-          />
+      </div>
+
+      {/* Escritorio: gráfico (8/12) con "Lo destacado" al lado (4/12).
+          Más angosto: el gráfico a lo ancho y lo destacado debajo, en 2×2. */}
+      <div className="mt-4 grid gap-4 @4xl:grid-cols-12">
+        <Panel
+          className="@4xl:col-span-8"
+          titulo="Ventas por día"
+          subtitulo={etiquetaRango(informe.desde, informe.hasta)}
+        >
+          <GraficoVentasDiarias datos={informe.serie_diaria} />
+        </Panel>
+        <div className="@4xl:col-span-4">
+          <Destacados informe={informe} />
         </div>
       </div>
 
       <div className="mt-4">
-        <Panel titulo="Ventas por día" subtitulo={etiquetaRango(informe.desde, informe.hasta)}>
-          <GraficoVentasDiarias datos={informe.serie_diaria} />
-        </Panel>
-      </div>
-
-      <div className="mt-4 grid gap-4 @2xl:grid-cols-2 @5xl:grid-cols-4">
-        {desgloses.map((d) => (
-          <Panel key={d.titulo} titulo={d.titulo} subtitulo={d.subtitulo}>
-            <RankingBarras
-              tono="naranja"
-              filas={filasDesglose(d.items, d.etiquetas)}
-              vacio="Sin datos en este rango."
-            />
-          </Panel>
-        ))}
+        <MezclaVentas informe={informe} />
       </div>
     </>
   );
