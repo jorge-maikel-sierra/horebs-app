@@ -65,6 +65,22 @@ describe('ESQUEMA_VENTA', () => {
     expect(campos({ ...VENTA, origen: 'paloma' })).toEqual(['origen']);
   });
 
+  it('el bot de WhatsApp es un origen aparte de WhatsApp Business', () => {
+    expect(campos({ ...VENTA, origen: 'whatsapp_bot' })).toEqual([]);
+  });
+
+  it('la campaña propia es opcional y es un uuid', () => {
+    expect(
+      campos({
+        ...VENTA,
+        campana_mensajeria_id: '7a1c9a52-3c1e-4c55-9b56-2f1f0a9e8d11',
+      }),
+    ).toEqual([]);
+    expect(campos({ ...VENTA, campana_mensajeria_id: 'sabado' })).toEqual([
+      'campana_mensajeria_id',
+    ]);
+  });
+
   it('la campaña de origen es opcional y es un texto corto', () => {
     expect(campos({ ...VENTA, origen_campana_id: '120210' })).toEqual([]);
     expect(campos({ ...VENTA, origen_campana_id: 5 })).toEqual([

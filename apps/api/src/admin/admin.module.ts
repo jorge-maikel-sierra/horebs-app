@@ -3,6 +3,8 @@ import { AnunciosAdminService } from './anuncios-admin.service';
 import { AnunciosMetaService } from './anuncios-meta.service';
 import { AudienciasAdminController } from './audiencias-admin.controller';
 import { AudienciasMetaService } from './audiencias-meta.service';
+import { CampanasMensajeriaController } from './campanas-mensajeria.controller';
+import { CampanasMensajeriaService } from './campanas-mensajeria.service';
 import { CohortesAdminService } from './cohortes-admin.service';
 import { CostosAdminController } from './costos-admin.controller';
 import { CostosAdminService } from './costos-admin.service';
@@ -51,6 +53,7 @@ import { PedidosModule } from '../pedidos/pedidos.module';
     AnunciosAdminController,
     CostosAdminController,
     AudienciasAdminController,
+    CampanasMensajeriaController,
   ],
   providers: [
     VentasService,
@@ -66,6 +69,7 @@ import { PedidosModule } from '../pedidos/pedidos.module';
     CostosAdminService,
     CohortesAdminService,
     AudienciasMetaService,
+    CampanasMensajeriaService,
   ],
 })
 export class AdminModule {}

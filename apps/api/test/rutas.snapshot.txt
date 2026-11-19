@@ -1,4 +1,5 @@
 DELETE /admin/blog/:id
+DELETE /admin/campanas-mensajeria/:id
 DELETE /admin/clientes/:id
 DELETE /admin/costos/variantes/:id
 DELETE /admin/pedidos/:id
@@ -12,6 +13,9 @@ GET /admin/anuncios/campanas-recientes
 GET /admin/anuncios/cohortes
 GET /admin/audiencias
 GET /admin/blog
+GET /admin/campanas-mensajeria
+GET /admin/campanas-mensajeria/:id
+GET /admin/campanas-mensajeria/resultados
 GET /admin/clientes
 GET /admin/clientes/:id
 GET /admin/clientes/:id/movimientos-puntos
@@ -60,6 +64,7 @@ GET /webhooks/instagram
 GET /webhooks/messenger
 GET /webhooks/whatsapp
 PATCH /admin/blog/:id
+PATCH /admin/campanas-mensajeria/:id
 PATCH /admin/clientes/:id
 PATCH /admin/configuracion
 PATCH /admin/costos/variantes/:id
@@ -77,6 +82,8 @@ PATCH /turnos/actual
 POST /admin/anuncios/sincronizaciones
 POST /admin/audiencias/sincronizaciones
 POST /admin/blog
+POST /admin/campanas-mensajeria
+POST /admin/campanas-mensajeria/:id/creativos
 POST /admin/clientes/:id/movimientos-puntos
 POST /admin/seguimiento/conversaciones/:id/mensajes
 POST /admin/usuarios

@@ -5,10 +5,21 @@
  */
 export const ORIGEN_CAJA_SIN_DATO = 'caja_sin_origen';
 
+/**
+ * En la caja, `whatsapp` es el número de WhatsApp Business del local y
+ * `whatsapp_bot` el del bot; en el informe el bot se junta con los pedidos que
+ * el bot registra solo (canal `whatsapp`) y WhatsApp Business queda aparte.
+ */
+const ORIGEN_INFORME_DE_CAJA = new Map<string, string>([
+  ['whatsapp', 'whatsapp_business'],
+  ['whatsapp_bot', 'whatsapp'],
+]);
+
 export function origenDePedido(
   origenVenta: string | null,
   canal: string,
 ): string {
-  if (origenVenta) return origenVenta;
+  if (origenVenta)
+    return ORIGEN_INFORME_DE_CAJA.get(origenVenta) ?? origenVenta;
   return canal === 'pos' ? ORIGEN_CAJA_SIN_DATO : canal;
 }

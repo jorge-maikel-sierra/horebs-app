@@ -25,6 +25,7 @@ export interface ItemVentaCalculado {
 export const ORIGENES_VENTA = [
   'mostrador',
   'whatsapp',
+  'whatsapp_bot',
   'llamada',
   'messenger',
   'instagram',
@@ -47,6 +48,8 @@ export interface CrearVentaInput {
   origen?: OrigenVenta;
   /** Campaña de Meta que trajo la venta, la que elige la caja (opcional). */
   origen_campana_id?: string;
+  /** Campaña propia (difusión de WhatsApp Business, bot, Messenger o Instagram). */
+  campana_mensajeria_id?: string;
   items: ItemVentaInput[];
   usar_puntos?: boolean;
 }

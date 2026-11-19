@@ -3,12 +3,18 @@ import {
   Esquema,
   booleano,
   enumerado,
+  fecha,
   lista,
   numero,
   objeto,
   opcional,
   texto,
+  uuid,
 } from '../common/validacion';
+import {
+  CANALES_CAMPANA,
+  EXTENSIONES_CREATIVO,
+} from './campanas-mensajeria.tipos';
 import {
   ESTADOS_PEDIDO,
   MODALIDADES_VENTA,
@@ -25,8 +31,39 @@ export const ESQUEMA_VENTA: Esquema = {
   notas: opcional(texto({ max: 1000 })),
   origen: opcional(enumerado([...ORIGENES_VENTA])),
   origen_campana_id: opcional(texto({ max: 64 })),
+  campana_mensajeria_id: opcional(uuid()),
   items: lista(),
   usar_puntos: opcional(booleano()),
+};
+
+const MAX_COSTO_CAMPANA = 100_000_000;
+const NOMBRE_CAMPANA = texto({ max: 120 });
+const CANAL_CAMPANA = enumerado(CANALES_CAMPANA);
+const MENSAJE_CAMPANA = texto({ max: 4000 });
+const COSTO_CAMPANA = opcional(numero({ min: 0, max: MAX_COSTO_CAMPANA }));
+const DESTINATARIOS_CAMPANA = opcional(numero({ min: 0, entero: true }));
+
+export const ESQUEMA_CREAR_CAMPANA_MENSAJERIA: Esquema = {
+  nombre: NOMBRE_CAMPANA,
+  canal: CANAL_CAMPANA,
+  mensaje: MENSAJE_CAMPANA,
+  enviada_en: fecha(),
+  costo: COSTO_CAMPANA,
+  destinatarios: DESTINATARIOS_CAMPANA,
+};
+
+export const ESQUEMA_EDITAR_CAMPANA_MENSAJERIA: Esquema = {
+  nombre: opcional(NOMBRE_CAMPANA),
+  canal: opcional(CANAL_CAMPANA),
+  mensaje: opcional(MENSAJE_CAMPANA),
+  enviada_en: opcional(fecha()),
+  costo: COSTO_CAMPANA,
+  destinatarios: DESTINATARIOS_CAMPANA,
+  activa: opcional(booleano()),
+};
+
+export const ESQUEMA_SUBIR_CREATIVO: Esquema = {
+  extension: enumerado(EXTENSIONES_CREATIVO),
 };
 
 /** Costo de producto de una variante en pesos; quitarlo es un DELETE. */

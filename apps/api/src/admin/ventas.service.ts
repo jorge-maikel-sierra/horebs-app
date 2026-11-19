@@ -159,6 +159,7 @@ export class VentasService {
         notas: input.notas ?? null,
         origen_venta: input.origen ?? null,
         origen_campana_id: input.origen_campana_id ?? null,
+        campana_mensajeria_id: input.campana_mensajeria_id ?? null,
         puntos_canjeados: canje.puntos,
         descuento_puntos: canje.descuento,
       })
