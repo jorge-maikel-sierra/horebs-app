@@ -8,7 +8,15 @@ import type { Session } from '@supabase/supabase-js';
 import { useCart } from '@/lib/cart-context';
 import { formatPrecio } from '@/lib/formato';
 import { supabase } from '@/lib/supabase';
-import { trackBeginCheckout } from '@/lib/analytics';
+import {
+  trackBeginCheckout,
+  trackErrorPedido,
+  trackErrorValidacionCheckout,
+  trackMetodoPagoElegido,
+  trackModalidadElegida,
+  trackPedidoEnviado,
+  type CampoCheckout,
+} from '@/lib/analytics';
 import { leerAtribucion } from '@/lib/atribucion';
 import { errorClass } from '@/lib/feedback-estilos';
 import ModalCargando from '@/components/ModalCargando';
@@ -249,28 +257,34 @@ export default function CheckoutPage() {
     e.preventDefault();
     setError(null);
 
-    if (!session && !nombre.trim()) {
-      setError('Completa tu nombre.');
-      return;
-    }
-    if (!apellido.trim()) {
-      setError('Completa tu apellido.');
-      return;
-    }
-    if (!telefono.trim()) {
-      setError('Completa tu teléfono.');
-      return;
-    }
-    if (!session && !correo.trim()) {
-      setError('Completa tu correo.');
-      return;
-    }
-    if (modalidad === 'domicilio' && !direccion.trim()) {
-      setError('Falta la dirección de entrega.');
+    const faltante: [CampoCheckout, string] | null =
+      !session && !nombre.trim()
+        ? ['nombre', 'Completa tu nombre.']
+        : !apellido.trim()
+          ? ['apellido', 'Completa tu apellido.']
+          : !telefono.trim()
+            ? ['telefono', 'Completa tu teléfono.']
+            : !session && !correo.trim()
+              ? ['correo', 'Completa tu correo.']
+              : modalidad === 'domicilio' && !direccion.trim()
+                ? ['direccion', 'Falta la dirección de entrega.']
+                : null;
+    if (faltante) {
+      trackErrorValidacionCheckout(faltante[0]);
+      setError(faltante[1]);
       return;
     }
 
+    trackPedidoEnviado({
+      metodoPago,
+      modalidad,
+      value: totalConDescuento,
+      items: items.reduce((n, i) => n + i.cantidad, 0),
+      usaPuntos: usarPuntos,
+      conSesion: Boolean(session),
+    });
     setEnviando(true);
+    let status: number | null = null;
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
       const res = await fetch(`${apiUrl}/pedidos`, {
@@ -293,6 +307,7 @@ export default function CheckoutPage() {
       });
 
       if (!res.ok) {
+        status = res.status;
         throw new Error(await leerErrorApi(res, 'No se pudo crear el pedido.'));
       }
 
@@ -312,7 +327,9 @@ export default function CheckoutPage() {
       marcarCompraNueva(pedido.id);
       router.push(`/pedido/${pedido.id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo crear el pedido.');
+      const mensaje = err instanceof Error ? err.message : 'No se pudo crear el pedido.';
+      trackErrorPedido(status, mensaje);
+      setError(mensaje);
       setEnviando(false);
     }
   }
@@ -508,13 +525,13 @@ export default function CheckoutPage() {
           <div className="mt-2 flex gap-3">
             <OpcionCard
               selected={modalidad === 'domicilio'}
-              onClick={() => setModalidad('domicilio')}
+              onClick={() => { setModalidad('domicilio'); trackModalidadElegida('domicilio'); }}
               icon={<IconPaquete />}
               label="Domicilio"
             />
             <OpcionCard
               selected={modalidad === 'retiro'}
-              onClick={() => setModalidad('retiro')}
+              onClick={() => { setModalidad('retiro'); trackModalidadElegida('retiro'); }}
               icon={<IconTienda />}
               label="Retiro en local"
             />
@@ -540,19 +557,19 @@ export default function CheckoutPage() {
           <div className="mt-2 grid grid-cols-3 gap-3">
             <OpcionCard
               selected={metodoPago === 'efectivo'}
-              onClick={() => setMetodoPago('efectivo')}
+              onClick={() => { setMetodoPago('efectivo'); trackMetodoPagoElegido('efectivo'); }}
               icon={<IconEfectivo />}
               label="Efectivo"
             />
             <OpcionCard
               selected={metodoPago === 'transferencia'}
-              onClick={() => setMetodoPago('transferencia')}
+              onClick={() => { setMetodoPago('transferencia'); trackMetodoPagoElegido('transferencia'); }}
               icon={<IconTransferencia />}
               label="Transferencia"
             />
             <OpcionCard
               selected={metodoPago === 'tarjeta'}
-              onClick={() => setMetodoPago('tarjeta')}
+              onClick={() => { setMetodoPago('tarjeta'); trackMetodoPagoElegido('tarjeta'); }}
               icon={<IconTarjeta />}
               label="Tarjeta"
             />

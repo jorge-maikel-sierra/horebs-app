@@ -128,6 +128,52 @@ export function trackPurchase(pedido: {
   });
 }
 
+/**
+ * Pasos dentro del checkout, solo para PostHog (embudo de compra). Nunca
+ * llevan datos personales: el campo que falló, no lo que la persona escribió.
+ */
+function medirCheckout(event: string, propiedades: Record<string, unknown>) {
+  if (posthog.__loaded) posthog.capture(event, propiedades);
+}
+
+export type CampoCheckout = 'nombre' | 'apellido' | 'telefono' | 'correo' | 'direccion';
+
+export function trackMetodoPagoElegido(metodo: string) {
+  medirCheckout('checkout_payment_method_selected', { payment_method: metodo });
+}
+
+export function trackModalidadElegida(modalidad: string) {
+  medirCheckout('checkout_delivery_mode_selected', { delivery_mode: modalidad });
+}
+
+export function trackErrorValidacionCheckout(campo: CampoCheckout) {
+  medirCheckout('checkout_validation_error', { field: campo });
+}
+
+export function trackPedidoEnviado(datos: {
+  metodoPago: string;
+  modalidad: string;
+  value: number;
+  items: number;
+  usaPuntos: boolean;
+  conSesion: boolean;
+}) {
+  medirCheckout('checkout_order_submitted', {
+    payment_method: datos.metodoPago,
+    delivery_mode: datos.modalidad,
+    currency: MONEDA,
+    value: datos.value,
+    items_count: datos.items,
+    uses_points: datos.usaPuntos,
+    logged_in: datos.conSesion,
+  });
+}
+
+/** El API rechazó el pedido: `status` HTTP y el texto que vio el cliente (no tiene datos personales). */
+export function trackErrorPedido(status: number | null, mensaje: string) {
+  medirCheckout('checkout_order_failed', { status, error_message: mensaje });
+}
+
 /** WhatsApp es el canal de contacto principal del sitio — se trackea como lead. */
 export function trackContact() {
   sendGTMEvent({ event: 'generate_lead', method: 'whatsapp' });
