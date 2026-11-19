@@ -114,3 +114,44 @@ export function formatoEjePesos(n: number): string {
   if (n >= 1_000) return `$ ${SIN_DECIMALES.format(n / 1_000)} mil`;
   return `$ ${SIN_DECIMALES.format(n)}`;
 }
+
+export type RangoPreset = 'hoy' | '7dias' | 'mes' | 'mes_pasado' | 'anio' | 'personalizado';
+
+export const PRESETS_INFORME: { key: RangoPreset; corto: string; largo: string }[] = [
+  { key: 'hoy', corto: 'Hoy', largo: 'Hoy' },
+  { key: '7dias', corto: '7 días', largo: 'Últimos 7 días' },
+  { key: 'mes', corto: 'Este mes', largo: 'Este mes' },
+  { key: 'mes_pasado', corto: 'Mes pasado', largo: 'Mes pasado' },
+  { key: 'anio', corto: 'Año', largo: 'Este año' },
+];
+
+// El negocio opera en hora de Bogotá — usar toISOString() acá daría la
+// fecha en UTC, que ya es "mañana" desde ~7pm hora local en adelante.
+export function hoyBogota(d: Date = new Date()): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(d);
+}
+
+// Todo el cálculo parte de la fecha de Bogotá como texto (YYYY-MM-DD) y usa
+// aritmética de calendario pura: getFullYear()/getMonth() del navegador
+// correrían el mes un día para quien mire el panel desde otra zona horaria.
+export function calcularRango(
+  preset: RangoPreset,
+  hoy: string = hoyBogota(),
+): { desde: string; hasta: string } {
+  const [anio, mes] = hoy.split('-').map(Number);
+  const primeroDeMes = `${anio}-${String(mes).padStart(2, '0')}-01`;
+  switch (preset) {
+    case '7dias':
+      return { desde: sumarDias(hoy, -6), hasta: hoy };
+    case 'mes':
+      return { desde: primeroDeMes, hasta: hoy };
+    case 'mes_pasado': {
+      const ultimoMesPasado = sumarDias(primeroDeMes, -1);
+      return { desde: `${ultimoMesPasado.slice(0, 8)}01`, hasta: ultimoMesPasado };
+    }
+    case 'anio':
+      return { desde: `${anio}-01-01`, hasta: hoy };
+    default:
+      return { desde: hoy, hasta: hoy };
+  }
+}
