@@ -29,6 +29,7 @@ import {
   IconPanel,
   IconPedidos,
   IconPos,
+  IconResenas,
   IconSeguimiento,
   IconUsuarios,
 } from '@/components/admin-iconos';
@@ -304,6 +305,7 @@ const NAV_GENERAL: NavItem[] = [
     badgeKey: 'whatsappEsperando',
     modulo: 'seguimiento',
   },
+  { href: '/admin/resenas', label: 'Reseñas de Google', icon: IconResenas },
 ];
 
 const NAV_ADMIN: NavItem[] = [
