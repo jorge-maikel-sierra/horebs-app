@@ -139,8 +139,18 @@ describe('ubicación y dirección', () => {
   });
 
   it('acepta hasta 300 caracteres, igual que el checkout web', () => {
-    expect(direccionEscritaValida('a'.repeat(300))).toBe(true);
-    expect(direccionEscritaValida('a'.repeat(301))).toBe(false);
+    expect(direccionEscritaValida(`Calle 1 ${'a'.repeat(292)}`)).toBe(true);
+    expect(direccionEscritaValida(`Calle 1 ${'a'.repeat(293)}`)).toBe(false);
+  });
+
+  it('exige un número o una palabra de dirección (caso real del 18 nov)', () => {
+    expect(direccionEscritaValida('No sólo quiero una')).toBe(false);
+    expect(direccionEscritaValida('Solo quiero una de veinte')).toBe(false);
+    expect(direccionEscritaValida('Carrera 12c #27a32')).toBe(true);
+    expect(direccionEscritaValida('Jácome x la calle 33')).toBe(true);
+    expect(
+      direccionEscritaValida('Barrio Comunitario, frente a la tienda'),
+    ).toBe(true);
   });
 });
 

@@ -46,7 +46,7 @@ export function textoConfirmacionPedido(datos: {
       : null,
     ...lineasDeCobro(metodo, enlacePago),
     metodo === 'transferencia'
-      ? `\nPara transferir: *Banco ${TRANSFERENCIA.banco}*, llave *${TRANSFERENCIA.llave}*. Mandanos el comprobante por acá.`
+      ? `\nPara transferir: *Banco ${TRANSFERENCIA.banco}*, llave *${TRANSFERENCIA.llave}*. Mándanos el comprobante por acá.`
       : null,
   ]
     .filter((l) => l !== null)

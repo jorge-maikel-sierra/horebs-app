@@ -7,6 +7,7 @@ import type {
   PasoCheckout,
 } from './conversaciones.tipos';
 import type { LineaPedido } from './resumen-pedido';
+import { detectarIntencion } from './respuestas-fijas';
 import { dosDigitos } from '../common/horario';
 import { normalizarTelefonoCO } from '../pedidos/normalizar-telefono';
 
@@ -157,10 +158,21 @@ export function direccionDeUbicacion(
 
 const MIN_DIRECCION = 5;
 
+// Una dirección trae un número o una palabra de dirección: "No sólo quiero
+// una" se guardó como dirección en producción (18 nov) porque solo se medía
+// el largo.
+const SENAL_DE_DIRECCION =
+  /\d|#|\b(calle|cl|cll|carrera|cra|kra|kr|cr|mz|manzana|barrio|casa|apto|apartamento|diagonal|dg|transversal|tv|avenida|av|frente|urbanizacion|conjunto|sector|edificio|lote|vereda)\b/i;
+
 /** Misma cota que el checkout web (`MAX_DIRECCION`); menos de 5 no es una dirección. */
 export function direccionEscritaValida(texto: string): boolean {
-  const largo = texto.trim().length;
-  return largo >= MIN_DIRECCION && largo <= MAX_DIRECCION;
+  const limpio = texto.trim();
+  const sinTildes = limpio.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return (
+    limpio.length >= MIN_DIRECCION &&
+    limpio.length <= MAX_DIRECCION &&
+    SENAL_DE_DIRECCION.test(sinTildes)
+  );
 }
 
 /**
@@ -298,3 +310,18 @@ export function listaItems(items: ItemCarritoResuelto[]): string {
     )
     .join('\n');
 }
+
+export const TEXTO_DIRECCION_INCOMPLETA =
+  'Necesito la dirección completa para el domiciliario 🛵 (calle o carrera, número y barrio). Si quieres cambiar el pedido, escribe "cancelar" y lo armamos de nuevo.';
+
+/** Una pregunta ("¿cuánto es el domicilio?") la contesta el resto del bot, no el paso en curso. */
+export function esPregunta(texto: string): boolean {
+  return texto.includes('?') || detectarIntencion(texto) !== null;
+}
+
+export const TEXTO_PEDIDO_VIEJO =
+  'Ese pedido ya no está en curso. Si quieres armar uno nuevo, pídeme el menú 🍕';
+export const TEXTO_PEDIDO_CANCELADO =
+  'Listo, cancelé el pedido en curso. Si quieres arrancar de nuevo, pídeme el menú 🍕';
+export const TEXTO_PEDIR_NOMBRE =
+  '¿A nombre de quién va el pedido? Escríbeme nombre y apellido 🙂';

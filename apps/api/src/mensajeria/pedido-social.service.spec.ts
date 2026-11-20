@@ -55,7 +55,10 @@ const MENU: ProductoDto[] = [
 function crearServicio(
   carritoInicial: ItemCarritoPendiente[] = [],
   ultimoPedido: ItemCarritoPendiente[] = [],
+  checkoutActivo: object | null = null,
 ) {
+  const textos: string[] = [];
+  let repreguntas = 0;
   let carrito: ItemCarritoPendiente[] | null = carritoInicial;
   const botones: { cuerpo: string; opciones: BotonRespuesta[] }[] = [];
   const conOpciones: { texto: string; opciones: BotonRespuesta[] }[] = [];
@@ -79,12 +82,21 @@ function crearServicio(
     itemsDelUltimoPedido: () => Promise.resolve(ultimoPedido),
   };
   const checkout = {
+    repreguntar: () => {
+      repreguntas += 1;
+      return Promise.resolve(true);
+    },
     iniciar: (_ctx: unknown, items: ItemCarritoResuelto[]) => {
       iniciados.push(items);
       return Promise.resolve();
     },
   };
   const envios = {
+    obtener: () => Promise.resolve(checkoutActivo),
+    texto: (_ctx: unknown, texto: string) => {
+      textos.push(texto);
+      return Promise.resolve();
+    },
     obtenerCarrito: () => Promise.resolve(carrito ?? []),
     guardarCarrito: (_ctx: unknown, items: unknown) => {
       carrito = items as ItemCarritoPendiente[] | null;
@@ -114,9 +126,44 @@ function crearServicio(
     botones,
     conOpciones,
     iniciados,
+    textos,
+    repreguntas: () => repreguntas,
     carrito: () => carrito,
   };
 }
+
+describe('PedidoSocialService: botones viejos con el checkout en curso', () => {
+  const ITEM = [{ varianteId: 'v-hw-m', cantidad: 4 }];
+
+  it('un botón de cantidad no suma unidades y repite la pregunta del paso', async () => {
+    const { servicio, carrito, textos, repreguntas, botones } = crearServicio(
+      ITEM,
+      [],
+      { paso: 'direccion' },
+    );
+
+    await expect(servicio.atenderBoton(CTX, 'ped:q:v-hw-m:1')).resolves.toBe(
+      true,
+    );
+
+    expect(carrito()).toEqual(ITEM);
+    expect(textos[0]).toContain('ya va en marcha');
+    expect(repreguntas()).toBe(1);
+    expect(botones).toHaveLength(0);
+  });
+
+  it('"Quiero pedir" con el checkout en curso tampoco reinicia el pedido', async () => {
+    const { servicio, repreguntas, botones } = crearServicio(ITEM, [], {
+      paso: 'nombre',
+    });
+
+    await expect(servicio.iniciarProducto(CTX, 'Pizza Hawaiana')).resolves.toBe(
+      true,
+    );
+    expect(repreguntas()).toBe(1);
+    expect(botones).toHaveLength(0);
+  });
+});
 
 describe('PedidoSocialService: pedir un producto', () => {
   it('pregunta el tamaño con los precios reales, del más barato al más caro', async () => {

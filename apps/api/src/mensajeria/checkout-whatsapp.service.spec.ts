@@ -6,6 +6,7 @@ import {
   CheckoutWhatsappService,
   TEXTO_PIDE_ESCRITA,
 } from './checkout-whatsapp.service';
+import { TEXTO_DIRECCION_INCOMPLETA } from './checkout-whatsapp';
 import {
   BOTON,
   MENSAJE_CERRADO,
@@ -129,7 +130,7 @@ describe('CheckoutWhatsappService', () => {
       await servicio.manejar(CTX, boton(BOTON.otraCosa));
       expect(envios.texto).toHaveBeenCalledWith(
         CTX,
-        expect.stringContaining('Contame'),
+        expect.stringContaining('Cuéntame'),
       );
     });
   });
@@ -297,6 +298,25 @@ describe('CheckoutWhatsappService', () => {
       expect(checkout.paso).toBe('direccion');
       expect(envios.texto).toHaveBeenCalledWith(CTX, TEXTO_PIDE_ESCRITA);
       expect(preguntas.hora).not.toHaveBeenCalled();
+    });
+
+    it('un texto que no es dirección se vuelve a pedir; una pregunta sigue al resto del bot', async () => {
+      const checkout: CheckoutWhatsapp = {
+        paso: 'direccion',
+        modalidad: 'domicilio',
+      };
+      const { servicio, envios } = crearServicio(checkout);
+      await expect(
+        servicio.manejar(CTX, texto('No sólo quiero una')),
+      ).resolves.toBe(true);
+      expect(checkout.direccion).toBeUndefined();
+      expect(envios.texto).toHaveBeenCalledWith(
+        CTX,
+        TEXTO_DIRECCION_INCOMPLETA,
+      );
+      await expect(
+        servicio.manejar(CTX, texto('¿cuánto vale el domicilio?')),
+      ).resolves.toBe(false);
     });
 
     it('una dirección escrita pasa al siguiente paso (el nombre)', async () => {

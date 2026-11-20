@@ -10,6 +10,7 @@ import {
 import {
   CheckoutPreguntasService,
   TEXTO_PEDIR_DIRECCION,
+  textoPedirTelefono,
 } from './checkout-preguntas.service';
 import type {
   CheckoutWhatsapp,
@@ -492,5 +493,18 @@ describe('CheckoutPreguntasService · pago con descuento', () => {
 
     expect(texto).not.toContain('Descuento');
     expect(checkout.promocionCotizadaEn).toBeUndefined();
+  });
+});
+
+describe('textoPedirTelefono', () => {
+  it('a domicilio habla del domiciliario; en retiro o en el local, de avisar cuando esté listo', () => {
+    expect(
+      textoPedirTelefono({ paso: 'telefono', modalidad: 'domicilio' }),
+    ).toContain('domiciliario');
+    for (const modalidad of ['retiro', 'local'] as const) {
+      const texto = textoPedirTelefono({ paso: 'telefono', modalidad });
+      expect(texto).not.toContain('domiciliario');
+      expect(texto).toContain('esté listo');
+    }
   });
 });

@@ -42,7 +42,7 @@ import {
 import { armarResumenPedido, pesos } from './resumen-pedido';
 
 export const TEXTO_PEDIR_DIRECCION =
-  '¿A dónde te lo llevamos? Escribime la dirección completa: calle o carrera, barrio y una referencia (por ejemplo, "frente a la tienda X").';
+  '¿A dónde te lo llevamos? Escríbeme la dirección completa: calle o carrera, barrio y una referencia (por ejemplo, "frente a la tienda X").';
 
 /**
  * Las preguntas del checkout con botones: hora de entrega, dirección escrita
@@ -145,10 +145,7 @@ export class CheckoutPreguntasService {
   ): Promise<void> {
     checkout.paso = 'telefono';
     await this.envios.guardar(ctx, checkout);
-    await this.envios.texto(
-      ctx,
-      '¿A qué número de teléfono de 10 dígitos te contactamos si el domiciliario no encuentra la casa? 📱',
-    );
+    await this.envios.texto(ctx, textoPedirTelefono(checkout));
   }
 
   /** Lo que el cliente ya tiene en el carrito, con precios y nombres de la base. */
@@ -392,4 +389,11 @@ export class CheckoutPreguntasService {
     await this.envios.botones(ctx, '¿Cómo vas a pagar?', BOTONES_PAGO);
     return texto;
   }
+}
+
+/** El domiciliario solo aplica a domicilio: en retiro o en el local se avisa cuando esté listo. */
+export function textoPedirTelefono(checkout: CheckoutWhatsapp): string {
+  return checkout.modalidad === 'domicilio'
+    ? '¿A qué número de teléfono de 10 dígitos te contactamos si el domiciliario no encuentra la casa? 📱'
+    : '¿A qué número de teléfono de 10 dígitos te avisamos cuando tu pedido esté listo? 📱';
 }

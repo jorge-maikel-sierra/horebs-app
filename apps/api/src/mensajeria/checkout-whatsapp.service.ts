@@ -13,6 +13,7 @@ import {
   completarDireccion,
   esBotonCheckout,
   esCancelar,
+  esPregunta,
   faltaTelefono,
   horaDe,
   listaItems,
@@ -20,6 +21,10 @@ import {
   metodoPagoDe,
   modalidadDe,
   siguientePaso,
+  TEXTO_DIRECCION_INCOMPLETA,
+  TEXTO_PEDIDO_CANCELADO,
+  TEXTO_PEDIDO_VIEJO,
+  TEXTO_PEDIR_NOMBRE,
   validarTelefonoCO,
   type ContextoCheckout,
   type EntradaCheckout,
@@ -111,10 +116,7 @@ export class CheckoutWhatsappService {
     if (!checkout) {
       // Un botón viejo (de un pedido ya creado o cancelado).
       if (entrada.tipo === 'boton' && esBotonCheckout(entrada.id)) {
-        await this.envios.texto(
-          ctx,
-          'Ese pedido ya no está en curso. Si quieres armar uno nuevo, pídeme el menú 🍕',
-        );
+        await this.envios.texto(ctx, TEXTO_PEDIDO_VIEJO);
         return true;
       }
       return false;
@@ -137,10 +139,7 @@ export class CheckoutWhatsappService {
   ): Promise<boolean> {
     if (esCancelar(texto)) {
       await this.envios.limpiar(ctx);
-      await this.envios.texto(
-        ctx,
-        'Listo, cancelé el pedido en curso. Si quieres arrancar de nuevo, pídeme el menú 🍕',
-      );
+      await this.envios.texto(ctx, TEXTO_PEDIDO_CANCELADO);
       return true;
     }
     return (
@@ -175,7 +174,7 @@ export class CheckoutWhatsappService {
     } else if (id === BOTON.verMenu) {
       await this.envios.catalogo(ctx, URL_CATALOGO);
     } else if (id === BOTON.otraCosa) {
-      await this.envios.texto(ctx, '¡Dale! Contame qué se te antoja hoy 🍕');
+      await this.envios.texto(ctx, '¡Dale! Cuéntame qué se te antoja hoy 🍕');
     } else {
       return false;
     }
@@ -269,8 +268,12 @@ export class CheckoutWhatsappService {
       await this.envios.texto(ctx, TEXTO_PIDE_ESCRITA);
       return true;
     }
-    if (!completarDireccion(checkout, entrada)) return false;
-    await this.avanzar(ctx, checkout);
+    if (completarDireccion(checkout, entrada)) {
+      await this.avanzar(ctx, checkout);
+      return true;
+    }
+    if (entrada.tipo !== 'texto' || esPregunta(entrada.texto)) return false;
+    await this.envios.texto(ctx, TEXTO_DIRECCION_INCOMPLETA);
     return true;
   }
 
@@ -397,6 +400,14 @@ export class CheckoutWhatsappService {
     await this.iniciar(ctx, disponibles, noDisponibles, null);
   }
 
+  /** Vuelve a hacer la pregunta del paso en curso. false si no hay checkout. */
+  async repreguntar(ctx: ContextoCheckout): Promise<boolean> {
+    const checkout = await this.envios.obtener(ctx);
+    if (!checkout) return false;
+    await this.avanzar(ctx, checkout);
+    return true;
+  }
+
   /** Completa lo que ya se sabe del cliente y pregunta lo que falta. */
   private async avanzar(
     ctx: ContextoCheckout,
@@ -414,10 +425,7 @@ export class CheckoutWhatsappService {
         return;
       case 'nombre':
         await this.envios.guardar(ctx, checkout);
-        await this.envios.texto(
-          ctx,
-          '¿A nombre de quién va el pedido? Escribime nombre y apellido 🙂',
-        );
+        await this.envios.texto(ctx, TEXTO_PEDIR_NOMBRE);
         return;
       case 'telefono':
         await this.preguntas.pedirTelefono(ctx, checkout);

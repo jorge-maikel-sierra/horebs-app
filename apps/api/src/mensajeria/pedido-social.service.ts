@@ -19,6 +19,11 @@ import {
   sumarItem,
 } from './opciones-social';
 
+// Un botón viejo de producto o cantidad, tocado con el checkout ya en curso,
+// sumaba unidades y desordenaba los pasos (pasó en producción el 18 nov).
+export const TEXTO_PEDIDO_EN_MARCHA =
+  'Tu pedido ya va en marcha 🍕 Si quieres cambiarlo, escribe "cancelar" y lo armamos de nuevo.';
+
 /**
  * El pedido de Messenger e Instagram por botones: producto → tamaño →
  * cantidad → "¿algo más?" y de ahí al checkout de siempre (modalidad,
@@ -44,12 +49,14 @@ export class PedidoSocialService {
       productos.find((p) => p.nombre === nombre) ??
       buscarProductoUnico(nombre, productos).encontrado;
     if (!producto || esAdicional(producto.nombre)) return false;
+    if (await this.checkoutEnCurso(ctx)) return true;
     await this.preguntarTamano(ctx, producto);
     return true;
   }
 
   /** Los ids ped:p / ped:v / ped:q / ped:fin / ped:vaciar / ped:repetir. false si el id no es de acá. */
   async atenderBoton(ctx: ContextoCheckout, id: string): Promise<boolean> {
+    if (esBotonDeArmado(id) && (await this.checkoutEnCurso(ctx))) return true;
     if (id.startsWith(PREFIJO_PRODUCTO_SOCIAL)) {
       return this.productoPorId(ctx, id.slice(PREFIJO_PRODUCTO_SOCIAL.length));
     }
@@ -66,6 +73,14 @@ export class PedidoSocialService {
     if (id === BOTON_SOCIAL.vaciar) return this.vaciar(ctx);
     if (id === BOTON_SOCIAL.repetir) return this.repetir(ctx);
     return false;
+  }
+
+  /** Con el checkout en curso no se toca el carrito: se avisa y se repite la pregunta del paso. */
+  private async checkoutEnCurso(ctx: ContextoCheckout): Promise<boolean> {
+    if (!(await this.envios.obtener(ctx))) return false;
+    await this.envios.texto(ctx, TEXTO_PEDIDO_EN_MARCHA);
+    await this.checkout.repreguntar(ctx);
+    return true;
   }
 
   private async productoPorId(
@@ -188,4 +203,12 @@ export class PedidoSocialService {
     await this.checkout.iniciar(ctx, disponibles, noDisponibles, null);
     return true;
   }
+}
+
+function esBotonDeArmado(id: string): boolean {
+  return [
+    PREFIJO_PRODUCTO_SOCIAL,
+    PREFIJO_VARIANTE_SOCIAL,
+    PREFIJO_CANTIDAD_SOCIAL,
+  ].some((prefijo) => id.startsWith(prefijo));
 }
