@@ -138,6 +138,12 @@ pregunta; no se supone un valor razonable.
   catálogo como la categoría `Adicionales`: un producto "Adicional: <nombre>"
   por adicional, con una variante por tamaño (`mensajeria/adicionales.ts`).
   "Pizza Borde de Queso" es otra pizza, no el adicional.
+- Reseñas de Google Business Profile (decisión del dueño, 20 nov 2026): las
+  de 4–5★ se responden solas con texto fijo (`resenas/respuestas-resena.ts`,
+  sin modelo); las de 1–3★ quedan como borrador y avisan al equipo, que las
+  aprueba o edita en `/admin/resenas`. La publicación automática se enciende
+  con `RESENAS_PUBLICAR_AUTOMATICO=true` en Railway; sin las credenciales
+  `GOOGLE_BUSINESS_*` el módulo queda apagado.
 - El bot de WhatsApp/Messenger/Instagram nunca inventa precios ni suma
   totales por su cuenta — siempre pasa por una tool que consulta Supabase.
 
