@@ -105,6 +105,16 @@ describe('respuestas-resena', () => {
     });
   });
 
+  it('una reseña mala vieja va a revisión sin avisar al equipo', () => {
+    const c = clasificarResena(
+      resena({ starRating: 'ONE', createTime: '2026-09-01T12:00:00Z' }),
+      AHORA,
+      true,
+    );
+    expect(c).toMatchObject({ publicar: false, avisar: false });
+    expect(c?.fila.estado).toBe('para_revisar');
+  });
+
   it('una reseña que ya tiene respuesta en Google se guarda como respondida', () => {
     const c = clasificarResena(
       resena({

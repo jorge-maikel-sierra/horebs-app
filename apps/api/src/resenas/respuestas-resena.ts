@@ -148,7 +148,8 @@ export function clasificarResena(
     return {
       fila: { ...fila, estado: 'para_revisar' },
       publicar: false,
-      avisar: true,
+      // Las viejas quedan en la lista sin avisar: la primera sincronización no inunda al equipo.
+      avisar: esReciente(resena, ahora),
     };
   }
   const publicar = publicarAutomatico && esReciente(resena, ahora);
