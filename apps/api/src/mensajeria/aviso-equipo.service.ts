@@ -141,6 +141,12 @@ export class AvisoEquipoService {
     this.avisarCocinaPorWhatsapp(texto);
   }
 
+  /** Aviso libre al equipo (correo y WhatsApp de la cocina), ej. una reseña para aprobar. */
+  notificarTexto(aviso: { asunto: string; texto: string; html: string }): void {
+    this.mail.enviarAvisoEquipo(aviso);
+    this.avisarCocinaPorWhatsapp(aviso.texto);
+  }
+
   /** Fire-and-forget: solo llega si ese número le escribió al bot en las últimas 24h. */
   private avisarCocinaPorWhatsapp(texto: string): void {
     for (const numero of this.numerosCocina) {

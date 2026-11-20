@@ -10,3 +10,6 @@ export const ENLACE_WHATSAPP_NEGOCIO = 'https://wa.me/573157861208';
 
 /** Cobertura del domicilio: decisión del dueño, 20 nov 2026 (ver CLAUDE.md). */
 export const COBERTURA_DOMICILIO = 'toda la zona urbana de Riohacha';
+
+/** El mismo WhatsApp del negocio, escrito para leerlo (respuestas públicas en Google). */
+export const TELEFONO_NEGOCIO = '+57 315 786 1208';

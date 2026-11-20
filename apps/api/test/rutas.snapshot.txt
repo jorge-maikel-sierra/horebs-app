@@ -30,6 +30,7 @@ GET /admin/pedidos/:id/comprobante
 GET /admin/pedidos/:id/factura
 GET /admin/perfil
 GET /admin/puntos/configuracion
+GET /admin/resenas
 GET /admin/seguimiento/configuracion
 GET /admin/seguimiento/conversaciones
 GET /admin/seguimiento/conversaciones/:id/mensajes
@@ -71,6 +72,7 @@ PATCH /admin/costos/variantes/:id
 PATCH /admin/modulos/:id
 PATCH /admin/pedidos/:id
 PATCH /admin/puntos/configuracion
+PATCH /admin/resenas/:id
 PATCH /admin/seguimiento/configuracion
 PATCH /admin/seguimiento/conversaciones/:id
 PATCH /inventario/compras/detalles/:id

@@ -182,3 +182,23 @@ describe('AvisoEquipoService: historial que va en el aviso', () => {
     expect(MENSAJE_DERIVACION).not.toContain('confirma tu pedido');
   });
 });
+
+describe('AvisoEquipoService.notificarTexto', () => {
+  it('manda el aviso libre por correo y al WhatsApp de la cocina', () => {
+    const { servicio, mail, metaGraph } = crear();
+    const aviso = {
+      asunto: 'Reseña',
+      texto: 'Reseña de 2★',
+      html: '<p>Reseña</p>',
+    };
+
+    servicio.notificarTexto(aviso);
+
+    expect(mail.enviarAvisoEquipo).toHaveBeenCalledWith(aviso);
+    expect(metaGraph.enviarMensajeSesion).toHaveBeenCalledWith(
+      'whatsapp',
+      '573157861208',
+      'Reseña de 2★',
+    );
+  });
+});

@@ -101,6 +101,7 @@ import { ToqueInteresService } from './toque-interes.service';
     ComentariosService,
   ],
   exports: [
+    AvisoEquipoService,
     AvisosPedidoService,
     ConversacionesService,
     ConversionesCajaService,

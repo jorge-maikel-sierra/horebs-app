@@ -17,6 +17,7 @@ import { InventarioModule } from './inventario/inventario.module';
 import { MensajeriaModule } from './mensajeria/mensajeria.module';
 import { ClientesModule } from './clientes/clientes.module';
 import { NominaModule } from './nomina/nomina.module';
+import { ResenasModule } from './resenas/resenas.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { NominaModule } from './nomina/nomina.module';
     MensajeriaModule,
     ClientesModule,
     NominaModule,
+    ResenasModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
