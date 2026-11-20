@@ -31,8 +31,10 @@ const SCRIPT_SRC_TAGS =
 // Beacons de medición: GA4/GTM, conversiones de Google Ads (doubleclick,
 // googleadservices y el 1p-conversion de google.com) y el pixel de Facebook.
 // Sin googleadservices y google.com el CSP bloquea el hit de conversión.
+// google.com redirige el 1p-conversion al dominio del país (google.com.co)
+// y el CSP también revisa el destino de la redirección.
 const CONNECT_SRC_TAGS =
-  'https://www.googletagmanager.com https://www.google-analytics.com https://analytics.google.com https://td.doubleclick.net https://googleads.g.doubleclick.net https://www.googleadservices.com https://www.google.com https://www.facebook.com';
+  'https://www.googletagmanager.com https://www.google-analytics.com https://analytics.google.com https://td.doubleclick.net https://googleads.g.doubleclick.net https://www.googleadservices.com https://www.google.com https://www.google.com.co https://www.facebook.com';
 
 // PostHog (src/instrumentation-client.ts): manda los eventos al host de
 // ingesta y baja sus extensiones (replay, encuestas) del host de assets
