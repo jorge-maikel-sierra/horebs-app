@@ -76,6 +76,8 @@ export function payloadDerivacion(
     identificador_externo: identificadorExterno,
     estado: 'derivado',
     ultima_interaccion: ahora.toISOString(),
+    derivado_en: ahora.toISOString(),
+    reaviso_derivacion_en: null,
     gemini_interaction_id: null,
     seguimiento_etapa: 'ninguna',
     seguimiento_enviado_en: null,

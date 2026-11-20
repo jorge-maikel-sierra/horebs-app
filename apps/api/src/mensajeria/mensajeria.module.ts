@@ -45,6 +45,7 @@ import { RespuestaSocialService } from './respuesta-social.service';
 import { MasPedidasService } from './mas-pedidas.service';
 import { VitrinaSocialService } from './vitrina-social.service';
 import { InteresProductoService } from './interes-producto.service';
+import { ReavisoDerivacionService } from './reaviso-derivacion.service';
 import { ToqueInteresService } from './toque-interes.service';
 
 @Module({
@@ -91,6 +92,7 @@ import { ToqueInteresService } from './toque-interes.service';
     VitrinaSocialService,
     InteresProductoService,
     ToqueInteresService,
+    ReavisoDerivacionService,
     PagoBoldService,
     ConfirmacionPedidoService,
     OrigenConversacionService,

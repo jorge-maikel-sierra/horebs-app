@@ -80,6 +80,8 @@ describe('payloadDerivacion', () => {
       identificador_externo: 'psid-1',
       estado: 'derivado',
       ultima_interaccion: AHORA.toISOString(),
+      derivado_en: AHORA.toISOString(),
+      reaviso_derivacion_en: null,
       gemini_interaction_id: null,
       seguimiento_etapa: 'ninguna',
       seguimiento_enviado_en: null,
