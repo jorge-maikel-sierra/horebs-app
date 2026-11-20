@@ -139,6 +139,13 @@ export default function SiteFooter() {
           >
             Política de privacidad
           </Link>
+          {' · '}
+          <Link
+            href="/terminos"
+            className="font-medium text-zinc-600 transition-colors hover:text-accent-ink dark:text-zinc-400"
+          >
+            Términos y condiciones
+          </Link>
         </p>
         <p className="mt-1">
           Sitio desarrollado por{' '}

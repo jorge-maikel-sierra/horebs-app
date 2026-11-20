@@ -62,6 +62,7 @@ WhatsApp: ${NEGOCIO.whatsapp}.
 - [Blog](${SITE_URL}/blog): Novedades del negocio.
 - [Cuenta](${SITE_URL}/cuenta): Registro, historial y estado de pedidos.
 - [Política de privacidad](${SITE_URL}/politica-privacidad): Cómo se tratan los datos de los clientes.
+- [Términos y condiciones](${SITE_URL}/terminos): Condiciones de pedidos, pagos, domicilios y puntos.
 
 ${destacados.length > 0 ? `## Productos destacados\n\n${destacados.map(lineaProducto).join('\n')}\n` : ''}
 ${resto.length > 0 ? `## Resto del menú\n\n${resto.map(lineaProducto).join('\n')}\n` : ''}

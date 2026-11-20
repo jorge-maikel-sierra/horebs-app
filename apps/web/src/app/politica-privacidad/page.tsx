@@ -65,10 +65,18 @@ export default function PoliticaPrivacidadPage() {
               el anuncio desde el que nos escribiste, para poder atenderte.
             </li>
             <li>
+              <strong>Reseñas en Google:</strong> el nombre público, la
+              calificación y el comentario de las reseñas que dejas en nuestro
+              Perfil de Empresa en Google, para poder responderlas.
+            </li>
+            <li>
               <strong>Datos técnicos del sitio:</strong> páginas visitadas,
               dirección IP, navegador, parámetros de la campaña de la que
               vienes y los identificadores de las cookies de Meta, para que
-              el sitio funcione y para medir nuestra publicidad.
+              el sitio funcione y para medir nuestra publicidad. También
+              grabamos cómo se navega el sitio (clics y desplazamientos) para
+              encontrar errores; en esas grabaciones los campos que escribes y
+              tus datos de contacto se ocultan.
             </li>
           </ul>
           <p className="mt-3">
@@ -86,6 +94,11 @@ export default function PoliticaPrivacidadPage() {
               Responder tus mensajes, incluida la respuesta automática de
               nuestro asistente virtual para consultas de menú, horario y
               estado del pedido.
+            </li>
+            <li>
+              Responder públicamente las reseñas que nos dejas en Google. Las
+              de 4 y 5 estrellas pueden recibir una respuesta automática de
+              agradecimiento; las demás las revisa una persona del equipo.
             </li>
             <li>
               Enviarte confirmaciones de pedido por correo o WhatsApp, y
@@ -177,8 +190,13 @@ export default function PoliticaPrivacidadPage() {
               método.
             </li>
             <li>
-              <strong>Google</strong> (Tag Manager) — gestión de las etiquetas
-              de medición del sitio.
+              <strong>Google</strong> (Tag Manager y Perfil de Empresa) —
+              gestión de las etiquetas de medición del sitio y lectura y
+              respuesta de las reseñas.
+            </li>
+            <li>
+              <strong>PostHog</strong> — analítica del sitio y grabaciones de
+              navegación con los datos personales ocultos.
             </li>
           </ul>
           <p className="mt-3">
