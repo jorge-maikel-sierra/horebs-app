@@ -1,4 +1,7 @@
-import { ENLACE_WHATSAPP_NEGOCIO } from '../common/contacto';
+import {
+  COBERTURA_DOMICILIO,
+  ENLACE_WHATSAPP_NEGOCIO,
+} from '../common/contacto';
 import { COSTO_DOMICILIO_DEFAULT } from '../common/costos';
 import { estadoAtencion } from '../common/horario';
 import {
@@ -34,7 +37,9 @@ export type IntencionFija =
   | 'ubicacion'
   | 'tamanos'
   | 'pagos'
-  | 'mitad';
+  | 'mitad'
+  | 'gracias'
+  | 'linkPago';
 
 const LUNES = 1;
 const MARTES = 2;
@@ -54,9 +59,10 @@ const MAX_LARGO_SALUDO = 30;
 // no es una pregunta y lo atiende el flujo de pedido, no una respuesta fija.
 const MAX_LARGO_PREGUNTA = 90;
 const MAX_LARGO_PREGUNTA_MITAD = 140;
-
-export const MENSAJE_HUMANO =
-  'Listo, ya avisé al equipo: en breve una persona te escribe por aquí mismo 🙏';
+const MAX_LARGO_GRACIAS = 25;
+// Un mensaje con dos preguntas ("precio de la grande… o tienen WhatsApp")
+// se contesta con las dos respuestas fijas, nunca con más.
+const MAX_INTENCIONES = 2;
 
 function normalizar(texto: string): string {
   return texto
@@ -105,7 +111,15 @@ export function textoUbicacion(): string {
 }
 
 export function textoDomicilio(): string {
-  return `El domicilio cuesta ${pesos(COSTO_DOMICILIO_DEFAULT)} 🛵\nAl armar tu pedido me escribes tu dirección (calle o carrera, barrio y una referencia).`;
+  return `Llegamos a ${COBERTURA_DOMICILIO} 🛵 El domicilio cuesta ${pesos(COSTO_DOMICILIO_DEFAULT)}.\nAl armar tu pedido me escribes tu dirección (calle o carrera, barrio y una referencia).`;
+}
+
+export function textoGracias(): string {
+  return '¡Con gusto! 🍕 Aquí estoy si se te antoja algo.';
+}
+
+export function textoLinkPago(): string {
+  return 'Ese es tu link de pago seguro de Bold ✅ Ábrelo para pagar con tarjeta; apenas se acredite el pago te aviso por aquí 🍕';
 }
 
 export function textoWhatsapp(): string {
@@ -145,6 +159,8 @@ const TEXTOS = new Map<IntencionFija, (ahora: Date) => string>([
   ['tamanos', textoTamanos],
   ['pagos', textoPagos],
   ['mitad', textoMitadYMitad],
+  ['gracias', textoGracias],
+  ['linkPago', textoLinkPago],
 ]);
 
 /** El texto fijo de una intención; null en las que no son un texto (menú, pedir, precios, humano). */
@@ -160,7 +176,10 @@ const dice =
   (t: string): boolean =>
     reglas.every((r) => r.test(t));
 
-const PALABRA_WHATSAPP = /\b(whatsapp|whatsap|wasap|wsp|wpp|watsap)\b/;
+const PALABRA_WHATSAPP = /\b(whatsapp|whatsap|wasap|wsp|wpp|wp|watsap|whats)\b/;
+// "Teléfono", "el número?", "número de domicilio": piden el contacto aunque no digan "dame".
+const SOLO_CONTACTO =
+  /^(el |su |un )?(numero|telefono|celular|contacto)( de (contacto|domicilio|domicilios|whatsapp|pedidos))?\??$|\bnumero (de|para) (domicilio|domicilios|pedidos|pedir)\b/;
 const PALABRA_NUMERO = /\b(numero|telefono|celular|contacto)\b/;
 const PIDE_EL_DATO =
   /\b(su|sus|tu|el|cual|cuales|tienen|dame|deme|regalame|regala|pasame|pasa|deseo|quiero|necesito|da|das|envia|enviame|manda|mandame)\b/;
@@ -172,11 +191,14 @@ const NO_ES_CONTACTO =
 function pideWhatsapp(t: string): boolean {
   if (NO_ES_CONTACTO.test(t)) return false;
   return (
-    PALABRA_WHATSAPP.test(t) || (PALABRA_NUMERO.test(t) && PIDE_EL_DATO.test(t))
+    PALABRA_WHATSAPP.test(t) ||
+    SOLO_CONTACTO.test(t) ||
+    (PALABRA_NUMERO.test(t) && PIDE_EL_DATO.test(t))
   );
 }
 
 const REGLAS: [IntencionFija, (t: string) => boolean][] = [
+  ['linkPago', (t) => /checkout\.bold\.co/.test(t)],
   [
     'humano',
     dice(
@@ -226,7 +248,7 @@ const REGLAS: [IntencionFija, (t: string) => boolean][] = [
   [
     'ubicacion',
     dice(
-      /\b(direccion|direcion|ubicacion|ubicad\w*|hubicad\w*|donde (estan|quedan|se encuentran|queda|es)|en que parte|como llego)\b/,
+      /\b(direccion|direcion|ubicacion|ubicad\w*|hubicad\w*|donde (estan|quedan|se encuentran|queda|es)|por donde (queda|es|estan)|en que parte|como llego|(frente|cerca) (a|al|de|del) .*\?)/,
     ),
   ],
   [
@@ -273,18 +295,49 @@ function esPreguntaMitad(t: string): boolean {
 }
 
 // Estas se contestan aunque el mensaje sea largo: pasan primero.
-const SIEMPRE: IntencionFija[] = ['humano', 'whatsapp', 'descuento'];
+const SIEMPRE: IntencionFija[] = [
+  'linkPago',
+  'humano',
+  'whatsapp',
+  'descuento',
+];
+// En un mensaje largo que ya trae una de SIEMPRE, también se contestan
+// estas preguntas de dato fijo (precios, domicilio…) en vez de ignorarlas.
+const INFORMATIVAS: IntencionFija[] = [
+  'precios',
+  'domicilio',
+  'ubicacion',
+  'horario',
+  'tamanos',
+];
+
+const GRACIAS =
+  /^(muchas |mil )?(gracias|grasias|grasia|gracia|ok|okey|oki|vale|listo|dale|perfecto|bueno)( (gracias|muchas gracias|mil gracias|amigo|amiga|mi vida))?[!.]*$/;
 
 /** La intención del mensaje, o null si no es de las que se contestan con texto fijo. */
 export function detectarIntencion(texto: string): IntencionFija | null {
+  return detectarIntenciones(texto).at(0) ?? null;
+}
+
+/**
+ * Todas las preguntas de texto fijo que trae el mensaje (máximo dos), en el
+ * orden de REGLAS. Vacío si ninguna aplica y debe responder el modelo.
+ */
+export function detectarIntenciones(texto: string): IntencionFija[] {
   const t = normalizar(texto);
-  if (t.length <= MAX_LARGO_SALUDO && esSaludo(t)) return 'saludo';
+  if (t.length <= MAX_LARGO_SALUDO && esSaludo(t)) return ['saludo'];
+  if (t.length <= MAX_LARGO_GRACIAS && GRACIAS.test(t)) return ['gracias'];
+  if (esPreguntaMitad(t)) return ['mitad'];
   const corto = t.length <= MAX_LARGO_PREGUNTA;
-  if (esPreguntaMitad(t)) return 'mitad';
-  for (const [intencion, regla] of REGLAS) {
-    if ((corto || SIEMPRE.includes(intencion)) && regla(t)) {
-      return intencion;
-    }
+  const halladas = REGLAS.filter(
+    ([intencion, regla]) => (corto || SIEMPRE.includes(intencion)) && regla(t),
+  ).map(([intencion]) => intencion);
+  if (!corto && halladas.length > 0) {
+    halladas.push(
+      ...REGLAS.filter(
+        ([intencion, regla]) => INFORMATIVAS.includes(intencion) && regla(t),
+      ).map(([intencion]) => intencion),
+    );
   }
-  return null;
+  return [...new Set(halladas)].slice(0, MAX_INTENCIONES);
 }

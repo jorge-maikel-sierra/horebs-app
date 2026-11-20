@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { errorDeBase } from '../common/error-de-base';
-import { MENSAJE_DERIVACION } from '../mensajeria/aviso-equipo.service';
+import { MENSAJES_DERIVACION } from '../mensajeria/aviso-equipo.service';
 import { agregarMetricasBot, TEXTOS_REPETIR } from './metricas-bot';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
@@ -124,7 +124,7 @@ export class InformesService {
       await Promise.all([
         this.pedidosBot(client, rango),
         this.mensajesEntrantes(client, rango),
-        this.contarMensajes(client, rango, 'saliente_bot', MENSAJE_DERIVACION),
+        this.contarMensajes(client, rango, 'saliente_bot', MENSAJES_DERIVACION),
         this.contarMensajes(client, rango, 'entrante', TEXTOS_REPETIR),
         this.contar(
           client

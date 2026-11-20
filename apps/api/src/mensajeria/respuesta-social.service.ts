@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { CheckoutEnviosService } from './checkout-envios.service';
 import type { ContextoCheckout } from './checkout-whatsapp';
 import type { ConversacionCompleta } from './conversaciones.tipos';
+import { MENSAJE_DERIVACION } from './aviso-equipo.service';
 import { DerivacionBotService } from './derivacion-bot.service';
 import {
   BOTON_SOCIAL,
@@ -11,8 +12,7 @@ import {
 import type { EventoEntrante } from './parseo-webhook';
 import { PedidoSocialService } from './pedido-social.service';
 import {
-  MENSAJE_HUMANO,
-  detectarIntencion,
+  detectarIntenciones,
   textoDeIntencion,
   type IntencionFija,
 } from './respuestas-fijas';
@@ -62,9 +62,15 @@ export class RespuestaSocialService {
     if (producto && (await this.pedido.iniciarProducto(ctx, producto[1]))) {
       return true;
     }
-    const intencion = detectarIntencion(evento.texto);
-    if (!intencion) return false;
-    await this.responder(ctx, intencion, evento.texto);
+    const intenciones = detectarIntenciones(evento.texto);
+    if (intenciones.length === 0) return false;
+    // Si pide una persona, lo demás lo contesta el equipo.
+    const aResponder: IntencionFija[] = intenciones.includes('humano')
+      ? ['humano']
+      : intenciones;
+    for (const intencion of aResponder) {
+      await this.responder(ctx, intencion, evento.texto);
+    }
     return true;
   }
 
@@ -113,6 +119,6 @@ export class RespuestaSocialService {
       telefono: ctx.telefono ?? null,
       conversacionId: ctx.conversacionId,
     });
-    await this.envios.texto(ctx, MENSAJE_HUMANO);
+    await this.envios.texto(ctx, MENSAJE_DERIVACION);
   }
 }

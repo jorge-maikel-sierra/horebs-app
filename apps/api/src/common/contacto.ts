@@ -7,3 +7,6 @@ export const ENLACE_WHATSAPP_BOT = 'https://wa.me/573205674313';
  * 13 nov 2026): al tocarlo se le abre el chat.
  */
 export const ENLACE_WHATSAPP_NEGOCIO = 'https://wa.me/573157861208';
+
+/** Cobertura del domicilio: decisión del dueño, 20 nov 2026 (ver CLAUDE.md). */
+export const COBERTURA_DOMICILIO = 'toda la zona urbana de Riohacha';

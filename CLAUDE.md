@@ -92,6 +92,8 @@ pregunta; no se supone un valor razonable.
   **nunca** es gratis salvo que se decida una promoción puntual explícita.
   No hay tarifa por zona: por ahora todos los pedidos pagan $5.000 (decisión
   del dueño, nov 2026).
+- Cobertura del domicilio: toda la zona urbana de Riohacha (confirmado por
+  el dueño el 20 nov 2026; `COBERTURA_DOMICILIO` en `common/contacto.ts`).
 - Tamaños de pizza: Personal = 6 porciones, 24 cm; Mediana = 8 porciones,
   30 cm; Grande = 12 porciones, 40 cm.
 - Pizza mitad y mitad: en cualquier tamaño el cliente puede pedir una pizza

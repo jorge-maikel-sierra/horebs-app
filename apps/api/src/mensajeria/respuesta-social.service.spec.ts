@@ -276,8 +276,38 @@ describe('RespuestaSocialService: menú, pedido y persona', () => {
     );
 
     expect(llamadas).toEqual(['derivar:psid-1']);
-    expect(textos[0]).toContain('una persona te escribe por aquí mismo');
+    expect(textos[0]).toContain('una persona te responde por acá mismo');
     expect(textos[0]).not.toContain('pedido');
+  });
+
+  it('dos preguntas en un mensaje reciben las dos respuestas fijas', async () => {
+    const { servicio, conOpciones } = crearServicio();
+
+    await servicio.atender(
+      evento({
+        texto:
+          'buenas tardes me dicen cuánto cuesta el domicilio porfa, es que no tengo carro. tienen whatsapp?',
+      }),
+      CONVERSACION,
+    );
+
+    const enviados = conOpciones.map((c) => c.texto).join('\n');
+    expect(enviados).toContain('wa.me');
+    expect(enviados).toContain('zona urbana de Riohacha');
+    expect(conOpciones).toHaveLength(2);
+  });
+
+  it('"humano" junto a otra pregunta solo deriva', async () => {
+    const { servicio, llamadas, textos } = crearServicio();
+    await servicio.atender(
+      evento({
+        texto:
+          'quiero hablar con una persona porque necesito saber cuál es el whatsapp de ustedes por favor',
+      }),
+      CONVERSACION,
+    );
+    expect(llamadas).toEqual(['derivar:psid-1']);
+    expect(textos).toHaveLength(1);
   });
 
   it('una categoría muestra sus productos; si no tiene, no se atiende', async () => {

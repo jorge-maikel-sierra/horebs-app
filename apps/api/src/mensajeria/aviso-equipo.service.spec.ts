@@ -1,6 +1,11 @@
 import type { ConfigService } from '@nestjs/config';
 import type { MailService } from '../mail/mail.service';
-import { AvisoEquipoService, nombreCanalSocial } from './aviso-equipo.service';
+import {
+  AvisoEquipoService,
+  MENSAJE_DERIVACION,
+  MENSAJES_DERIVACION,
+  nombreCanalSocial,
+} from './aviso-equipo.service';
 import type { ConversacionesService } from './conversaciones.service';
 import type { MetaGraphService } from './meta-graph.service';
 
@@ -147,5 +152,33 @@ describe('AvisoEquipoService.notificarPago', () => {
       servicio.notificarPago({ ...pedido, pagado: true }),
     ).not.toThrow();
     await Promise.resolve();
+  });
+});
+
+describe('AvisoEquipoService: historial que va en el aviso', () => {
+  it('corta en una derivación vieja (texto anterior) igual que en la nueva', async () => {
+    const { servicio, mail, conversaciones } = crear();
+    conversaciones.listarMensajes.mockResolvedValue([
+      { direccion: 'entrante', texto: 'consulta de la semana pasada' },
+      {
+        direccion: 'saliente_bot',
+        texto: MENSAJES_DERIVACION[1],
+      },
+      { direccion: 'entrante', texto: 'quiero una hawaiana grande' },
+      { direccion: 'saliente_bot', texto: MENSAJE_DERIVACION },
+    ]);
+
+    servicio.notificar({
+      canal: 'messenger',
+      identificadorExterno: 'psid-1',
+      telefono: null,
+      conversacionId: 'cv-1',
+    });
+    await new Promise((r) => setImmediate(r));
+
+    const aviso = (mail.enviarAvisoEquipo.mock.calls[0] as [AvisoCapturado])[0];
+    expect(aviso.texto).toContain('quiero una hawaiana grande');
+    expect(aviso.texto).not.toContain('consulta de la semana pasada');
+    expect(MENSAJE_DERIVACION).not.toContain('confirma tu pedido');
   });
 });

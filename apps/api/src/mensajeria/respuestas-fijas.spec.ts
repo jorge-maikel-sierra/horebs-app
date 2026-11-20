@@ -1,6 +1,9 @@
 import { diaSemanaBogota } from '../common/promocion';
 import {
   detectarIntencion,
+  detectarIntenciones,
+  textoGracias,
+  textoLinkPago,
   textoWhatsapp,
   textoDescuento,
   textoDomicilio,
@@ -73,6 +76,7 @@ describe('textos fijos del negocio', () => {
 
   it('domicilio, tamaños y mitad y mitad usan los datos confirmados', () => {
     expect(textoDomicilio()).toContain('$5.000');
+    expect(textoDomicilio()).toContain('toda la zona urbana de Riohacha');
     expect(textoTamanos()).toContain('Mediana: 8 porciones, 30 centímetros');
     expect(textoMitadYMitad()).toContain('sabor de mayor valor');
     expect(textoMitadYMitad()).not.toMatch(/\$\d/);
@@ -125,6 +129,14 @@ describe('detectarIntencion con mensajes reales de clientes', () => {
     ['3008392278', null],
     ['cuál es el número de mi pedido', null],
     ['¿Qué zonas cubren para entrega a domicilio?', 'domicilio'],
+    ['Teléfono', 'whatsapp'],
+    ['Regáleme el wp', 'whatsapp'],
+    ['Buenas cual es el número de domicilio', 'whatsapp'],
+    ['Ok gracias', 'gracias'],
+    ['Grasia', 'gracias'],
+    ['listo', 'gracias'],
+    ['Frente al palacio de justicia?', 'ubicacion'],
+    ['https://checkout.bold.co/payment/LNK_NLBBVR9PQ9', 'linkPago'],
   ];
 
   it.each(casos)('"%s" → %s', (texto, esperado) => {
@@ -154,6 +166,39 @@ describe('detectarIntencion con mensajes reales de clientes', () => {
         'Hola buenas tardes mi nombre es Carlos y vi la publicidad del 20% de descuento en Facebook, ¿cómo lo aplico?',
       ),
     ).toBe('descuento');
+  });
+});
+
+describe('detectarIntenciones: dos preguntas en un mensaje', () => {
+  it('contesta el WhatsApp y también los precios', () => {
+    expect(
+      detectarIntenciones(
+        'buenas tardes me puede decir el precio los precios de las pizzas grande y pequeña por favor muchas gracias o tienen WhatsApp',
+      ),
+    ).toEqual(['whatsapp', 'precios']);
+  });
+
+  it('un mensaje corto con una sola pregunta da una sola intención', () => {
+    expect(detectarIntenciones('¿Qué horario tienen?')).toEqual(['horario']);
+  });
+
+  it('nunca más de dos ni repetidas', () => {
+    const r = detectarIntenciones(
+      'hola quiero hablar con una persona, cuál es el whatsapp, hay descuento y cuánto cuesta el domicilio?',
+    );
+    expect(r).toHaveLength(2);
+    expect(new Set(r).size).toBe(2);
+  });
+
+  it('una dirección suelta sin pregunta no es ubicación', () => {
+    expect(detectarIntenciones('Calle 10 frente al parque')).toEqual([]);
+  });
+});
+
+describe('textos de link de pago y gracias', () => {
+  it('el link de Bold se reconoce como el pago oficial', () => {
+    expect(textoLinkPago()).toContain('Bold');
+    expect(textoGracias()).toContain('Con gusto');
   });
 });
 

@@ -51,8 +51,17 @@ function formatearNumeroWhatsappCO(numero: string): string {
 
 // Texto exacto con el que el bot cierra una derivación: marca dónde
 // empieza el pedido actual dentro del historial de la conversación.
+// Neutro a propósito: antes prometía "confirma tu pedido" aunque el cliente
+// solo hubiera preguntado algo (nov 2026).
 export const MENSAJE_DERIVACION =
-  'Ya avisé al equipo — en breve una persona confirma tu pedido por acá mismo. ¡Gracias por tu paciencia!';
+  'Listo, ya le avisé al equipo 🙌 En breve una persona te responde por acá mismo.';
+
+/** Todos los textos con que el bot cerró una derivación, para leer el historial viejo. */
+export const MENSAJES_DERIVACION: readonly string[] = [
+  MENSAJE_DERIVACION,
+  'Ya avisé al equipo — en breve una persona confirma tu pedido por acá mismo. ¡Gracias por tu paciencia!',
+  'Listo, ya avisé al equipo: en breve una persona te escribe por aquí mismo 🙏',
+];
 
 // Inicio fijo de la confirmación de un pedido creado por el checkout del
 // bot: también marca el fin de un pedido anterior en el historial.
@@ -157,7 +166,7 @@ export class AvisoEquipoService {
       .findLastIndex(
         (m) =>
           m.direccion === 'saliente_bot' &&
-          (m.texto === MENSAJE_DERIVACION ||
+          (MENSAJES_DERIVACION.includes(m.texto) ||
             m.texto.startsWith(INICIO_CONFIRMACION_PEDIDO)),
       );
     const aviso = armarAvisoDerivacion({
