@@ -167,6 +167,16 @@ describe('SeguimientoAdminService.enviarMensajeHumano', () => {
     });
   });
 
+  it('si el bot estaba atendiendo, la respuesta de una persona lo pausa', async () => {
+    const enBot = crearServicio({ ...CONVERSACION, estado: 'bot' });
+    await enBot.servicio.enviarMensajeHumano('cv-1', 'hola', 'u-1');
+    expect(enBot.llamadas).toContain('estado');
+
+    const derivada = crearServicio({ ...CONVERSACION, estado: 'derivado' });
+    await derivada.servicio.enviarMensajeHumano('cv-1', 'hola', 'u-1');
+    expect(derivada.llamadas).not.toContain('estado');
+  });
+
   it('si Graph API falla responde 400 con el motivo y no registra nada', async () => {
     const { servicio, fallar } = crearServicio();
     fallar(new Error('ventana de 24 h cerrada'));

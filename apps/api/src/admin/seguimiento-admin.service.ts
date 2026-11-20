@@ -147,6 +147,11 @@ export class SeguimientoAdminService {
         `No se pudo enviar el mensaje por ${conversacion.canal}: ${motivo}`,
       );
     }
+    // Igual que al contestar desde Meta: si una persona escribe, el bot se
+    // calla para no hablarle encima al cliente (pasó el 19 nov).
+    if (conversacion.estado === 'bot') {
+      await this.conversaciones.actualizarEstadoManual(id, 'derivado');
+    }
     return this.conversaciones.registrarMensaje(
       id,
       'saliente_humano',
