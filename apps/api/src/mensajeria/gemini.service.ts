@@ -191,7 +191,11 @@ export class GeminiService {
         ctx.canal,
         ctx.identificadorExterno,
       );
-    const esInicio = !interaccionPrevia;
+    // La sesión del modelo se reinicia (derivación, respuestas fijas), pero si
+    // el bot ya le habló al cliente no se vuelve a presentar a mitad de charla.
+    const esInicio =
+      !interaccionPrevia &&
+      !(await this.conversaciones.botYaRespondio(ctx.conversacionId));
     return this.cliente.llamar({
       model: this.cliente.modelo,
       system_instruction: armarSystemInstruction(ctx.canal, esInicio),

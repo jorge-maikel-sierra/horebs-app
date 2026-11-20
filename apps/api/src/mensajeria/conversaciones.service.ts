@@ -58,6 +58,18 @@ export class ConversacionesService {
     return fila?.estado ?? 'bot';
   }
 
+  /** true si el bot ya le mandó algún mensaje a esta conversación. */
+  async botYaRespondio(conversacionId: string): Promise<boolean> {
+    const { count, error } = await this.supabase
+      .getClient()
+      .from('mensajes_conversacion')
+      .select('id', { count: 'exact', head: true })
+      .eq('conversacion_id', conversacionId)
+      .eq('direccion', 'saliente_bot');
+    if (error) throw errorDeBase(error);
+    return (count ?? 0) > 0;
+  }
+
   async obtenerUltimaInteraccionGemini(
     canal: CanalMensajeria,
     id: string,

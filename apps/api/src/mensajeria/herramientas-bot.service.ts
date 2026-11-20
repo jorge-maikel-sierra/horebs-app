@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { CatalogService, type ProductoDto } from '../catalog/catalog.service';
+import { COBERTURA_DOMICILIO } from '../common/contacto';
 import { COSTO_DOMICILIO_DEFAULT } from '../common/costos';
 import { estadoAtencion } from '../common/horario';
 import { PedidosConsultasService } from '../pedidos/pedidos-consultas.service';
@@ -118,6 +119,7 @@ export class HerramientasBotService {
       `Ahora mismo: ${ESTADO_ATENCION_TEXTO[estadoAtencion(new Date())]}`,
       `Dirección: ${DIRECCION}`,
       `Costo de domicilio: $${COSTO_DOMICILIO_DEFAULT.toLocaleString('es-CO')}`,
+      `Cobertura del domicilio: ${COBERTURA_DOMICILIO}`,
     ].join('\n');
   }
 

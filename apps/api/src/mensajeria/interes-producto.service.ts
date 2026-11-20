@@ -64,15 +64,28 @@ export class InteresProductoService {
     return data ?? [];
   }
 
-  async pidioDesde(conversacionId: string, desde: string): Promise<boolean> {
-    const { count, error } = await this.supabase
-      .getClient()
-      .from('pedidos')
-      .select('id', { count: 'exact', head: true })
-      .eq('conversacion_id', conversacionId)
-      .gte('created_at', desde);
-    if (error) throw errorDeBase(error);
-    return (count ?? 0) > 0;
+  /**
+   * Ya pidió por el bot o ya lo atendió una persona del equipo: el 18 nov le
+   * llegó "¿te animas?" a un cliente al que el equipo ya le había vendido.
+   */
+  async atendidoDesde(conversacionId: string, desde: string): Promise<boolean> {
+    const cliente = this.supabase.getClient();
+    const [pedidos, humanos] = await Promise.all([
+      cliente
+        .from('pedidos')
+        .select('id', { count: 'exact', head: true })
+        .eq('conversacion_id', conversacionId)
+        .gte('created_at', desde),
+      cliente
+        .from('mensajes_conversacion')
+        .select('id', { count: 'exact', head: true })
+        .eq('conversacion_id', conversacionId)
+        .eq('direccion', 'saliente_humano')
+        .gte('created_at', desde),
+    ]);
+    if (pedidos.error) throw errorDeBase(pedidos.error);
+    if (humanos.error) throw errorDeBase(humanos.error);
+    return (pedidos.count ?? 0) + (humanos.count ?? 0) > 0;
   }
 
   async marcarToque(conversacionId: string): Promise<void> {

@@ -48,7 +48,7 @@ export class ToqueInteresService {
   private async enviar(c: CandidataToque): Promise<void> {
     // Se marca primero: si algo falla después, no se le insiste en cada corrida.
     await this.interes.marcarToque(c.id);
-    if (await this.interes.pidioDesde(c.id, c.interes_en)) return;
+    if (await this.interes.atendidoDesde(c.id, c.interes_en)) return;
     const producto = (await this.catalog.getProductos()).find(
       (p) => p.id === c.interes_producto_id,
     );

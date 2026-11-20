@@ -38,7 +38,12 @@ describe('armarSystemInstruction', () => {
       expect(prompt).toContain('NUNCA le sugieras por tu cuenta');
       expect(prompt).toContain('nunca le digas que no tenemos WhatsApp');
       expect(prompt).toContain('https://wa.me/573157861208');
-      expect(prompt).toContain('NUNCA digas a qué zonas');
+      expect(prompt).toContain('toda la zona urbana de Riohacha');
+      expect(prompt).toContain('NUNCA agregues referencias, puntos cercanos');
+      expect(prompt).toContain(
+        'https://checkout.bold.co es el link de pago oficial',
+      );
+      expect(prompt).toContain('no te vuelvas a presentar');
       expect(prompt).toContain('NO vuelvas a usar mostrar_productos');
       expect(prompt).not.toContain('{{');
     }

@@ -31,6 +31,7 @@ const conHerramienta = (id: string, name: string): RespuestaInteraction =>
   }) as unknown as RespuestaInteraction;
 
 interface Opciones {
+  botYaRespondio?: boolean;
   configurado?: boolean;
   dentroDelLimite?: boolean;
   respuestas?: (RespuestaInteraction | Error)[];
@@ -57,6 +58,7 @@ function crearServicio(opciones: Opciones = {}) {
     dentroDelLimiteDeMensajes: () =>
       Promise.resolve(opciones.dentroDelLimite ?? true),
     obtenerUltimaInteraccionGemini: () => Promise.resolve(null),
+    botYaRespondio: () => Promise.resolve(opciones.botYaRespondio ?? false),
     guardarInteraccionGemini: (
       _c: string,
       _id: string,
@@ -249,6 +251,19 @@ describe('GeminiService.responder', () => {
       'Respondés por Instagram Direct',
     );
     expect(llamadas[0]?.system_instruction).toContain(
+      'Aviso inicial obligatorio',
+    );
+  });
+
+  it('si el bot ya le habló al cliente, no se vuelve a presentar aunque la sesión sea nueva', async () => {
+    const { servicio, llamadas } = crearServicio({
+      respuestas: [texto('r-1', 'Claro')],
+      botYaRespondio: true,
+    });
+
+    await servicio.responder(CTX, 'y cuánto se demora?');
+
+    expect(llamadas[0]?.system_instruction).not.toContain(
       'Aviso inicial obligatorio',
     );
   });

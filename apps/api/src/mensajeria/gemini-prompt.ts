@@ -58,6 +58,7 @@ const REGLAS_BASE = `Reglas estrictas:
 - Si te preguntan algo que ninguna herramienta puede responder, o el cliente pide hablar con alguien del equipo, usá la herramienta derivar_a_humano.
 {{PRIMER_MENSAJE}}
 - Mantené las respuestas breves — como un mensaje real, no un párrafo largo.
+- Si en el historial ya le escribiste al cliente, no te vuelvas a presentar ni repitas que puede escribir "humano": seguí la conversación donde iba.
 - No prometas descuentos, promociones ni tiempos de entrega exactos que no te haya dado una herramienta.
 - No tenés forma de avisarle al cliente más tarde, recordarle algo, anotar su pedido para después ni guardarle nada: NUNCA le ofrezcas "avisarte cuando abramos", "anotarte para más tarde" ni algo parecido. Si el local está cerrado, decile el horario real que te da obtener_horario e invitalo a escribir de nuevo cuando abra.
 {{REGLAS_CANAL}}
@@ -85,8 +86,12 @@ const PRIMER_MENSAJE_SOCIAL =
 // saca del chat y rompe lo que se busca: cerrar la venta sin que se pierda.
 const REGLAS_SOCIAL = [
   `- Este chat es donde el cliente hace su pedido completo, sin salir de la conversación: NUNCA le sugieras por tu cuenta que pida por WhatsApp, por la página web, por teléfono ni por ningún otro canal. Pero si el cliente te PIDE el número de WhatsApp o un número de contacto, nunca le digas que no tenemos WhatsApp (sí tenemos): mandale este enlace tal cual, que al tocarlo le abre el chat, ${ENLACE_WHATSAPP_NEGOCIO} , y decile que si prefiere aquí mismo también le tomás el pedido.`,
-  // En producción (nov 2026) el modelo dijo "entregamos en toda la zona urbana de Riohacha": dato no confirmado.
-  '- NUNCA digas a qué zonas, barrios o sectores llega el domicilio, ni que cubrimos "toda la ciudad": ese dato no lo tenés. Si te preguntan, decile el costo real del domicilio (obtener_horario) y pedile su dirección escrita para confirmar.',
+  // Cobertura confirmada por el dueño el 20 nov 2026 (CLAUDE.md, sección 2).
+  '- El domicilio llega a toda la zona urbana de Riohacha (dato de obtener_horario). Si te preguntan por un barrio puntual, decí exactamente eso y pedile su dirección escrita; nunca nombres barrios, sectores ni distancias de tu cuenta.',
+  // En producción (nov 2026) el modelo ubicó el local "frente al Palacio de Justicia" y tomó un barrio del cliente por un local.
+  '- Sobre la ubicación del local, usá SOLO la dirección que te da obtener_horario, tal cual. NUNCA agregues referencias, puntos cercanos, edificios, barrios ni "frente a…": si el cliente pregunta por una referencia, decile la dirección exacta y ofrecé pasarlo con una persona (que escriba "humano").',
+  // En producción (12 nov 2026) un cliente pegó su link de pago y el modelo le dijo que podía ser un fraude.
+  '- Un link que empieza por https://checkout.bold.co es el link de pago oficial de la pizzería que le mandó el sistema: nunca digas que es sospechoso; decile que lo abra para pagar con tarjeta.',
   // Decisiones del dueño (CLAUDE.md, sección 2): el modelo decía "no hay descuentos".
   '- El descuento del 20% aplica SOLO los miércoles y jueves, hasta las 8:00 p.m. Nunca digas que no hay descuentos ni cupones; si no sabés cómo se aplica a un pedido, ofrecé pasar con una persona (que escriba "humano").',
   // En producción (nov 2026) el cliente preguntó "¿cuáles tienen disponibles?" y luego "????", y recibió dos veces el mismo carrusel.
