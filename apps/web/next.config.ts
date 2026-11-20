@@ -28,10 +28,11 @@ const API_ORIGIN = process.env.NEXT_PUBLIC_API_URL;
 // sumarlo a mano en este archivo, GTM no puede "saltarse" esta lista.
 const SCRIPT_SRC_TAGS =
   'https://www.googletagmanager.com https://connect.facebook.net';
-// Beacons de medición: GA4/GTM, conversiones de Google Ads (doubleclick) y
-// el pixel de Facebook.
+// Beacons de medición: GA4/GTM, conversiones de Google Ads (doubleclick,
+// googleadservices y el 1p-conversion de google.com) y el pixel de Facebook.
+// Sin googleadservices y google.com el CSP bloquea el hit de conversión.
 const CONNECT_SRC_TAGS =
-  'https://www.googletagmanager.com https://www.google-analytics.com https://analytics.google.com https://td.doubleclick.net https://googleads.g.doubleclick.net https://www.facebook.com';
+  'https://www.googletagmanager.com https://www.google-analytics.com https://analytics.google.com https://td.doubleclick.net https://googleads.g.doubleclick.net https://www.googleadservices.com https://www.google.com https://www.facebook.com';
 
 // PostHog (src/instrumentation-client.ts): manda los eventos al host de
 // ingesta y baja sus extensiones (replay, encuestas) del host de assets
