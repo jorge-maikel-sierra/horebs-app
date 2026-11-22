@@ -113,6 +113,22 @@ describe('horaDe', () => {
     expect(horaDe(texto('Lo antes posible porfa'))).toBe('ya');
   });
 
+  it.each([
+    'Ya',
+    'Para ya',
+    'ya!',
+    'Ahora mismo',
+    'Para ya por favor',
+    'Lo más rápido',
+  ])('entiende "%s" como lo antes posible', (escrito) =>
+    expect(horaDe(texto(escrito))).toBe('ya'),
+  );
+
+  it.each(['ya te dije la dirección', 'para mañana', 'a las 9'])(
+    '"%s" no es una hora de la lista',
+    (escrito) => expect(horaDe(texto(escrito))).toBeNull(),
+  );
+
   it('otro botón no es una hora', () => {
     expect(horaDe({ tipo: 'boton', id: BOTON.efectivo })).toBeNull();
   });

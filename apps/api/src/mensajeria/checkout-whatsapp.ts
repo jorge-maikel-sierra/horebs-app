@@ -130,6 +130,13 @@ export function metodoPagoDe(entrada: EntradaCheckout): MetodoPagoBot | null {
   return null;
 }
 
+const FRASE_LO_ANTES_POSIBLE =
+  /\b(lo antes posible|lo mas pronto|lo mas rapido|cuanto antes|ya mismo|de una|ahorita|de inmediato)\b/;
+// "Ya" y "Para ya" a secas cayeron al modelo, que pasó el pedido a una
+// persona en vez de seguir al pago (21 nov 2026, dos pedidos).
+const RESPUESTA_CORTA_YA =
+  /^(para )?(ya|ahora|ahora mismo|inmediato|inmediatamente|rapido|pronto)( (por favor|porfa|gracias))?[\s.!]*$/;
+
 /** Franja elegida en la lista ('ya' o 'HH:MM'), o "lo antes posible" escrito. */
 export function horaDe(entrada: EntradaCheckout): string | null {
   if (entrada.tipo === 'boton') {
@@ -138,9 +145,8 @@ export function horaDe(entrada: EntradaCheckout): string | null {
       : null;
   }
   if (entrada.tipo !== 'texto') return null;
-  return /\b(lo antes posible|lo mas pronto|ya mismo|de una|ahorita)\b/.test(
-    normalizar(entrada.texto),
-  )
+  const t = normalizar(entrada.texto);
+  return FRASE_LO_ANTES_POSIBLE.test(t) || RESPUESTA_CORTA_YA.test(t)
     ? 'ya'
     : null;
 }
