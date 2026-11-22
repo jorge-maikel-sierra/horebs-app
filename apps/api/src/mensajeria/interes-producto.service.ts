@@ -48,7 +48,7 @@ export class InteresProductoService {
       .getClient()
       .from('conversaciones_bot')
       .select(
-        'id, canal, identificador_externo, interes_producto_id, interes_en',
+        'id, canal, identificador_externo, interes_producto_id, interes_en, derivado_en',
       )
       .in('canal', ['messenger', 'instagram'])
       .eq('estado', 'bot')

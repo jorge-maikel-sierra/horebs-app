@@ -1,5 +1,10 @@
 import type { ProductoDto } from '../catalog/catalog.service';
-import { mensajeToque, ventanaToque } from './toque-interes';
+import {
+  derivadoTrasInteres,
+  mensajeToque,
+  ventanaToque,
+  type CandidataToque,
+} from './toque-interes';
 
 const pizza: ProductoDto = {
   id: 'hw',
@@ -30,5 +35,32 @@ describe('segundo mensaje a quien vino por un anuncio', () => {
       '¿Te animas con la Pizza Hawaiana? 🍕 Elige el tamaño y te la dejo en el pedido 👇',
     );
     expect(botones.map((b) => b.id)).toEqual(['ped:v:hw-p', 'mnu:menu']);
+  });
+});
+
+describe('derivadoTrasInteres', () => {
+  const base: CandidataToque = {
+    id: 'c1',
+    canal: 'messenger',
+    identificador_externo: 'psid',
+    interes_producto_id: 'hw',
+    interes_en: '2026-11-22T01:01:00Z',
+    derivado_en: null,
+  };
+
+  it('sin derivación el toque sigue', () => {
+    expect(derivadoTrasInteres(base)).toBe(false);
+  });
+
+  it('derivado después de ver el producto: no se le escribe', () => {
+    expect(
+      derivadoTrasInteres({ ...base, derivado_en: '2026-11-22T01:18:00Z' }),
+    ).toBe(true);
+  });
+
+  it('una derivación vieja, de antes del interés, no lo frena', () => {
+    expect(
+      derivadoTrasInteres({ ...base, derivado_en: '2026-11-19T01:18:00Z' }),
+    ).toBe(false);
   });
 });

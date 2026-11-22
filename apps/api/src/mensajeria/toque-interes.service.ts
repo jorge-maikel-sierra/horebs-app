@@ -5,7 +5,11 @@ import { estadoAtencion } from '../common/horario';
 import { ConversacionesService } from './conversaciones.service';
 import { InteresProductoService } from './interes-producto.service';
 import { MetaGraphService } from './meta-graph.service';
-import { mensajeToque, type CandidataToque } from './toque-interes';
+import {
+  derivadoTrasInteres,
+  mensajeToque,
+  type CandidataToque,
+} from './toque-interes';
 
 /**
  * El segundo mensaje a quien llegó por un anuncio, preguntó por un producto y
@@ -48,6 +52,7 @@ export class ToqueInteresService {
   private async enviar(c: CandidataToque): Promise<void> {
     // Se marca primero: si algo falla después, no se le insiste en cada corrida.
     await this.interes.marcarToque(c.id);
+    if (derivadoTrasInteres(c)) return;
     if (await this.interes.atendidoDesde(c.id, c.interes_en)) return;
     const producto = (await this.catalog.getProductos()).find(
       (p) => p.id === c.interes_producto_id,

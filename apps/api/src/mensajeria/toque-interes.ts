@@ -18,6 +18,18 @@ export interface CandidataToque {
   identificador_externo: string;
   interes_producto_id: string;
   interes_en: string;
+  derivado_en: string | null;
+}
+
+/**
+ * Pasó a una persona después de ver el producto: el 21 nov 2026 le llegó
+ * "¿te animas?" a un cliente cuyo pedido el equipo tomó por teléfono.
+ */
+export function derivadoTrasInteres(c: CandidataToque): boolean {
+  return (
+    c.derivado_en !== null &&
+    new Date(c.derivado_en).getTime() >= new Date(c.interes_en).getTime()
+  );
 }
 
 /** Rango de `ultima_interaccion` de las conversaciones a las que ya toca escribirles. */
