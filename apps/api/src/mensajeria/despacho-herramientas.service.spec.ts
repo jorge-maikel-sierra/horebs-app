@@ -2,7 +2,11 @@ import type {
   CalculoPedidoBotService,
   ResultadoCalculo,
 } from './calculo-pedido-bot.service';
-import { DespachoHerramientasService } from './despacho-herramientas.service';
+import type { CheckoutHistorialService } from './checkout-historial.service';
+import {
+  DespachoHerramientasService,
+  textoPedidoEnCurso,
+} from './despacho-herramientas.service';
 import type { PasoFunctionCall } from './gemini-cliente.service';
 import type { HerramientasBotService } from './herramientas-bot.service';
 import type { ContextoHerramienta } from './herramientas-bot.tipos';
@@ -22,7 +26,10 @@ const llamada = (name: string): PasoFunctionCall => ({
   arguments: { a: 1 },
 });
 
-function crearServicio(calculo: ResultadoCalculo) {
+function crearServicio(
+  calculo: ResultadoCalculo,
+  pedidoEnCurso: string | null = null,
+) {
   const ejecutadas: unknown[][] = [];
   const resumenes: unknown[][] = [];
   const herramientas = {
@@ -31,7 +38,10 @@ function crearServicio(calculo: ResultadoCalculo) {
       return Promise.resolve('resultado');
     },
   };
-  const calculos = { calcular: () => Promise.resolve(calculo) };
+  const calculos = { calcular: jest.fn(() => Promise.resolve(calculo)) };
+  const historial = {
+    pedidoEnCurso: jest.fn(() => Promise.resolve(pedidoEnCurso)),
+  };
   const resumen = {
     enviar: (...args: unknown[]) => {
       resumenes.push(args);
@@ -42,8 +52,9 @@ function crearServicio(calculo: ResultadoCalculo) {
     herramientas as unknown as HerramientasBotService,
     calculos as unknown as CalculoPedidoBotService,
     resumen as unknown as ResumenPedidoBotService,
+    historial as unknown as CheckoutHistorialService,
   );
-  return { servicio, ejecutadas, resumenes };
+  return { servicio, ejecutadas, resumenes, calculos, historial };
 }
 
 describe('DespachoHerramientasService.resultado', () => {
@@ -81,6 +92,38 @@ describe('DespachoHerramientasService.resultado', () => {
       servicio.resultado(llamada('calcular_pedido'), CTX, 'int-1'),
     ).resolves.toBeNull();
     expect(resumenes[0]).toEqual([CTX, listo, 'int-1', 'call-9']);
+  });
+});
+
+describe('DespachoHerramientasService con un pedido en curso', () => {
+  it('calcular_pedido no arma otro pedido y le dice al modelo cuál está en curso', async () => {
+    const { servicio, resumenes, calculos, historial } = crearServicio(
+      { ok: false, texto: 'x' },
+      '443a66d1-6f39-4f5c-bf81-88dd69d06c6e',
+    );
+
+    const texto = await servicio.resultado(
+      llamada('calcular_pedido'),
+      CTX,
+      'int-1',
+    );
+
+    expect(historial.pedidoEnCurso).toHaveBeenCalledWith('cv-1');
+    expect(texto).toBe(
+      textoPedidoEnCurso('443a66d1-6f39-4f5c-bf81-88dd69d06c6e'),
+    );
+    expect(texto).toContain('#443a66d1');
+    expect(texto).toContain('derivar_a_humano');
+    expect(calculos.calcular).not.toHaveBeenCalled();
+    expect(resumenes).toEqual([]);
+  });
+
+  it('las demás herramientas no miran si hay pedido en curso', async () => {
+    const { servicio, historial } = crearServicio({ ok: false, texto: 'x' });
+
+    await servicio.resultado(llamada('obtener_horario'), CTX, 'int-1');
+
+    expect(historial.pedidoEnCurso).not.toHaveBeenCalled();
   });
 });
 

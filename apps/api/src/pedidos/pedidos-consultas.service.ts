@@ -273,4 +273,28 @@ export class PedidosConsultasService {
     if (error) throw errorDeBase(error);
     return (count ?? 0) > 0;
   }
+
+  /**
+   * El pedido que el bot creó en esta conversación en las últimas `horas` y
+   * que sigue en curso (ni cancelado ni entregado). Sin esto, un "le envío
+   * el comprobante al recibir" hizo que el bot armara el mismo pedido otra
+   * vez (21 nov 2026).
+   */
+  async pedidoEnCursoDeConversacion(
+    conversacionId: string,
+    horas: number,
+  ): Promise<string | null> {
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('pedidos')
+      .select('id')
+      .eq('conversacion_id', conversacionId)
+      .not('estado', 'in', '(cancelado,entregado)')
+      .gte('created_at', haceHoras(horas))
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle<{ id: string }>();
+    if (error) throw errorDeBase(error);
+    return data?.id ?? null;
+  }
 }
