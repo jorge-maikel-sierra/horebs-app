@@ -1,5 +1,6 @@
 import {
   cantidadDe,
+  esNombreReal,
   itemsEscritosDe,
   textoDe,
   validarDatosCliente,
@@ -80,6 +81,18 @@ describe('validarDatosCliente', () => {
     },
   );
 
+  it.each([
+    { nombre: '[No proporcionado]' },
+    { apellido: '[No proporcionado - pendiente de solicitar]' },
+    { nombre: '[Cliente no dio apellido]' },
+    { apellido: 'Cliente no dio apellido, pendiente de solicitar' },
+    { nombre: 'Desconocido' },
+    { apellido: 'N/A' },
+  ])('un relleno del modelo como nombre (%j) no calcula', (cambio) => {
+    const resultado = validarDatosCliente({ ...COMPLETOS, ...cambio });
+    expect(!resultado.ok && resultado.texto).toContain('nombre completo');
+  });
+
   it('una modalidad que no existe no calcula', () => {
     const resultado = validarDatosCliente({ ...COMPLETOS, modalidad: 'dron' });
     expect(!resultado.ok && resultado.texto).toContain('Falta la modalidad');
@@ -89,4 +102,16 @@ describe('validarDatosCliente', () => {
     const resultado = validarDatosCliente({ ...COMPLETOS, direccion: '  ' });
     expect(!resultado.ok && resultado.texto).toContain('dirección de entrega');
   });
+});
+
+describe('esNombreReal', () => {
+  it.each(['Maria', 'Reverol', 'Chalarca Gonzalez', "D'Luyz", 'Núñez'])(
+    '"%s" es un nombre',
+    (texto) => expect(esNombreReal(texto)).toBe(true),
+  );
+
+  it.each(['', 'J', '[Ana]', 'No proporcionado', 'sin nombre', 'null'])(
+    '"%s" no es un nombre',
+    (texto) => expect(esNombreReal(texto)).toBe(false),
+  );
 });

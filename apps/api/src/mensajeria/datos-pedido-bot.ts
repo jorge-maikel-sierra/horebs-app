@@ -37,6 +37,24 @@ export function cantidadDe(item: Record<string, unknown>): number {
   return Math.min(Math.max(cruda, 1), MAX_CANTIDAD_ITEM);
 }
 
+// El 21 nov 2026 el modelo mandó "[No proporcionado]" y "[Cliente no dio
+// apellido]" como nombre: el pedido y el cliente quedaron con eso.
+const RELLENO_DEL_MODELO =
+  /[[\]{}<>()]|\b(no (proporcionad|dio|dado|indic|sabe|tiene)|pendiente|desconocid|sin (nombre|apellido)|cliente|n\/a|null|undefined)/i;
+const MIN_LETRAS_NOMBRE = 2;
+
+/** Un nombre o apellido que escribió el cliente, no un relleno del modelo. */
+export function esNombreReal(texto: string): boolean {
+  const letras = texto.match(/\p{L}/gu)?.length ?? 0;
+  return letras >= MIN_LETRAS_NOMBRE && !RELLENO_DEL_MODELO.test(texto);
+}
+
+/** Lo que no es un nombre real cuenta como vacío. */
+function nombreDe(valor: unknown): string {
+  const texto = textoDe(valor).trim();
+  return esNombreReal(texto) ? texto : '';
+}
+
 /**
  * Guardrail real, no solo la instrucción del prompt — si Gemini intenta
  * calcular sin nombre completo, sin modalidad válida o sin dirección en un
@@ -46,8 +64,8 @@ export function cantidadDe(item: Record<string, unknown>): number {
 export function validarDatosCliente(
   argumentos: Record<string, unknown>,
 ): ValidacionDatos {
-  const nombre = textoDe(argumentos.nombre).trim();
-  const apellido = textoDe(argumentos.apellido).trim();
+  const nombre = nombreDe(argumentos.nombre);
+  const apellido = nombreDe(argumentos.apellido);
   const modalidad = textoDe(argumentos.modalidad).toLowerCase();
   const direccion = textoDe(argumentos.direccion).trim();
 
@@ -72,7 +90,7 @@ function datoFaltante(d: {
   direccion: string;
 }): string | null {
   if (!d.nombre || !d.apellido) {
-    return 'Todavía falta el nombre completo (nombre y apellido) de quien hace el pedido — preguntáselo al cliente antes de calcular el total.';
+    return 'Todavía falta el nombre completo (nombre y apellido) de quien hace el pedido — preguntáselo al cliente antes de calcular el total. Nunca lo rellenes con textos como "[No proporcionado]": manda solo lo que el cliente escribió.';
   }
   if (!MODALIDADES.includes(d.modalidad as ModalidadPedido)) {
     return `Falta la modalidad: preguntale al cliente si es para domicilio, para retirar o para comer en el local. ${SIN_TOTAL_INVENTADO}`;
