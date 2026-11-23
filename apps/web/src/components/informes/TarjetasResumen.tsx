@@ -66,7 +66,8 @@ export function HeroVentas({
   etiquetaNota = 'Mejor día',
 }: {
   icono: ReactNode;
-  valor: string;
+  /** Texto o una cifra animada (`NumeroAnimado`). */
+  valor: ReactNode;
   periodo: string;
   delta: Delta | null;
   vs: string;
@@ -161,8 +162,10 @@ export function TarjetaKpi({
   sentido?: SentidoDelta;
 }) {
   const t = TONOS[tono];
+  // Solo se levanta al pasar el puntero la que se puede tocar: en una cifra
+  // de solo lectura el movimiento promete un clic que no existe.
   const tarjeta = (
-    <div className="@container card-gradient card-interactive relative flex h-full min-w-0 flex-col justify-between overflow-hidden rounded-2xl border border-zinc-200 p-4 sm:p-5 dark:border-zinc-800">
+    <div className={`@container card-gradient relative ${onClick ? 'card-interactive' : ''} flex h-full min-w-0 flex-col justify-between overflow-hidden rounded-2xl border border-zinc-200 p-4 sm:p-5 dark:border-zinc-800`}>
       <div>
         <div className="flex items-start justify-between gap-2">
           <span
@@ -220,7 +223,7 @@ export function TiraDomicilio({
 }) {
   const ancho = Math.min(100, Math.max(0, porcentaje));
   return (
-    <div className="card-gradient card-interactive flex flex-col gap-3 rounded-2xl border border-zinc-200 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:p-5 dark:border-zinc-800">
+    <div className="card-gradient flex flex-col gap-3 rounded-2xl border border-zinc-200 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:p-5 dark:border-zinc-800">
       <div className="flex items-center gap-3">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-orange/15 text-accent-ink">
           {icono}

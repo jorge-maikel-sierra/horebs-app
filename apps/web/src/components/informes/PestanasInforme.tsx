@@ -1,7 +1,8 @@
 'use client';
 
-import { useRef, type KeyboardEvent } from 'react';
+import { useEffect, useRef, type KeyboardEvent } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
+import { tocar } from '@/lib/retroalimentacion';
 
 export type VistaInforme = 'resumen' | 'productos' | 'clientes' | 'bots';
 
@@ -26,6 +27,7 @@ export default function PestanasInforme<T extends string = VistaInforme>({
   grupo = 'informe',
   etiqueta = 'Secciones del informe',
   className = '',
+  compacta = false,
 }: {
   vistas: { key: T; label: string }[];
   activa: T;
@@ -33,9 +35,26 @@ export default function PestanasInforme<T extends string = VistaInforme>({
   grupo?: string;
   etiqueta?: string;
   className?: string;
+  /** Menos relleno y letra menor, para cuatro pestañas dentro de una tarjeta en teléfono. */
+  compacta?: boolean;
 }) {
   const reducir = useReducedMotion();
   const refs = useRef<Partial<Record<T, HTMLButtonElement | null>>>({});
+
+  // En una tira que se desliza (teléfono), la pestaña activa se centra:
+  // llegar por URL a "Públicos" no la deja escondida fuera de la pantalla.
+  useEffect(() => {
+    const boton = refs.current[activa];
+    const tira = boton?.closest<HTMLElement>('[data-tira-deslizable]');
+    if (!boton || !tira || tira.scrollWidth <= tira.clientWidth) return;
+    const destino = boton.offsetLeft - (tira.clientWidth - boton.offsetWidth) / 2;
+    tira.scrollTo({ left: destino, behavior: reducir ? 'auto' : 'smooth' });
+  }, [activa, reducir]);
+
+  function elegir(v: T) {
+    if (v !== activa) tocar();
+    onCambiar(v);
+  }
 
   // Patrón ARIA de pestañas: flechas, Inicio y Fin mueven el foco y activan.
   function onKeyDown(e: KeyboardEvent) {
@@ -74,8 +93,10 @@ export default function PestanasInforme<T extends string = VistaInforme>({
             aria-selected={sel}
             aria-controls={idPanel(v.key, grupo)}
             tabIndex={sel ? 0 : -1}
-            onClick={() => onCambiar(v.key)}
-            className={`relative h-9 flex-1 rounded-lg px-3 text-sm font-semibold whitespace-nowrap outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand-orange/60 @xl:flex-none @xl:px-4 ${
+            onClick={() => elegir(v.key)}
+            className={`relative h-9 flex-1 rounded-lg font-semibold whitespace-nowrap outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand-orange/60 ${
+              compacta ? 'px-1.5 text-[13px]' : 'px-3 text-sm @xl:flex-none @xl:px-4'
+            } ${
               sel
                 ? 'text-zinc-900 dark:text-zinc-50'
                 : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'

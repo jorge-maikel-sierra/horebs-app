@@ -374,9 +374,32 @@ body {
     box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1),
     border-color 0.3s ease;
 }
-.card-interactive:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.18);
+/* Solo con puntero real: en pantalla táctil el :hover se queda pegado
+   después del toque y la tarjeta queda levantada. */
+@media (hover: hover) and (pointer: fine) {
+  .card-interactive:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.18);
+  }
+}
+
+/* Entrada de una sección al cambiar de pestaña: corta, desde casi visible,
+   con un desenfoque leve que funde el contenido viejo con el nuevo. */
+@keyframes entrada-seccion {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+    filter: blur(3px);
+  }
+}
+.animate-entrada-seccion {
+  animation: entrada-seccion 0.26s cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+/* Tira de pestañas que se desliza en teléfono: los bordes se desvanecen
+   para avisar que hay más pestañas fuera de la pantalla. */
+.tira-desvanecida {
+  mask-image: linear-gradient(to right, transparent, #000 1rem, #000 calc(100% - 1.5rem), transparent);
 }
 
 /* Vidrio esmerilado — paneles de cuenta/autenticación. Deja pasar, ya
@@ -569,6 +592,7 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-up,
+  .animate-entrada-seccion,
   .animate-fade-in,
   .animate-pop-in,
   .animate-badge-bump,
