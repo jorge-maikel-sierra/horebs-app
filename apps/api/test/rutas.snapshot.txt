@@ -101,6 +101,7 @@ POST /nomina/empleados
 POST /pedidos
 POST /turnos
 POST /webhooks/bold
+POST /webhooks/google-ads
 POST /webhooks/instagram
 POST /webhooks/messenger
 POST /webhooks/whatsapp

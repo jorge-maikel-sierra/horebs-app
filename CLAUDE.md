@@ -219,7 +219,12 @@ gigante.
   por GET, firma HMAC sobre el body crudo, por eso `rawBody: true`). No se
   les aplica el contrato REST normal. `POST /webhooks/bold` sigue el mismo
   patrón: firma `x-bold-signature` (HMAC-SHA256 de base64 del body crudo con
-  `BOLD_SECRET_KEY`), 403 si no calza y procesamiento idempotente aparte. Igual excepción para
+  `BOLD_SECRET_KEY`), 403 si no calza y procesamiento idempotente aparte.
+  `POST /webhooks/google-ads` (lotes del Google Ads Script) también: firma
+  `x-horebs-firma: t=<unix>,v1=<hex>` (HMAC-SHA256 de `"<t>.<body crudo>"`
+  con `GOOGLE_ADS_WEBHOOK_SECRETO`, ventana de 5 min), 403 si no calza, 415
+  propio (el `ContentTypeGuard` exime `/webhooks/`) y respuesta síncrona 200
+  para que el script reintente si falla. Igual excepción para
   `GET /catalogo/feed.csv` y `GET /health`.
 
 ### Zona horaria — bug recurrente a vigilar
