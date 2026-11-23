@@ -21,8 +21,10 @@ function descripcionDelta(d: Delta, vs: string): string {
 /** Si subir es bueno (ventas) o malo (costo por conversión). */
 export type SentidoDelta = 'mas_es_mejor' | 'menos_es_mejor';
 
-const VERDE = 'bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-400';
-const ROJO = 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-400';
+// Escalas semánticas de globals.css, no los rojos y verdes de Tailwind:
+// así "mejoró" y "empeoró" usan el mismo tono que el éxito y el error del sitio.
+const VERDE = 'bg-success-100 text-success-700 dark:bg-success-900/50 dark:text-success-400';
+const ROJO = 'bg-danger-100 text-danger-700 dark:bg-danger-900/50 dark:text-danger-400';
 
 export function DeltaPill({
   delta,
@@ -129,8 +131,8 @@ const TONOS: Record<TonoKpi, { chip: string; spark: string }> = {
     spark: 'text-amber-500 dark:text-brand-yellow',
   },
   verde: {
-    chip: 'bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-400',
-    spark: 'text-green-600 dark:text-green-400',
+    chip: 'bg-success-100 text-success-700 dark:bg-success-900/50 dark:text-success-400',
+    spark: 'text-success-600 dark:text-success-400',
   },
 };
 
