@@ -123,6 +123,16 @@ export type AnuncioAds = {
   urls_finales: string[];
 };
 
+export type Cambio = {
+  recurso_cambio: string;
+  fecha: string;
+  momento: string;
+  campana_id: string | null;
+  tipo_recurso: string | null;
+  operacion: string | null;
+  campos: string[];
+};
+
 export type Alerta = {
   codigo: string;
   severidad: 'critica' | 'alta' | 'media' | 'baja';
@@ -152,6 +162,7 @@ export type TableroAds = {
   dispositivos: Segmento[];
   geo: { ciudades: Ciudad[]; fuera_zona: number | null; por_interes: number | null };
   anuncios: AnuncioAds[];
+  cambios: Cambio[];
   alertas: Alerta[];
 };
 
@@ -270,6 +281,18 @@ const ETIQUETAS: Record<string, string> = {
   TARGET_ROAS: 'ROAS objetivo',
   MANUAL_CPC: 'CPC manual',
   TARGET_IMPRESSION_SHARE: 'Cuota objetivo',
+  CAMPAIGN: 'Campaña',
+  CAMPAIGN_BUDGET: 'Presupuesto',
+  CAMPAIGN_CRITERION: 'Segmentación de la campaña',
+  AD_GROUP: 'Grupo de anuncios',
+  AD_GROUP_AD: 'Anuncio',
+  AD_GROUP_CRITERION: 'Palabra clave o segmentación',
+  AD_GROUP_BID_MODIFIER: 'Ajuste de puja',
+  CAMPAIGN_ASSET: 'Recurso de la campaña',
+  ASSET: 'Recurso',
+  CREATE: 'Creó',
+  UPDATE: 'Cambió',
+  REMOVE: 'Quitó',
   ADDED: 'Agregado',
   EXCLUDED: 'Excluido',
   NONE: '—',

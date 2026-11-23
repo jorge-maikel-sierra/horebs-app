@@ -181,6 +181,32 @@ function Conversiones({ t }: { t: TableroAds }) {
   );
 }
 
+function Cambios({ t }: { t: TableroAds }) {
+  return (
+    <Panel titulo="Cambios en la cuenta" subtitulo="Qué se tocó en Google Ads en el período: explica saltos en la tendencia">
+      {t.cambios.length === 0 ? (
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">Sin cambios registrados en este período.</p>
+      ) : (
+        <ul className="space-y-2">
+          {t.cambios.map((c) => (
+            <li key={c.recurso_cambio} className="flex flex-wrap items-baseline gap-x-2 text-sm">
+              <span className="shrink-0 font-semibold text-zinc-900 tabular-nums dark:text-zinc-50">
+                {fechaCorta(c.fecha)} {c.momento.slice(11, 16)}
+              </span>
+              <span className="text-zinc-700 dark:text-zinc-300">
+                {etiqueta(c.operacion)} · {etiqueta(c.tipo_recurso)}
+              </span>
+              {c.campos.length > 0 && (
+                <span className="[overflow-wrap:anywhere] text-xs text-zinc-500 dark:text-zinc-400">{c.campos.join(', ')}</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </Panel>
+  );
+}
+
 function Campanas({ t }: { t: TableroAds }) {
   return (
     <Panel titulo="Campañas" subtitulo="Estado y estrategia de puja al último día con datos">
@@ -200,6 +226,12 @@ function Campanas({ t }: { t: TableroAds }) {
 }
 
 export default function SeccionResumen({ t }: { t: TableroAds }) {
+  const cambiosPorDia = new Map<string, number>();
+  for (const c of t.cambios) cambiosPorDia.set(c.fecha, (cambiosPorDia.get(c.fecha) ?? 0) + 1);
+  const notaCambios = (fecha: string) => {
+    const n = cambiosPorDia.get(fecha);
+    return n ? ` · ${n} cambio(s) en la cuenta` : '';
+  };
   return (
     <div className="mt-6 space-y-6">
       <Kpis t={t} />
@@ -212,7 +244,7 @@ export default function SeccionResumen({ t }: { t: TableroAds }) {
       <div className="grid gap-6 @5xl:grid-cols-2">
         <Panel titulo="Gasto por día" subtitulo="Pesos, según Google Ads">
           <GraficoColumnas
-            puntos={puntos(t.serie, (p) => p.gasto, (p) => `${formatPrecio(p.gasto)} · ${p.clics} clics`)}
+            puntos={puntos(t.serie, (p) => p.gasto, (p) => `${formatPrecio(p.gasto)} · ${p.clics} clics${notaCambios(p.fecha)}`)}
             tono="naranja"
             nombreValor="Gasto"
             formatoValor={formatPrecio}
@@ -235,7 +267,10 @@ export default function SeccionResumen({ t }: { t: TableroAds }) {
           <Ritmo t={t} />
           <Conversiones t={t} />
         </div>
-        <Campanas t={t} />
+        <div className="space-y-6">
+          <Campanas t={t} />
+          <Cambios t={t} />
+        </div>
       </div>
       <p className="text-xs text-zinc-500 dark:text-zinc-400">
         ⓘ Google ajusta las conversiones de los últimos días (el script reenvía 7 días cada mañana) y algunas son
