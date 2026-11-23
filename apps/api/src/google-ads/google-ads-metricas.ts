@@ -15,7 +15,7 @@ export const MIN_CONVERSIONES_CPA = 5;
 const IS_ACOTADA_INFERIOR = 0.0999;
 const IS_ACOTADA_SUPERIOR = 0.9001;
 const BASE_DECIMAL = 10;
-const DECIMALES_TASA = 4;
+export const DECIMALES_TASA = 4;
 // z de un intervalo de confianza del 95%.
 const Z_95 = 1.96;
 const DOS = 2;
