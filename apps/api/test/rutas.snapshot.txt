@@ -24,6 +24,7 @@ GET /admin/clientes/directorio
 GET /admin/configuracion
 GET /admin/costos
 GET /admin/costos/rentabilidad
+GET /admin/google-ads
 GET /admin/modulos
 GET /admin/pedidos
 GET /admin/pedidos/:id/comprobante
