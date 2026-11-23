@@ -18,22 +18,31 @@ function descripcionDelta(d: Delta, vs: string): string {
   return `${PCT.format(d.pct)}% ${d.tipo === 'sube' ? 'más' : 'menos'} que ${vs}`;
 }
 
+/** Si subir es bueno (ventas) o malo (costo por conversión). */
+export type SentidoDelta = 'mas_es_mejor' | 'menos_es_mejor';
+
+const VERDE = 'bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-400';
+const ROJO = 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-400';
+
 export function DeltaPill({
   delta,
   vs,
   sobreFondoColor = false,
+  sentido = 'mas_es_mejor',
 }: {
   delta: Delta | null;
   vs: string;
   sobreFondoColor?: boolean;
+  sentido?: SentidoDelta;
 }) {
   if (!delta) return null;
+  const subeEsBueno = sentido === 'mas_es_mejor';
   const estilo = sobreFondoColor
     ? 'bg-white/20 text-white'
     : delta.tipo === 'sube'
-      ? 'bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-400'
+      ? subeEsBueno ? VERDE : ROJO
       : delta.tipo === 'baja'
-        ? 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-400'
+        ? subeEsBueno ? ROJO : VERDE
         : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400';
   return (
     <span
@@ -135,6 +144,7 @@ export function TarjetaKpi({
   tono = 'naranja',
   onClick,
   accion,
+  sentido,
 }: {
   icono: ReactNode;
   label: string;
@@ -148,6 +158,7 @@ export function TarjetaKpi({
   onClick?: () => void;
   /** Pista visible del botón, ej. "Ver clientes". */
   accion?: string;
+  sentido?: SentidoDelta;
 }) {
   const t = TONOS[tono];
   const tarjeta = (
@@ -159,7 +170,7 @@ export function TarjetaKpi({
           >
             {icono}
           </span>
-          <DeltaPill delta={delta ?? null} vs={vs ?? 'el período anterior'} />
+          <DeltaPill delta={delta ?? null} vs={vs ?? 'el período anterior'} sentido={sentido} />
         </div>
         <p className="mt-3 text-[11px] leading-tight font-semibold tracking-wider text-zinc-500 uppercase dark:text-zinc-400">
           {label}
