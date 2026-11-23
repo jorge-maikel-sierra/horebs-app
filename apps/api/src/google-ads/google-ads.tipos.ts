@@ -122,3 +122,67 @@ export interface ResultadoLote {
   filas: number;
   estado: 'guardado' | 'repetido' | 'vacio';
 }
+
+// ---------------------------------------------------------------- tablero
+
+export interface PuntoSerieDto {
+  fecha: string;
+  gasto: number;
+  impresiones: number;
+  clics: number;
+  conversiones: number;
+}
+
+export interface AccionConversionDto {
+  accion: string;
+  categoria: string | null;
+  conversiones: number;
+  valor: number;
+  conversiones_anterior: number;
+}
+
+export interface CampanaTableroDto {
+  campana_id: string;
+  nombre: string;
+  estado: string | null;
+  estado_principal: string | null;
+  motivos_estado: string[];
+  estrategia_puja: string | null;
+  estado_puja: string | null;
+  presupuesto_diario: number;
+}
+
+export interface PalabraTableroDto {
+  clave: string;
+  texto: string;
+  concordancia: string | null;
+  estado: string | null;
+  qs: number | null;
+  qs_ctr: string | null;
+  qs_anuncio: string | null;
+  qs_pagina: string | null;
+}
+
+export interface TerminoTableroDto {
+  termino: string;
+  estado: string | null;
+  marca: boolean;
+  candidata_negativa: boolean;
+}
+
+export interface CeldaHoraDto {
+  /** Lunes = 0 … domingo = 6. */
+  dia: number;
+  hora: number;
+  gasto: number;
+  clics: number;
+  conversiones: number;
+}
+
+export interface CiudadDto {
+  nombre: string;
+  tipo: 'presencia' | 'interes';
+  gasto: number;
+  clics: number;
+  conversiones: number;
+}
