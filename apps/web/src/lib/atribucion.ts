@@ -5,11 +5,21 @@
  * Pixel (cargado por GTM) arma la cookie `_fbc` solo si alcanza a cargar; por
  * eso también la armamos acá, con el formato documentado por Meta. Los UTM se
  * guardan en localStorage para que sigan disponibles cuando el cliente llegue
- * al checkout varias páginas después.
+ * al checkout varias páginas después. Los clics de Google Ads (`gclid`,
+ * `gbraid`, `wbraid`) se guardan igual, para cruzar el pedido con la campaña.
  */
 
 const CLAVE_UTM = 'horebs_utm';
-const CAMPOS_UTM = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'] as const;
+const CAMPOS_UTM = [
+  'utm_source',
+  'utm_medium',
+  'utm_campaign',
+  'utm_content',
+  'utm_term',
+  'gclid',
+  'gbraid',
+  'wbraid',
+] as const;
 const DIAS_COOKIE_FBC = 90;
 const DIAS_UTM = 30;
 const MS_POR_DIA = 86_400_000;
