@@ -137,6 +137,16 @@ export function IconAnuncios(p: PropsIcono = {}) {
   );
 }
 
+export function IconGoogleAds(p: PropsIcono = {}) {
+  return (
+    <Svg {...p}>
+      <circle cx="11" cy="11" r="6" />
+      <path d="m20 20-4.5-4.5" />
+      <path d="M11 8v6M8.5 11.5 11 14l2.5-2.5" />
+    </Svg>
+  );
+}
+
 export function IconDifusiones(p: PropsIcono = {}) {
   return (
     <Svg {...p}>

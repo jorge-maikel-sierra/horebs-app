@@ -18,6 +18,7 @@ import type { ModuloId } from '@/lib/modulos';
 import ThemeToggle from '@/components/ThemeToggle';
 import {
   IconAnuncios,
+  IconGoogleAds,
   IconBlog,
   IconClientes,
   IconConfig,
@@ -316,6 +317,7 @@ const NAV_ADMIN: NavItem[] = [
     modulo: 'informes',
   },
   { href: '/admin/anuncios', label: 'Ventas por anuncio', icon: IconAnuncios },
+  { href: '/admin/google-ads', label: 'Google Ads', icon: IconGoogleAds },
   { href: '/admin/campanas', label: 'Campañas propias', icon: IconDifusiones },
   { href: '/admin/costos', label: 'Costos y margen', icon: IconCostos },
   { href: '/admin/usuarios', label: 'Usuarios', icon: IconUsuarios },
