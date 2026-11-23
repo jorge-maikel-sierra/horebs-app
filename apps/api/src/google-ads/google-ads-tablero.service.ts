@@ -21,6 +21,11 @@ import type {
   FilaTerminoDia,
 } from './google-ads.tipos';
 
+export interface CampanaCaja {
+  id: string;
+  nombre: string;
+}
+
 /** Período por defecto: 28 días (múltiplo de 7, no sesga por día de semana). */
 export const DIAS_TABLERO_DEFECTO = 28;
 export const MAX_DIAS_TABLERO = 180;
@@ -191,6 +196,18 @@ export class GoogleAdsTableroService {
         .range(a, b)
         .returns<T[]>(),
     );
+  }
+
+  /** Campañas de Google activas, para el selector "¿Por qué campaña llegó?" de la caja. */
+  async campanasActivas(): Promise<CampanaCaja[]> {
+    const estados = await this.foto<FilaEstadoCampana>(
+      'google_ads_campanas_estado',
+      COLUMNAS_ESTADO,
+    );
+    return estados
+      .filter((e) => e.estado === 'ENABLED')
+      .map((e) => ({ id: e.campana_id, nombre: e.campana_nombre }))
+      .sort((a, b) => a.nombre.localeCompare(b.nombre));
   }
 
   /** Tablas sin fecha (foto actual): pocas filas, una sola consulta. */

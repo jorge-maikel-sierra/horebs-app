@@ -25,6 +25,7 @@ GET /admin/configuracion
 GET /admin/costos
 GET /admin/costos/rentabilidad
 GET /admin/google-ads
+GET /admin/google-ads/campanas
 GET /admin/modulos
 GET /admin/pedidos
 GET /admin/pedidos/:id/comprobante

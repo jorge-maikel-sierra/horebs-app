@@ -50,6 +50,15 @@ describe('campanaDePedido', () => {
     ).toBe('c-9');
   });
 
+  it('una campaña de Google elegida en la caja no cuenta para Meta', () => {
+    expect(
+      campanaDePedido(
+        pedido({ origen_campana_id: 'gads:23001', origen_anuncio_id: 'a-1' }),
+        idx,
+      ),
+    ).toBeNull();
+  });
+
   it('traduce el anuncio del bot a su campaña', () => {
     expect(campanaDePedido(pedido({ origen_anuncio_id: 'a-1' }), idx)).toBe(
       'c-1',

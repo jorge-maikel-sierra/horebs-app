@@ -60,6 +60,9 @@ describe('esPedidoGoogle', () => {
         pedido({ atribucion_web: { utm_source: 'Google', utm_medium: 'cpc' } }),
       ),
     ).toBe(true);
+    expect(esPedidoGoogle(pedido({ origen_campana_id: 'gads:23001' }))).toBe(
+      true,
+    );
   });
 
   it('Google orgánico (perfil de negocio), Meta o sin origen no cuentan', () => {

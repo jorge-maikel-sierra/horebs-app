@@ -5,6 +5,7 @@ import {
   utilidadDePedido,
   type FilaItemCosto,
 } from './rentabilidad';
+import { PREFIJO_CAJA_GOOGLE } from '../google-ads/google-ads-atribucion';
 
 /**
  * Gasto de los anuncios cruzado con las ventas: por campaña y en general.
@@ -127,6 +128,7 @@ export function campanaDePedido(
   pedido: FilaPedidoTablero,
   { campanaDeAnuncio, campanaPorNombre }: Indices,
 ): string | null {
+  if (pedido.origen_campana_id?.startsWith(PREFIJO_CAJA_GOOGLE)) return null;
   if (pedido.origen_campana_id) return pedido.origen_campana_id;
   const delAnuncio = pedido.origen_anuncio_id
     ? campanaDeAnuncio.get(pedido.origen_anuncio_id)

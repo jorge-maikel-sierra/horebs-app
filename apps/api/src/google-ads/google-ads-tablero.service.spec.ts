@@ -46,6 +46,23 @@ describe('GoogleAdsTableroService', () => {
     );
   });
 
+  it('campanasActivas devuelve solo las activas, por nombre', async () => {
+    const filas = [
+      { campana_id: '2', campana_nombre: 'Marca', estado: 'ENABLED' },
+      { campana_id: '1', campana_nombre: 'Búsqueda', estado: 'ENABLED' },
+      { campana_id: '3', campana_nombre: 'Vieja', estado: 'PAUSED' },
+    ];
+    const cliente = clienteVacio();
+    cliente.returns = () => Promise.resolve({ data: filas, error: null });
+    const servicio = new GoogleAdsTableroService({
+      getClient: () => cliente,
+    } as unknown as SupabaseService);
+    await expect(servicio.campanasActivas()).resolves.toEqual([
+      { id: '1', nombre: 'Búsqueda' },
+      { id: '2', nombre: 'Marca' },
+    ]);
+  });
+
   it('arma el tablero aunque no haya datos', async () => {
     const t = await crear().tablero('2026-11-01', '2026-11-07');
     expect(t).toMatchObject({ desde: '2026-11-01', hasta: '2026-11-07' });

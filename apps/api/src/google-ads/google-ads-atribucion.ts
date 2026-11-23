@@ -67,13 +67,19 @@ const FUENTES_GOOGLE = new Set(['google', 'adwords']);
 // con utm_medium=organic: solo cuenta como anuncio si el medio es pagado.
 const MEDIOS_PAGADOS = new Set(['cpc', 'ppc', 'paid', 'paid_search']);
 const CLAVES_CLIC_GOOGLE = ['gclid', 'gbraid', 'wbraid'];
+/**
+ * La caja guarda la campaña de Google en `pedidos.origen_campana_id` con este
+ * prefijo; sin él sería un id de Meta.
+ */
+export const PREFIJO_CAJA_GOOGLE = 'gads:';
 
-/** El pedido vino de un clic en Google Ads: gclid o UTM pagado de Google. */
+/** El pedido vino de Google Ads: gclid, UTM pagado de Google o la caja. */
 export function esPedidoGoogle(p: FilaPedidoAds): boolean {
   const a = new Map(Object.entries(p.atribucion_web ?? {}));
   const texto = (k: string): string => (a.get(k) ?? '').trim().toLowerCase();
   return (
     CLAVES_CLIC_GOOGLE.some((c) => Boolean(a.get(c))) ||
+    Boolean(p.origen_campana_id?.startsWith(PREFIJO_CAJA_GOOGLE)) ||
     (FUENTES_GOOGLE.has(texto('utm_source')) &&
       MEDIOS_PAGADOS.has(texto('utm_medium')))
   );
