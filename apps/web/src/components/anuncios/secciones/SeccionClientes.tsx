@@ -38,25 +38,29 @@ function nombreMes(mes: string): string {
   return texto.replace('.', '').replace(' de ', ' ');
 }
 
-function CeldaCalor({ pct, max, dias }: { pct: number | null; max: number; dias: number }) {
+function Calor({ pct, max, dias }: { pct: number | null; max: number; dias: number }) {
   if (pct === null) {
     return (
-      <td className="p-1">
-        <span
-          title={`Todavía no cumplen ${dias} días desde su primera compra`}
-          className="flex h-10 items-center justify-center rounded-lg border border-dashed border-zinc-200 text-xs text-zinc-400 dark:border-zinc-800 dark:text-zinc-600"
-        >
-          —
-        </span>
-      </td>
+      <span
+        title={`Todavía no cumplen ${dias} días desde su primera compra`}
+        className="flex h-10 items-center justify-center rounded-lg border border-dashed border-zinc-200 text-xs text-zinc-400 dark:border-zinc-800 dark:text-zinc-600"
+      >
+        —
+      </span>
     );
   }
   const paso = max > 0 ? Math.min(ESCALA.length - 1, Math.floor((pct / max) * (ESCALA.length - 0.001))) : 0;
   return (
+    <span className={`flex h-10 items-center justify-center rounded-lg text-sm font-bold tabular-nums ${ESCALA[paso]}`}>
+      {pct}%
+    </span>
+  );
+}
+
+function CeldaCalor(props: { pct: number | null; max: number; dias: number }) {
+  return (
     <td className="p-1">
-      <span className={`flex h-10 items-center justify-center rounded-lg text-sm font-bold tabular-nums ${ESCALA[paso]}`}>
-        {pct}%
-      </span>
+      <Calor {...props} />
     </td>
   );
 }
@@ -66,10 +70,71 @@ type Fila = { clave: string; titulo: string; m: MetricasCohorte; campana?: Cohor
 const TH = 'px-3 py-2 text-right text-xs font-semibold text-zinc-500 dark:text-zinc-400';
 const TD = 'px-3 py-2 text-right text-sm tabular-nums text-zinc-700 dark:text-zinc-300';
 
-function TablaCohortes({ filas, conCampana }: { filas: Fila[]; conCampana: boolean }) {
-  const max = Math.max(0, ...filas.flatMap((f) => VENTANAS.map((d) => pctRecompra(f.m, d) ?? 0)));
+function maximoRecompra(filas: Fila[]): number {
+  return Math.max(0, ...filas.flatMap((f) => VENTANAS.map((d) => pctRecompra(f.m, d) ?? 0)));
+}
+
+/**
+ * Teléfono: una tarjeta por fila. La tabla de 9 a 12 columnas obligaba a
+ * deslizar de lado y a recordar a qué fila pertenecía cada celda.
+ */
+function TarjetasCohortes({ filas }: { filas: Fila[] }) {
+  const max = maximoRecompra(filas);
   return (
-    <div className="overflow-x-auto rounded-2xl border border-zinc-200 dark:border-zinc-800">
+    <ul className="space-y-3 @xl:hidden">
+      {filas.map((f) => {
+        const datos: [string, string][] = [
+          ['Días a la 2.ª', f.m.dias_a_segunda === null ? '—' : String(f.m.dias_a_segunda)],
+          ['Pedidos por cliente', f.m.pedidos_por_cliente === null ? '—' : String(f.m.pedidos_por_cliente)],
+          ['Han pagado', formatPrecio(f.m.valor)],
+          ...(f.campana
+            ? ([
+                ['Gasto', formatPrecio(f.campana.gasto)],
+                ['Costo por cliente', pesos(f.campana.costo_por_cliente_nuevo)],
+                ['Pagado ÷ gasto', veces(f.campana.valor_sobre_gasto)],
+              ] as [string, string][])
+            : []),
+        ];
+        return (
+          <li key={f.clave} className="rounded-2xl border border-zinc-200 p-4 dark:border-zinc-800">
+            <div className="flex items-start justify-between gap-3">
+              <p className="line-clamp-2 text-sm font-semibold [overflow-wrap:anywhere] text-zinc-900 dark:text-zinc-50">
+                {f.titulo}
+              </p>
+              <p className="shrink-0 text-right">
+                <span className="block text-lg leading-none font-extrabold text-zinc-900 tabular-nums dark:text-zinc-50">
+                  {f.m.clientes}
+                </span>
+                <span className="text-[11px] text-zinc-500 dark:text-zinc-400">clientes</span>
+              </p>
+            </div>
+            <div className="mt-3 grid grid-cols-3 gap-1.5">
+              {VENTANAS.map((d) => (
+                <div key={d}>
+                  <Calor dias={d} pct={pctRecompra(f.m, d)} max={max} />
+                  <p className="mt-1 text-center text-[11px] text-zinc-500 dark:text-zinc-400">{d} días</p>
+                </div>
+              ))}
+            </div>
+            <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-zinc-100 pt-3 dark:border-zinc-800">
+              {datos.map(([e, v]) => (
+                <div key={e} className="flex min-w-0 flex-col-reverse">
+                  <dt className="text-[11px] text-zinc-500 dark:text-zinc-400">{e}</dt>
+                  <dd className="text-sm font-semibold text-zinc-900 tabular-nums dark:text-zinc-50">{v}</dd>
+                </div>
+              ))}
+            </dl>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function TablaCohortes({ filas, conCampana }: { filas: Fila[]; conCampana: boolean }) {
+  const max = maximoRecompra(filas);
+  return (
+    <div className="hidden overflow-x-auto rounded-2xl @xl:block border border-zinc-200 dark:border-zinc-800">
       <table className={`w-full border-collapse ${conCampana ? 'min-w-[60rem]' : 'min-w-[44rem]'}`}>
         <thead>
           <tr className="border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900">
@@ -150,7 +215,7 @@ export default function SeccionClientes({ datos }: { datos: Cohortes }) {
       : datos.por_mes.map((m) => ({ clave: m.mes, titulo: nombreMes(m.mes), m }));
 
   return (
-    <div className="animate-fade-up mt-5">
+    <div className="mt-5">
       <div className="grid gap-3 @2xl:grid-cols-[1fr_auto] @2xl:items-end">
         <dl className="grid grid-cols-2 gap-3 @2xl:flex @2xl:gap-8">
           <div className="flex flex-col-reverse">
@@ -203,7 +268,10 @@ export default function SeccionClientes({ datos }: { datos: Cohortes }) {
             : 'Todavía no hay clientes con primera compra en este rango.'}
         </p>
       ) : (
-        <TablaCohortes key={vista} filas={filas} conCampana={vista === 'campana'} />
+        <>
+          <TarjetasCohortes filas={filas} />
+          <TablaCohortes key={vista} filas={filas} conCampana={vista === 'campana'} />
+        </>
       )}
 
       <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">

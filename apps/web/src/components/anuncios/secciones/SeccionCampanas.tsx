@@ -238,7 +238,7 @@ export default function SeccionCampanas({ campanas }: { campanas: Campana[] }) {
 
   if (campanas.length === 0) {
     return (
-      <div className="animate-fade-up mt-5 rounded-2xl border border-dashed border-zinc-300 p-10 text-center dark:border-zinc-700">
+      <div className="mt-5 rounded-2xl border border-dashed border-zinc-300 p-10 text-center dark:border-zinc-700">
         <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Sin campañas con gasto en este rango</p>
         <p className="mx-auto mt-2 max-w-md text-sm text-zinc-500 dark:text-zinc-400">
           Sincroniza con Meta para traer el gasto de cada campaña.
@@ -248,7 +248,7 @@ export default function SeccionCampanas({ campanas }: { campanas: Campana[] }) {
   }
 
   return (
-    <div className="animate-fade-up mt-5">
+    <div className="mt-5">
       <div className="mb-3 flex items-center justify-between gap-3 @3xl:hidden">
         <p className="text-sm text-zinc-500 dark:text-zinc-400">{campanas.length} campañas</p>
         <div role="radiogroup" aria-label="Ordenar campañas por" className="flex rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800/70">

@@ -15,6 +15,7 @@ import SeccionPublicos from '@/components/anuncios/secciones/SeccionPublicos';
 import SeccionResumen from '@/components/anuncios/secciones/SeccionResumen';
 import { useRecurso } from '@/components/anuncios/use-recurso';
 import { adminFetch } from '@/lib/admin-fetch';
+import { tocar } from '@/lib/retroalimentacion';
 import { leerErrorApi } from '@/lib/error-api';
 import {
   GRUPO_PESTANAS,
@@ -58,7 +59,10 @@ function SelectorRango({ dias, onCambiar, ancho }: { dias: DiasRango; onCambiar:
             type="button"
             role="radio"
             aria-checked={sel}
-            onClick={() => onCambiar(r.dias)}
+            onClick={() => {
+              if (!sel) tocar();
+              onCambiar(r.dias);
+            }}
             className={`relative h-9 rounded-lg px-3.5 text-sm font-semibold whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-brand-orange/60 focus-visible:outline-none ${
               ancho ? 'flex-1' : ''
             } ${sel ? 'text-zinc-900 dark:text-zinc-50' : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'}`}
@@ -147,6 +151,7 @@ export default function AnunciosVista() {
   const cambiarDias = (d: DiasRango) => actualizar({ rango: d === DIAS_DEFECTO ? null : String(d) });
 
   async function sincronizar() {
+    tocar();
     setSincronizando(true);
     setAviso(null);
     try {
@@ -206,7 +211,9 @@ export default function AnunciosVista() {
     <div className="@container p-4 sm:p-6 lg:p-8">
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">Anuncios</h1>
+          <h1 data-titulo-pagina className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+            Anuncios
+          </h1>
           <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-zinc-500 dark:text-zinc-400">
             <span>Últimos {dias} días</span>
             <span className="inline-flex items-center gap-1.5">
@@ -245,8 +252,12 @@ export default function AnunciosVista() {
         className="sticky top-[61px] z-20 -mx-4 mt-3 border-b border-zinc-200/70 bg-white/80 px-4 py-2.5 backdrop-blur-md sm:-mx-6 sm:px-6 lg:top-0 lg:-mx-8 lg:px-8 dark:border-zinc-800/70 dark:bg-zinc-950/80"
       >
         <div className="flex items-center gap-3">
-          {/* En teléfono las cinco pestañas no caben: la tira se desliza. */}
-          <div className="-mx-4 min-w-0 flex-1 overflow-x-auto px-4 [scrollbar-width:none] @2xl:mx-0 @2xl:flex-none @2xl:overflow-visible @2xl:px-0 [&::-webkit-scrollbar]:hidden">
+          {/* En teléfono las cinco pestañas no caben: la tira se desliza, con
+              los bordes desvanecidos y la pestaña activa centrada. */}
+          <div
+            data-tira-deslizable
+            className="tira-desvanecida relative -mx-4 min-w-0 flex-1 snap-x overflow-x-auto px-4 [scrollbar-width:none] @2xl:mx-0 @2xl:flex-none @2xl:overflow-visible @2xl:px-0 @2xl:[mask-image:none] [&::-webkit-scrollbar]:hidden"
+          >
             <PestanasInforme
               vistas={VISTAS_ANUNCIOS}
               activa={vista}
@@ -281,7 +292,7 @@ export default function AnunciosVista() {
         </p>
       )}
 
-      <div key={vista} {...propsPanel(vista, GRUPO_PESTANAS)} className="outline-none">
+      <div key={vista} {...propsPanel(vista, GRUPO_PESTANAS)} className="animate-entrada-seccion outline-none">
         {vista === 'resumen' && conTablero((t) => <SeccionResumen tablero={t} onIrA={cambiarVista} />)}
         {vista === 'campanas' && conTablero((t) => <SeccionCampanas campanas={t.campanas} />)}
         {vista === 'anuncios' && conTablero((t) => <SeccionAnuncios anuncios={t.anuncios} />)}

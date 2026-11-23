@@ -1,5 +1,6 @@
 'use client';
 
+import NumeroAnimado from '@/components/informes/NumeroAnimado';
 import Panel from '@/components/informes/Panel';
 import RankingBarras from '@/components/informes/RankingBarras';
 import { TarjetaKpi } from '@/components/informes/TarjetasResumen';
@@ -21,6 +22,10 @@ import {
 } from '@/components/anuncios/anuncios.tipos';
 
 const TOP_CAMPANAS = 5;
+
+// Fuera del componente: NumeroAnimado vuelve a animar si cambia la función.
+const formatoRetorno = (n: number) => veces(n);
+const formatoRetornoParcial = (n: number) => `${Math.round(n)}x`;
 
 function BarraComparada({ etiqueta, valor, max, tenue }: { etiqueta: string; valor: number; max: number; tenue?: boolean }) {
   return (
@@ -63,7 +68,7 @@ function HeroRetorno({ g }: { g: General }) {
         ) : (
           <>
             <p className="mt-4 text-5xl leading-none font-extrabold tracking-tight tabular-nums sm:text-6xl">
-              {veces(g.roas_general)}
+              <NumeroAnimado valor={g.roas_general} formato={formatoRetorno} formatoParcial={formatoRetornoParcial} />
             </p>
             <p className="mt-2 max-w-sm text-sm text-white/90">
               Cada {formatPrecio(1000)} en anuncios trajo{' '}
@@ -124,7 +129,7 @@ export default function SeccionResumen({
   const campanas = [...tablero.campanas].sort((a, b) => b.ventas - a.ventas).slice(0, TOP_CAMPANAS);
 
   return (
-    <div className="animate-fade-up mt-5 grid gap-3 @2xl:gap-4 @4xl:grid-cols-12">
+    <div className="mt-5 grid gap-3 @2xl:gap-4 @4xl:grid-cols-12">
       <HeroRetorno g={g} />
       <div className="grid grid-cols-2 gap-3 @2xl:grid-cols-4 @2xl:gap-4 @4xl:col-span-7 @4xl:grid-cols-2">
         <TarjetaKpi
@@ -192,6 +197,7 @@ export default function SeccionResumen({
         className="@4xl:col-span-5"
         titulo="Campañas que más venden"
         subtitulo="Ventas de los pedidos atribuidos"
+        accionEnLinea
         accion={
           tablero.campanas.length > 0 && (
             <button

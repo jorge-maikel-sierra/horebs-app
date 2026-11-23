@@ -25,7 +25,7 @@ export default function SeccionPublicos({
   onActualizar: () => void;
 }) {
   return (
-    <div className="animate-fade-up mt-5">
+    <div className="mt-5">
       <div className="flex flex-col gap-4 rounded-2xl border border-zinc-200 p-5 @2xl:flex-row @2xl:items-center @2xl:justify-between dark:border-zinc-800">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -62,7 +62,7 @@ export default function SeccionPublicos({
         {panel.segmentos.map((s, i) => (
           <li
             key={s.clave}
-            className="animate-fade-up card-gradient flex flex-col justify-between rounded-2xl border border-zinc-200 p-5 dark:border-zinc-800"
+            className="card-gradient flex flex-col justify-between rounded-2xl border border-zinc-200 p-5 dark:border-zinc-800"
             style={{ animationDelay: `${i * 50}ms` }}
           >
             <div>

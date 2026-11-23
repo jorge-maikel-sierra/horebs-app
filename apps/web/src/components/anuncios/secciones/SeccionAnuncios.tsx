@@ -97,7 +97,7 @@ function TarjetaAnuncio({ a, puesto }: { a: AnuncioRendimiento; puesto: number }
   ];
   return (
     <li
-      className="group animate-fade-up flex flex-col overflow-hidden rounded-2xl border border-zinc-200 p-3 transition-shadow hover:shadow-md @xl:p-0 dark:border-zinc-800"
+      className="group flex flex-col overflow-hidden rounded-2xl border border-zinc-200 p-3 transition-shadow hover:shadow-md @xl:p-0 dark:border-zinc-800"
       style={{ animationDelay: `${Math.min(puesto, 8) * 40}ms` }}
     >
       {/* Teléfono: miniatura y nombre lado a lado. Desde tablet: la imagen arriba, a todo el ancho. */}
@@ -158,7 +158,7 @@ export default function SeccionAnuncios({ anuncios }: { anuncios: AnuncioRendimi
 
   if (anuncios.length === 0) {
     return (
-      <div className="animate-fade-up mt-5 rounded-2xl border border-dashed border-zinc-300 p-10 text-center dark:border-zinc-700">
+      <div className="mt-5 rounded-2xl border border-dashed border-zinc-300 p-10 text-center dark:border-zinc-700">
         <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Sin anuncios con gasto en este rango</p>
         <p className="mx-auto mt-2 max-w-md text-sm text-zinc-500 dark:text-zinc-400">
           Sincroniza con Meta para traer el rendimiento de cada anuncio.
