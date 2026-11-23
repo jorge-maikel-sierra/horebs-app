@@ -3,6 +3,7 @@ import type {
   DireccionMensaje,
 } from './conversaciones.service';
 import { idCortoPedido } from '../common/pedido-numero';
+import { escaparHtml } from '../common/escapar-html';
 
 export interface DatosAvisoDerivacion {
   canal: CanalMensajeria;
@@ -32,14 +33,6 @@ const LARGO_ULTIMO_MENSAJE_WHATSAPP = 120;
 const NARANJA = '#FF6B35';
 const AZUL = '#1A3A52';
 const AMARILLO = '#FFD93D';
-
-function escaparHtml(texto: string): string {
-  return texto
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
 
 /** "573187592616" → "+57 318 759 2616"; otro formato queda igual. */
 function telefonoLegible(waId: string): string {

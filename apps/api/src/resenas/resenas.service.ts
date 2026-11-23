@@ -17,6 +17,7 @@ import type {
   EstadoResena,
   ResenaDto,
 } from './resenas.tipos';
+import { escaparHtml } from '../common/escapar-html';
 
 const TABLA = 'resenas_google';
 const COLUMNAS =
@@ -26,14 +27,6 @@ const URL_PANEL_RESENAS = 'https://pizzeriahorebs.shop/admin/resenas';
 
 function mensajeError(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
-}
-
-function escaparHtml(texto: string): string {
-  return texto
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 }
 
 /**

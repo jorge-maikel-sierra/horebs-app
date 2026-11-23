@@ -1,4 +1,5 @@
 import { idCortoPedido } from '../common/pedido-numero';
+import { escaparHtml } from '../common/escapar-html';
 
 /** Correo de aviso de domicilio: datos que recibe y HTML que arma. */
 
@@ -33,19 +34,6 @@ const REDES = {
 
 const ETIQUETA =
   'margin:0;font-size:12px;color:#888;text-transform:uppercase;letter-spacing:0.5px;';
-
-/**
- * Lo que escribe el cliente (nombre, teléfono, dirección, notas) va dentro de
- * etiquetas y de atributos (`href="tel:..."`), así que también se escapa la
- * comilla doble: sin eso, un `"` rompería el atributo.
- */
-function escaparHtml(texto: string): string {
-  return texto
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
 
 const dinero = (valor: number): string => `$${valor.toLocaleString('es-CO')}`;
 
