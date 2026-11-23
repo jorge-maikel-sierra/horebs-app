@@ -9,6 +9,7 @@ import {
 } from '@/lib/campanas-mensajeria';
 
 type CampanaMeta = { id: string; nombre: string; sugerida: boolean };
+type CampanaGoogle = { id: string; nombre: string };
 
 /** Lo que la caja manda al API según la campaña elegida. */
 export type CamposCampana = {
@@ -18,6 +19,9 @@ export type CamposCampana = {
 
 const PREFIJO_META = 'meta:';
 const PREFIJO_PROPIA = 'propia:';
+const PREFIJO_GOOGLE = 'google:';
+// Así la guarda el API en origen_campana_id: sin prefijo sería un id de Meta.
+const PREFIJO_GUARDADO_GOOGLE = 'gads:';
 // Una difusión trae pedidos sobre todo los primeros días; después se sugiere
 // la de Meta del mes, como antes.
 const HORAS_SUGERENCIA_PROPIA = 72;
@@ -33,10 +37,13 @@ const CANAL_DE_ORIGEN: Record<string, CanalCampana | undefined> = {
   instagram: 'instagram',
 };
 
-/** Traduce el valor del selector (`meta:<id>` o `propia:<uuid>`) al body de la venta. */
+/** Traduce el valor del selector (`meta:<id>`, `google:<id>` o `propia:<uuid>`) al body de la venta. */
 export function camposCampana(valor: string | null): CamposCampana {
   if (valor?.startsWith(PREFIJO_META)) {
     return { origen_campana_id: valor.slice(PREFIJO_META.length) };
+  }
+  if (valor?.startsWith(PREFIJO_GOOGLE)) {
+    return { origen_campana_id: `${PREFIJO_GUARDADO_GOOGLE}${valor.slice(PREFIJO_GOOGLE.length)}` };
   }
   if (valor?.startsWith(PREFIJO_PROPIA)) {
     return { campana_mensajeria_id: valor.slice(PREFIJO_PROPIA.length) };
@@ -76,7 +83,7 @@ async function leerLista<T>(ruta: string): Promise<T[]> {
 }
 
 /**
- * "¿Por qué campaña llegó?" — campañas de Meta Ads y campañas propias
+ * "¿Por qué campaña llegó?" — campañas de Meta Ads, de Google Ads y campañas propias
  * (difusiones de WhatsApp Business, bot, Messenger, Instagram). Si la caja aún
  * no eligió nada (`valor` null) se sugiere la propia del canal de los últimos
  * 3 días o, si no hay, la de Meta del mes. En el local no se sugiere nada.
@@ -91,6 +98,7 @@ export default function SelectorCampana({
   onCambio: (valor: string) => void;
 }) {
   const [meta, setMeta] = useState<CampanaMeta[]>([]);
+  const [google, setGoogle] = useState<CampanaGoogle[]>([]);
   const [propias, setPropias] = useState<CampanaMensajeria[]>([]);
 
   useEffect(() => {
@@ -98,9 +106,11 @@ export default function SelectorCampana({
     void Promise.all([
       leerLista<CampanaMeta>('/admin/anuncios/campanas-recientes'),
       leerLista<CampanaMensajeria>('/admin/campanas-mensajeria?activas=true'),
-    ]).then(([deMeta, deCanal]) => {
+      leerLista<CampanaGoogle>('/admin/google-ads/campanas'),
+    ]).then(([deMeta, deCanal, deGoogle]) => {
       if (!vigente) return;
       setMeta(deMeta);
+      setGoogle(deGoogle);
       setPropias(
         deCanal.filter(
           (c) => haceHoras(c.enviada_en) <= DIAS_VISIBLES_PROPIAS * 24,
@@ -121,7 +131,7 @@ export default function SelectorCampana({
     if (valor === null && sugerida) onCambio(sugerida);
   }, [valor, sugerida, onCambio]);
 
-  if (meta.length === 0 && propias.length === 0) return null;
+  if (meta.length === 0 && propias.length === 0 && google.length === 0) return null;
 
   return (
     <label className="block">
@@ -147,6 +157,15 @@ export default function SelectorCampana({
           <optgroup label="Anuncios de Meta">
             {meta.map((c) => (
               <option key={c.id} value={`${PREFIJO_META}${c.id}`}>
+                {c.nombre}
+              </option>
+            ))}
+          </optgroup>
+        )}
+        {google.length > 0 && (
+          <optgroup label="Anuncios de Google">
+            {google.map((c) => (
+              <option key={c.id} value={`${PREFIJO_GOOGLE}${c.id}`}>
                 {c.nombre}
               </option>
             ))}
