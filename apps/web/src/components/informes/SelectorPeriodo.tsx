@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react'
 import { AnimatePresence, motion, useDragControls, useReducedMotion } from 'motion/react';
 import { diasEntre, etiquetaRango, hoyBogota, type RangoPreset } from '@/lib/informes-rango';
 import { plural } from '@/components/informes/informes.tipos';
+import { tocar } from '@/lib/retroalimentacion';
 
 /** Etiquetas del control segmentado: cortas para que entren 5 en un teléfono. */
 const SEGMENTOS: { key: Exclude<RangoPreset, 'personalizado'>; corto: string; largo: string }[] = [
@@ -17,7 +18,7 @@ const SEGMENTOS: { key: Exclude<RangoPreset, 'personalizado'>; corto: string; la
 const DIA_MES = new Intl.DateTimeFormat('es-CO', { day: 'numeric', month: 'short', timeZone: 'UTC' });
 
 /** "1–18 nov", "28 oct – 3 nov": rango corto para el botón en teléfono. */
-function rangoCorto(desde: string, hasta: string) {
+export function rangoCorto(desde: string, hasta: string) {
   const a = new Date(`${desde}T00:00:00Z`);
   const b = new Date(`${hasta}T00:00:00Z`);
   return DIA_MES.formatRange(a, b).replace(/\./g, '');
@@ -134,6 +135,7 @@ export default function SelectorPeriodo({
   function elegir(p: RangoPreset) {
     // La píldora se mueve primero y el panel se cierra un instante después:
     // así se ve qué quedó elegido antes de que desaparezca.
+    if (p !== elegido) tocar();
     setElegido(p);
     onPreset(p);
     window.setTimeout(() => setAbierto(false), reducir ? 0 : CERRAR_TRAS_ELEGIR_MS);

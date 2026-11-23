@@ -5,6 +5,7 @@ import { calcularDelta, etiquetaCorta, etiquetaLarga, etiquetaRango, formatoEjeP
 import Destacados from '@/components/informes/Destacados';
 import GraficoColumnas from '@/components/informes/GraficoColumnas';
 import MezclaVentas from '@/components/informes/MezclaVentas';
+import NumeroAnimado from '@/components/informes/NumeroAnimado';
 import Panel from '@/components/informes/Panel';
 import { HeroVentas, TarjetaKpi } from '@/components/informes/TarjetasResumen';
 import { IconArticulos, IconMoneda, IconPedidos, IconTendencia, IconTicket } from '@/components/informes/iconos';
@@ -54,11 +55,11 @@ export default function SeccionResumen({ informe, anterior, vs, etiqueta }: Cont
     <>
       {/* Teléfono: hero y KPIs 2×2. Tablet: hero a lo ancho y 4 KPIs en fila.
           Escritorio: hero a la izquierda (5/12) y KPIs 2×2 a la derecha. */}
-      <div className="animate-fade-up mt-5 grid gap-3 @2xl:gap-4 @4xl:grid-cols-12">
+      <div className="mt-5 grid gap-3 @2xl:gap-4 @4xl:grid-cols-12">
         <div className="@4xl:col-span-5">
           <HeroVentas
             icono={<IconMoneda />}
-            valor={formatPrecio(r.ventas_brutas)}
+            valor={<NumeroAnimado valor={r.ventas_brutas} formato={formatPrecio} />}
             periodo={etiqueta}
             delta={calcularDelta(r.ventas_brutas, ra?.ventas_brutas)}
             vs={vs}

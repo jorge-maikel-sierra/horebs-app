@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { ORIGEN_LABEL } from '@/lib/origen-venta';
+import PestanasInforme, { propsPanel } from '@/components/informes/PestanasInforme';
 import BarraParticipacion, { type SegmentoParticipacion } from '@/components/informes/BarraParticipacion';
 import {
   CANAL_LABEL,
@@ -71,33 +72,25 @@ export default function MezclaVentas({ informe }: { informe: InformeDto }) {
           </p>
         </div>
         {/* En teléfono una dimensión a la vez; desde tablet se ven las cuatro. */}
-        <div
-          role="tablist"
-          aria-label="Dimensión"
-          className="flex w-full rounded-xl bg-zinc-100 p-1 @2xl:hidden dark:bg-zinc-800/70"
-        >
-          {dimensiones.map((d) => (
-            <button
-              key={d.clave}
-              type="button"
-              role="tab"
-              aria-selected={activa === d.clave}
-              onClick={() => setActiva(d.clave)}
-              className={`h-9 flex-1 rounded-lg text-sm font-semibold transition-colors ${
-                activa === d.clave
-                  ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-50'
-                  : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
-              }`}
-            >
-              {d.corto}
-            </button>
-          ))}
+        <div className="w-full @2xl:hidden">
+          <PestanasInforme
+            vistas={dimensiones.map((d) => ({ key: d.clave, label: d.corto }))}
+            activa={activa}
+            onCambiar={setActiva}
+            grupo="mezcla"
+            etiqueta="Dimensión de la mezcla"
+            compacta
+          />
         </div>
       </div>
 
       <div className="mt-4 grid gap-x-8 gap-y-6 @2xl:grid-cols-2 @6xl:grid-cols-4">
         {dimensiones.map((d) => (
-          <div key={d.clave} className={activa === d.clave ? '' : 'hidden @2xl:block'}>
+          <div
+            key={d.clave}
+            {...propsPanel(d.clave, 'mezcla')}
+            className={`outline-none ${activa === d.clave ? 'animate-entrada-seccion @2xl:animate-none' : 'hidden @2xl:block'}`}
+          >
             <h3 className="mb-2.5 hidden text-xs font-semibold tracking-wider text-zinc-500 uppercase @2xl:block dark:text-zinc-400">
               {d.titulo}
             </h3>

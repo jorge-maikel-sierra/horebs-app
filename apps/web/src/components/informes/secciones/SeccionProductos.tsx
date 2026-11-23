@@ -78,7 +78,7 @@ export default function SeccionProductos({ informe }: ContextoSeccion) {
   );
 
   return (
-    <div className="animate-fade-up mt-5 grid items-start gap-4 @2xl:grid-cols-2 @4xl:grid-cols-12">
+    <div className="mt-5 grid items-start gap-4 @2xl:grid-cols-2 @4xl:grid-cols-12">
       <Panel
         className="@4xl:col-span-7"
         titulo="Productos más vendidos"

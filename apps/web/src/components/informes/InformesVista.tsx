@@ -4,7 +4,7 @@ import { useMemo, useRef } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import ErrorInforme from '@/components/informes/ErrorInforme';
 import PestanasInforme, { VISTAS, propsPanel, type VistaInforme } from '@/components/informes/PestanasInforme';
-import SelectorPeriodo from '@/components/informes/SelectorPeriodo';
+import SelectorPeriodo, { rangoCorto } from '@/components/informes/SelectorPeriodo';
 import SkeletonInforme from '@/components/informes/SkeletonInforme';
 import SeccionBots from '@/components/informes/secciones/SeccionBots';
 import SeccionClientes from '@/components/informes/secciones/SeccionClientes';
@@ -105,9 +105,13 @@ export default function InformesVista() {
     <div className="@container p-4 sm:p-6 lg:p-8">
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">Informes</h1>
+          <h1 data-titulo-pagina className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+            Informes
+          </h1>
           <p className="mt-1 text-sm text-zinc-500 tabular-nums dark:text-zinc-400">
-            {etiqueta}
+            {/* En teléfono el rango largo ocupaba dos líneas: va el corto. */}
+            <span className="@xl:hidden">{rangoCorto(desde, hasta)}</span>
+            <span className="hidden @xl:inline">{etiqueta}</span>
             {dias > 1 && <span className="whitespace-nowrap"> · {plural(dias, 'día')}</span>}
           </p>
         </div>
@@ -144,7 +148,7 @@ export default function InformesVista() {
           key={vistaVisible}
           {...propsPanel(vistaVisible)}
           aria-busy={cargando}
-          className={`outline-none transition-opacity duration-200 ${cargando ? 'pointer-events-none opacity-50' : ''}`}
+          className={`animate-entrada-seccion outline-none transition-opacity duration-200 ${cargando ? 'pointer-events-none opacity-50' : ''}`}
         >
           {vistaVisible === 'resumen' && <SeccionResumen {...ctx} />}
           {vistaVisible === 'productos' && <SeccionProductos {...ctx} />}

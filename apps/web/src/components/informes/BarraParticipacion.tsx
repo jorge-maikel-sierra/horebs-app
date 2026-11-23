@@ -84,22 +84,25 @@ export default function BarraParticipacion({
             onPointerEnter={() => setActivo(s.clave)}
             onFocus={() => setActivo(s.clave)}
             onBlur={() => setActivo(null)}
-            className={`-mx-2 flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm outline-none transition-opacity focus-visible:ring-2 focus-visible:ring-brand-orange/50 ${atenuar(s.clave)} ${activo === s.clave ? 'bg-zinc-100 dark:bg-zinc-800/60' : ''}`}
+            className={`-mx-2 flex items-start gap-2.5 rounded-lg px-2 py-1.5 text-sm outline-none transition-opacity focus-visible:ring-2 focus-visible:ring-brand-orange/50 ${atenuar(s.clave)} ${activo === s.clave ? 'bg-zinc-100 dark:bg-zinc-800/60' : ''}`}
           >
             <span
-              className={`h-2.5 w-2.5 shrink-0 rounded-[3px] ${color(s)}`}
+              className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-[3px] ${color(s)}`}
               style={s.sinDato ? RAYAS : undefined}
               aria-hidden="true"
             />
-            <span className="min-w-0 flex-1 truncate text-zinc-700 dark:text-zinc-300">
-              {s.etiqueta}
-              <span className="ml-1.5 text-xs text-zinc-500 dark:text-zinc-400">{s.detalle}</span>
+            {/* Nombre y detalle apilados, y monto con su porcentaje debajo:
+                antes iban en una sola fila con anchos fijos y el monto se
+                salía de la tarjeta en columnas angostas. */}
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-zinc-700 dark:text-zinc-300">{s.etiqueta}</span>
+              <span className="block truncate text-xs text-zinc-500 dark:text-zinc-400">{s.detalle}</span>
             </span>
-            <span className="w-10 shrink-0 text-right text-xs font-semibold text-zinc-500 tabular-nums dark:text-zinc-400">
-              {PCT.format((s.valor / total) * 100)}%
-            </span>
-            <span className="w-24 shrink-0 text-right font-semibold text-zinc-900 tabular-nums dark:text-zinc-50">
-              {formatPrecio(s.valor)}
+            <span className="shrink-0 text-right tabular-nums">
+              <span className="block font-semibold text-zinc-900 dark:text-zinc-50">{formatPrecio(s.valor)}</span>
+              <span className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+                {PCT.format((s.valor / total) * 100)}%
+              </span>
             </span>
           </li>
         ))}

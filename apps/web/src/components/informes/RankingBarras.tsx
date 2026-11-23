@@ -58,9 +58,11 @@ export default function RankingBarras({
               </span>
             )}
             <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between gap-2 text-sm">
+              {/* Hasta dos líneas: los nombres de anuncios y campañas de Meta
+                  son largos y en una sola línea se perdía lo que los distingue. */}
+              <div className="flex items-start justify-between gap-2 text-sm">
                 <span
-                  className={`truncate font-medium ${numerado ? 'text-zinc-800 dark:text-zinc-200' : 'text-zinc-700 dark:text-zinc-300'}`}
+                  className={`line-clamp-2 [overflow-wrap:anywhere] font-medium ${numerado ? 'text-zinc-800 dark:text-zinc-200' : 'text-zinc-700 dark:text-zinc-300'}`}
                 >
                   {f.etiqueta}
                   {f.extra && (
@@ -77,7 +79,7 @@ export default function RankingBarras({
                 className={`mt-1 w-full overflow-hidden rounded-r-[4px] bg-zinc-100 dark:bg-zinc-800 ${numerado ? 'h-1.5' : 'h-2'}`}
               >
                 <div
-                  className={`h-full rounded-r-[4px] transition-[width] duration-500 ${COLOR_MARCA[tono]}`}
+                  className={`h-full origin-left rounded-r-[4px] transition-[width,scale] duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] starting:scale-x-0 motion-reduce:transition-none ${COLOR_MARCA[tono]}`}
                   style={{ width: `${(f.valor / max) * 100}%` }}
                 />
               </div>
