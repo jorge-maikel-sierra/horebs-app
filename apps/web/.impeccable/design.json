@@ -1,0 +1,147 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-23T23:55:00-05:00",
+  "title": "Design System: Pizzería Horebs",
+  "extensions": {
+    "colorMeta": {
+      "brand-orange": { "role": "primary", "displayName": "Naranja Brasa", "canonical": "hsl(16 100% 60%)", "tonalRamp": ["hsl(11 80% 27%)", "hsl(12 84% 35%)", "hsl(13 88% 43%)", "hsl(14 91% 52%)", "hsl(16 100% 60%)", "hsl(16 100% 74%)", "hsl(16 100% 84%)", "hsl(16 100% 96%)"] },
+      "brand-orange-700": { "role": "primary", "displayName": "Naranja Horno", "canonical": "hsl(13 88% 43%)" },
+      "brand-orange-800": { "role": "primary", "displayName": "Naranja Tostado", "canonical": "hsl(12 84% 35%)" },
+      "brand-yellow": { "role": "secondary", "displayName": "Amarillo Llama", "canonical": "hsl(48 100% 62%)", "tonalRamp": ["hsl(38 85% 30%)", "hsl(40 88% 37%)", "hsl(42 90% 45%)", "hsl(42 95% 54%)", "hsl(48 100% 62%)", "hsl(48 100% 75%)", "hsl(47 100% 83%)", "hsl(48 100% 95%)"] },
+      "brand-navy": { "role": "tertiary", "displayName": "Navy Profundo", "canonical": "#1a3a52", "tonalRamp": ["oklch(22% 0.04 240)", "oklch(28% 0.05 240)", "oklch(33% 0.06 240)", "oklch(42% 0.06 240)", "oklch(55% 0.05 240)", "oklch(70% 0.04 240)", "oklch(84% 0.02 240)", "oklch(95% 0.01 240)"] },
+      "danger": { "role": "semantic", "displayName": "Peligro", "canonical": "hsl(0 72% 51%)" },
+      "success": { "role": "semantic", "displayName": "Éxito", "canonical": "hsl(142 72% 38%)" },
+      "background-light": { "role": "neutral", "displayName": "Blanco Harina", "canonical": "#ffffff" },
+      "background-dark": { "role": "neutral", "displayName": "Noche de Horno", "canonical": "#0a0a0a" },
+      "foreground-light": { "role": "neutral", "displayName": "Tinta", "canonical": "#171717" },
+      "foreground-dark": { "role": "neutral", "displayName": "Tinta clara", "canonical": "#ededed" },
+      "border-light": { "role": "neutral", "displayName": "Borde Ceniza", "canonical": "#e4e4e7" },
+      "border-dark": { "role": "neutral", "displayName": "Borde Ceniza oscuro", "canonical": "#27272a" },
+      "muted-text-light": { "role": "neutral", "displayName": "Humo", "canonical": "#71717a" },
+      "muted-text-dark": { "role": "neutral", "displayName": "Humo claro", "canonical": "#a1a1aa" }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "La cifra protagonista de un héroe." },
+      "headline": { "displayName": "Headline", "purpose": "Título de página (h1)." },
+      "title": { "displayName": "Title", "purpose": "Título de tarjeta o panel." },
+      "body": { "displayName": "Body", "purpose": "Texto corriente del panel y listas." },
+      "label": { "displayName": "Label", "purpose": "Nombre de una métrica, en mayúsculas." },
+      "mono": { "displayName": "Mono", "purpose": "Códigos y datos técnicos." }
+    },
+    "shadows": [
+      { "name": "brasa", "value": "0 10px 15px -3px rgb(255 105 51 / 0.25), 0 4px 6px -4px rgb(255 105 51 / 0.25)", "purpose": "Solo bajo el héroe naranja." },
+      { "name": "levante", "value": "0 12px 24px -8px rgba(0,0,0,0.18)", "purpose": "Hover de tarjeta clicable, solo con mouse, junto a translateY(-4px)." },
+      { "name": "flotante", "value": "0 25px 50px -12px rgb(0 0 0 / 0.25)", "purpose": "Menús, hojas inferiores y modales." },
+      { "name": "pastilla", "value": "0 1px 2px 0 rgb(0 0 0 / 0.05)", "purpose": "Pestaña activa de un control segmentado." }
+    ],
+    "motion": [
+      { "name": "ease-out-fuerte", "value": "cubic-bezier(0.23, 1, 0.32, 1)", "purpose": "Entradas y cambios de estado de interfaz (≤300ms)." },
+      { "name": "ease-entrada-sitio", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Entradas de la tienda (fade-up 0.6s) y hover de tarjetas." },
+      { "name": "presion", "value": "transform 150ms ease → scale(0.96)", "purpose": "Todo elemento presionable (btn-press)." },
+      { "name": "entrada-seccion", "value": "260ms ease-out-fuerte, opacity 0 + translateY(6px) + blur(3px), fill backwards", "purpose": "Cambio de pestaña en el panel." },
+      { "name": "resorte-pestana", "value": "spring bounce 0.18, 0.4s", "purpose": "Pastilla activa que se desliza entre pestañas." },
+      { "name": "resorte-hoja", "value": "spring damping 34, stiffness 380", "purpose": "Hoja inferior en teléfono." },
+      { "name": "conteo", "value": "0.7s ease-out-fuerte", "purpose": "Cifra protagonista que cuenta hasta su valor." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "@xl (container)", "value": "36rem" },
+      { "name": "@2xl (container)", "value": "42rem" },
+      { "name": "@4xl (container)", "value": "56rem" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Acción principal: confirmar, aplicar, pedir.",
+      "html": "<button class=\"ds-btn-primary\">Aplicar fechas</button>",
+      "css": ".ds-btn-primary { height: 44px; padding: 0 16px; border: 0; border-radius: 12px; color: #fff; font: 600 14px/1 Geist, system-ui, sans-serif; background-image: linear-gradient(135deg, hsl(13.5 89.5% 47.5%) 0%, hsl(13 88% 43%) 30%, hsl(12 84% 35%) 100%); box-shadow: 0 1px 2px rgb(0 0 0 / 0.05); cursor: pointer; transition: transform 150ms ease, opacity 200ms ease; } .ds-btn-primary:active { transform: scale(0.96); } .ds-btn-primary:focus-visible { outline: 2px solid hsl(13 88% 43%); outline-offset: 2px; } .ds-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Acción secundaria o botón de período con ícono.",
+      "html": "<button class=\"ds-btn-outline\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" aria-hidden=\"true\"><rect x=\"3.5\" y=\"5\" width=\"17\" height=\"15.5\" rx=\"2.5\"/><path d=\"M3.5 10h17M8 3v4M16 3v4\"/></svg>Últimos 7 días</button>",
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 12px; border: 1px solid #d4d4d8; border-radius: 12px; background: rgb(255 255 255 / 0.8); color: #18181b; font: 600 14px/1 Geist, system-ui, sans-serif; cursor: pointer; transition: transform 150ms ease, border-color 200ms ease; } .ds-btn-outline svg { color: hsl(13 88% 43%); } .ds-btn-outline:hover { border-color: hsl(13 88% 43%); } .ds-btn-outline:active { transform: scale(0.96); } .ds-btn-outline:focus-visible { outline: 2px solid hsl(13 88% 43%); outline-offset: 2px; }"
+    },
+    {
+      "name": "Segmented Tabs",
+      "kind": "nav",
+      "refersTo": "tab-segmented",
+      "description": "Pestañas de sección y selectores de período.",
+      "html": "<div class=\"ds-tabs\" role=\"tablist\"><button class=\"ds-tab ds-tab-on\" role=\"tab\" aria-selected=\"true\">Resumen</button><button class=\"ds-tab\" role=\"tab\" aria-selected=\"false\">Productos</button><button class=\"ds-tab\" role=\"tab\" aria-selected=\"false\">Clientes</button></div>",
+      "css": ".ds-tabs { display: inline-flex; padding: 4px; border-radius: 12px; background: #f4f4f5; } .ds-tab { height: 36px; padding: 0 16px; border: 0; border-radius: 8px; background: transparent; color: #71717a; font: 600 14px/1 Geist, system-ui, sans-serif; cursor: pointer; transition: color 150ms ease, background 200ms cubic-bezier(0.23,1,0.32,1); } .ds-tab:hover { color: #27272a; } .ds-tab-on { background: #fff; color: #18181b; box-shadow: 0 1px 2px rgb(0 0 0 / 0.05); } .ds-tab:focus-visible { outline: 2px solid hsl(16 100% 60% / 0.6); outline-offset: 0; }"
+    },
+    {
+      "name": "Hero Card",
+      "kind": "card",
+      "refersTo": "card-hero",
+      "description": "La única pieza encendida de la vista: cifra protagonista.",
+      "html": "<div class=\"ds-hero\"><span class=\"ds-hero-ring\"></span><p class=\"ds-hero-label\">Ventas brutas</p><p class=\"ds-hero-value\">$ 6.431.000</p><p class=\"ds-hero-note\">17 de nov – 23 de nov de 2026</p></div>",
+      "css": ".ds-hero { position: relative; overflow: hidden; min-height: 180px; padding: 24px; border-radius: 24px; color: #fff; background-image: linear-gradient(135deg, hsl(13.5 89.5% 47.5%) 0%, hsl(13 88% 43%) 30%, hsl(12 84% 35%) 100%); box-shadow: 0 10px 15px -3px rgb(255 105 51 / 0.25); font-family: Geist, system-ui, sans-serif; } .ds-hero-ring { position: absolute; top: -64px; right: -48px; width: 192px; height: 192px; border-radius: 9999px; background: rgb(255 255 255 / 0.1); } .ds-hero-label { position: relative; margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; } .ds-hero-value { position: relative; margin: 16px 0 0; font-size: 48px; font-weight: 800; line-height: 1; letter-spacing: -0.025em; font-variant-numeric: tabular-nums; } .ds-hero-note { position: relative; margin: 8px 0 0; font-size: 14px; color: rgb(255 255 255 / 0.9); }"
+    },
+    {
+      "name": "KPI Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Métrica de solo lectura con ícono, variación y cifra.",
+      "html": "<div class=\"ds-kpi\"><div class=\"ds-kpi-top\"><span class=\"ds-kpi-icon\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" aria-hidden=\"true\"><path d=\"M4 4h16v16H4zM8 9h8M8 13h8M8 17h5\"/></svg></span><span class=\"ds-chip ds-chip-down\">▼ 13,5%</span></div><p class=\"ds-kpi-label\">Pedidos</p><p class=\"ds-kpi-value\">135</p></div>",
+      "css": ".ds-kpi { padding: 20px; border: 1px solid #e4e4e7; border-radius: 16px; background-image: linear-gradient(165deg, hsl(16 100% 98%) 0%, #fff 45%, hsl(48 100% 98%) 100%); font-family: Geist, system-ui, sans-serif; } .ds-kpi-top { display: flex; justify-content: space-between; align-items: flex-start; } .ds-kpi-icon { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 12px; background: #dbeafe; color: #1a3a52; } .ds-kpi-label { margin: 12px 0 0; font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: #71717a; } .ds-kpi-value { margin: 4px 0 0; font-size: 24px; font-weight: 800; letter-spacing: -0.025em; color: #18181b; font-variant-numeric: tabular-nums; } .ds-chip { display: inline-flex; padding: 2px 8px; border-radius: 9999px; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; } .ds-chip-down { background: hsl(0 93% 94%); color: hsl(0 74% 42%); }"
+    },
+    {
+      "name": "Delta Chip",
+      "kind": "chip",
+      "refersTo": "chip-delta",
+      "description": "Variación contra el período anterior; el color depende de si más es mejor.",
+      "html": "<span class=\"ds-delta ds-delta-up\">▲ 5,7%</span> <span class=\"ds-delta ds-delta-down\">▼ 8,5%</span>",
+      "css": ".ds-delta { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 9999px; font: 700 12px/1.33 Geist, system-ui, sans-serif; font-variant-numeric: tabular-nums; } .ds-delta-up { background: hsl(141 79% 91%); color: hsl(142 72% 29%); } .ds-delta-down { background: hsl(0 93% 94%); color: hsl(0 74% 42%); }"
+    },
+    {
+      "name": "Date Range Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Dos fechas relacionadas en una sola caja partida.",
+      "html": "<div class=\"ds-range\"><label class=\"ds-range-cell\"><span>Desde</span><input type=\"date\" value=\"2026-11-17\"></label><span class=\"ds-range-sep\"></span><label class=\"ds-range-cell\"><span>Hasta</span><input type=\"date\" value=\"2026-11-23\"></label></div>",
+      "css": ".ds-range { display: flex; border: 1px solid #d4d4d8; border-radius: 12px; transition: border-color 150ms ease, box-shadow 150ms ease; font-family: Geist, system-ui, sans-serif; } .ds-range:focus-within { border-color: hsl(16 100% 60%); box-shadow: 0 0 0 2px hsl(16 100% 60% / 0.2); } .ds-range-cell { flex: 1; min-width: 0; padding: 8px 12px; } .ds-range-cell span { display: block; font-size: 11px; font-weight: 500; color: #71717a; } .ds-range-cell input { display: block; width: 100%; border: 0; background: transparent; font: 600 14px Geist, system-ui, sans-serif; color: #18181b; outline: none; font-variant-numeric: tabular-nums; } .ds-range-sep { width: 1px; margin: 8px 0; background: #e4e4e7; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "El horno encendido",
+    "overview": "Horebs se ve como un horno encendido en una cocina ordenada: superficies sobrias (blanco o casi negro, grises zinc, bordes finos) y el calor de la marca concentrado donde importa. El naranja y el amarillo no tiñen la página entera; aparecen en lo que el ojo debe encontrar primero: la cifra protagonista de un informe, el botón que confirma un pedido, la pestaña activa, el precio. Un halo cálido muy tenue en las esquinas superiores del fondo recuerda la brasa sin competir con el contenido.\n\nEl mismo sistema sirve a dos superficies con pesos iguales. En la tienda el calor abre el apetito alrededor de la foto de producto. En el panel /admin la herramienta va primero: densidad media, cifras con números tabulares, jerarquía por tamaño y peso, y la marca en los detalles (la pestaña activa, el héroe naranja, el foco). Los controles son táctiles y seguros: se hunden al presionar, responden al instante y tienen esquinas generosas.",
+    "keyCharacteristics": [
+      "Superficies neutras y planas; el color de marca es un acento, no un fondo.",
+      "Una sola pieza \"encendida\" por vista: el héroe naranja con degradado.",
+      "Modo claro y oscuro completos; el naranja de texto cambia de tono por contraste.",
+      "Números tabulares en toda cifra que cambia o se compara.",
+      "Movimiento corto con ease-out fuerte, y nada que no respete `prefers-reduced-motion`."
+    ],
+    "rules": [
+      { "name": "The Una Brasa Rule", "body": "Cada vista tiene una sola superficie rellena de naranja (el héroe o el botón primario). Si hay dos, una sobra.", "section": "colors" },
+      { "name": "The Escala Fija Rule", "body": "Los tonos salen de las escalas 50–900 de `globals.css`; no se generan con `color-mix()` ni con opacidad al vuelo. Si falta un tono, se agrega a la escala.", "section": "colors" },
+      { "name": "The Tinta Naranja Rule", "body": "El texto naranja siempre es `text-accent-ink`, nunca `text-brand-orange`: el 500 no pasa contraste sobre blanco.", "section": "colors" },
+      { "name": "The Cifra Tabular Rule", "body": "Toda cifra que cambia o se compara lleva `tabular-nums`: los montos no bailan al animarse ni al cambiar de período.", "section": "typography" },
+      { "name": "The Peso Antes Que Color Rule", "body": "La jerarquía se hace con tamaño y peso; el color de marca no sirve para enfatizar texto.", "section": "typography" },
+      { "name": "The Plano Por Defecto Rule", "body": "Una tarjeta de solo lectura no tiene sombra ni se levanta. Si se levanta, se puede tocar.", "section": "elevation" }
+    ],
+    "dos": [
+      "**Do** usar `text-accent-ink` para todo texto naranja y `btn-gradient` para todo relleno naranja de botón.",
+      "**Do** dejar un solo héroe naranja por vista y construir el resto con superficies planas y bordes de 1px.",
+      "**Do** poner `tabular-nums` en montos, conteos y porcentajes.",
+      "**Do** mantener animaciones de interfaz bajo 300ms con `cubic-bezier(0.23, 1, 0.32, 1)`; hojas y modales hasta 500ms con resorte.",
+      "**Do** dar 44px de área táctil a todo control.",
+      "**Do** cubrir cada color con su par `dark:` cuando se apoya en el fondo de la página."
+    ],
+    "donts": [
+      "**Don't** usar `text-brand-orange` (el naranja 500) como texto sobre blanco.",
+      "**Don't** levantar ni dar sombra a una tarjeta que no se puede tocar, ni aplicar hover en pantallas táctiles.",
+      "**Don't** usar los rojos o verdes de Tailwind para error o éxito fuera de las escalas `danger` y `success`.",
+      "**Don't** dejar `filter` ni `transform` puestos al terminar una animación de entrada (`animation-fill-mode: backwards`): convierten la sección en el contenedor de sus modales `fixed`.",
+      "**Don't** animar desde `scale(0)` ni usar `ease-in` en una entrada: se parte de casi visible (`scale(0.95)`, opacidad 0) con ease-out."
+    ]
+  }
+}
