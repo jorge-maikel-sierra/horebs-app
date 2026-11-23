@@ -122,10 +122,10 @@ es lo que más explica los saltos.
 | Paso | Qué hace | Estado |
 |---|---|---|
 | Sufijo de URL final en Ads | `utm_source=google&utm_medium=cpc&utm_campaign={campaignid}&utm_term={keyword}&utm_content={creative}`; `atribucion_web` ya guarda `utm_*` | Configuración de la cuenta |
-| gclid / gbraid / wbraid | `lib/atribucion.ts` los guarda; `pedidos/atribucion-web.ts` los admite | v2 (código) |
-| Caja (POS) | Columna `origen_campana_plataforma` (`meta` / `google`) para no mezclar ids con Meta | v2 |
+| gclid / gbraid / wbraid | `lib/atribucion.ts` los guarda; `pedidos/atribucion-web.ts` los admite | Hecho (23 nov 2026) |
+| Caja (POS) | Grupo "Anuncios de Google" en el selector; se guarda `origen_campana_id = gads:<id>` y el tablero de Meta lo ignora | Hecho (23 nov 2026) |
 | Código en WhatsApp | `(ref G-XXXX)` en el texto prellenado. `wa.me` no lleva `ref`, y el botón web abre +57 315 786 1208 (humano, no el bot) | Bloqueado por la pregunta 1 |
-| Conversiones offline | El script sube los pedidos del bot con gclid | v2 |
+| Conversiones offline | El script sube los pedidos del bot con gclid | Pendiente: ningún pedido del bot trae gclid hasta tener el código de WhatsApp |
 
 ## 5. Diseño
 
