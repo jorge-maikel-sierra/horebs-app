@@ -85,3 +85,37 @@ export function leerAtribucion(): Atribucion {
     return {};
   }
 }
+
+// Un enlace de Google Business Profile también trae utm_source=google, pero
+// orgánico: solo cuenta como anuncio con gclid o con un medio pagado.
+const MEDIOS_PAGADOS = ['cpc', 'ppc', 'paid', 'paid_search'];
+/**
+ * El WhatsApp de la web lo atiende una persona, no el bot: la marca al final
+ * del mensaje le dice que el cliente llegó por un anuncio de Google, para que
+ * en la caja elija "Anuncios de Google" en "¿Por qué campaña llegó?".
+ */
+export const MARCA_GOOGLE_ADS = '(lo vi en Google)';
+
+/** La visita (de los últimos 30 días) llegó por un anuncio de Google. */
+export function vinoDeGoogleAds(): boolean {
+  const u = utmGuardados();
+  if (u.gclid || u.gbraid || u.wbraid) return true;
+  return (
+    u.utm_source?.toLowerCase() === 'google' &&
+    MEDIOS_PAGADOS.includes(u.utm_medium?.toLowerCase() ?? '')
+  );
+}
+
+/** Agrega la marca de Google al texto de un enlace wa.me (una sola vez). */
+export function marcarEnlaceWhatsapp(href: string): string {
+  try {
+    const url = new URL(href);
+    if (url.hostname !== 'wa.me' || !vinoDeGoogleAds()) return href;
+    const texto = url.searchParams.get('text') ?? '';
+    if (texto.includes(MARCA_GOOGLE_ADS)) return href;
+    url.searchParams.set('text', `${texto} ${MARCA_GOOGLE_ADS}`.trim());
+    return url.toString();
+  } catch {
+    return href;
+  }
+}
