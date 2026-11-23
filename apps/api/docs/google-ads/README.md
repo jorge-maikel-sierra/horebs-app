@@ -16,9 +16,13 @@ y la especificación en `especificacion-tablero.md`.
 | segmentos | `campaign` por fecha+hora y por dispositivo; `geographic_view` por ciudad (presencia o interés) | `google_ads_segmentos_diario` |
 | conversiones | `campaign` por acción de conversión (va aparte porque no se combina con el costo) | `google_ads_conversiones_diario` |
 | anuncios | `ad_group_ad`: fuerza, aprobación y URL final (foto, sin fecha) | `google_ads_anuncios` |
+| estado_campanas | `campaign` sin fecha: estado, motivos, puja y presupuesto actuales (los días en que una campaña no sirve no hay fila diaria) | `google_ads_campanas_estado` |
 
-Cada corrida vuelve a mandar los últimos 7 días hasta ayer y el API reemplaza
-esa ventana completa. Cada envío queda en `google_ads_lotes`.
+Cada corrida vuelve a mandar los últimos 7 días hasta ayer. Todas las filas de
+un reporte llevan el sello de su primera parte; cuando llega la última, el API
+borra lo viejo de esa ventana. Si una parte falla, lo anterior sigue intacto.
+Un reporte que falla no frena a los demás: la corrida termina en error al final
+para que Google Ads lo avise. Cada envío queda en `google_ads_lotes`.
 
 ## Instalación (una vez)
 

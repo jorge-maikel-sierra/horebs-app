@@ -34,12 +34,28 @@ function main() {
   var rango = calcularRango(ctx.zona_horaria);
   Logger.log('Cuenta ' + ctx.cuenta_id + ', rango ' + rango.desde + ' a ' + rango.hasta);
 
-  enviarReporte(ctx, 'campanas', rango, filasCampanas(rango));
-  enviarReporte(ctx, 'palabras', rango, filasPalabras(rango));
-  enviarReporte(ctx, 'terminos', rango, filasTerminos(rango));
-  enviarReporte(ctx, 'segmentos', rango, filasSegmentos(rango));
-  enviarReporte(ctx, 'conversiones', rango, filasConversiones(rango));
-  enviarReporte(ctx, 'anuncios', { desde: null, hasta: null }, filasAnuncios());
+  var foto = { desde: null, hasta: null };
+  var reportes = [
+    ['estado_campanas', foto, filasEstadoCampanas],
+    ['anuncios', foto, filasAnuncios],
+    ['campanas', rango, filasCampanas],
+    ['palabras', rango, filasPalabras],
+    ['terminos', rango, filasTerminos],
+    ['segmentos', rango, filasSegmentos],
+    ['conversiones', rango, filasConversiones],
+  ];
+  // Un reporte que falla (consulta GAQL o rechazo del API) no frena a los
+  // demás; al final la corrida falla igual para que Google Ads lo avise.
+  var fallas = [];
+  reportes.forEach(function (r) {
+    try {
+      enviarReporte(ctx, r[0], r[1], r[2](rango));
+    } catch (e) {
+      Logger.log('ERROR en ' + r[0] + ': ' + e.message);
+      fallas.push(r[0]);
+    }
+  });
+  if (fallas.length > 0) throw new Error('Fallaron: ' + fallas.join(', '));
 }
 
 // ---------------------------------------------------------------- fechas
@@ -125,6 +141,31 @@ function filasCampanas(rango) {
         is_superior_absoluta: opc(m.searchAbsoluteTopImpressionShare),
       })
     );
+  });
+}
+
+/**
+ * Foto del estado actual (sin fecha): los días en que una campaña no sirve,
+ * la consulta por fecha no trae su fila y el tablero no se enteraría.
+ */
+function filasEstadoCampanas() {
+  return consultar(
+    'SELECT campaign.id, campaign.name, campaign.status, campaign.primary_status, ' +
+      'campaign.primary_status_reasons, campaign.bidding_strategy_type, ' +
+      'campaign.bidding_strategy_system_status, campaign_budget.amount_micros ' +
+      "FROM campaign WHERE campaign.status != 'REMOVED'"
+  ).map(function (r) {
+    var c = r.campaign;
+    return {
+      campana_id: String(c.id),
+      campana_nombre: c.name,
+      estado: opc(c.status),
+      estado_principal: opc(c.primaryStatus),
+      motivos_estado: c.primaryStatusReasons || [],
+      estrategia_puja: opc(c.biddingStrategyType),
+      estado_puja: opc(c.biddingStrategySystemStatus),
+      presupuesto_diario: String(num(r.campaignBudget && r.campaignBudget.amountMicros)),
+    };
   });
 }
 
@@ -284,7 +325,8 @@ function filasAnuncios() {
     'SELECT campaign.id, ad_group.id, ad_group_ad.ad.id, ad_group_ad.ad.type, ' +
       'ad_group_ad.status, ad_group_ad.ad_strength, ad_group_ad.policy_summary.approval_status, ' +
       'ad_group_ad.ad.final_urls FROM ad_group_ad ' +
-      "WHERE ad_group_ad.status != 'REMOVED' AND campaign.status != 'REMOVED'"
+      "WHERE ad_group_ad.status != 'REMOVED' AND ad_group.status != 'REMOVED' " +
+      "AND campaign.status != 'REMOVED'"
   ).map(function (r) {
     var a = r.adGroupAd;
     return {

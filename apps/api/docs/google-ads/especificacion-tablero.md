@@ -204,7 +204,7 @@ constantes con nombre.
   `application/json` por su cuenta.
 - Body:
   `{ version, cuenta_id, zona_horaria, moneda, lote_id, reporte, parte, total_partes, desde, hasta, filas[] }`
-  con `reporte ∈ campanas | palabras | terminos | geo | conversiones | anuncios`.
+  con `reporte ∈ campanas | palabras | terminos | segmentos | conversiones | anuncios | estado_campanas`.
   Se rechaza si `cuenta_id ≠ GOOGLE_ADS_CUENTA_ID`, zona ≠ `America/Bogota`,
   moneda ≠ COP o versión desconocida. Filas validadas una por una en el
   service.
