@@ -9,27 +9,38 @@ import { GoogleAdsIngestaService } from './google-ads-ingesta.service';
 
 type Llamada = { tabla: string; op: string; args: unknown[] };
 
+const SELLO_PARTE_1 = '2026-11-23T11:00:00.000Z';
+
 /** Cliente de Supabase falso que anota cada operación encadenada. */
-function clienteFalso(repetido = false) {
+function clienteFalso(opciones: { repetido?: boolean; sinParte1?: boolean }) {
   const llamadas: Llamada[] = [];
   const from = (tabla: string) => {
     const cadena: Record<string, unknown> = {};
+    let columnas = '';
     const anotar =
       (op: string) =>
       (...args: unknown[]) => {
         llamadas.push({ tabla, op, args });
+        if (op === 'select') columnas = String(args[0]);
         return cadena;
       };
-    for (const op of ['select', 'eq', 'delete', 'gte', 'lte', 'not']) {
+    for (const op of ['select', 'eq', 'delete', 'gte', 'lte', 'lt']) {
       // `op` sale de la lista fija de arriba, no de afuera.
       // eslint-disable-next-line security/detect-object-injection
       cadena[op] = anotar(op);
     }
-    cadena.maybeSingle = () =>
-      Promise.resolve({
-        data: repetido ? { lote_id: 'x' } : null,
+    cadena.maybeSingle = () => {
+      if (columnas === 'sello') {
+        return Promise.resolve({
+          data: opciones.sinParte1 ? null : { sello: SELLO_PARTE_1 },
+          error: null,
+        });
+      }
+      return Promise.resolve({
+        data: opciones.repetido ? { lote_id: 'x' } : null,
         error: null,
       });
+    };
     cadena.upsert = (...args: unknown[]) => {
       llamadas.push({ tabla, op: 'upsert', args });
       return Promise.resolve({ error: null });
@@ -45,14 +56,18 @@ function clienteFalso(repetido = false) {
 }
 
 function crear(
-  opciones: { repetido?: boolean; env?: Record<string, string> } = {},
+  opciones: {
+    repetido?: boolean;
+    sinParte1?: boolean;
+    env?: Record<string, string>;
+  } = {},
 ) {
   const env = opciones.env ?? {
     GOOGLE_ADS_WEBHOOK_SECRETO: 's',
     GOOGLE_ADS_CUENTA_ID: '5883895578',
   };
   const config = { get: (k: string) => new Map(Object.entries(env)).get(k) };
-  const { llamadas, cliente } = clienteFalso(opciones.repetido);
+  const { llamadas, cliente } = clienteFalso(opciones);
   const servicio = new GoogleAdsIngestaService(
     config as unknown as ConfigService,
     { getClient: () => cliente } as unknown as SupabaseService,
@@ -87,29 +102,51 @@ const LOTE = {
 };
 
 describe('GoogleAdsIngestaService', () => {
-  it('la parte 1 vacía la ventana y luego guarda (no quedan términos viejos)', async () => {
+  it('la parte 1 de 2 guarda con su sello y no borra nada todavía', async () => {
     const { servicio, llamadas } = crear();
 
     const r = await servicio.recibir(LOTE);
 
     expect(r).toMatchObject({ estado: 'guardado', filas: 1 });
-    const ops = llamadas
-      .filter((l) => l.tabla === 'google_ads_terminos_diario')
-      .map((l) => l.op);
-    expect(ops).toEqual(['delete', 'gte', 'lte', 'upsert']);
+    expect(llamadas.some((l) => l.op === 'delete')).toBe(false);
     const upsert = llamadas.find((l) => l.op === 'upsert');
-    expect((upsert?.args[0] as { gasto: number }[])[0].gasto).toBe(1500);
-    expect(
-      llamadas.some((l) => l.tabla === 'google_ads_lotes' && l.op === 'insert'),
-    ).toBe(true);
+    const fila = (
+      upsert?.args[0] as { gasto: number; actualizado_en: string }[]
+    )[0];
+    expect(fila.gasto).toBe(1500);
+    const lote = llamadas.find(
+      (l) => l.tabla === 'google_ads_lotes' && l.op === 'insert',
+    );
+    expect((lote?.args[0] as { sello: string }).sello).toBe(
+      fila.actualizado_en,
+    );
   });
 
-  it('la parte 2 agrega sin borrar lo que dejó la parte 1', async () => {
+  it('la última parte usa el sello de la parte 1 y borra lo viejo de la ventana', async () => {
     const { servicio, llamadas } = crear();
 
     await servicio.recibir({ ...LOTE, parte: 2 });
 
-    expect(llamadas.some((l) => l.op === 'delete')).toBe(false);
+    const upsert = llamadas.find((l) => l.op === 'upsert');
+    expect(
+      (upsert?.args[0] as { actualizado_en: string }[])[0].actualizado_en,
+    ).toBe(SELLO_PARTE_1);
+    const ops = llamadas
+      .filter((l) => l.tabla === 'google_ads_terminos_diario')
+      .map((l) => l.op);
+    // Primero guarda, después borra: si algo falla, lo viejo no se pierde.
+    expect(ops).toEqual(['upsert', 'delete', 'lt', 'gte', 'lte']);
+    expect(llamadas.find((l) => l.op === 'lt')?.args).toEqual([
+      'actualizado_en',
+      SELLO_PARTE_1,
+    ]);
+  });
+
+  it('sin la parte 1 registrada rechaza la parte 2', async () => {
+    const { servicio } = crear({ sinParte1: true });
+    await expect(servicio.recibir({ ...LOTE, parte: 2 })).rejects.toThrow(
+      'Falta la parte 1 de este lote.',
+    );
   });
 
   it('un lote ya recibido no se vuelve a procesar', async () => {
@@ -121,6 +158,17 @@ describe('GoogleAdsIngestaService', () => {
     expect(llamadas.some((l) => l.op === 'delete' || l.op === 'upsert')).toBe(
       false,
     );
+  });
+
+  it('acepta conversiones negativas (ajustes de Google)', async () => {
+    const { servicio } = crear();
+    await expect(
+      servicio.recibir({
+        ...LOTE,
+        total_partes: 1,
+        filas: [{ ...TERMINO, conversiones: -1 }],
+      }),
+    ).resolves.toMatchObject({ estado: 'guardado' });
   });
 
   it('los anuncios son una foto: se reemplazan completos', async () => {
@@ -149,7 +197,7 @@ describe('GoogleAdsIngestaService', () => {
     const ops = llamadas
       .filter((l) => l.tabla === 'google_ads_anuncios')
       .map((l) => l.op);
-    expect(ops).toEqual(['delete', 'not', 'upsert']);
+    expect(ops).toEqual(['upsert', 'delete', 'lt']);
   });
 
   it('rechaza filas fuera del rango del lote', async () => {

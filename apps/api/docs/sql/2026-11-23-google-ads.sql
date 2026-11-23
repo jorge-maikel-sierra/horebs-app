@@ -102,7 +102,23 @@ create table if not exists google_ads_anuncios (
   primary key (grupo_id, anuncio_id)
 );
 
+-- Foto del estado de cada campaña (sin fecha): los días en que una campaña
+-- no sirve, Google no devuelve fila diaria, así que el estado sale de aquí.
+create table if not exists google_ads_campanas_estado (
+  campana_id text primary key,
+  campana_nombre text not null,
+  estado text,
+  estado_principal text,
+  motivos_estado text[] not null default '{}',
+  estrategia_puja text,
+  estado_puja text,
+  presupuesto_diario numeric not null default 0,
+  capturado_en timestamptz not null default now()
+);
+
 -- Un envío por parte; lote_id + parte repetidos no se vuelven a procesar.
+-- `sello` es la hora de la parte 1 y marca todas las filas del lote: al
+-- llegar la última parte se borran las de la ventana con sello anterior.
 create table if not exists google_ads_lotes (
   lote_id uuid not null,
   parte integer not null,
@@ -112,6 +128,7 @@ create table if not exists google_ads_lotes (
   hasta date,
   filas integer not null,
   version integer not null,
+  sello timestamptz not null,
   recibido_en timestamptz not null default now(),
   primary key (lote_id, parte)
 );
@@ -124,4 +141,5 @@ alter table google_ads_terminos_diario enable row level security;
 alter table google_ads_segmentos_diario enable row level security;
 alter table google_ads_conversiones_diario enable row level security;
 alter table google_ads_anuncios enable row level security;
+alter table google_ads_campanas_estado enable row level security;
 alter table google_ads_lotes enable row level security;

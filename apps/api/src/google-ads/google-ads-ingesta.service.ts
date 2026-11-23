@@ -57,6 +57,15 @@ const DESTINOS = new Map<ReporteGoogleAds, DestinoReporte>([
       conFecha: false,
     },
   ],
+  [
+    'estado_campanas',
+    {
+      tabla: 'google_ads_campanas_estado',
+      conflicto: 'campana_id',
+      sello: 'capturado_en',
+      conFecha: false,
+    },
+  ],
 ]);
 
 function destino(tabla: string, conflicto: string): DestinoReporte {
@@ -73,9 +82,11 @@ const MENSAJES_RECHAZO = new Map<MotivoRechazo, string>([
 ]);
 
 /**
- * Recibe los lotes que manda el Google Ads Script. Cada reporte reemplaza su
- * ventana completa (`desde..hasta`) al llegar la parte 1: un término que dejó
- * de aparecer en el re-envío no puede quedar guardado de antes. `lote_id` +
+ * Recibe los lotes que manda el Google Ads Script. Todas las filas de un lote
+ * llevan el sello de su parte 1; al llegar la última parte se borran las
+ * filas de la ventana (`desde..hasta`) con sello anterior. Así un término que
+ * dejó de aparecer en el re-envío no queda guardado de antes, y si una parte
+ * falla a mitad lo viejo sigue ahí en vez de quedar un hueco. `lote_id` +
  * `parte` ya recibidos no se vuelven a procesar.
  */
 @Injectable()
@@ -119,9 +130,12 @@ export class GoogleAdsIngestaService {
       return { ...base, filas: 0, estado: 'repetido' };
     }
     const filas = this.validarFilas(lote, destino);
-    if (lote.parte === 1) await this.vaciarVentana(lote, destino);
-    await this.guardar(destino, filas);
-    await this.registrar(lote, filas.length);
+    const sello = await this.selloDelLote(lote);
+    await this.guardar(destino, filas, sello);
+    if (lote.parte === lote.total_partes) {
+      await this.limpiarVentana(lote, destino, sello);
+    }
+    await this.registrar(lote, filas.length, sello);
     return { ...base, filas: filas.length, estado: 'guardado' };
   }
 
@@ -182,26 +196,48 @@ export class GoogleAdsIngestaService {
     return data !== null;
   }
 
-  private async vaciarVentana(
+  /** La parte 1 abre el lote con la hora actual; las demás usan su sello. */
+  private async selloDelLote(lote: LoteGoogleAds): Promise<string> {
+    if (lote.parte === 1) return new Date().toISOString();
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('google_ads_lotes')
+      .select('sello')
+      .eq('lote_id', lote.lote_id)
+      .eq('parte', 1)
+      .maybeSingle<{ sello: string }>();
+    if (error) throw errorDeBase(error);
+    if (!data) {
+      throw new BadRequestException('Falta la parte 1 de este lote.');
+    }
+    return data.sello;
+  }
+
+  private async limpiarVentana(
     lote: LoteGoogleAds,
     destino: DestinoReporte,
+    sello: string,
   ): Promise<void> {
-    const borrar = this.supabase.getClient().from(destino.tabla).delete();
+    const borrar = this.supabase
+      .getClient()
+      .from(destino.tabla)
+      .delete()
+      .lt(destino.sello, sello);
     const { error } = destino.conFecha
       ? await borrar.gte('fecha', lote.desde as string).lte('fecha', lote.hasta)
-      : await borrar.not('anuncio_id', 'is', null);
+      : await borrar;
     if (error) throw errorDeBase(error);
   }
 
   private async guardar(
     destino: DestinoReporte,
     filas: FilaGoogleAds[],
+    sello: string,
   ): Promise<void> {
-    const ahora = new Date().toISOString();
     for (let i = 0; i < filas.length; i += LOTE_GUARDADO) {
       const tanda = filas
         .slice(i, i + LOTE_GUARDADO)
-        .map((f) => ({ ...f, [destino.sello]: ahora }));
+        .map((f) => ({ ...f, [destino.sello]: sello }));
       const { error } = await this.supabase
         .getClient()
         .from(destino.tabla)
@@ -210,7 +246,11 @@ export class GoogleAdsIngestaService {
     }
   }
 
-  private async registrar(lote: LoteGoogleAds, filas: number): Promise<void> {
+  private async registrar(
+    lote: LoteGoogleAds,
+    filas: number,
+    sello: string,
+  ): Promise<void> {
     const { error } = await this.supabase
       .getClient()
       .from('google_ads_lotes')
@@ -223,6 +263,7 @@ export class GoogleAdsIngestaService {
         hasta: lote.hasta,
         filas,
         version: lote.version,
+        sello,
       });
     if (error) throw errorDeBase(error);
   }

@@ -133,7 +133,23 @@ const CAMPOS_POR_REPORTE: Record<ReporteGoogleAds, CamposReporte> = {
     aprobacion: 'texto?',
     urls_finales: 'textos',
   },
+  estado_campanas: {
+    campana_id: 'id',
+    campana_nombre: 'texto',
+    estado: 'texto?',
+    estado_principal: 'texto?',
+    motivos_estado: 'textos',
+    estrategia_puja: 'texto?',
+    estado_puja: 'texto?',
+    presupuesto_diario: 'micros',
+  },
 };
+
+/** Reportes que son una foto del momento, sin rango de fechas. */
+export const REPORTES_SIN_FECHA: readonly ReporteGoogleAds[] = [
+  'anuncios',
+  'estado_campanas',
+];
 
 /** Número finito desde number o texto numérico ("12345"); si no, null. */
 export function aNumero(valor: unknown): number | null {
@@ -160,8 +176,8 @@ const REGLAS = new Map<TipoCampo, (v: unknown) => string | null>(
       v === null || v === undefined || Number.isInteger(aNumero(v))
         ? null
         : 'debe ser un entero',
-    decimal: (v) =>
-      (aNumero(v) ?? -1) >= 0 ? null : 'debe ser un número no negativo',
+    // Puede ser negativo: Google descuenta conversiones al ajustarlas.
+    decimal: (v) => (aNumero(v) === null ? 'debe ser un número' : null),
     micros: (v) =>
       (aNumero(v) ?? -1) >= 0 ? null : 'debe ser un monto en micros',
     'fraccion?': (v) => {
@@ -262,7 +278,7 @@ export function motivoRechazoLote(
   if (lote.moneda !== 'COP') return 'moneda';
   if (lote.parte > lote.total_partes) return 'partes';
   if (lote.filas.length > MAX_FILAS_LOTE) return 'filas';
-  const conFechas = lote.reporte !== 'anuncios';
+  const conFechas = !REPORTES_SIN_FECHA.includes(lote.reporte);
   if (conFechas && (!lote.desde || !lote.hasta || lote.desde > lote.hasta)) {
     return 'rango';
   }

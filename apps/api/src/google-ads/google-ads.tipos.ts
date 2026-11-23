@@ -6,6 +6,7 @@ export const REPORTES_GOOGLE_ADS = [
   'segmentos',
   'conversiones',
   'anuncios',
+  'estado_campanas',
 ] as const;
 export type ReporteGoogleAds = (typeof REPORTES_GOOGLE_ADS)[number];
 
@@ -107,20 +108,33 @@ export interface FilaAnuncio {
   urls_finales: string[];
 }
 
+/** Foto actual de la campaña (sin fecha). */
+export interface FilaEstadoCampana {
+  campana_id: string;
+  campana_nombre: string;
+  estado: string | null;
+  estado_principal: string | null;
+  motivos_estado: string[];
+  estrategia_puja: string | null;
+  estado_puja: string | null;
+  presupuesto_diario: number;
+}
+
 export type FilaGoogleAds =
   | FilaCampanaDia
   | FilaPalabraDia
   | FilaTerminoDia
   | FilaSegmentoDia
   | FilaConversionDia
-  | FilaAnuncio;
+  | FilaAnuncio
+  | FilaEstadoCampana;
 
 export interface ResultadoLote {
   lote_id: string;
   reporte: ReporteGoogleAds;
   parte: number;
   filas: number;
-  estado: 'guardado' | 'repetido' | 'vacio';
+  estado: 'guardado' | 'repetido';
 }
 
 // ---------------------------------------------------------------- tablero
