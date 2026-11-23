@@ -16,6 +16,7 @@ import {
 import { useModulos } from '@/lib/use-modulos';
 import type { ModuloId } from '@/lib/modulos';
 import ThemeToggle from '@/components/ThemeToggle';
+import TituloBarraMovil from '@/components/TituloBarraMovil';
 import {
   IconAnuncios,
   IconGoogleAds,
@@ -167,7 +168,10 @@ function CampanaAlertas({ total }: { total: number }) {
   );
 }
 
-/** Activa o silencia el sonido de pedido nuevo de WhatsApp. */
+/**
+ * Activa o silencia los sonidos del panel: el aviso de pedido nuevo de
+ * WhatsApp y el "tic" de los controles en teléfono (lib/retroalimentacion).
+ */
 function BotonSonidoPedidos() {
   const [activo, setActivo] = useState(sonidoPedidosActivo);
 
@@ -186,11 +190,11 @@ function BotonSonidoPedidos() {
       type="button"
       onClick={alternar}
       aria-pressed={activo}
-      aria-label="Sonido de pedidos nuevos"
+      aria-label="Sonidos del panel"
       title={
         activo
-          ? 'Sonido de pedidos: activado'
-          : 'Sonido de pedidos: silenciado'
+          ? 'Sonidos del panel: activados'
+          : 'Sonidos del panel: silenciados'
       }
       className="btn-press flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-zinc-300 text-zinc-700 transition-colors hover:border-accent-ink hover:text-accent-ink dark:border-zinc-700 dark:text-zinc-300"
     >
@@ -324,6 +328,18 @@ const NAV_ADMIN: NavItem[] = [
   { href: '/admin/blog', label: 'Blog', icon: IconBlog, modulo: 'blog' },
   { href: '/admin/configuracion', label: 'Configuración', icon: IconConfig },
 ];
+
+/** Nombre de la sección abierta, para la barra de teléfono. */
+function tituloSeccion(pathname: string): string {
+  const coincidencias = [...NAV_GENERAL, ...NAV_ADMIN].filter((item) =>
+    item.exacto
+      ? pathname === item.href
+      : pathname === item.href || pathname.startsWith(`${item.href}/`),
+  );
+  // La ruta más larga gana: /admin/clientes/123 es "Clientes", no "Panel".
+  const mejor = coincidencias.sort((a, b) => b.href.length - a.href.length)[0];
+  return mejor?.label ?? 'Panel';
+}
 
 function NavLink({
   item,
@@ -563,9 +579,7 @@ export default function AdminSidebar() {
     <>
       <AvisoPedidoNuevo aviso={alertas.pedidoNuevo} />
       <div className="sticky top-0 z-20 flex items-center justify-between border-b border-zinc-200 bg-white/90 px-4 py-3 backdrop-blur-md lg:hidden dark:border-zinc-800 dark:bg-black/90">
-        <span className="text-sm font-bold text-zinc-900 dark:text-zinc-50">
-          Panel
-        </span>
+        <TituloBarraMovil key={pathname} titulo={tituloSeccion(pathname)} />
         <div className="flex items-center gap-1">
           <CampanaAlertas
             total={
