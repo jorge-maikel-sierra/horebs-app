@@ -57,7 +57,10 @@ pregunta; no se supone un valor razonable.
   comprobante, que NO es factura electrónica DIAN): NIT `1.118.843.420-7`,
   régimen "No responsable de IVA"; solo se muestra el nombre comercial
   "Pizzería Horebs", no el nombre personal del titular.
-- WhatsApp: +57 315 786 1208 (canal de confirmación de pedidos).
+- WhatsApp: +57 315 786 1208 (canal de confirmación de pedidos). Lo atiende
+  una persona, no el bot (confirmado por el dueño el 23 nov 2026): si la
+  visita vino de un anuncio de Google, la web agrega "(lo vi en Google)" al
+  mensaje y quien atiende elige "Anuncios de Google" en la caja.
 - Número del bot de WhatsApp: +57 320 567 4313 (confirmado por el dueño el
   2 nov 2026). El botón "Volver a la tienda" del link de Bold abre ese chat
   (`ENLACE_WHATSAPP_BOT` en `common/contacto.ts`).
