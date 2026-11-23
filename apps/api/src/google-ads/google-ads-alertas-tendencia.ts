@@ -115,6 +115,6 @@ export function alertaEtiquetaRota(e: EntradaRendimiento): AlertaDto | null {
     titulo: 'Ninguna compra medida en 3 días',
     detalle: `${clics} clics y 0 "Pedido confirmado", cuando antes sí se medían.`,
     accion:
-      'Hacer un pedido de prueba con Tag Assistant y revisar GTM antes de cambiar pujas.',
+      'Revisar la etiqueta en Tag Assistant o en la vista previa de GTM antes de cambiar pujas (si se crea un pedido de prueba, cancelarlo).',
   };
 }

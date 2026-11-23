@@ -105,21 +105,47 @@ describe('alertas de estado', () => {
     expect(alertaSincronizacion('2026-11-29T06:00:00Z', ahora)).toBeNull();
   });
 
-  it('avisa si la campaña activa no es elegible según su último día', () => {
+  it('sin foto de estado usa el último día con datos', () => {
     const viejo = campana({
       fecha: '2026-11-27',
       estado_principal: 'NOT_ELIGIBLE',
     });
-    expect(alertasSinServir([viejo, campana({})])).toEqual([]);
+    expect(alertasSinServir([], [viejo, campana({})], HASTA)).toEqual([]);
     expect(
-      alertasSinServir([campana({ estado_principal: 'MISCONFIGURED' })])[0]
-        .severidad,
+      alertasSinServir(
+        [],
+        [campana({ estado_principal: 'MISCONFIGURED' })],
+        HASTA,
+      )[0].severidad,
     ).toBe('critica');
     expect(
-      alertasSinServir([
-        campana({ estado: 'PAUSED', estado_principal: 'PAUSED' }),
-      ]),
+      alertasSinServir(
+        [],
+        [campana({ estado: 'PAUSED', estado_principal: 'PAUSED' })],
+        HASTA,
+      ),
     ).toEqual([]);
+  });
+
+  it('con la foto avisa aunque Google no haya mandado fila del día', () => {
+    // El 28 no sirvió: Google no devuelve fila, la última es del 27 y era apta.
+    const ayer = campana({ fecha: '2026-11-27' });
+    const foto = {
+      ...campana({}),
+      estado_principal: 'NOT_ELIGIBLE',
+      motivos_estado: ['HAS_ADS_DISAPPROVED'],
+    };
+    const [a] = alertasSinServir([foto], [ayer], HASTA);
+    expect(a.detalle).toContain('HAS_ADS_DISAPPROVED');
+  });
+
+  it('avisa si la campaña activa no tuvo impresiones el último día', () => {
+    const foto = campana({});
+    expect(
+      alertasSinServir([foto], [campana({ fecha: '2026-11-27' })], HASTA)[0]
+        .detalle,
+    ).toContain('sin impresiones');
+    expect(alertasSinServir([foto], [campana({})], HASTA)).toEqual([]);
   });
 
   it('avisa de anuncios rechazados, URL ajena y fuerza baja', () => {
@@ -215,7 +241,7 @@ describe('alertas de rendimiento', () => {
       'FUERA_ZONA',
     );
     const horas = SEMANA.flatMap((fecha) => [
-      segmento({ fecha, clave: '12', gasto: 20 }),
+      segmento({ fecha, clave: '9', gasto: 20 }),
       segmento({ fecha, clave: '19', gasto: 80 }),
     ]);
     expect(alertaFueraDeHorario(entrada({ segmentos: horas }))?.codigo).toBe(

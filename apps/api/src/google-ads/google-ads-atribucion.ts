@@ -5,7 +5,7 @@ import {
   redondear,
   sumarDias,
 } from './google-ads-metricas';
-import type { FilaCampanaDia } from './google-ads.tipos';
+import type { FilaCampanaDia, FilaEstadoCampana } from './google-ads.tipos';
 
 /**
  * Cruce del gasto de Google Ads con los pedidos reales (puro, sin Nest). La
@@ -62,18 +62,20 @@ export interface RitmoDto {
   ritmo: number | null;
 }
 
-const FUENTES_GOOGLE = new Set(['google', 'google_ads', 'adwords']);
+const FUENTES_GOOGLE = new Set(['google', 'adwords']);
+// Un enlace de Google Business Profile también trae utm_source=google, pero
+// con utm_medium=organic: solo cuenta como anuncio si el medio es pagado.
+const MEDIOS_PAGADOS = new Set(['cpc', 'ppc', 'paid', 'paid_search']);
 const CLAVES_CLIC_GOOGLE = ['gclid', 'gbraid', 'wbraid'];
 
-/** El pedido vino de Google Ads: UTM de Google, gclid o fuente marcada. */
+/** El pedido vino de un clic en Google Ads: gclid o UTM pagado de Google. */
 export function esPedidoGoogle(p: FilaPedidoAds): boolean {
   const a = new Map(Object.entries(p.atribucion_web ?? {}));
-  const fuente = (a.get('utm_source') ?? '').trim().toLowerCase();
+  const texto = (k: string): string => (a.get(k) ?? '').trim().toLowerCase();
   return (
-    FUENTES_GOOGLE.has(fuente) ||
     CLAVES_CLIC_GOOGLE.some((c) => Boolean(a.get(c))) ||
-    p.origen_fuente === 'google_ads' ||
-    Boolean(p.origen_campana_id?.startsWith('gads:'))
+    (FUENTES_GOOGLE.has(texto('utm_source')) &&
+      MEDIOS_PAGADOS.has(texto('utm_medium')))
   );
 }
 
@@ -141,13 +143,22 @@ function diasDelMes(mes: string): number {
  * diario. Google puede gastar hasta el doble del diario en un día y
  * compensarlo en el mes, así que el diario solo no dice si se va a pasar.
  */
-export function ritmoDelMes(filas: FilaCampanaDia[], hasta: string): RitmoDto {
+export function ritmoDelMes(
+  filas: FilaCampanaDia[],
+  hasta: string,
+  estados: FilaEstadoCampana[] = [],
+): RitmoDto {
   const mes = hasta.slice(0, LARGO_MES);
   const delMes = filas.filter(
     (f) => f.fecha.startsWith(mes) && f.fecha <= hasta,
   );
   const gastoMes = delMes.reduce((s, f) => s + Number(f.gasto), 0);
-  const presupuestoDiario = presupuestoVigente(filas, hasta);
+  const presupuestoDiario =
+    estados.length > 0
+      ? estados
+          .filter((e) => e.estado === 'ENABLED')
+          .reduce((t, e) => t + Number(e.presupuesto_diario), 0)
+      : presupuestoVigente(filas, hasta);
   const presupuestoMes = presupuestoDiario * DIAS_MES_PROMEDIO;
   const diasMes = diasDelMes(mes);
   const transcurridos = Number(hasta.slice(LARGO_MES + 1));

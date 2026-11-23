@@ -15,6 +15,7 @@ import type {
   FilaAnuncio,
   FilaCampanaDia,
   FilaConversionDia,
+  FilaEstadoCampana,
   FilaPalabraDia,
   FilaSegmentoDia,
   FilaTerminoDia,
@@ -70,13 +71,17 @@ export class GoogleAdsTableroService {
     anterior: Rango,
   ): Promise<Omit<DatosTableroAds, 'actual' | 'anterior' | 'ahora'>> {
     const total: Rango = { desde: anterior.desde, hasta: actual.hasta };
-    const [ads, negocio, anuncios, ultimoEnvio] = await Promise.all([
+    const [ads, negocio, anuncios, estados, ultimoEnvio] = await Promise.all([
       this.cargarAds(actual, anterior, total),
       this.cargarNegocio(total),
-      this.anuncios(),
+      this.foto<FilaAnuncio>('google_ads_anuncios', COLUMNAS_ANUNCIO),
+      this.foto<FilaEstadoCampana>(
+        'google_ads_campanas_estado',
+        COLUMNAS_ESTADO,
+      ),
       this.ultimoEnvio(),
     ]);
-    return { ...ads, ...negocio, anuncios, ultimoEnvio };
+    return { ...ads, ...negocio, anuncios, estados, ultimoEnvio };
   }
 
   private async cargarAds(
@@ -188,14 +193,13 @@ export class GoogleAdsTableroService {
     );
   }
 
-  private async anuncios(): Promise<FilaAnuncio[]> {
+  /** Tablas sin fecha (foto actual): pocas filas, una sola consulta. */
+  private async foto<T>(tabla: string, columnas: string): Promise<T[]> {
     const { data, error } = await this.supabase
       .getClient()
-      .from('google_ads_anuncios')
-      .select(
-        'grupo_id, anuncio_id, campana_id, tipo, estado, fuerza, aprobacion, urls_finales',
-      )
-      .returns<FilaAnuncio[]>();
+      .from(tabla)
+      .select(columnas)
+      .returns<T[]>();
     if (error) throw errorDeBase(error);
     return data ?? [];
   }
@@ -215,3 +219,7 @@ export class GoogleAdsTableroService {
 
 const COLUMNAS_PEDIDO =
   'id, total, estado, created_at, origen_fuente, origen_campana_id, atribucion_web';
+const COLUMNAS_ANUNCIO =
+  'grupo_id, anuncio_id, campana_id, tipo, estado, fuerza, aprobacion, urls_finales';
+const COLUMNAS_ESTADO =
+  'campana_id, campana_nombre, estado, estado_principal, motivos_estado, estrategia_puja, estado_puja, presupuesto_diario';

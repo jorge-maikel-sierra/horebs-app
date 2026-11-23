@@ -1,4 +1,4 @@
-import { CIUDAD_NEGOCIO } from './google-ads-alertas-rendimiento';
+import { CIUDAD_NEGOCIO, SIN_CIUDAD } from './google-ads-alertas-rendimiento';
 import {
   agruparMetricas,
   cuotaImpresiones,
@@ -17,6 +17,7 @@ import type {
   CeldaHoraDto,
   CiudadDto,
   FilaCampanaDia,
+  FilaEstadoCampana,
   FilaPalabraDia,
   FilaSegmentoDia,
   FilaTerminoDia,
@@ -57,14 +58,19 @@ function masReciente<T extends { fecha: string }>(filas: T[]): T {
   return filas.reduce((a, b) => (b.fecha > a.fecha ? b : a));
 }
 
-export function seccionCampanas(filas: FilaCampanaDia[]): CampanaDto[] {
+/** Campañas del período; el estado sale de la foto actual si llegó. */
+export function seccionCampanas(
+  filas: FilaCampanaDia[],
+  estados: FilaEstadoCampana[] = [],
+): CampanaDto[] {
+  const foto = new Map(estados.map((e) => [e.campana_id, e]));
   const porCampana = new Map<string, FilaCampanaDia[]>();
   for (const f of filas) {
     porCampana.set(f.campana_id, [...(porCampana.get(f.campana_id) ?? []), f]);
   }
   return [...porCampana.values()]
     .map((dias) => {
-      const ultima = masReciente(dias);
+      const ultima = foto.get(dias[0].campana_id) ?? masReciente(dias);
       return {
         campana_id: ultima.campana_id,
         nombre: ultima.campana_nombre,
@@ -194,10 +200,14 @@ export function seccionGeo(segmentos: FilaSegmentoDia[]): GeoDto {
       conversiones: redondear(total.conversiones),
     }))
     .sort((a, b) => b.gasto - a.gasto);
-  const total = sumar(geo).gasto;
-  const interes = sumar(geo.filter((s) => s.dimension === 'ciudad_interes'));
+  // Sin ciudad no se sabe si fue fuera de zona: queda fuera de la fracción.
+  const conCiudad = geo.filter((s) => s.clave !== SIN_CIUDAD);
+  const total = sumar(conCiudad).gasto;
+  const interes = sumar(
+    conCiudad.filter((s) => s.dimension === 'ciudad_interes'),
+  );
   const fuera = sumar(
-    geo.filter(
+    conCiudad.filter(
       (s) => s.dimension === 'ciudad_interes' || s.clave !== CIUDAD_NEGOCIO,
     ),
   );

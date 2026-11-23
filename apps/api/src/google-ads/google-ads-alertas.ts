@@ -1,5 +1,9 @@
 import { MS_POR_HORA } from '../common/tiempo';
-import type { FilaAnuncio, FilaCampanaDia } from './google-ads.tipos';
+import type {
+  FilaAnuncio,
+  FilaCampanaDia,
+  FilaEstadoCampana,
+} from './google-ads.tipos';
 
 /**
  * Alertas de estado y configuración del tablero (puras). Las de rendimiento
@@ -76,22 +80,54 @@ export function ultimaPorCampana(filas: FilaCampanaDia[]): FilaCampanaDia[] {
   return [...ultima.values()];
 }
 
-export function alertasSinServir(campanas: FilaCampanaDia[]): AlertaDto[] {
-  return ultimaPorCampana(campanas)
-    .filter(
-      (c) =>
-        c.estado === 'ENABLED' &&
-        ESTADOS_SIN_SERVIR.has(c.estado_principal ?? ''),
-    )
-    .map((c) => ({
-      codigo: 'SIN_SERVIR',
-      severidad: 'critica',
-      titulo: `«${c.campana_nombre}» no está mostrando anuncios`,
-      detalle: `Estado ${c.estado_principal}${
-        c.motivos_estado.length ? `: ${c.motivos_estado.join(', ')}` : ''
-      }.`,
-      accion: 'Abrir la campaña en Google Ads y resolver el motivo.',
-    }));
+/**
+ * Estado actual de cada campaña: la foto `estado_campanas` si llegó; si no,
+ * la última fila diaria (que falta justo los días en que no sirve).
+ */
+export function estadosVigentes(
+  estados: FilaEstadoCampana[],
+  dias: FilaCampanaDia[],
+): FilaEstadoCampana[] {
+  return estados.length > 0 ? estados : ultimaPorCampana(dias);
+}
+
+function sinServir(c: FilaEstadoCampana, detalle: string): AlertaDto {
+  return {
+    codigo: 'SIN_SERVIR',
+    severidad: 'critica',
+    titulo: `«${c.campana_nombre}» no está mostrando anuncios`,
+    detalle,
+    accion: 'Abrir la campaña en Google Ads y resolver el motivo.',
+  };
+}
+
+/**
+ * Campaña activa no apta, o sin impresiones en `dia` (el último día que el
+ * script ya mandó; null = aún no se sabe y no se revisa).
+ */
+export function alertasSinServir(
+  estados: FilaEstadoCampana[],
+  dias: FilaCampanaDia[],
+  dia: string | null,
+): AlertaDto[] {
+  const conImpresiones = new Set(
+    dias
+      .filter((d) => d.fecha === dia && Number(d.impresiones) > 0)
+      .map((d) => d.campana_id),
+  );
+  const alertas: AlertaDto[] = [];
+  for (const c of estadosVigentes(estados, dias)) {
+    if (c.estado !== 'ENABLED') continue;
+    if (ESTADOS_SIN_SERVIR.has(c.estado_principal ?? '')) {
+      const motivos = c.motivos_estado.length
+        ? `: ${c.motivos_estado.join(', ')}`
+        : '';
+      alertas.push(sinServir(c, `Estado ${c.estado_principal}${motivos}.`));
+    } else if (dia && !conImpresiones.has(c.campana_id)) {
+      alertas.push(sinServir(c, `Activa pero sin impresiones el ${dia}.`));
+    }
+  }
+  return alertas;
 }
 
 function dominioPermitido(url: string): boolean {

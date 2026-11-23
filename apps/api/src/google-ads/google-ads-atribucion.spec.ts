@@ -51,22 +51,34 @@ function campana(
 }
 
 describe('esPedidoGoogle', () => {
-  it('reconoce UTM de Google, gclid, fuente del bot y la caja', () => {
-    expect(
-      esPedidoGoogle(pedido({ atribucion_web: { utm_source: 'Google' } })),
-    ).toBe(true);
+  it('reconoce gclid y UTM pagado de Google', () => {
     expect(esPedidoGoogle(pedido({ atribucion_web: { gclid: 'abc' } }))).toBe(
       true,
     );
-    expect(esPedidoGoogle(pedido({ origen_fuente: 'google_ads' }))).toBe(true);
-    expect(esPedidoGoogle(pedido({ origen_campana_id: 'gads:123' }))).toBe(
-      true,
-    );
+    expect(
+      esPedidoGoogle(
+        pedido({ atribucion_web: { utm_source: 'Google', utm_medium: 'cpc' } }),
+      ),
+    ).toBe(true);
   });
 
-  it('un pedido de Meta o sin origen no es de Google', () => {
+  it('Google orgánico (perfil de negocio), Meta o sin origen no cuentan', () => {
     expect(
-      esPedidoGoogle(pedido({ atribucion_web: { utm_source: 'facebook' } })),
+      esPedidoGoogle(
+        pedido({
+          atribucion_web: { utm_source: 'google', utm_medium: 'organic' },
+        }),
+      ),
+    ).toBe(false);
+    expect(
+      esPedidoGoogle(pedido({ atribucion_web: { utm_source: 'google' } })),
+    ).toBe(false);
+    expect(
+      esPedidoGoogle(
+        pedido({
+          atribucion_web: { utm_source: 'facebook', utm_medium: 'paid' },
+        }),
+      ),
     ).toBe(false);
     expect(esPedidoGoogle(pedido({ origen_campana_id: '120210' }))).toBe(false);
     expect(esPedidoGoogle(pedido({}))).toBe(false);
@@ -84,7 +96,10 @@ describe('resumenNegocio', () => {
   it('combina gasto de Google y Meta y excluye cancelados', () => {
     const n = resumenNegocio({
       pedidos: [
-        pedido({ total: '50000', atribucion_web: { utm_source: 'google' } }),
+        pedido({
+          total: '50000',
+          atribucion_web: { utm_source: 'google', utm_medium: 'cpc' },
+        }),
         pedido({ total: 50000 }),
         pedido({ total: 99000, estado: 'cancelado' }),
       ],

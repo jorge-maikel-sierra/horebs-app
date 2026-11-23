@@ -1,4 +1,4 @@
-import { APERTURA, CIERRE } from '../common/horario';
+import { CIERRE, HORA_INICIO_PEDIDOS_BOT } from '../common/horario';
 import {
   DIAS_POR_SEMANA,
   HORAS_POR_DIA,
@@ -36,6 +36,8 @@ export const QS_BAJO = 4;
 export const IMPRESIONES_QS = 100;
 export const CLICS_ETIQUETA_ROTA = 30;
 export const CIUDAD_NEGOCIO = 'Riohacha';
+/** Filas de ubicación sin ciudad: no se sabe si fueron fuera de zona. */
+export const SIN_CIUDAD = 'Sin ciudad';
 const MAX_NOMBRES = 5;
 
 export interface PuntoSerieAds extends MetricasBaseFila {
@@ -57,7 +59,6 @@ export interface EntradaRendimiento {
   conversiones: FilaConversionDia[];
 }
 
-const HORA_APERTURA = APERTURA / MINUTOS_POR_HORA;
 const HORA_CIERRE = CIERRE / MINUTOS_POR_HORA;
 
 function pct(n: number): string {
@@ -155,7 +156,9 @@ export function alertaPresupuesto(e: EntradaRendimiento): AlertaDto | null {
 }
 
 export function alertaFueraDeZona(e: EntradaRendimiento): AlertaDto | null {
-  const geo = e.segmentos.filter((s) => s.dimension.startsWith('ciudad_'));
+  const geo = e.segmentos.filter(
+    (s) => s.dimension.startsWith('ciudad_') && s.clave !== SIN_CIUDAD,
+  );
   if (diasConDatos(geo) < DIAS_POR_SEMANA) return null;
   const total = sumar(geo).gasto;
   const fuera = sumar(
@@ -182,7 +185,8 @@ export function alertaFueraDeHorario(e: EntradaRendimiento): AlertaDto | null {
   const fuera = sumar(
     horas.filter((s) => {
       const h = Number(s.clave);
-      return h < HORA_APERTURA || h >= HORA_CIERRE;
+      // Desde las 11 a.m. el bot ya toma pedidos (reservas): no es desperdicio.
+      return h < HORA_INICIO_PEDIDOS_BOT || h >= HORA_CIERRE;
     }),
   ).gasto;
   const fraccion = dividir(fuera, total);
@@ -191,8 +195,8 @@ export function alertaFueraDeHorario(e: EntradaRendimiento): AlertaDto | null {
     codigo: 'FUERA_HORARIO',
     severidad: 'baja',
     titulo: 'Gasto fuera del horario del local',
-    detalle: `${pct(fraccion)} del gasto fue antes de las 4 p.m. o después de las 11 p.m.`,
+    detalle: `${pct(fraccion)} del gasto fue antes de las 11 a.m. o después de las 11 p.m.`,
     accion:
-      'Revisar la programación de anuncios: el bot toma reservas desde las 11 a.m., el local abre a las 4 p.m.',
+      'Revisar la programación de anuncios: el bot toma pedidos de 11 a.m. a 11 p.m.',
   };
 }

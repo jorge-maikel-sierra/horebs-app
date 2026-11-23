@@ -157,6 +157,11 @@ describe('segmentos', () => {
       seg({ dimension: 'ciudad_interes', clave: 'Riohacha', gasto: 10 }),
     ]);
     expect(g.fuera_zona).toBeCloseTo(0.2, 4);
+    const conSinCiudad = seccionGeo([
+      seg({ dimension: 'ciudad_presencia', clave: 'Riohacha', gasto: 80 }),
+      seg({ dimension: 'ciudad_presencia', clave: 'Sin ciudad', gasto: 20 }),
+    ]);
+    expect(conSinCiudad.fuera_zona).toBe(0);
     expect(g.por_interes).toBeCloseTo(0.1, 4);
     expect(g.ciudades[0]).toMatchObject({
       nombre: 'Riohacha',

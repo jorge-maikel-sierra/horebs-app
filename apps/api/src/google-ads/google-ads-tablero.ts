@@ -38,6 +38,7 @@ import {
   recorrerDias,
   redondear,
   sumar,
+  sumarDias,
   type CuotaImpresionesDto,
   type MetricasDto,
 } from './google-ads-metricas';
@@ -60,6 +61,7 @@ import type {
   FilaAnuncio,
   FilaCampanaDia,
   FilaConversionDia,
+  FilaEstadoCampana,
   FilaPalabraDia,
   FilaSegmentoDia,
   FilaTerminoDia,
@@ -85,6 +87,8 @@ export interface DatosTableroAds {
   segmentos: FilaSegmentoDia[];
   conversiones: FilaConversionDia[];
   anuncios: FilaAnuncio[];
+  /** Foto actual del estado de cada campaña (vacía si el script aún no la mandó). */
+  estados: FilaEstadoCampana[];
   pedidos: FilaPedidoAds[];
   gastoMeta: { fecha: string; gasto: number | string }[];
   clientesNuevos: { created_at: string }[];
@@ -199,6 +203,13 @@ function negocioDe(d: DatosTableroAds, r: Rango): NegocioDto {
   });
 }
 
+/** Último día completo que ya mandó el script (el de ayer respecto al envío). */
+function diaRevisado(d: DatosTableroAds): string | null {
+  if (!d.ultimoEnvio) return null;
+  const enviado = sumarDias(fechaBogota(new Date(d.ultimoEnvio)), -1);
+  return enviado < d.actual.hasta ? enviado : d.actual.hasta;
+}
+
 function alertas(
   d: DatosTableroAds,
   campanas: FilaCampanaDia[],
@@ -222,7 +233,7 @@ function alertas(
   };
   const candidatas = [
     alertaSincronizacion(d.ultimoEnvio, d.ahora),
-    ...alertasSinServir(campanas),
+    ...alertasSinServir(d.estados, campanas, diaRevisado(d)),
     ...alertasAnuncios(d.anuncios),
     alertaGastoSinConversion(e),
     alertaPresupuesto(e),
@@ -265,8 +276,8 @@ export function armarTablero(d: DatosTableroAds): TableroGoogleAdsDto {
     conversiones: conversionesPorAccion(d.conversiones, d.actual, d.anterior),
     negocio: negocioDe(d, d.actual),
     negocio_anterior: negocioDe(d, d.anterior),
-    ritmo: ritmoDelMes(d.campanas, d.actual.hasta),
-    campanas: seccionCampanas(actuales),
+    ritmo: ritmoDelMes(d.campanas, d.actual.hasta, d.estados),
+    campanas: seccionCampanas(actuales, d.estados),
     palabras,
     terminos,
     horas: seccionHoras(segmentos),
