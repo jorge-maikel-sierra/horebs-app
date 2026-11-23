@@ -42,6 +42,21 @@ describe('normalizarAtribucion', () => {
     });
   });
 
+  it('guarda gclid, gbraid y wbraid de Google Ads con formato válido', () => {
+    const atribucion = normalizarAtribucion(
+      {
+        gclid: 'Cj0KCQiA-abc_123XYZ',
+        gbraid: '0AAAAAo-xyz123',
+        wbraid: 'mal formato!',
+      },
+      undefined,
+    );
+    expect(atribucion).toEqual({
+      gclid: 'Cj0KCQiA-abc_123XYZ',
+      gbraid: '0AAAAAo-xyz123',
+    });
+  });
+
   it('recorta valores demasiado largos', () => {
     const atribucion = normalizarAtribucion(
       { utm_campaign: 'x'.repeat(900) },

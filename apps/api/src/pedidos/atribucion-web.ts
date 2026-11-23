@@ -9,6 +9,9 @@ const MAX_LARGO = 500;
 const SITIO_URL = 'https://pizzeriahorebs.shop';
 // fb.<subdominio>.<timestamp>.<valor> — formato de las cookies _fbp y _fbc.
 const FORMATO_COOKIE_META = /^fb\.\d\.\d{10,13}\.[\w.-]+$/;
+// gclid, gbraid y wbraid de Google Ads: letras, números, - y _.
+const FORMATO_CLIC_GOOGLE = /^[\w-]{10,200}$/;
+const CAMPOS_CLIC_GOOGLE = ['gclid', 'gbraid', 'wbraid'] as const;
 const CAMPOS_UTM = [
   'utm_source',
   'utm_medium',
@@ -26,6 +29,9 @@ export interface AtribucionWebInput {
   utm_campaign?: string;
   utm_content?: string;
   utm_term?: string;
+  gclid?: string;
+  gbraid?: string;
+  wbraid?: string;
 }
 
 export interface ContextoHttp {
@@ -35,18 +41,24 @@ export interface ContextoHttp {
 
 export type AtribucionWeb = Partial<
   Record<(typeof CAMPOS_UTM)[number], string>
-> & {
-  fbp?: string;
-  fbc?: string;
-  url?: string;
-  ip?: string;
-  user_agent?: string;
-};
+> &
+  Partial<Record<(typeof CAMPOS_CLIC_GOOGLE)[number], string>> & {
+    fbp?: string;
+    fbc?: string;
+    url?: string;
+    ip?: string;
+    user_agent?: string;
+  };
 
 function texto(valor: unknown): string | null {
   if (typeof valor !== 'string') return null;
   const limpio = valor.trim();
   return limpio ? limpio.slice(0, MAX_LARGO) : null;
+}
+
+function clicGoogle(valor: unknown): string | null {
+  const limpio = texto(valor);
+  return limpio && FORMATO_CLIC_GOOGLE.test(limpio) ? limpio : null;
 }
 
 function cookieMeta(valor: unknown): string | null {
@@ -70,6 +82,10 @@ export function normalizarAtribucion(
   );
   const candidatos: [string, string | null][] = [
     ...CAMPOS_UTM.map((c): [string, string | null] => [c, texto(datos.get(c))]),
+    ...CAMPOS_CLIC_GOOGLE.map((c): [string, string | null] => [
+      c,
+      clicGoogle(datos.get(c)),
+    ]),
     ['fbp', cookieMeta(datos.get('fbp'))],
     ['fbc', cookieMeta(datos.get('fbc'))],
     ['url', urlDelSitio(datos.get('url'))],
