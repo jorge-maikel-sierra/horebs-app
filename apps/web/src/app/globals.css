@@ -392,8 +392,10 @@ body {
     filter: blur(3px);
   }
 }
+/* `backwards` y no `both`: al terminar no deja filter ni transform puestos,
+   que convertirían la sección en el contenedor de sus modales `fixed`. */
 .animate-entrada-seccion {
-  animation: entrada-seccion 0.26s cubic-bezier(0.23, 1, 0.32, 1) both;
+  animation: entrada-seccion 0.26s cubic-bezier(0.23, 1, 0.32, 1) backwards;
 }
 
 /* Tira de pestañas que se desliza en teléfono: los bordes se desvanecen
