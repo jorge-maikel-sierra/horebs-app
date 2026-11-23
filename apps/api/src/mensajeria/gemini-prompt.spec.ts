@@ -74,6 +74,16 @@ describe('armarSystemInstruction', () => {
     }
   });
 
+  it('en todos los canales cuida saludos, despedidas y pasos repetidos', () => {
+    for (const canal of ['whatsapp', 'messenger', 'instagram'] as const) {
+      const prompt = armarSystemInstruction(canal);
+      expect(prompt).toContain('no nombres la parte del día');
+      expect(prompt).toContain('Te damos la bienvenida');
+      expect(prompt).toContain('¿Algo más o seguimos con la entrega?');
+      expect(prompt).toContain('no se lo vuelvas a preguntar');
+    }
+  });
+
   it('en WhatsApp sigue usando obtener_cliente_registrado en el primer mensaje', () => {
     expect(armarSystemInstruction('whatsapp')).toContain(
       'usá SIEMPRE obtener_cliente_registrado',
