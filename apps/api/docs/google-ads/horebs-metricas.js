@@ -387,7 +387,7 @@ function enviarReporte(ctx, reporte, rango, filas) {
 
 /** Escapa todo lo que no es ASCII: así los bytes firmados son los enviados. */
 function aAscii(texto) {
-  return texto.replace(/[\u007f-￿]/g, function (c) {
+  return texto.replace(/[\u007f-\uffff]/g, function (c) {
     return '\\u' + ('0000' + c.charCodeAt(0).toString(16)).slice(-4);
   });
 }
