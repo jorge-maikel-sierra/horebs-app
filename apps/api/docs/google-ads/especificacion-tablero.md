@@ -124,8 +124,8 @@ es lo que más explica los saltos.
 | Sufijo de URL final en Ads | `utm_source=google&utm_medium=cpc&utm_campaign={campaignid}&utm_term={keyword}&utm_content={creative}`; `atribucion_web` ya guarda `utm_*` | Configuración de la cuenta |
 | gclid / gbraid / wbraid | `lib/atribucion.ts` los guarda; `pedidos/atribucion-web.ts` los admite | Hecho (23 nov 2026) |
 | Caja (POS) | Grupo "Anuncios de Google" en el selector; se guarda `origen_campana_id = gads:<id>` y el tablero de Meta lo ignora | Hecho (23 nov 2026) |
-| Código en WhatsApp | `(ref G-XXXX)` en el texto prellenado. `wa.me` no lleva `ref`, y el botón web abre +57 315 786 1208 (humano, no el bot) | Bloqueado por la pregunta 1 |
-| Conversiones offline | El script sube los pedidos del bot con gclid | Pendiente: ningún pedido del bot trae gclid hasta tener el código de WhatsApp |
+| Marca en WhatsApp | El +57 315 786 1208 lo atiende una persona (confirmado por el dueño, 23 nov 2026). Si la visita vino de un anuncio de Google (gclid o UTM pagado), el mensaje de WhatsApp termina en "(lo vi en Google)" y quien atiende elige "Anuncios de Google" en la caja | Hecho (23 nov 2026) |
+| Conversiones offline | Subir pedidos de WhatsApp con gclid | No aplica por ahora: los pedidos por WhatsApp no traen gclid (los atiende una persona). La conversión "Clic WhatsApp" ya mide el contacto |
 
 ## 5. Diseño
 
