@@ -7,6 +7,7 @@ export const REPORTES_GOOGLE_ADS = [
   'conversiones',
   'anuncios',
   'estado_campanas',
+  'cambios',
 ] as const;
 export type ReporteGoogleAds = (typeof REPORTES_GOOGLE_ADS)[number];
 
@@ -120,6 +121,17 @@ export interface FilaEstadoCampana {
   presupuesto_diario: number;
 }
 
+/** Un cambio hecho en la cuenta (change_event de Google Ads). */
+export interface FilaCambio {
+  recurso_cambio: string;
+  fecha: string;
+  momento: string;
+  campana_id: string | null;
+  tipo_recurso: string | null;
+  operacion: string | null;
+  campos: string[];
+}
+
 export type FilaGoogleAds =
   | FilaCampanaDia
   | FilaPalabraDia
@@ -127,7 +139,8 @@ export type FilaGoogleAds =
   | FilaSegmentoDia
   | FilaConversionDia
   | FilaAnuncio
-  | FilaEstadoCampana;
+  | FilaEstadoCampana
+  | FilaCambio;
 
 export interface ResultadoLote {
   lote_id: string;

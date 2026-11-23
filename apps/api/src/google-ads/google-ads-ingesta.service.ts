@@ -57,6 +57,7 @@ const DESTINOS = new Map<ReporteGoogleAds, DestinoReporte>([
       conFecha: false,
     },
   ],
+  ['cambios', destino('google_ads_cambios', 'recurso_cambio')],
   [
     'estado_campanas',
     {

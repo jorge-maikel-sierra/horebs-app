@@ -149,6 +149,21 @@ describe('normalizarFilas', () => {
     });
   });
 
+  it('acepta cambios de la cuenta con campaña opcional', () => {
+    const { errores } = normalizarFilas('cambios', [
+      {
+        recurso_cambio: 'customers/5883895578/changeEvents/abc~1',
+        fecha: '2026-11-22',
+        momento: '2026-11-22 18:03:11.123456',
+        campana_id: null,
+        tipo_recurso: 'CAMPAIGN_BUDGET',
+        operacion: 'UPDATE',
+        campos: ['amount_micros'],
+      },
+    ]);
+    expect(errores).toEqual([]);
+  });
+
   it('limita la cantidad de errores reportados', () => {
     const malas = Array.from({ length: 20 }, () => ({ fecha: 'x' }));
     expect(

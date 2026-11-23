@@ -19,6 +19,8 @@ var CONFIG = {
   // El API acepta hasta 100 KB por request; se deja margen.
   MAX_BYTES: 80000,
   REINTENTOS: 3,
+  // change_event solo deja consultar los últimos 30 días.
+  DIAS_MAX_CAMBIOS: 28,
 };
 
 function main() {
@@ -43,13 +45,14 @@ function main() {
     ['terminos', rango, filasTerminos],
     ['segmentos', rango, filasSegmentos],
     ['conversiones', rango, filasConversiones],
+    ['cambios', rangoCambios(rango, ctx.zona_horaria), filasCambios],
   ];
   // Un reporte que falla (consulta GAQL o rechazo del API) no frena a los
   // demás; al final la corrida falla igual para que Google Ads lo avise.
   var fallas = [];
   reportes.forEach(function (r) {
     try {
-      enviarReporte(ctx, r[0], r[1], r[2](rango));
+      enviarReporte(ctx, r[0], r[1], r[2](r[1]));
     } catch (e) {
       Logger.log('ERROR en ' + r[0] + ': ' + e.message);
       fallas.push(r[0]);
@@ -68,6 +71,13 @@ function calcularRango(zona) {
     desde: Utilities.formatDate(new Date(ahora.getTime() - CONFIG.DIAS_REPASO * dia), zona, 'yyyy-MM-dd'),
     hasta: Utilities.formatDate(new Date(ahora.getTime() - dia), zona, 'yyyy-MM-dd'),
   };
+}
+
+/** Igual que el rango normal, pero sin pasar de DIAS_MAX_CAMBIOS días atrás. */
+function rangoCambios(rango, zona) {
+  var dia = 24 * 60 * 60 * 1000;
+  var limite = Utilities.formatDate(new Date(Date.now() - CONFIG.DIAS_MAX_CAMBIOS * dia), zona, 'yyyy-MM-dd');
+  return { desde: rango.desde > limite ? rango.desde : limite, hasta: rango.hasta };
 }
 
 function entre(rango) {
@@ -338,6 +348,35 @@ function filasAnuncios() {
       fuerza: opc(a.adStrength),
       aprobacion: opc(a.policySummary && a.policySummary.approvalStatus),
       urls_finales: a.ad.finalUrls || [],
+    };
+  });
+}
+
+/**
+ * Cambios hechos en la cuenta (presupuesto, pujas, palabras, anuncios), para
+ * explicar saltos en la tendencia. No se manda quién hizo el cambio.
+ */
+function filasCambios(rango) {
+  return consultar(
+    'SELECT change_event.resource_name, change_event.change_date_time, ' +
+      'change_event.change_resource_type, change_event.resource_change_operation, ' +
+      'change_event.changed_fields, campaign.id FROM change_event ' +
+      "WHERE change_event.change_date_time >= '" + rango.desde + " 00:00:00' " +
+      "AND change_event.change_date_time <= '" + rango.hasta + " 23:59:59' " +
+      'ORDER BY change_event.change_date_time DESC LIMIT 1000'
+  ).map(function (r) {
+    var c = r.changeEvent;
+    var campos = c.changedFields || '';
+    return {
+      recurso_cambio: c.resourceName,
+      fecha: String(c.changeDateTime).slice(0, 10),
+      momento: String(c.changeDateTime),
+      campana_id: r.campaign && r.campaign.id ? String(r.campaign.id) : null,
+      tipo_recurso: opc(c.changeResourceType),
+      operacion: opc(c.resourceChangeOperation),
+      campos: (typeof campos === 'string' ? campos.split(',') : [].concat(campos.paths || []))
+        .filter(function (x) { return x; })
+        .slice(0, 20),
     };
   });
 }

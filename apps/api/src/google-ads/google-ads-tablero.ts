@@ -59,6 +59,7 @@ import type {
   AccionConversionDto,
   CeldaHoraDto,
   FilaAnuncio,
+  FilaCambio,
   FilaCampanaDia,
   FilaConversionDia,
   FilaEstadoCampana,
@@ -89,6 +90,7 @@ export interface DatosTableroAds {
   anuncios: FilaAnuncio[];
   /** Foto actual del estado de cada campaña (vacía si el script aún no la mandó). */
   estados: FilaEstadoCampana[];
+  cambios: FilaCambio[];
   pedidos: FilaPedidoAds[];
   gastoMeta: { fecha: string; gasto: number | string }[];
   clientesNuevos: { created_at: string }[];
@@ -126,8 +128,13 @@ export interface TableroGoogleAdsDto {
   dispositivos: SegmentoDto[];
   geo: GeoDto;
   anuncios: FilaAnuncio[];
+  /** Cambios hechos en la cuenta en el período, del más reciente al más viejo. */
+  cambios: FilaCambio[];
   alertas: AlertaDto[];
 }
+
+/** Máximo de cambios que viajan al tablero. */
+export const MAX_CAMBIOS = 50;
 
 const en = <T extends { fecha: string }>(filas: T[], r: Rango): T[] =>
   filas.filter((f) => enRango(f.fecha, r.desde, r.hasta));
@@ -287,6 +294,9 @@ export function armarTablero(d: DatosTableroAds): TableroGoogleAdsDto {
     dispositivos: seccionDispositivos(segmentos),
     geo: seccionGeo(segmentos),
     anuncios: d.anuncios,
+    cambios: en(d.cambios, d.actual)
+      .sort((a, b) => b.momento.localeCompare(a.momento))
+      .slice(0, MAX_CAMBIOS),
     alertas: alertas({ ...d, segmentos }, actuales, {
       palabras,
       terminos,

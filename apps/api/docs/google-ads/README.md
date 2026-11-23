@@ -16,6 +16,7 @@ y la especificación en `especificacion-tablero.md`.
 | segmentos | `campaign` por fecha+hora y por dispositivo; `geographic_view` por ciudad (presencia o interés) | `google_ads_segmentos_diario` |
 | conversiones | `campaign` por acción de conversión (va aparte porque no se combina con el costo) | `google_ads_conversiones_diario` |
 | anuncios | `ad_group_ad`: fuerza, aprobación y URL final (foto, sin fecha) | `google_ads_anuncios` |
+| cambios | `change_event` de los últimos 28 días como máximo (Google no da más de 30): qué se cambió y cuándo, sin quién | `google_ads_cambios` |
 | estado_campanas | `campaign` sin fecha: estado, motivos, puja y presupuesto actuales (los días en que una campaña no sirve no hay fila diaria) | `google_ads_campanas_estado` |
 
 Cada corrida vuelve a mandar los últimos 7 días hasta ayer. Todas las filas de

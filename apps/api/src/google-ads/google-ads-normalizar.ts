@@ -143,6 +143,15 @@ const CAMPOS_POR_REPORTE: Record<ReporteGoogleAds, CamposReporte> = {
     estado_puja: 'texto?',
     presupuesto_diario: 'micros',
   },
+  cambios: {
+    recurso_cambio: 'texto',
+    fecha: 'fecha',
+    momento: 'texto',
+    campana_id: 'texto?',
+    tipo_recurso: 'texto?',
+    operacion: 'texto?',
+    campos: 'textos',
+  },
 };
 
 /** Reportes que son una foto del momento, sin rango de fechas. */

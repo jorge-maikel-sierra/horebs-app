@@ -13,6 +13,7 @@ import {
 } from './google-ads-tablero';
 import type {
   FilaAnuncio,
+  FilaCambio,
   FilaCampanaDia,
   FilaConversionDia,
   FilaEstadoCampana,
@@ -96,13 +97,18 @@ export class GoogleAdsTableroService {
   ): Promise<
     Pick<
       DatosTableroAds,
-      'campanas' | 'palabras' | 'terminos' | 'segmentos' | 'conversiones'
+      | 'campanas'
+      | 'palabras'
+      | 'terminos'
+      | 'segmentos'
+      | 'conversiones'
+      | 'cambios'
     >
   > {
     // El ritmo del mes necesita el mes completo aunque el período sea corto.
     const inicioMes = `${actual.hasta.slice(0, LARGO_MES)}-01`;
     const desdeCampanas = [anterior.desde, inicioMes].sort()[0];
-    const [campanas, palabras, terminos, segmentos, conversiones] =
+    const [campanas, palabras, terminos, segmentos, conversiones, cambios] =
       await Promise.all([
         this.porFecha<FilaCampanaDia>(
           'google_ads_campana_diario',
@@ -127,8 +133,11 @@ export class GoogleAdsTableroService {
           total,
           ['campana_id', 'accion'],
         ),
+        this.porFecha<FilaCambio>('google_ads_cambios', actual, [
+          'recurso_cambio',
+        ]),
       ]);
-    return { campanas, palabras, terminos, segmentos, conversiones };
+    return { campanas, palabras, terminos, segmentos, conversiones, cambios };
   }
 
   private async cargarNegocio(

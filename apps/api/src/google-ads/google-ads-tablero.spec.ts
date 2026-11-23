@@ -44,6 +44,7 @@ function datos(parcial: Partial<DatosTableroAds> = {}): DatosTableroAds {
     conversiones: [],
     anuncios: [],
     estados: [],
+    cambios: [],
     pedidos: [],
     gastoMeta: [],
     clientesNuevos: [],
@@ -104,6 +105,31 @@ describe('conversionesPorAccion', () => {
 });
 
 describe('armarTablero', () => {
+  it('lista los cambios del período del más reciente al más viejo', () => {
+    const cambio = (momento: string) => ({
+      recurso_cambio: `customers/1/changeEvents/${momento}`,
+      fecha: momento.slice(0, 10),
+      momento,
+      campana_id: '1',
+      tipo_recurso: 'CAMPAIGN_BUDGET',
+      operacion: 'UPDATE',
+      campos: ['amount_micros'],
+    });
+    const t = armarTablero(
+      datos({
+        cambios: [
+          cambio('2026-11-21 10:00:00'),
+          cambio('2026-11-22 09:00:00'),
+          cambio('2026-11-19 08:00:00'),
+        ],
+      }),
+    );
+    expect(t.cambios.map((c) => c.momento)).toEqual([
+      '2026-11-22 09:00:00',
+      '2026-11-21 10:00:00',
+    ]);
+  });
+
   it('sin datos devuelve un tablero vacío con la alerta de sincronización', () => {
     const t = armarTablero(datos({ ultimoEnvio: null }));
     expect(t.resumen.gasto).toBe(0);
