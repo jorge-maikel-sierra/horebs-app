@@ -328,8 +328,11 @@ body {
   }
 }
 
+/* `backwards` y no `both`: el estado final es el natural, y así no queda un
+   transform puesto que vuelva al bloque contenedor de un modal `fixed`
+   (ej. el de "Conectando con Google" en el checkout). */
 .animate-fade-up {
-  animation: fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) backwards;
 }
 
 /* Barra fina de "actualizando" bajo la barra de pestañas de informes. */
