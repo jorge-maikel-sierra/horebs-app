@@ -78,5 +78,14 @@
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
+  },
+  "overrides": {
+    "@react-pdf/layout": "5.2.0",
+    "@react-pdf/textkit": "7.0.1",
+    "@react-pdf/render": "4.7.0",
+    "@react-pdf/font": "4.1.2",
+    "@react-pdf/stylesheet": "6.3.2",
+    "@react-pdf/image": "3.1.2",
+    "@react-pdf/types": "2.14.0"
   }
 }
