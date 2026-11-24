@@ -9,6 +9,7 @@ import {
   type PedidoWebParaEvento,
 } from './conversiones-web';
 import {
+  destinoEventosMeta,
   enviarEventoUnaVez,
   postearEventoMeta,
   type DestinoEventosMeta,
@@ -47,19 +48,9 @@ export class ConversionesWebService {
     private readonly config: ConfigService,
     private readonly supabase: SupabaseService,
   ) {
-    const token =
-      this.config.get<string>('META_EVENTS_ACCESS_TOKEN') ??
-      this.config.get<string>('META_CAPI_ACCESS_TOKEN');
-    const datasetId = this.config.get<string>('META_DATASET_ID_SOCIAL');
-    this.destino =
-      token && datasetId
-        ? {
-            token,
-            datasetId,
-            version:
-              this.config.get<string>('META_GRAPH_API_VERSION') ?? 'v21.0',
-          }
-        : null;
+    this.destino = destinoEventosMeta((clave) =>
+      this.config.get<string>(clave),
+    );
   }
 
   /** Fire-and-forget: nunca frena el cambio de estado en el panel. */

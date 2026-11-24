@@ -19,6 +19,7 @@ import { ClientesModule } from './clientes/clientes.module';
 import { NominaModule } from './nomina/nomina.module';
 import { ResenasModule } from './resenas/resenas.module';
 import { GoogleAdsModule } from './google-ads/google-ads.module';
+import { EventosWebModule } from './eventos-web/eventos-web.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { GoogleAdsModule } from './google-ads/google-ads.module';
     NominaModule,
     ResenasModule,
     GoogleAdsModule,
+    EventosWebModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],

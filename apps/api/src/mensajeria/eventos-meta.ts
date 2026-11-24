@@ -67,3 +67,23 @@ export async function postearEventoMeta(
     );
   }
 }
+
+const VERSION_GRAPH_DEFECTO = 'v21.0';
+
+/**
+ * Píxel/dataset del sitio y token de la API de conversiones. Sin alguno de
+ * los dos el envío queda apagado (null).
+ */
+export function destinoEventosMeta(
+  leer: (clave: string) => string | undefined,
+): DestinoEventosMeta | null {
+  const token =
+    leer('META_EVENTS_ACCESS_TOKEN') ?? leer('META_CAPI_ACCESS_TOKEN');
+  const datasetId = leer('META_DATASET_ID_SOCIAL');
+  if (!token || !datasetId) return null;
+  return {
+    token,
+    datasetId,
+    version: leer('META_GRAPH_API_VERSION') ?? VERSION_GRAPH_DEFECTO,
+  };
+}

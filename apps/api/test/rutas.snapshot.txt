@@ -93,6 +93,7 @@ POST /admin/seguimiento/conversaciones/:id/mensajes
 POST /admin/usuarios
 POST /admin/ventas
 POST /blog/posts/:slug/comentarios
+POST /eventos-web
 POST /inventario/compras
 POST /inventario/insumos
 POST /inventario/insumos/:id/ajustes
