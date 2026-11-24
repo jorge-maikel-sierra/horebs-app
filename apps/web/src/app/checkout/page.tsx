@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 import Link from 'next/link';
 import type { Session } from '@supabase/supabase-js';
 import { useCart } from '@/lib/cart-context';
@@ -19,7 +18,13 @@ import {
 } from '@/lib/analytics';
 import { leerAtribucion } from '@/lib/atribucion';
 import { errorClass } from '@/lib/feedback-estilos';
+import { NEGOCIO } from '@/lib/negocio';
 import ModalCargando from '@/components/ModalCargando';
+import AvisoHorario from '@/components/checkout/AvisoHorario';
+import Campo from '@/components/checkout/CampoCheckout';
+import GrupoOpciones from '@/components/checkout/GrupoOpciones';
+import InfoPago, { type MetodoPago } from '@/components/checkout/InfoPago';
+import ResumenPedido from '@/components/checkout/ResumenPedido';
 import { leerErrorApi } from '@/lib/error-api';
 import { marcarCompraNueva } from '@/components/TrackPurchase';
 
@@ -75,7 +80,6 @@ function IconTarjeta() {
 }
 
 type SaldoPuntos = {
-  nombre: string;
   puntos: number;
   valorPuntoPesos: number;
   puntosMinimoCanje: number;
@@ -110,33 +114,27 @@ function iniciales(nombre: string, correo: string) {
   return correo.slice(0, 2).toUpperCase();
 }
 
-function OpcionCard({
-  selected,
-  onClick,
-  icon,
-  label,
-}: {
-  selected: boolean;
-  onClick: () => void;
-  icon: ReactNode;
-  label: string;
-}) {
+function IconEstrella() {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={selected}
-      className={`btn-press card-interactive flex flex-1 flex-col items-center gap-2 rounded-2xl border p-4 text-center transition-colors ${
-        selected
-          ? 'btn-gradient border-transparent text-white shadow-sm'
-          : 'card-gradient border-zinc-200 text-zinc-700 dark:border-zinc-800 dark:text-zinc-300'
-      }`}
-    >
-      {icon}
-      <span className="text-sm font-semibold">{label}</span>
-    </button>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9L12 3.5Z" />
+    </svg>
   );
 }
+
+const OPCIONES_MODALIDAD = [
+  { valor: 'domicilio' as const, etiqueta: 'Domicilio', icono: <IconPaquete /> },
+  { valor: 'retiro' as const, etiqueta: 'Retiro en local', icono: <IconTienda /> },
+];
+
+const OPCIONES_PAGO = [
+  { valor: 'efectivo' as const, etiqueta: 'Efectivo', icono: <IconEfectivo /> },
+  { valor: 'transferencia' as const, etiqueta: 'Transferencia', icono: <IconTransferencia /> },
+  { valor: 'tarjeta' as const, etiqueta: 'Tarjeta', icono: <IconTarjeta /> },
+];
+
+/** Orden en pantalla: el primer campo con error es el que recibe el foco. */
+const ORDEN_CAMPOS: CampoCheckout[] = ['nombre', 'apellido', 'telefono', 'correo', 'direccion'];
 
 export default function CheckoutPage() {
   const { items, total, clear } = useCart();
@@ -162,12 +160,12 @@ export default function CheckoutPage() {
   const [correo, setCorreo] = useState('');
   const [modalidad, setModalidad] = useState<'domicilio' | 'retiro'>('domicilio');
   const [direccion, setDireccion] = useState('');
-  const [metodoPago, setMetodoPago] = useState<'efectivo' | 'transferencia' | 'tarjeta'>(
-    'efectivo',
-  );
+  const [metodoPago, setMetodoPago] = useState<MetodoPago>('efectivo');
   const [notas, setNotas] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errores, setErrores] = useState<Partial<Record<CampoCheckout, string>>>({});
+  const errorApiRef = useRef<HTMLDivElement>(null);
   const [saldoPuntos, setSaldoPuntos] = useState<SaldoPuntos | null>(null);
   const [usarPuntos, setUsarPuntos] = useState(false);
   // Una sola clave por intento de checkout (no por click) — si el mismo
@@ -211,17 +209,20 @@ export default function CheckoutPage() {
 
   if (items.length === 0) {
     return (
-      <div className="mx-auto max-w-2xl p-8 text-center">
-        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-          Checkout
-        </h1>
-        <p className="mt-4 text-zinc-600 dark:text-zinc-400">
-          Tu carrito está vacío.{' '}
-          <Link href="/catalogo" className="text-accent-ink underline">
-            Vuelve al catálogo
-          </Link>
-          .
+      <div className="mx-auto flex max-w-md flex-col items-center px-4 py-16 text-center">
+        <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-orange/15 text-accent-ink">
+          <IconPaquete />
+        </span>
+        <h1 className="mt-4 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">Tu carrito está vacío</h1>
+        <p className="mt-2 text-zinc-600 dark:text-zinc-400">
+          Arranca por la firma de la casa, la Pizza Horebs Especial, o mira todo el menú.
         </p>
+        <Link
+          href="/catalogo"
+          className="btn-gradient btn-press mt-6 inline-flex h-11 items-center rounded-xl px-6 text-sm font-semibold text-white"
+        >
+          Ver el menú
+        </Link>
       </div>
     );
   }
@@ -252,26 +253,31 @@ export default function CheckoutPage() {
       : 0;
   const descuentoPuntos = usarPuntos ? canjePuntos * (saldoPuntos?.valorPuntoPesos ?? 0) : 0;
   const totalConDescuento = total - descuentoPuntos;
+  // El API suma el domicilio al pedido (costoDomicilioDeCheckout); el total
+  // que ve el cliente lo suma también. NEGOCIO.costoDomicilio debe coincidir
+  // con COSTO_DOMICILIO_DEFAULT del API.
+  const domicilio = modalidad === 'domicilio' ? NEGOCIO.costoDomicilio : 0;
+  const totalAPagar = totalConDescuento + domicilio;
 
   async function enviarPedido(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
-    const faltante: [CampoCheckout, string] | null =
-      !session && !nombre.trim()
-        ? ['nombre', 'Completa tu nombre.']
-        : !apellido.trim()
-          ? ['apellido', 'Completa tu apellido.']
-          : !telefono.trim()
-            ? ['telefono', 'Completa tu teléfono.']
-            : !session && !correo.trim()
-              ? ['correo', 'Completa tu correo.']
-              : modalidad === 'domicilio' && !direccion.trim()
-                ? ['direccion', 'Falta la dirección de entrega.']
-                : null;
-    if (faltante) {
-      trackErrorValidacionCheckout(faltante[0]);
-      setError(faltante[1]);
+    // Todos los errores a la vez, cada uno bajo su campo, y el foco al
+    // primero: antes salía uno solo al pie del formulario.
+    const nuevos: Partial<Record<CampoCheckout, string>> = {};
+    if (!session && !nombre.trim()) nuevos.nombre = 'Escribe tu nombre.';
+    if (!apellido.trim()) nuevos.apellido = 'Escribe tu apellido.';
+    if (!telefono.trim()) nuevos.telefono = 'Escribe tu número de WhatsApp.';
+    if (!session && !correo.trim()) nuevos.correo = 'Escribe tu correo.';
+    if (modalidad === 'domicilio' && !direccion.trim()) nuevos.direccion = 'Escribe a dónde llevamos el pedido.';
+    setErrores(nuevos);
+    const primero = ORDEN_CAMPOS.find((c) => nuevos[c]);
+    if (primero) {
+      trackErrorValidacionCheckout(primero);
+      const campo = document.getElementById(`checkout-${primero}`);
+      campo?.focus();
+      campo?.scrollIntoView({ block: 'center', behavior: 'smooth' });
       return;
     }
 
@@ -331,279 +337,227 @@ export default function CheckoutPage() {
       trackErrorPedido(status, mensaje);
       setError(mensaje);
       setEnviando(false);
+      // El aviso queda junto al botón; el foco va a él para que se lea.
+      requestAnimationFrame(() => errorApiRef.current?.focus());
     }
   }
 
-  const inputClass =
-    'mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 outline-none transition-colors focus:border-brand-orange dark:border-zinc-700 dark:bg-zinc-900';
+  /** Cambia un campo y borra su error en cuanto se corrige. */
+  function cambiar(campo: CampoCheckout, setter: (v: string) => void) {
+    return (v: string) => {
+      setter(v);
+      if (errores[campo]) setErrores((e) => ({ ...e, [campo]: undefined }));
+    };
+  }
+
   // Solo la trae Google (login por email no tiene foto) — el avatar
   // vive únicamente en user_metadata, no hay carga manual todavía.
   const avatarUrl: string | undefined =
     session?.user.user_metadata?.avatar_url ?? session?.user.user_metadata?.picture;
 
   return (
-    <div className="mx-auto max-w-2xl p-8">
-      <h1 className="animate-fade-up text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
-        Checkout
-      </h1>
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+      <h1 className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">Confirma tu pedido</h1>
 
-      <div className="card-interactive card-gradient animate-fade-up delay-1 mt-4 rounded-2xl border border-zinc-200 p-4 text-sm dark:border-zinc-800">
-        {items.map((i) => (
-          <div key={i.varianteId} className="flex items-center justify-between gap-3 py-1.5">
-            <span className="flex min-w-0 items-center gap-3">
-              {i.imagenUrl ? (
-                <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-lg">
-                  <Image
-                    src={i.imagenUrl}
-                    alt={i.productoNombre}
-                    fill
-                    sizes="44px"
-                    className="object-cover"
+      {/* Escritorio: formulario a la izquierda y el resumen fijo a la derecha.
+          Teléfono: el resumen arriba, para saber qué se está pidiendo. */}
+      <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-10">
+        <aside className="lg:sticky lg:top-24 lg:order-2">
+          <ResumenPedido
+            items={items}
+            subtotal={total}
+            domicilio={domicilio}
+            descuentoPuntos={descuentoPuntos}
+            puntosCanjeados={canjePuntos}
+            total={totalAPagar}
+          />
+        </aside>
+
+        <div className="min-w-0 space-y-6">
+          <AvisoHorario />
+
+          {session ? (
+            <div data-ph-mask className="flex items-center gap-3 rounded-2xl border border-zinc-200 p-3 dark:border-zinc-800">
+              {avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- URL externa de Google, no vale la pena optimizarla con next/image.
+                <img src={avatarUrl} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover" />
+              ) : (
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-orange/15 text-sm font-bold text-accent-ink">
+                  {iniciales(nombre, correo)}
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                  {nombre ? `${nombre} ${apellido}`.trim() : correo}
+                </p>
+                <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{correo}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => supabase.auth.signOut()}
+                className="-my-1 h-11 shrink-0 rounded-lg px-3 text-sm text-zinc-600 underline underline-offset-2 hover:text-accent-ink dark:text-zinc-400"
+              >
+                No soy yo
+              </button>
+            </div>
+          ) : (
+            <div>
+              <button
+                type="button"
+                onClick={iniciarConGoogle}
+                disabled={cargandoGoogle}
+                className="btn-press flex h-11 w-full items-center justify-center gap-3 rounded-xl border border-zinc-300 text-sm font-semibold text-zinc-800 transition-colors hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
+              >
+                <IconGoogle />
+                Continuar con Google
+              </button>
+              <p className="mt-2 text-center text-xs text-zinc-500 dark:text-zinc-400">
+                Llenamos tus datos por ti y la próxima vez no los vuelves a escribir.
+              </p>
+              {cargandoGoogle && <ModalCargando mensaje="Conectando con Google…" />}
+              <div className="mt-4 flex items-center gap-3">
+                <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
+                <span className="text-xs text-zinc-500 dark:text-zinc-400">o escribe tus datos</span>
+                <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
+              </div>
+            </div>
+          )}
+
+          <form onSubmit={enviarPedido} noValidate className="space-y-6">
+            <fieldset className="space-y-4">
+              <legend className="sr-only">Tus datos</legend>
+              {!session && (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Campo id="checkout-nombre" etiqueta="Nombre" autoComplete="given-name" value={nombre} onChange={cambiar('nombre', setNombre)} error={errores.nombre} />
+                  <Campo id="checkout-apellido" etiqueta="Apellido" autoComplete="family-name" value={apellido} onChange={cambiar('apellido', setApellido)} error={errores.apellido} />
+                </div>
+              )}
+              {session && !apellido.trim() && (
+                <Campo id="checkout-apellido" etiqueta="Apellido" autoComplete="family-name" value={apellido} onChange={cambiar('apellido', setApellido)} error={errores.apellido} />
+              )}
+              <Campo
+                id="checkout-telefono"
+                etiqueta="WhatsApp"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                value={telefono}
+                onChange={cambiar('telefono', setTelefono)}
+                onBlur={consultarSaldoPuntos}
+                error={errores.telefono}
+                pista="Por aquí confirmamos el pedido."
+              />
+              {!session && (
+                <Campo id="checkout-correo" etiqueta="Correo" type="email" inputMode="email" autoComplete="email" value={correo} onChange={cambiar('correo', setCorreo)} error={errores.correo} />
+              )}
+
+              {puedeCanjear && (
+                <div className="animate-entrada-seccion flex items-center justify-between gap-3 rounded-xl border border-brand-orange/25 bg-brand-orange/[0.06] px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-orange/15 text-accent-ink">
+                      <IconEstrella />
+                    </span>
+                    <label htmlFor="usar-puntos" className="text-sm text-zinc-700 dark:text-zinc-300">
+                      Tienes{' '}
+                      <span className="font-semibold text-zinc-900 tabular-nums dark:text-zinc-50">{saldoPuntos?.puntos} puntos</span>.
+                      Usa {canjePuntos} y te descontamos{' '}
+                      <span className="font-semibold text-zinc-900 tabular-nums dark:text-zinc-50">
+                        {formatPrecio(canjePuntos * (saldoPuntos?.valorPuntoPesos ?? 0))}
+                      </span>
+                      .
+                    </label>
+                  </div>
+                  <input
+                    id="usar-puntos"
+                    type="checkbox"
+                    checked={usarPuntos}
+                    onChange={(e) => setUsarPuntos(e.target.checked)}
+                    className="h-5 w-5 shrink-0 accent-brand-orange"
                   />
                 </div>
-              ) : null}
-              <span className="min-w-0 truncate">
-                {i.cantidad}× {i.productoNombre} ({i.varianteNombre})
-              </span>
-            </span>
-            <span className="shrink-0">{formatPrecio(i.precio * i.cantidad)}</span>
-          </div>
-        ))}
-        {descuentoPuntos > 0 && (
-          <div className="flex justify-between gap-3 border-t border-zinc-100 py-1.5 pt-2 text-success-700 dark:border-zinc-800/60 dark:text-success-400">
-            <span>Descuento · {canjePuntos} puntos</span>
-            <span className="shrink-0">-{formatPrecio(descuentoPuntos)}</span>
-          </div>
-        )}
-        <div className="mt-2 flex justify-between border-t border-zinc-200 pt-2 font-semibold dark:border-zinc-800">
-          <span>Total</span>
-          <span className="text-accent-ink">{formatPrecio(totalConDescuento)}</span>
+              )}
+            </fieldset>
+
+            <div>
+              <GrupoOpciones
+                nombre="modalidad"
+                leyenda="¿Cómo lo recibes?"
+                opciones={OPCIONES_MODALIDAD}
+                valor={modalidad}
+                onCambiar={(v) => {
+                  setModalidad(v);
+                  trackModalidadElegida(v);
+                }}
+                columnas={2}
+              />
+              {modalidad === 'domicilio' ? (
+                <div className="animate-entrada-seccion mt-4">
+                  <Campo
+                    id="checkout-direccion"
+                    etiqueta="Dirección de entrega"
+                    autoComplete="street-address"
+                    value={direccion}
+                    onChange={cambiar('direccion', setDireccion)}
+                    error={errores.direccion}
+                    pista={`Calle o carrera, barrio y una referencia. Llevamos a ${NEGOCIO.coberturaDomicilio} por ${formatPrecio(NEGOCIO.costoDomicilio)}.`}
+                  />
+                </div>
+              ) : (
+                <p className="animate-entrada-seccion mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+                  Lo recoges en {NEGOCIO.direccion}.
+                </p>
+              )}
+            </div>
+
+            <div>
+              <GrupoOpciones
+                nombre="metodo-pago"
+                leyenda="¿Cómo pagas?"
+                opciones={OPCIONES_PAGO}
+                valor={metodoPago}
+                onCambiar={(v) => {
+                  setMetodoPago(v);
+                  trackMetodoPagoElegido(v);
+                }}
+                columnas={3}
+              />
+              <InfoPago metodo={metodoPago} />
+            </div>
+
+            <Campo
+              id="checkout-notas"
+              etiqueta="Notas (opcional)"
+              multilinea
+              placeholder="Ej.: sin cebolla, pago con $50.000"
+              value={notas}
+              onChange={setNotas}
+            />
+
+            <div className="space-y-3">
+              {error && (
+                <div ref={errorApiRef} tabIndex={-1} role="alert" className={`${errorClass} outline-none`}>
+                  {error}
+                </div>
+              )}
+              <button
+                type="submit"
+                disabled={enviando}
+                className="btn-press btn-gradient flex h-12 w-full items-center justify-center gap-2 rounded-xl text-base font-semibold text-white shadow-sm transition-opacity disabled:opacity-60"
+              >
+                {enviando && (
+                  <span aria-hidden="true" className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                )}
+                {enviando ? 'Enviando…' : (
+                  <span className="tabular-nums">Pedir por {formatPrecio(totalAPagar)}</span>
+                )}
+              </button>
+              <p className="text-center text-xs text-zinc-500 dark:text-zinc-400">
+                En el siguiente paso confirmas el pedido por WhatsApp.
+              </p>
+            </div>
+          </form>
         </div>
       </div>
-
-      {session ? (
-        <div
-          data-ph-mask
-          className="animate-fade-up delay-2 mt-6 flex items-center gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800"
-        >
-          {avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- URL externa de Google, no vale la pena optimizarla con next/image.
-            <img
-              src={avatarUrl}
-              alt=""
-              className="h-10 w-10 shrink-0 rounded-full object-cover"
-            />
-          ) : (
-            <div className="btn-gradient flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white">
-              {iniciales(nombre, correo)}
-            </div>
-          )}
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-              {nombre ? `${nombre} ${apellido}`.trim() : correo}
-            </p>
-            <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{correo}</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => supabase.auth.signOut()}
-            className="shrink-0 text-xs text-zinc-500 underline hover:text-accent-ink dark:text-zinc-400"
-          >
-            No soy yo
-          </button>
-        </div>
-      ) : (
-        <div className="animate-fade-up delay-2 mt-6">
-          <button
-            type="button"
-            onClick={iniciarConGoogle}
-            disabled={cargandoGoogle}
-            className="btn-press flex w-full items-center justify-center gap-3 rounded-lg border border-zinc-300 py-3 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
-          >
-            <IconGoogle />
-            Continuar con Google
-          </button>
-          {cargandoGoogle && <ModalCargando mensaje="Conectando con Google…" />}
-          <div className="mt-4 flex items-center gap-3">
-            <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
-            <span className="text-xs text-zinc-400 dark:text-zinc-500">o con tus datos</span>
-            <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
-          </div>
-        </div>
-      )}
-
-      <form onSubmit={enviarPedido} noValidate className="animate-fade-up delay-2 mt-6 space-y-4">
-        {!session && (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="block text-sm font-medium">Nombre</label>
-              <input
-                required
-                value={nombre}
-                onChange={(e) => setNombre(e.target.value)}
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium">Apellido</label>
-              <input
-                required
-                value={apellido}
-                onChange={(e) => setApellido(e.target.value)}
-                className={inputClass}
-              />
-            </div>
-          </div>
-        )}
-
-        {session && !apellido.trim() && (
-          <div>
-            <label className="block text-sm font-medium">Apellido</label>
-            <input
-              required
-              value={apellido}
-              onChange={(e) => setApellido(e.target.value)}
-              className={inputClass}
-            />
-          </div>
-        )}
-
-        <div>
-          <label className="block text-sm font-medium">
-            Teléfono (WhatsApp)
-          </label>
-          <input
-            required
-            type="tel"
-            value={telefono}
-            onChange={(e) => setTelefono(e.target.value)}
-            onBlur={consultarSaldoPuntos}
-            className={inputClass}
-          />
-        </div>
-
-        {!session && (
-          <div>
-            <label className="block text-sm font-medium">Correo electrónico</label>
-            <input
-              required
-              type="email"
-              value={correo}
-              onChange={(e) => setCorreo(e.target.value)}
-              className={inputClass}
-            />
-          </div>
-        )}
-
-        {puedeCanjear && (
-          <div className="animate-fade-up flex items-center justify-between gap-3 rounded-lg border border-brand-orange/25 bg-brand-orange/[0.06] px-4 py-3">
-            <div className="flex items-center gap-3">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-orange text-sm">
-                ⭐
-              </span>
-              <label htmlFor="usar-puntos" className="text-sm text-zinc-700 dark:text-zinc-300">
-                Tienes{' '}
-                <span className="font-semibold text-zinc-900 dark:text-zinc-50">
-                  {saldoPuntos?.puntos} puntos
-                </span>
-                . Usar {canjePuntos} para un descuento de{' '}
-                <span className="font-semibold text-zinc-900 dark:text-zinc-50">
-                  {formatPrecio(canjePuntos * (saldoPuntos?.valorPuntoPesos ?? 0))}
-                </span>
-                .
-              </label>
-            </div>
-            <input
-              id="usar-puntos"
-              type="checkbox"
-              checked={usarPuntos}
-              onChange={(e) => setUsarPuntos(e.target.checked)}
-              className="h-5 w-5 shrink-0 accent-brand-orange"
-            />
-          </div>
-        )}
-
-        <div>
-          <span className="block text-sm font-medium">Modalidad</span>
-          <div className="mt-2 flex gap-3">
-            <OpcionCard
-              selected={modalidad === 'domicilio'}
-              onClick={() => { setModalidad('domicilio'); trackModalidadElegida('domicilio'); }}
-              icon={<IconPaquete />}
-              label="Domicilio"
-            />
-            <OpcionCard
-              selected={modalidad === 'retiro'}
-              onClick={() => { setModalidad('retiro'); trackModalidadElegida('retiro'); }}
-              icon={<IconTienda />}
-              label="Retiro en local"
-            />
-          </div>
-        </div>
-
-        {modalidad === 'domicilio' && (
-          <div className="animate-fade-up">
-            <label className="block text-sm font-medium">
-              Dirección de entrega
-            </label>
-            <input
-              required
-              value={direccion}
-              onChange={(e) => setDireccion(e.target.value)}
-              className={inputClass}
-            />
-          </div>
-        )}
-
-        <div>
-          <span className="block text-sm font-medium">Método de pago</span>
-          <div className="mt-2 grid grid-cols-3 gap-3">
-            <OpcionCard
-              selected={metodoPago === 'efectivo'}
-              onClick={() => { setMetodoPago('efectivo'); trackMetodoPagoElegido('efectivo'); }}
-              icon={<IconEfectivo />}
-              label="Efectivo"
-            />
-            <OpcionCard
-              selected={metodoPago === 'transferencia'}
-              onClick={() => { setMetodoPago('transferencia'); trackMetodoPagoElegido('transferencia'); }}
-              icon={<IconTransferencia />}
-              label="Transferencia"
-            />
-            <OpcionCard
-              selected={metodoPago === 'tarjeta'}
-              onClick={() => { setMetodoPago('tarjeta'); trackMetodoPagoElegido('tarjeta'); }}
-              icon={<IconTarjeta />}
-              label="Tarjeta"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium">
-            Notas (opcional)
-          </label>
-          <textarea
-            value={notas}
-            onChange={(e) => setNotas(e.target.value)}
-            rows={2}
-            className={inputClass}
-          />
-        </div>
-
-        {error && <p className={errorClass}>{error}</p>}
-
-        <button
-          type="submit"
-          disabled={enviando}
-          className="btn-press flex w-full items-center justify-center gap-2 rounded-lg btn-gradient py-3 font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
-        >
-          {enviando && (
-            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-          )}
-          {enviando ? 'Enviando…' : 'Confirmar pedido'}
-        </button>
-      </form>
     </div>
   );
 }
