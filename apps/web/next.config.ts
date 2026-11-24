@@ -26,8 +26,11 @@ const API_ORIGIN = process.env.NEXT_PUBLIC_API_URL;
 // interfaz web de GTM (ej. un tag de otro proveedor) que llame a un host
 // que no esté acá también va a quedar bloqueado por el CSP — hay que
 // sumarlo a mano en este archivo, GTM no puede "saltarse" esta lista.
+// googleads.g.doubleclick.net: la etiqueta de Google Ads carga ahí el
+// script de conversión por vista (pagead/viewthroughconversion); estaba solo
+// en connect-src y el navegador lo bloqueaba.
 const SCRIPT_SRC_TAGS =
-  'https://www.googletagmanager.com https://connect.facebook.net';
+  'https://www.googletagmanager.com https://connect.facebook.net https://googleads.g.doubleclick.net';
 // Beacons de medición: GA4/GTM, conversiones de Google Ads (doubleclick,
 // googleadservices y el 1p-conversion de google.com) y el pixel de Facebook.
 // Sin googleadservices y google.com el CSP bloquea el hit de conversión.
