@@ -156,8 +156,11 @@ describe('PuntosService: saldo y canje', () => {
       },
     });
 
-    await expect(servicio.obtenerSaldoPorTelefono('315')).resolves.toEqual({
-      nombre: 'Ana',
+    // Sin `nombre`: la ruta es pública y con cualquier teléfono revelaba
+    // cómo se llama su dueño.
+    await expect(
+      servicio.obtenerSaldoPorTelefono('315'),
+    ).resolves.toStrictEqual({
       puntos: 340,
       valorPuntoPesos: 50,
       puntosMinimoCanje: 100,

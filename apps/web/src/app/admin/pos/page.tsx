@@ -48,7 +48,6 @@ type ClienteBusqueda = {
 };
 
 type SaldoPuntos = {
-  nombre: string;
   puntos: number;
   valorPuntoPesos: number;
   puntosMinimoCanje: number;

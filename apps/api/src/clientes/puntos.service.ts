@@ -82,7 +82,7 @@ export class PuntosService {
     const { data, error } = await this.supabase
       .getClient()
       .from('clientes')
-      .select('nombre, puntos_actuales')
+      .select('puntos_actuales')
       .eq('telefono', telefono)
       .maybeSingle<FilaSaldoCliente>();
     if (error) throw errorDeBase(error);
@@ -90,7 +90,6 @@ export class PuntosService {
 
     const config = await this.obtenerConfiguracion();
     return {
-      nombre: data.nombre,
       puntos: data.puntos_actuales,
       valorPuntoPesos: config.valorPuntoPesos,
       puntosMinimoCanje: config.puntosMinimoCanje,

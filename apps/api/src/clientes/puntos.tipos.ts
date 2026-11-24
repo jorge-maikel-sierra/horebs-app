@@ -28,8 +28,11 @@ export interface MovimientoPuntosDto {
   created_at: string;
 }
 
+/**
+ * Lo responde `GET /puntos/saldo`, que es pública: sin datos personales
+ * (antes traía el nombre y cualquiera podía saber de quién era un teléfono).
+ */
 export interface SaldoPuntosDto {
-  nombre: string;
   puntos: number;
   valorPuntoPesos: number;
   puntosMinimoCanje: number;
@@ -53,7 +56,6 @@ export interface FilaConfiguracion {
 }
 
 export interface FilaSaldoCliente {
-  nombre: string;
   puntos_actuales: number;
 }
 
