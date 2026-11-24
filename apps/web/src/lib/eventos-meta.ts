@@ -1,5 +1,6 @@
 'use client';
 
+import { sendGTMEvent } from '@next/third-parties/google';
 import { leerCookie } from './atribucion';
 
 /**
@@ -23,19 +24,19 @@ export function nuevoIdEvento(): string {
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
 }
 
-declare global {
-  interface Window {
-    __horebsPageViewId?: string;
-  }
-}
+// Espera a que el Pixel cree la cookie _fbp para mandarla con la copia de servidor.
+const ESPERA_PAGEVIEW_MS = 1500;
 
 /**
- * Id del PageView de esta carga. Lo comparten el sitio y la variable
- * "JS - PageView event_id" de GTM: el que llegue primero lo crea.
+ * PageView de esta carga. La etiqueta "FB Pixel - PageView" de GTM se activa
+ * con el evento `meta_page_view` y lee `event_id` del dataLayer: así el Pixel
+ * y el servidor mandan el mismo id. Devuelve la función que cancela el envío.
  */
-export function idPageView(): string {
-  window.__horebsPageViewId ??= nuevoIdEvento();
-  return window.__horebsPageViewId;
+export function registrarPageView(): () => void {
+  const eventId = nuevoIdEvento();
+  sendGTMEvent({ event: 'meta_page_view', event_id: eventId });
+  const espera = window.setTimeout(() => enviarEventoMeta('PageView', eventId), ESPERA_PAGEVIEW_MS);
+  return () => window.clearTimeout(espera);
 }
 
 export function enviarEventoMeta(
