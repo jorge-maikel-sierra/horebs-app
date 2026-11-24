@@ -33,7 +33,7 @@ export type Atribucion = Utm & {
   url?: string;
 };
 
-function leerCookie(nombre: string): string | undefined {
+export function leerCookie(nombre: string): string | undefined {
   const par = document.cookie.split('; ').find((c) => c.startsWith(`${nombre}=`));
   return par ? decodeURIComponent(par.slice(nombre.length + 1)) : undefined;
 }

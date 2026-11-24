@@ -2,6 +2,7 @@
 
 import { sendGTMEvent } from '@next/third-parties/google';
 import posthog from 'posthog-js';
+import { enviarEventoMeta, nuevoIdEvento, type EventoMeta } from './eventos-meta';
 
 const MONEDA = 'COP';
 
@@ -29,14 +30,33 @@ function limpiarEcommerceAnterior() {
   sendGTMEvent({ ecommerce: null });
 }
 
+// Nombre del evento del Pixel para cada evento de GA4 que también va por la
+// API de conversiones. El purchase no: ese lo manda el API al entregar el pedido.
+const EVENTO_META: Partial<Record<string, EventoMeta>> = {
+  view_item: 'ViewContent',
+  add_to_cart: 'AddToCart',
+  begin_checkout: 'InitiateCheckout',
+};
+
 /**
  * Empuja el evento de ecommerce al dataLayer de GTM y el mismo evento, con los
  * mismos nombres de GA4, a PostHog (si está iniciado en `instrumentation-client.ts`).
+ * `event_id` lo lee la etiqueta del Pixel como `eventID` y es el mismo que
+ * lleva la copia de servidor, para que Meta cuente uno solo.
  */
 function medirEcommerce(event: string, ecommerce: Record<string, unknown>) {
+  const eventId = nuevoIdEvento();
   limpiarEcommerceAnterior();
-  sendGTMEvent({ event, ecommerce });
+  sendGTMEvent({ event, event_id: eventId, ecommerce });
   if (posthog.__loaded) posthog.capture(event, ecommerce);
+  const eventoMeta = EVENTO_META[event];
+  if (eventoMeta) {
+    const items = (ecommerce.items as ItemGA4[] | undefined) ?? [];
+    enviarEventoMeta(eventoMeta, eventId, {
+      value: typeof ecommerce.value === 'number' ? ecommerce.value : undefined,
+      content_ids: items.map((i) => i.item_id),
+    });
+  }
 }
 
 function itemAGA4(item: ItemCarrito, quantity: number): ItemGA4 {
@@ -176,6 +196,8 @@ export function trackErrorPedido(status: number | null, mensaje: string) {
 
 /** WhatsApp es el canal de contacto principal del sitio — se trackea como lead. */
 export function trackContact() {
-  sendGTMEvent({ event: 'generate_lead', method: 'whatsapp' });
+  const eventId = nuevoIdEvento();
+  sendGTMEvent({ event: 'generate_lead', method: 'whatsapp', event_id: eventId });
+  enviarEventoMeta('Contact', eventId);
   if (posthog.__loaded) posthog.capture('generate_lead', { method: 'whatsapp' });
 }
