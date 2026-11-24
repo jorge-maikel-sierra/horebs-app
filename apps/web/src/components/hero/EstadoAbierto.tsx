@@ -1,32 +1,9 @@
 'use client';
 
-import { useSyncExternalStore } from 'react';
 import { NEGOCIO } from '@/lib/negocio';
+import { useEstadoLocal, type EstadoLocal } from '@/lib/estado-local';
 
-type Estado = 'abierto' | 'antes' | 'despues';
-
-function horaEnColombia(): number {
-  const hora = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/Bogota',
-    hour: 'numeric',
-    hourCycle: 'h23',
-  }).format(new Date());
-  return Number(hora);
-}
-
-function leerEstado(): Estado {
-  const hora = horaEnColombia();
-  if (hora < NEGOCIO.horaApertura) return 'antes';
-  if (hora >= NEGOCIO.horaCierre) return 'despues';
-  return 'abierto';
-}
-
-function suscribir(avisar: () => void) {
-  const intervalo = window.setInterval(avisar, 60_000);
-  return () => window.clearInterval(intervalo);
-}
-
-const TEXTOS: Record<Estado, string> = {
+const TEXTOS: Record<EstadoLocal, string> = {
   abierto: 'Abierto ahora · pide hasta las 11:00 pm',
   antes: 'Hoy abrimos a las 4:00 pm',
   despues: 'Cerrado · mañana abrimos a las 4:00 pm',
@@ -38,11 +15,7 @@ const TEXTOS: Record<Estado, string> = {
  * navegador y así no hay desajuste de hidratación.
  */
 export default function EstadoAbierto() {
-  const estado = useSyncExternalStore<Estado | null>(
-    suscribir,
-    leerEstado,
-    () => null,
-  );
+  const estado = useEstadoLocal();
   const abierto = estado === 'abierto';
 
   return (
