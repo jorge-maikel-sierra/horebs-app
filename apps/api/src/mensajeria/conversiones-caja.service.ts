@@ -5,6 +5,7 @@ import {
   actionSourceDeVenta,
   eventoVigente,
   payloadPurchaseCaja,
+  esClienteGenerico,
   userDataCaja,
   type VentaCajaParaEvento,
 } from './conversiones-caja';
@@ -65,6 +66,8 @@ export class ConversionesCajaService {
   ): Promise<ResultadoCompraCaja> {
     const destino = this.destino;
     if (!destino) return 'apagado';
+    // Antes que el anuncio: su teléfono no es el del comprador.
+    if (esClienteGenerico(venta.cliente)) return 'sin_datos';
     if (await this.llegoPorAnuncio(venta)) return 'por_anuncio';
     const userData = userDataCaja(venta.cliente);
     if (!userData) return 'sin_datos';

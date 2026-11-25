@@ -45,6 +45,18 @@ describe('actionSourceDeVenta', () => {
 });
 
 describe('userDataCaja', () => {
+  it('no manda datos del cliente genérico "Consumidor Final" de la caja', () => {
+    // Es un solo registro con correo y teléfono reales para cientos de ventas
+    // de mostrador: Meta las ligaría todas a esa persona.
+    expect(
+      userDataCaja({
+        ...VENTA.cliente,
+        nombre: ' consumidor ',
+        apellido: 'FINAL',
+      }),
+    ).toBeNull();
+  });
+
   it('cifra teléfono con indicativo, correo y nombre; nada va en claro', () => {
     const datos = userDataCaja(VENTA.cliente);
 

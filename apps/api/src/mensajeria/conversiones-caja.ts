@@ -48,10 +48,25 @@ export function actionSourceDeVenta(
   return modalidad === 'domicilio' ? 'phone_call' : 'physical_store';
 }
 
+// Cliente genérico de la caja para las ventas sin datos del comprador. Tiene
+// un correo y un teléfono de verdad, así que mandarlo ligaría cientos de
+// ventas de mostrador a una sola cuenta de Meta.
+const CLIENTE_GENERICO = 'consumidorfinal';
+
+export function esClienteGenerico(
+  cliente: Pick<VentaCajaParaEvento['cliente'], 'nombre' | 'apellido'>,
+): boolean {
+  return (
+    `${nombreParaMeta(cliente.nombre) ?? ''}${nombreParaMeta(cliente.apellido) ?? ''}` ===
+    CLIENTE_GENERICO
+  );
+}
+
 /** Meta pide los datos personales con SHA-256: sin teléfono ni correo no hay con qué emparejar. */
 export function userDataCaja(
   cliente: VentaCajaParaEvento['cliente'],
 ): Record<string, unknown> | null {
+  if (esClienteGenerico(cliente)) return null;
   const telefono = telefonoParaMeta(cliente.telefono);
   const correo = cliente.correo?.trim().toLowerCase() || null;
   if (!telefono && !correo) return null;

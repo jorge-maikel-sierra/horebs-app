@@ -109,6 +109,20 @@ describe('ConversionesCajaService.enviarVenta', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it('la venta a "Consumidor Final" no va a Meta ni se cruza con anuncios', async () => {
+    const { servicio, whatsapp } = crearServicio({ porAnuncio: true });
+    const generica = {
+      ...VENTA,
+      cliente: { ...VENTA.cliente, nombre: 'Consumidor', apellido: 'Final' },
+    };
+
+    await expect(servicio.enviarVenta(generica, AHORA)).resolves.toBe(
+      'sin_datos',
+    );
+    expect(whatsapp.notificarCompra).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('sin teléfono ni correo no manda nada', async () => {
     const { servicio } = crearServicio();
     const sinDatos = {
