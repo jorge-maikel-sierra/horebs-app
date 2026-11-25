@@ -98,6 +98,24 @@ function crearServicio(opciones: Opciones = {}) {
   return { servicio, conOpciones, textos, registrados, tarjetas, intereses };
 }
 
+// Un viernes: sin el 20% de miércoles y jueves, los precios salen completos.
+// Solo se congela la fecha; los timers siguen siendo reales.
+beforeEach(() => {
+  jest.useFakeTimers({
+    now: new Date('2026-11-13T15:00:00-05:00'),
+    doNotFake: [
+      'nextTick',
+      'setImmediate',
+      'setTimeout',
+      'setInterval',
+      'queueMicrotask',
+    ],
+  });
+});
+afterEach(() => {
+  jest.useRealTimers();
+});
+
 describe('VitrinaSocialService: precios', () => {
   it('si nombra un producto, manda su foto, los tamaños con porciones y botones directos al carrito', async () => {
     const { servicio, conOpciones, tarjetas, intereses } = crearServicio();

@@ -42,26 +42,39 @@ const VIERNES = new Date('2026-11-13T15:00:00-05:00');
 const MIERCOLES = new Date('2026-11-11T15:00:00-05:00');
 
 describe('textoPrecioProducto', () => {
-  it('cada tamaño con su precio y porciones, del más barato al más caro', () => {
+  it('cada tamaño con su precio, el domicilio con un total de ejemplo y la pregunta de cierre', () => {
     expect(textoPrecioProducto(ESPECIAL, VIERNES)).toBe(
       'Pizza Horebs Especial, la firma de la casa 🍕\n' +
         '• Personal $25.000 (6 porciones)\n' +
         '• Mediana $40.000 (8 porciones)\n' +
         '• Grande $60.000 (12 porciones)\n' +
-        'Toca el tamaño y te la agrego al pedido 👇',
+        '🛵 Domicilio $5.000 a toda la zona urbana de Riohacha: la mediana te llega en $45.000.\n' +
+        '¿Te la mando hoy? Toca el tamaño y te la agrego al pedido 👇',
     );
   });
 
-  it('los miércoles antes de las 8 p.m. avisa el 20% en pizzas', () => {
-    expect(textoPrecioProducto(HAWAIANA, MIERCOLES)).toContain(
-      '🎉 Hoy tienes 20% de descuento en pizzas hasta las 8:00 p.m.',
+  it('miércoles antes de las 8 p.m.: el precio ya trae el 20% y el total también', () => {
+    const texto = textoPrecioProducto(ESPECIAL, MIERCOLES);
+    expect(texto).toContain('• Mediana $32.000 con el 20% (antes $40.000)');
+    expect(texto).toContain('la mediana te llega en $37.000');
+    expect(texto).toContain(
+      '🎉 Hoy tienes 20% de descuento en pizzas hasta las 8:00 p.m., y se aplica solo al pedir por aquí.',
     );
-    expect(textoPrecioProducto(PANZEROTTI, MIERCOLES)).not.toContain('20%');
   });
 
-  it('lo que no es pizza no lleva porciones', () => {
-    const texto = textoPrecioProducto(PANZEROTTI, VIERNES);
+  it('sin mediana, el ejemplo usa el tamaño más barato', () => {
+    expect(textoPrecioProducto(HAWAIANA, VIERNES)).toContain(
+      'la personal te llega en $25.000',
+    );
+  });
+
+  it('lo que no es pizza no lleva porciones, ni 20% ni total de ejemplo', () => {
+    const texto = textoPrecioProducto(PANZEROTTI, MIERCOLES);
     expect(texto).toContain('• Sabor jamón $18.000\n');
+    expect(texto).not.toContain('20%');
+    expect(texto).toContain(
+      '🛵 Domicilio $5.000 a toda la zona urbana de Riohacha.\n',
+    );
     expect(texto).toContain('te lo agrego al pedido');
   });
 });

@@ -1,4 +1,6 @@
 import type { ProductoDto } from '../catalog/catalog.service';
+import { COBERTURA_DOMICILIO } from '../common/contacto';
+import { COSTO_DOMICILIO_DEFAULT } from '../common/costos';
 import {
   PROMO_HORA_LIMITE,
   PROMO_PORCENTAJE,
@@ -31,32 +33,78 @@ export function esProductoPizza(producto: ProductoDto): boolean {
   return producto.variantes.some((v) => esPizza(producto.nombre, v.nombre));
 }
 
-function lineaPromocion(producto: ProductoDto, ahora: Date): string | null {
-  if (!esProductoPizza(producto) || !promocionActiva(ahora)) return null;
+const TAMANO_EJEMPLO = 'mediana';
+
+type Variante = ProductoDto['variantes'][number];
+
+function lineaPromocion(conPromo: boolean): string | null {
+  if (!conPromo) return null;
   return `🎉 Hoy tienes ${PROMO_PORCENTAJE}% de descuento en pizzas hasta las ${PROMO_HORA_LIMITE - HORA_12}:00 p.m., y se aplica solo al pedir por aquí.`;
+}
+
+/** Mismo redondeo que el checkout (`descuentoSobrePizzas`): al peso. */
+function precioConPromo(precio: number): number {
+  return precio - Math.round((precio * PROMO_PORCENTAJE) / 100);
+}
+
+function precioFinal(v: Variante, conPromo: boolean): number {
+  const precio = precioVariante(v);
+  return conPromo ? precioConPromo(precio) : precio;
+}
+
+function lineaTamano(v: Variante, pizza: boolean, conPromo: boolean): string {
+  const medida = medidaDe(v.nombre);
+  const porciones = pizza && medida ? ` (${medida.porciones} porciones)` : '';
+  const precio = precioVariante(v);
+  const valor = conPromo
+    ? `${pesos(precioConPromo(precio))} con el ${PROMO_PORCENTAJE}% (antes ${pesos(precio)})`
+    : pesos(precio);
+  return `• ${v.nombre} ${valor}${porciones}`;
+}
+
+/**
+ * El domicilio con lo que de verdad paga: para las pizzas, la mediana (o el
+ * tamaño más barato) más el domicilio, así el cliente no hace cuentas.
+ */
+function lineaDomicilio(
+  variantes: Variante[],
+  pizza: boolean,
+  conPromo: boolean,
+): string {
+  const base = `🛵 Domicilio ${pesos(COSTO_DOMICILIO_DEFAULT)} a ${COBERTURA_DOMICILIO}`;
+  const ejemplo =
+    variantes.find((v) => v.nombre.toLowerCase() === TAMANO_EJEMPLO) ??
+    variantes[0];
+  if (!pizza || !ejemplo) return `${base}.`;
+  const total = precioFinal(ejemplo, conPromo) + COSTO_DOMICILIO_DEFAULT;
+  return `${base}: la ${ejemplo.nombre.toLowerCase()} te llega en ${pesos(total)}.`;
 }
 
 /**
  * El precio de un producto pensado para que el cliente pida: cada tamaño con
- * sus porciones, el 20% si está activo y una invitación a tocar el tamaño.
+ * sus porciones (y el 20% ya restado si está activo), el domicilio con un
+ * total de ejemplo y una pregunta de cierre.
  */
 export function textoPrecioProducto(
   producto: ProductoDto,
   ahora: Date,
 ): string {
   const pizza = esProductoPizza(producto);
+  const conPromo = pizza && promocionActiva(ahora);
+  const variantes = variantesOrdenadas(producto);
   const encabezado = FIRMA_DE_LA_CASA.test(producto.nombre)
     ? `${producto.nombre}, la firma de la casa 🍕`
     : `${producto.nombre} 🍕`;
-  const lineas = variantesOrdenadas(producto).map((v) => {
-    const medida = medidaDe(v.nombre);
-    const porciones = pizza && medida ? ` (${medida.porciones} porciones)` : '';
-    return `• ${v.nombre} ${pesos(precioVariante(v))}${porciones}`;
-  });
   const cierre = pizza
-    ? 'Toca el tamaño y te la agrego al pedido 👇'
+    ? '¿Te la mando hoy? Toca el tamaño y te la agrego al pedido 👇'
     : 'Toca el que quieras y te lo agrego al pedido 👇';
-  return [encabezado, ...lineas, lineaPromocion(producto, ahora), cierre]
+  return [
+    encabezado,
+    ...variantes.map((v) => lineaTamano(v, pizza, conPromo)),
+    lineaPromocion(conPromo),
+    lineaDomicilio(variantes, pizza, conPromo),
+    cierre,
+  ]
     .filter((l): l is string => l !== null)
     .join('\n');
 }
