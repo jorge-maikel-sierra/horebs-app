@@ -21,11 +21,11 @@ const pizza: ProductoDto = {
 };
 
 describe('segundo mensaje a quien vino por un anuncio', () => {
-  it('le escribe a quien calla hace entre 2 y 23 horas (dentro de las 24 h de Meta)', () => {
+  it('le escribe a quien calla hace entre 30 minutos y 23 horas (dentro de las 24 h de Meta)', () => {
     const ahora = new Date('2026-11-16T20:00:00Z');
     expect(ventanaToque(ahora)).toEqual({
       desde: '2026-11-15T21:00:00.000Z',
-      hasta: '2026-11-16T18:00:00.000Z',
+      hasta: '2026-11-16T19:30:00.000Z',
     });
   });
 

@@ -1,15 +1,16 @@
 import type { ProductoDto } from '../catalog/catalog.service';
-import { MS_POR_HORA } from '../common/tiempo';
+import { MS_POR_HORA, MS_POR_MINUTO } from '../common/tiempo';
 import { botonesPrecioProducto, esProductoPizza } from './texto-producto';
 import type { BotonRespuesta } from './mensajes-interactivos';
 
 /**
  * Segundo mensaje a quien llegó por un anuncio, preguntó por un producto y no
- * empezó el pedido (decisión del dueño, 16 nov 2026): uno solo, 2 horas
- * después de su último mensaje y siempre dentro de la ventana de 24 h de Meta
- * (con 1 hora de margen para no rozar el límite).
+ * empezó el pedido: uno solo, 30 minutos después de su último mensaje
+ * (mientras todavía tiene hambre; antes eran 2 horas y llegaba casi al cierre,
+ * cambio pedido por el dueño el 25 nov 2026) y siempre dentro de la ventana de
+ * 24 h de Meta (con 1 hora de margen para no rozar el límite).
  */
-export const HORAS_ESPERA_TOQUE = 2;
+export const MINUTOS_ESPERA_TOQUE = 30;
 const HORAS_LIMITE_VENTANA = 23;
 
 export interface CandidataToque {
@@ -39,7 +40,7 @@ export function ventanaToque(ahora: Date): { desde: string; hasta: string } {
       ahora.getTime() - HORAS_LIMITE_VENTANA * MS_POR_HORA,
     ).toISOString(),
     hasta: new Date(
-      ahora.getTime() - HORAS_ESPERA_TOQUE * MS_POR_HORA,
+      ahora.getTime() - MINUTOS_ESPERA_TOQUE * MS_POR_MINUTO,
     ).toISOString(),
   };
 }
