@@ -1,3 +1,4 @@
+import { ENLACE_RESENA_GOOGLE } from '../common/contacto';
 import { idCortoPedido } from '../common/pedido-numero';
 import { HORAS_POR_DIA, MS_POR_HORA } from '../common/tiempo';
 
@@ -63,9 +64,12 @@ export function textoAvisoEstado(p: PedidoParaAviso): string | null {
         ? `🛵 Tu pedido *${numero}* va en camino a ${p.direccionEntrega}.`
         : `🛵 Tu pedido *${numero}* va en camino.`;
     case 'entregado':
-      return p.modalidad === 'domicilio'
-        ? `¡Que lo disfrutes! 🍕 Gracias por pedirnos.`
-        : `🍕 Tu pedido *${numero}* está listo. ¡Que lo disfrutes!`;
+      return [
+        p.modalidad === 'domicilio'
+          ? `¡Que lo disfrutes! 🍕 Gracias por pedirnos.`
+          : `🍕 Tu pedido *${numero}* está listo. ¡Que lo disfrutes!`,
+        `⭐ Si te gustó, nos ayudas mucho con tu reseña en Google: ${ENLACE_RESENA_GOOGLE}`,
+      ].join('\n\n');
     case 'cancelado':
       return `Tu pedido *${numero}* fue cancelado. Si es un error, escríbenos por acá.`;
     default:

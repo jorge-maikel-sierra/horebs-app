@@ -32,6 +32,16 @@ describe('textoAvisoEstado', () => {
     ).toContain('está listo');
   });
 
+  it('entregado pide la reseña de Google con el enlace directo', () => {
+    for (const modalidad of ['domicilio', 'retiro']) {
+      expect(
+        textoAvisoEstado({ ...PEDIDO, modalidad, estado: 'entregado' }),
+      ).toContain(
+        'https://search.google.com/local/writereview?placeid=ChIJu6cS8Kdji44R_bd9ffP39PM',
+      );
+    }
+  });
+
   it('pendiente no avisa nada (ya recibió la confirmación)', () => {
     expect(textoAvisoEstado({ ...PEDIDO, estado: 'pendiente' })).toBeNull();
   });

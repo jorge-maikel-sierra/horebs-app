@@ -11,5 +11,9 @@ export const ENLACE_WHATSAPP_NEGOCIO = 'https://wa.me/573157861208';
 /** Cobertura del domicilio: decisión del dueño, 20 nov 2026 (ver CLAUDE.md). */
 export const COBERTURA_DOMICILIO = 'toda la zona urbana de Riohacha';
 
+/** Abre directo el formulario de reseña de la ficha de Google (placeId de Pizzeria Horebs). */
+export const ENLACE_RESENA_GOOGLE =
+  'https://search.google.com/local/writereview?placeid=ChIJu6cS8Kdji44R_bd9ffP39PM';
+
 /** El mismo WhatsApp del negocio, escrito para leerlo (respuestas públicas en Google). */
 export const TELEFONO_NEGOCIO = '+57 315 786 1208';
