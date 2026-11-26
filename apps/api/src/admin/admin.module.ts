@@ -10,6 +10,7 @@ import { CostosAdminController } from './costos-admin.controller';
 import { CostosAdminService } from './costos-admin.service';
 import { Module } from '@nestjs/common';
 import { AvisosCambioPedidoService } from './avisos-cambio-pedido.service';
+import { EntregaWebService } from './entrega-web.service';
 import { AvisosVentaService } from './avisos-venta.service';
 import { ConfiguracionAdminController } from './configuracion-admin.controller';
 import { ConfiguracionAdminService } from './configuracion-admin.service';
@@ -59,6 +60,7 @@ import { PedidosModule } from '../pedidos/pedidos.module';
     VentasService,
     PedidosAdminService,
     AvisosCambioPedidoService,
+    EntregaWebService,
     AvisosVentaService,
     UsuariosAdminService,
     ConfiguracionAdminService,

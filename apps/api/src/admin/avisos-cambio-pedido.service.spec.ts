@@ -1,7 +1,7 @@
 import type { AvisosPedidoService } from '../mensajeria/avisos-pedido.service';
 import type { ConversionesMetaService } from '../mensajeria/conversiones-meta.service';
 import type { ConversionesSocialService } from '../mensajeria/conversiones-social.service';
-import type { ConversionesWebService } from '../mensajeria/conversiones-web.service';
+import type { EntregaWebService } from './entrega-web.service';
 import { AvisosCambioPedidoService } from './avisos-cambio-pedido.service';
 import type { PedidoAdminDto } from './pedidos-admin.tipos';
 
@@ -9,19 +9,19 @@ function crearServicio() {
   const avisosPedido = { notificarEstado: jest.fn() };
   const conversionesMeta = { avisarCompra: jest.fn() };
   const conversionesSocial = { avisarPedidoPorId: jest.fn() };
-  const conversionesWeb = { avisarCompra: jest.fn() };
+  const entregaWeb = { avisarEntrega: jest.fn() };
   const servicio = new AvisosCambioPedidoService(
     avisosPedido as unknown as AvisosPedidoService,
     conversionesMeta as unknown as ConversionesMetaService,
     conversionesSocial as unknown as ConversionesSocialService,
-    conversionesWeb as unknown as ConversionesWebService,
+    entregaWeb as unknown as EntregaWebService,
   );
   return {
     servicio,
     avisosPedido,
     conversionesMeta,
     conversionesSocial,
-    conversionesWeb,
+    entregaWeb,
   };
 }
 
@@ -64,21 +64,23 @@ describe('AvisosCambioPedidoService.avisar', () => {
     );
   });
 
-  it('un pedido web entregado manda el Purchase del servidor', () => {
-    const { servicio, conversionesWeb, conversionesSocial } = crearServicio();
+  it('un pedido web entregado pasa por la entrega web (Purchase e invitación a reseñar)', () => {
+    const { servicio, entregaWeb, conversionesSocial } = crearServicio();
 
     servicio.avisar({ ...PEDIDO, canal: 'web' }, 'entregado', 'en_camino');
 
-    expect(conversionesWeb.avisarCompra).toHaveBeenCalledWith('ped-1');
+    expect(entregaWeb.avisarEntrega).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'ped-1' }),
+    );
     expect(conversionesSocial.avisarPedidoPorId).not.toHaveBeenCalled();
   });
 
-  it('un pedido web cancelado no manda Purchase', () => {
-    const { servicio, conversionesWeb } = crearServicio();
+  it('un pedido web cancelado no pasa por la entrega web', () => {
+    const { servicio, entregaWeb } = crearServicio();
 
     servicio.avisar({ ...PEDIDO, canal: 'web' }, 'cancelado', 'pendiente');
 
-    expect(conversionesWeb.avisarCompra).not.toHaveBeenCalled();
+    expect(entregaWeb.avisarEntrega).not.toHaveBeenCalled();
   });
 
   it('un pedido de WhatsApp no pasa por la vía social', () => {

@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { AvisosPedidoService } from '../mensajeria/avisos-pedido.service';
 import { ConversionesMetaService } from '../mensajeria/conversiones-meta.service';
 import { ConversionesSocialService } from '../mensajeria/conversiones-social.service';
-import { ConversionesWebService } from '../mensajeria/conversiones-web.service';
+import { EntregaWebService } from './entrega-web.service';
 import type { PedidoAdminDto } from './pedidos-admin.tipos';
 
 /**
@@ -13,7 +13,8 @@ import type { PedidoAdminDto } from './pedidos-admin.tipos';
  * envío idempotente que las ventas del POS; si el cliente no llegó por un
  * anuncio, no sale. Los pedidos de Messenger e Instagram mandan Purchase al
  * entregar y OrderCanceled al cancelar, ligados al cliente por la conversación.
- * Los del sitio web mandan el Purchase del servidor al entregar.
+ * Los del sitio web mandan el Purchase del servidor al entregar y un correo
+ * que pide la reseña en Google.
  */
 @Injectable()
 export class AvisosCambioPedidoService {
@@ -21,7 +22,7 @@ export class AvisosCambioPedidoService {
     private readonly avisosPedido: AvisosPedidoService,
     private readonly conversionesMeta: ConversionesMetaService,
     private readonly conversionesSocial: ConversionesSocialService,
-    private readonly conversionesWeb: ConversionesWebService,
+    private readonly entregaWeb: EntregaWebService,
   ) {}
 
   avisar(
@@ -39,7 +40,7 @@ export class AvisosCambioPedidoService {
       });
     }
     if (nuevo === 'entregado' && pedido.canal === 'web') {
-      this.conversionesWeb.avisarCompra(pedido.id);
+      this.entregaWeb.avisarEntrega(pedido);
     }
     if (pedido.canal === 'messenger' || pedido.canal === 'instagram') {
       this.avisarSocial(pedido.id, nuevo);

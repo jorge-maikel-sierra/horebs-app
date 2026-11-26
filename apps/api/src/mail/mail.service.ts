@@ -11,6 +11,10 @@ import {
   type NotificacionDomicilio,
 } from './plantilla-domicilio';
 import { idCortoPedido } from '../common/pedido-numero';
+import {
+  correoInvitacionResena,
+  type InvitacionResena,
+} from './plantilla-resena';
 
 const RESEND_API_URL = 'https://api.resend.com/emails';
 /** Clave de `configuracion` con el correo que recibe los avisos del bot. */
@@ -170,6 +174,19 @@ export class MailService {
     const destino = await this.obtenerCorreoAlertas();
     if (!destino) this.logger.warn(omitido);
     return destino;
+  }
+
+  /** Fire-and-forget: al cliente web, cuando se entrega su pedido. */
+  enviarInvitacionResena(datos: InvitacionResena & { correo: string }): void {
+    if (!this.apiKey) return;
+    this.enviarPorResend({
+      to: datos.correo,
+      ...correoInvitacionResena(datos),
+    }).catch((err) => {
+      this.logger.error(
+        `No se pudo enviar la invitación a reseñar del pedido ${datos.pedidoId}: ${(err as Error).message}`,
+      );
+    });
   }
 
   /** Un solo envío a Resend; lanza ServiceUnavailable si responde con error. */
