@@ -1,17 +1,28 @@
-import { Controller, Get, NotFoundException, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  NotFoundException,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
 import { PuntosService } from './puntos.service';
 import type { SaldoPuntosDto } from './puntos.tipos';
 
 /**
- * Sin guard, igual que PedidosController/CatalogController — el checkout
- * público y el POS necesitan consultar el saldo de puntos de un cliente
- * por teléfono antes de crear el pedido, sin sesión de admin.
+ * Consulta el saldo de puntos de un cliente por teléfono. Solo el POS
+ * (empleado o admin) canjea puntos, así que la ruta va protegida: pública
+ * dejaba enumerar clientes y sus saldos por teléfono. El checkout web ya no
+ * canjea puntos — ver docs/seguridad/auditoria-2026-11.md.
  */
 @Controller('puntos')
+@UseGuards(RolesGuard)
 export class PuntosPublicoController {
   constructor(private readonly puntos: PuntosService) {}
 
   @Get('saldo')
+  @Roles('admin', 'empleado')
   async obtenerSaldo(
     @Query('telefono') telefono?: string,
   ): Promise<SaldoPuntosDto> {

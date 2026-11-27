@@ -66,6 +66,12 @@ describe('Contrato HTTP del API (app real)', () => {
     expect(res.headers['cache-control']).toBe('no-store');
   });
 
+  it('el saldo de puntos ya no es público: sin sesión es 401', async () => {
+    await request(app.getHttpServer())
+      .get('/puntos/saldo?telefono=3001234567')
+      .expect(401);
+  });
+
   it('un POST que no es JSON es 415 antes de llegar a la sesión', async () => {
     const res = await request(app.getHttpServer())
       .post('/turnos')

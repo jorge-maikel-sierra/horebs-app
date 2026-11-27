@@ -25,16 +25,12 @@ export default function ResumenPedido({
   items,
   subtotal,
   domicilio,
-  descuentoPuntos,
-  puntosCanjeados,
   total,
 }: {
   items: CartItem[];
   subtotal: number;
   /** 0 cuando es retiro en el local. */
   domicilio: number;
-  descuentoPuntos: number;
-  puntosCanjeados: number;
   total: number;
 }) {
   return (
@@ -80,13 +76,6 @@ export default function ResumenPedido({
       <div className="mt-2 border-t border-zinc-200 pt-2 dark:border-zinc-800">
         <Linea etiqueta="Subtotal" valor={formatPrecio(subtotal)} />
         {domicilio > 0 && <Linea etiqueta="Domicilio" valor={formatPrecio(domicilio)} />}
-        {descuentoPuntos > 0 && (
-          <Linea
-            etiqueta={`Descuento · ${puntosCanjeados} puntos`}
-            valor={`-${formatPrecio(descuentoPuntos)}`}
-            tono="descuento"
-          />
-        )}
       </div>
       <div className="mt-1 flex items-baseline justify-between gap-3 border-t border-zinc-200 pt-2.5 dark:border-zinc-800">
         <span className="font-semibold text-zinc-900 dark:text-zinc-50">Total a pagar</span>

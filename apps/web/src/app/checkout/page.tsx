@@ -79,12 +79,6 @@ function IconTarjeta() {
   );
 }
 
-type SaldoPuntos = {
-  puntos: number;
-  valorPuntoPesos: number;
-  puntosMinimoCanje: number;
-};
-
 function IconGoogle() {
   return (
     <svg width="18" height="18" viewBox="0 0 48 48">
@@ -112,14 +106,6 @@ function iniciales(nombre: string, correo: string) {
   const n = nombre.trim();
   if (n) return n.slice(0, 2).toUpperCase();
   return correo.slice(0, 2).toUpperCase();
-}
-
-function IconEstrella() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9L12 3.5Z" />
-    </svg>
-  );
 }
 
 const OPCIONES_MODALIDAD = [
@@ -166,8 +152,6 @@ export default function CheckoutPage() {
   const [error, setError] = useState<string | null>(null);
   const [errores, setErrores] = useState<Partial<Record<CampoCheckout, string>>>({});
   const errorApiRef = useRef<HTMLDivElement>(null);
-  const [saldoPuntos, setSaldoPuntos] = useState<SaldoPuntos | null>(null);
-  const [usarPuntos, setUsarPuntos] = useState(false);
   // Una sola clave por intento de checkout (no por click) — si el mismo
   // submit dispara dos requests (doble clic más rápido que el disabled del
   // botón, o un reintento de red), el backend descarta el segundo insert
@@ -227,37 +211,11 @@ export default function CheckoutPage() {
     );
   }
 
-  async function consultarSaldoPuntos() {
-    const tel = telefono.trim();
-    if (!tel) {
-      setSaldoPuntos(null);
-      setUsarPuntos(false);
-      return;
-    }
-    try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
-      const res = await fetch(`${apiUrl}/puntos/saldo?telefono=${encodeURIComponent(tel)}`);
-      if (!res.ok) return;
-      const saldo: SaldoPuntos | null = await res.json();
-      setSaldoPuntos(saldo);
-      if (!saldo || saldo.puntos < saldo.puntosMinimoCanje) setUsarPuntos(false);
-    } catch {
-      // Silencioso — la consulta de saldo es un extra, no debe frenar el checkout.
-    }
-  }
-
-  const puedeCanjear = saldoPuntos !== null && saldoPuntos.puntos >= saldoPuntos.puntosMinimoCanje;
-  const canjePuntos =
-    puedeCanjear && saldoPuntos
-      ? Math.min(saldoPuntos.puntos, Math.floor(total / saldoPuntos.valorPuntoPesos))
-      : 0;
-  const descuentoPuntos = usarPuntos ? canjePuntos * (saldoPuntos?.valorPuntoPesos ?? 0) : 0;
-  const totalConDescuento = total - descuentoPuntos;
   // El API suma el domicilio al pedido (costoDomicilioDeCheckout); el total
   // que ve el cliente lo suma también. NEGOCIO.costoDomicilio debe coincidir
   // con COSTO_DOMICILIO_DEFAULT del API.
   const domicilio = modalidad === 'domicilio' ? NEGOCIO.costoDomicilio : 0;
-  const totalAPagar = totalConDescuento + domicilio;
+  const totalAPagar = total + domicilio;
 
   async function enviarPedido(e: React.FormEvent) {
     e.preventDefault();
@@ -284,9 +242,9 @@ export default function CheckoutPage() {
     trackPedidoEnviado({
       metodoPago,
       modalidad,
-      value: totalConDescuento,
+      value: total,
       items: items.reduce((n, i) => n + i.cantidad, 0),
-      usaPuntos: usarPuntos,
+      usaPuntos: false,
       conSesion: Boolean(session),
     });
     setEnviando(true);
@@ -307,7 +265,6 @@ export default function CheckoutPage() {
             cantidad: i.cantidad,
           })),
           idempotency_key: idempotencyKey,
-          usar_puntos: usarPuntos,
           atribucion: leerAtribucion(),
         }),
       });
@@ -367,8 +324,6 @@ export default function CheckoutPage() {
             items={items}
             subtotal={total}
             domicilio={domicilio}
-            descuentoPuntos={descuentoPuntos}
-            puntosCanjeados={canjePuntos}
             total={totalAPagar}
           />
         </aside>
@@ -443,38 +398,11 @@ export default function CheckoutPage() {
                 autoComplete="tel"
                 value={telefono}
                 onChange={cambiar('telefono', setTelefono)}
-                onBlur={consultarSaldoPuntos}
                 error={errores.telefono}
                 pista="Por aquí confirmamos el pedido."
               />
               {!session && (
                 <Campo id="checkout-correo" etiqueta="Correo" type="email" inputMode="email" autoComplete="email" value={correo} onChange={cambiar('correo', setCorreo)} error={errores.correo} />
-              )}
-
-              {puedeCanjear && (
-                <div className="animate-entrada-seccion flex items-center justify-between gap-3 rounded-xl border border-brand-orange/25 bg-brand-orange/[0.06] px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-orange/15 text-accent-ink">
-                      <IconEstrella />
-                    </span>
-                    <label htmlFor="usar-puntos" className="text-sm text-zinc-700 dark:text-zinc-300">
-                      Tienes{' '}
-                      <span className="font-semibold text-zinc-900 tabular-nums dark:text-zinc-50">{saldoPuntos?.puntos} puntos</span>.
-                      Usa {canjePuntos} y te descontamos{' '}
-                      <span className="font-semibold text-zinc-900 tabular-nums dark:text-zinc-50">
-                        {formatPrecio(canjePuntos * (saldoPuntos?.valorPuntoPesos ?? 0))}
-                      </span>
-                      .
-                    </label>
-                  </div>
-                  <input
-                    id="usar-puntos"
-                    type="checkbox"
-                    checked={usarPuntos}
-                    onChange={(e) => setUsarPuntos(e.target.checked)}
-                    className="h-5 w-5 shrink-0 accent-brand-orange"
-                  />
-                </div>
               )}
             </fieldset>
 
