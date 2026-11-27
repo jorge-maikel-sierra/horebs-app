@@ -168,7 +168,7 @@ describe('PedidosService.crear', () => {
     const dto = await servicio.crear(ENTRADA);
 
     expect(escrituras.map((e) => `${e.tabla}:${e.op}`)).toEqual([
-      'clientes:upsert',
+      'clientes:insert',
       'pedidos:insert',
       'items_pedido:insert',
     ]);
@@ -213,8 +213,17 @@ describe('PedidosService.crear', () => {
   });
 });
 
+const ENTRADA_BOT_PUNTOS = {
+  cliente: { nombre: 'Ana', apellido: 'Pérez', telefono: '573157861208' },
+  modalidad: 'domicilio' as const,
+  direccion_entrega: 'Calle 1',
+  metodo_pago: 'efectivo' as const,
+  items: [{ variante_id: 'v-1', cantidad: 2 }],
+  usar_puntos: true,
+};
+
 describe('PedidosService: puntos', () => {
-  it('usar puntos descuenta el canje del total y lo registra', async () => {
+  it('en el bot, usar puntos descuenta el canje del total y lo registra', async () => {
     const { servicio, escrituras, puntos } = crearServicio({
       single: { clientes: OK_CLIENTE, pedidos: OK_PEDIDO },
     });
@@ -223,7 +232,7 @@ describe('PedidosService: puntos', () => {
       descuento: 2000,
     });
 
-    const dto = await servicio.crear({ ...ENTRADA, usar_puntos: true });
+    const dto = await servicio.crearDesdeWhatsapp(ENTRADA_BOT_PUNTOS);
 
     expect(puntos.calcularCanjeMaximo).toHaveBeenCalledWith('c-1', 65000);
     expect(escrituras[1].datos).toMatchObject({
@@ -233,6 +242,37 @@ describe('PedidosService: puntos', () => {
     });
     expect(puntos.registrarCanje).toHaveBeenCalledWith('c-1', 40, 'p-1');
     expect(dto.puntos_canjeados).toBe(40);
+  });
+
+  it('en la web se ignora usar_puntos: el canal es público y anónimo', async () => {
+    const { servicio, escrituras, puntos } = crearServicio({
+      single: { clientes: OK_CLIENTE, pedidos: OK_PEDIDO },
+    });
+    puntos.calcularCanjeMaximo.mockResolvedValue({
+      puntos: 40,
+      descuento: 2000,
+    });
+
+    await servicio.crear({ ...ENTRADA, usar_puntos: true });
+
+    expect(puntos.calcularCanjeMaximo).not.toHaveBeenCalled();
+    expect(puntos.registrarCanje).not.toHaveBeenCalled();
+    expect(escrituras[1].datos).toMatchObject({ total: 65000 });
+  });
+
+  it('en la web no se sobrescribe el perfil de un cliente que ya existe', async () => {
+    const { servicio, escrituras } = crearServicio({
+      maybeSingle: { data: CLIENTE, error: null },
+      single: { pedidos: OK_PEDIDO },
+    });
+
+    await servicio.crear(ENTRADA);
+
+    // El cliente ya existía: ni insert ni upsert sobre `clientes`.
+    expect(escrituras.map((e) => `${e.tabla}:${e.op}`)).toEqual([
+      'pedidos:insert',
+      'items_pedido:insert',
+    ]);
   });
 
   it('sin usar_puntos no se calcula ningún canje', async () => {
@@ -246,7 +286,7 @@ describe('PedidosService: puntos', () => {
     expect(puntos.registrarCanje).not.toHaveBeenCalled();
   });
 
-  it('si el canje falla, el pedido sigue en pie y queda marcado para revisión', async () => {
+  it('si el canje falla en el bot, el pedido sigue en pie y queda marcado', async () => {
     const { servicio, puntos } = crearServicio({
       single: { clientes: OK_CLIENTE, pedidos: OK_PEDIDO },
     });
@@ -256,7 +296,7 @@ describe('PedidosService: puntos', () => {
     });
     puntos.registrarCanje.mockRejectedValue(new Error('saldo cambió'));
 
-    const dto = await servicio.crear({ ...ENTRADA, usar_puntos: true });
+    const dto = await servicio.crearDesdeWhatsapp(ENTRADA_BOT_PUNTOS);
 
     expect(puntos.marcarCanjePendiente).toHaveBeenCalledWith(
       'p-1',

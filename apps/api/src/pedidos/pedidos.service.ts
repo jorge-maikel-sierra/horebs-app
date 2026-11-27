@@ -103,26 +103,16 @@ export class PedidosService {
     canal: CanalPedido,
   ): Promise<PedidoDto> {
     const client = this.supabase.getClient();
-    const { itemsCalculados, total: subtotalItems } = await calcularItems(
-      client,
-      input.items,
-    );
-    const costoDomicilio = costoDomicilioDeCheckout(input.modalidad);
-    // El descuento es solo sobre las pizzas: el domicilio se suma después.
-    const promo = promocionDePedido(
-      elegirPromocion(
-        Boolean(input.aplicar_promocion),
-        Boolean(input.oferta_seguimiento),
-      ),
-      itemsCalculados,
-      input.notas,
-    );
-    const subtotal = subtotalItems - promo.descuento + costoDomicilio;
+    const { itemsCalculados, costoDomicilio, promo, subtotal } =
+      await this.calcularPrecios(client, input);
 
-    const cliente = await this.guardarCliente(client, input.cliente);
-    const canje = input.usar_puntos
-      ? await this.puntos.calcularCanjeMaximo(cliente.id, subtotal)
-      : SIN_CANJE;
+    const cliente = await this.guardarCliente(client, input.cliente, canal);
+    const canje = await this.resolverCanje(
+      canal,
+      input.usar_puntos,
+      cliente.id,
+      subtotal,
+    );
     const total = subtotal - canje.descuento;
 
     const pedido = await this.insertarPedido(
@@ -181,10 +171,59 @@ export class PedidosService {
    * select-then-insert cuando dos pedidos del mismo cliente llegan a la vez
    * (ej. doble click en "Confirmar pedido").
    */
+  /** Precios desde la base, descuento de promo (solo pizzas) y domicilio. */
+  private async calcularPrecios(
+    client: SupabaseClient,
+    input: DatosPedido,
+  ): Promise<{
+    itemsCalculados: ItemCalculado[];
+    costoDomicilio: number;
+    promo: ReturnType<typeof promocionDePedido>;
+    subtotal: number;
+  }> {
+    const { itemsCalculados, total: subtotalItems } = await calcularItems(
+      client,
+      input.items,
+    );
+    const costoDomicilio = costoDomicilioDeCheckout(input.modalidad);
+    const promo = promocionDePedido(
+      elegirPromocion(
+        Boolean(input.aplicar_promocion),
+        Boolean(input.oferta_seguimiento),
+      ),
+      itemsCalculados,
+      input.notas,
+    );
+    const subtotal = subtotalItems - promo.descuento + costoDomicilio;
+    return { itemsCalculados, costoDomicilio, promo, subtotal };
+  }
+
+  /**
+   * El canje de puntos solo en canales con identidad: el bot (teléfono del
+   * chat) y el POS. La web es pública y anónima, así que un pedido con el
+   * teléfono de otra persona no puede gastar sus puntos — ver
+   * docs/seguridad/auditoria-2026-11.md.
+   */
+  private async resolverCanje(
+    canal: CanalPedido,
+    usarPuntos: boolean | undefined,
+    clienteId: string,
+    subtotal: number,
+  ): Promise<CanjeCalculado> {
+    if (canal === 'web' || !usarPuntos) return SIN_CANJE;
+    return this.puntos.calcularCanjeMaximo(clienteId, subtotal);
+  }
+
   private async guardarCliente(
     client: SupabaseClient,
     cliente: DatosPedido['cliente'],
+    canal: CanalPedido,
   ): Promise<FilaClientePedido> {
+    // La web es pública y sin login: un pedido anónimo no puede pisar el
+    // perfil de un cliente que ya existe (nombre, dirección, correo) solo con
+    // poner su teléfono — ver docs/seguridad/auditoria-2026-11.md. En el bot y
+    // el POS la identidad está acotada, así que ahí se mantiene el upsert.
+    if (canal === 'web') return this.obtenerOCrearClienteWeb(client, cliente);
     const { data, error } = await client
       .from('clientes')
       .upsert(datosClienteUpsert(cliente), { onConflict: 'telefono' })
@@ -192,6 +231,46 @@ export class PedidosService {
       .single<FilaClientePedido>();
     if (error) throw errorDeBase(error);
     return data;
+  }
+
+  /** Web: se crea el cliente si es nuevo; si ya existe, se usa tal cual. */
+  private async obtenerOCrearClienteWeb(
+    client: SupabaseClient,
+    cliente: DatosPedido['cliente'],
+  ): Promise<FilaClientePedido> {
+    const existente = await this.buscarClientePorTelefono(
+      client,
+      cliente.telefono,
+    );
+    if (existente) return existente;
+    const { data, error } = await client
+      .from('clientes')
+      .insert(datosClienteUpsert(cliente))
+      .select(CLIENTE_PEDIDO_SELECT)
+      .single<FilaClientePedido>();
+    if (!error) return data;
+    if (error.code !== POSTGRES_UNIQUE_VIOLATION) throw errorDeBase(error);
+    // Carrera: otro pedido creó el mismo teléfono entre la búsqueda y el
+    // insert. Se usa ese cliente, sin sobrescribirlo.
+    const yaExiste = await this.buscarClientePorTelefono(
+      client,
+      cliente.telefono,
+    );
+    if (!yaExiste) throw errorDeBase(error);
+    return yaExiste;
+  }
+
+  private async buscarClientePorTelefono(
+    client: SupabaseClient,
+    telefono: string,
+  ): Promise<FilaClientePedido | null> {
+    const { data, error } = await client
+      .from('clientes')
+      .select(CLIENTE_PEDIDO_SELECT)
+      .eq('telefono', telefono)
+      .maybeSingle<FilaClientePedido>();
+    if (error) throw errorDeBase(error);
+    return data ?? null;
   }
 
   /** `null` si el insert chocó contra la idempotency_key de un pedido ya creado. */
