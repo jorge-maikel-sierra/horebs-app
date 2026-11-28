@@ -66,6 +66,10 @@ describe('costoDomicilioDeCheckout', () => {
   ] as const)('%s cuesta %s', (modalidad, costo) => {
     expect(costoDomicilioDeCheckout(modalidad)).toBe(costo);
   });
+
+  it('es 0 a domicilio cuando el pedido trae un producto con domicilio incluido', () => {
+    expect(costoDomicilioDeCheckout('domicilio', true)).toBe(0);
+  });
 });
 
 describe('datosClienteUpsert', () => {

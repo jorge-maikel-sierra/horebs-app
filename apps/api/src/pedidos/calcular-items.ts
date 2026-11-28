@@ -1,5 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { productoIncluyeDomicilio } from '../common/costos';
 import { errorDeBase } from '../common/error-de-base';
 
 export interface ItemInput {
@@ -14,6 +15,8 @@ export interface ItemCalculado {
   subtotal: number;
   producto_nombre: string;
   variante_nombre: string;
+  /** El precio del producto ya incluye el domicilio (ej. Combo Personal). */
+  domicilio_incluido?: boolean;
 }
 
 export interface VarianteActiva {
@@ -21,7 +24,7 @@ export interface VarianteActiva {
   nombre: string;
   precio: number;
   precio_oferta: number | null;
-  productos: { nombre: string } | null;
+  productos: { nombre: string; slug?: string | null } | null;
 }
 
 /**
@@ -38,7 +41,7 @@ export async function obtenerVariantesActivas(
   if (varianteIds.length === 0) return new Map();
   const { data, error } = await client
     .from('variantes_producto')
-    .select('id, nombre, precio, precio_oferta, productos(nombre)')
+    .select('id, nombre, precio, precio_oferta, productos(nombre, slug)')
     .in('id', varianteIds)
     .eq('activo', true);
 
@@ -91,6 +94,7 @@ export async function calcularItems(
       subtotal: precioUnitario * item.cantidad,
       producto_nombre: variante.productos?.nombre ?? '',
       variante_nombre: variante.nombre,
+      domicilio_incluido: productoIncluyeDomicilio(variante.productos?.slug),
     };
   });
 

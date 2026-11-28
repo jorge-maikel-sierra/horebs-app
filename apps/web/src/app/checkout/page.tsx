@@ -214,7 +214,11 @@ export default function CheckoutPage() {
   // El API suma el domicilio al pedido (costoDomicilioDeCheckout); el total
   // que ve el cliente lo suma también. NEGOCIO.costoDomicilio debe coincidir
   // con COSTO_DOMICILIO_DEFAULT del API.
-  const domicilio = modalidad === 'domicilio' ? NEGOCIO.costoDomicilio : 0;
+  const domicilioIncluido = items.some((i) =>
+    NEGOCIO.productosConDomicilioIncluido.includes(i.productoNombre),
+  );
+  const domicilio =
+    modalidad === 'domicilio' && !domicilioIncluido ? NEGOCIO.costoDomicilio : 0;
   const totalAPagar = total + domicilio;
 
   async function enviarPedido(e: React.FormEvent) {

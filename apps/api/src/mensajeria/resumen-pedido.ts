@@ -87,7 +87,7 @@ export function armarResumenPedido(datos: DatosResumenPedido): {
     adicionales > 0 ? `Adicionales: ${pesos(adicionales)}` : null,
     lineaDescuento(descuento, datos.promocion),
     esDomicilio
-      ? `Domicilio a ${datos.direccion ?? 'dirección sin especificar'}: ${pesos(domicilio)}`
+      ? `Domicilio a ${datos.direccion ?? 'dirección sin especificar'}: ${domicilio > 0 ? pesos(domicilio) : 'incluido 🎁'}`
       : `Modalidad: ${ETIQUETA_MODALIDAD[datos.modalidad] ?? datos.modalidad}`,
     datos.entrega ? `Entrega: ${datos.entrega}` : null,
     datos.nota ? `Nota: ${datos.nota}` : null,
