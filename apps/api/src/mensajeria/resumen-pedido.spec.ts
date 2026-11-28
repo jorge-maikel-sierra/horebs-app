@@ -33,6 +33,26 @@ describe('armarResumenPedido', () => {
     expect(texto).not.toContain('método de pago');
   });
 
+  it('con el domicilio incluido en el precio no lo cobra aparte', () => {
+    const { texto, total } = armarResumenPedido({
+      nombreCompleto: 'Jorge Sierra',
+      lineas: [
+        {
+          cantidad: 1,
+          productoNombre: 'Combo Personal',
+          varianteNombre: 'Con Coca-Cola 400 ml',
+          precioUnitario: 21900,
+        },
+      ],
+      modalidad: 'domicilio',
+      direccion: 'Calle 1',
+      costoDomicilio: 0,
+    });
+    expect(total).toBe(21900);
+    expect(texto).toContain('Domicilio a Calle 1: incluido 🎁');
+    expect(texto).toContain('*Total: $21.900*');
+  });
+
   it('no incluye los puntos: van en un mensaje aparte al día siguiente', () => {
     const { texto } = armarResumenPedido({
       nombreCompleto: 'Jorge Sierra',

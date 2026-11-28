@@ -10,6 +10,10 @@ export const NEGOCIO = {
   // COSTO_DOMICILIO_DEFAULT de apps/api/src/common/costos.ts, que es el que
   // realmente se cobra; acá solo se usa para mostrarlo en textos.
   costoDomicilio: 5000,
+  // Productos cuyo precio ya trae el domicilio (Combo Personal de diciembre
+  // 2026). Espejo de SLUGS_DOMICILIO_INCLUIDO en apps/api/src/common/costos.ts,
+  // que es el que decide el cobro; acá solo se usa para mostrar el total.
+  productosConDomicilioIncluido: ['Combo Personal'] as readonly string[],
   // Hasta dónde llega el domicilio (confirmado por el dueño, 20 nov 2026;
   // COBERTURA_DOMICILIO en apps/api/src/common/contacto.ts).
   coberturaDomicilio: 'toda la zona urbana de Riohacha',

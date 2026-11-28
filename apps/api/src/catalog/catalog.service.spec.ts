@@ -65,6 +65,7 @@ describe('CatalogService.resolverCarrito', () => {
         conTamanos: true,
         cantidad: 2,
         precio: 2,
+        domicilioIncluido: false,
       },
       {
         varianteId: 'v-coca',
@@ -73,8 +74,22 @@ describe('CatalogService.resolverCarrito', () => {
         conTamanos: false,
         cantidad: 1,
         precio: 1,
+        domicilioIncluido: false,
       },
     ]);
+  });
+
+  it('marca el domicilio incluido en el Combo Personal', async () => {
+    const servicio = new CatalogService({} as never);
+    jest
+      .spyOn(servicio, 'getProductos')
+      .mockResolvedValue([
+        { ...GASEOSA, nombre: 'Combo Personal', slug: 'combo-personal' },
+      ]);
+    const { disponibles } = await servicio.resolverCarrito([
+      { varianteId: 'v-coca', cantidad: 1 },
+    ]);
+    expect(disponibles[0].domicilioIncluido).toBe(true);
   });
 
   it('cuenta como no disponibles las variantes inactivas o desconocidas', async () => {

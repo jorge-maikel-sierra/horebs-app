@@ -185,7 +185,10 @@ export class PedidosService {
       client,
       input.items,
     );
-    const costoDomicilio = costoDomicilioDeCheckout(input.modalidad);
+    const costoDomicilio = costoDomicilioDeCheckout(
+      input.modalidad,
+      itemsCalculados.some((i) => i.domicilio_incluido),
+    );
     const promo = promocionDePedido(
       elegirPromocion(
         Boolean(input.aplicar_promocion),

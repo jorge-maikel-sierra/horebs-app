@@ -377,7 +377,9 @@ export class CheckoutPreguntasService {
       lineas: lineasDeCarrito(disponibles),
       modalidad: checkout.modalidad ?? 'retiro',
       direccion: checkout.direccion ?? null,
-      costoDomicilio: COSTO_DOMICILIO_DEFAULT,
+      costoDomicilio: disponibles.some((i) => i.domicilioIncluido)
+        ? 0
+        : COSTO_DOMICILIO_DEFAULT,
       entrega: textoEntrega(checkout.entrega),
       nota: checkout.nota,
       promocion,

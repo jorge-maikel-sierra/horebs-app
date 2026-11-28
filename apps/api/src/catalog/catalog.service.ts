@@ -1,3 +1,4 @@
+import { productoIncluyeDomicilio } from '../common/costos';
 import { Injectable, Logger } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { errorDeBase } from '../common/error-de-base';
@@ -37,6 +38,8 @@ export interface ItemCarritoResuelto {
   cantidad: number;
   /** Precio unitario vigente desde la base (oferta si hay). */
   precio: number;
+  /** El precio ya incluye el domicilio (ej. Combo Personal). */
+  domicilioIncluido?: boolean;
 }
 
 /**
@@ -118,6 +121,7 @@ export class CatalogService {
         conTamanos: encontrado.p.variantes.length > 1,
         cantidad: item.cantidad,
         precio: encontrado.v.precio_oferta ?? encontrado.v.precio,
+        domicilioIncluido: productoIncluyeDomicilio(encontrado.p.slug),
       });
     }
     return { disponibles, noDisponibles: items.length - disponibles.length };

@@ -15,12 +15,16 @@ import type {
 
 /**
  * Costo de domicilio fijo, no editable por el cliente: a diferencia del POS,
- * el checkout nunca confía en un valor que mande el frontend.
+ * el checkout nunca confía en un valor que mande el frontend. Es 0 cuando el
+ * pedido trae un producto con el domicilio incluido en su precio (ver
+ * SLUGS_DOMICILIO_INCLUIDO en common/costos.ts).
  */
 export function costoDomicilioDeCheckout(
   modalidad: DatosPedido['modalidad'],
+  domicilioIncluido = false,
 ): number {
-  return modalidad === 'domicilio' ? COSTO_DOMICILIO_DEFAULT : 0;
+  if (modalidad !== 'domicilio' || domicilioIncluido) return 0;
+  return COSTO_DOMICILIO_DEFAULT;
 }
 
 /**
